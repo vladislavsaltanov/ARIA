@@ -42,6 +42,45 @@ public sealed class TransportViewModelTests
     }
 
     [Fact]
+    public void Lock_DisablesTransport_KeepsPanic()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+
+        Assert.True(vm.PlayCommand.CanExecute(null));
+        Assert.True(vm.PanicCommand.CanExecute(null));
+
+        vm.ToggleLockCommand.Execute(null);
+
+        Assert.True(vm.Locked);
+        Assert.False(vm.PlayCommand.CanExecute(null));
+        Assert.False(vm.PauseCommand.CanExecute(null));
+        Assert.False(vm.StopCommand.CanExecute(null));
+        Assert.False(vm.NextCommand.CanExecute(null));
+        Assert.False(vm.ReplayCommand.CanExecute(null));
+        Assert.True(vm.PanicCommand.CanExecute(null));
+
+        vm.ToggleLockCommand.Execute(null);
+
+        Assert.False(vm.Locked);
+        Assert.True(vm.PlayCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Lock_KeepsStatusText()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+        vm.PlayCommand.Execute(null);
+
+        var status = vm.StatusText;
+        vm.ToggleLockCommand.Execute(null);
+
+        Assert.True(vm.Locked);
+        Assert.Equal(status, vm.StatusText);
+    }
+
+    [Fact]
     public void MonitorPublish_UpdatesRemaining()
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);

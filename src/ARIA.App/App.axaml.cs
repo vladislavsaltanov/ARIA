@@ -3,6 +3,8 @@ namespace Aria.App;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using CommunityToolkit.Mvvm.Input;
+using Aria.App.Services;
 using Aria.App.ViewModels;
 using Aria.App.Views;
 
@@ -27,9 +29,34 @@ public partial class App : Application
             _ = host.StartAsync();
 
             var viewModel = new TransportViewModel(host.Bus, host.Monitor, SynchronizationContext.Current);
-            desktop.MainWindow = new MainWindow { DataContext = viewModel };
+            var hotkeys = new HotkeyService(
+                HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),
+                action => DispatchHotkey(viewModel, action));
+            desktop.MainWindow = new MainWindow(hotkeys) { DataContext = viewModel };
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void DispatchHotkey(TransportViewModel viewModel, string action)
+    {
+        switch (action)
+        {
+            case "play": Run(viewModel.PlayCommand); break;
+            case "pause": Run(viewModel.PauseCommand); break;
+            case "stop": Run(viewModel.StopCommand); break;
+            case "next": Run(viewModel.NextCommand); break;
+            case "replay": Run(viewModel.ReplayCommand); break;
+            case "panic": Run(viewModel.PanicCommand); break;
+            case "lock": Run(viewModel.ToggleLockCommand); break;
+        }
+    }
+
+    private static void Run(IRelayCommand command)
+    {
+        if (command.CanExecute(null))
+        {
+            command.Execute(null);
+        }
     }
 
     private static string DefaultDataDirectory()

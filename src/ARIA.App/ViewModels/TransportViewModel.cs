@@ -32,6 +32,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool panicked;
 
+    [ObservableProperty]
+    private bool locked;
+
     public TransportViewModel(ICommandBus bus, PlaybackMonitor? monitor = null, SynchronizationContext? sync = null)
     {
         _bus = bus;
@@ -50,23 +53,45 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         Apply(bus.Snapshot().Transport);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanPlay))]
     private void Play() => Submit(new Play());
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanPause))]
     private void Pause() => Submit(new Pause());
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanStop))]
     private void Stop() => Submit(new Stop());
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanNext))]
     private void Next() => Submit(new Next());
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanReplay))]
     private void Replay() => Submit(new Replay());
 
     [RelayCommand]
     private void Panic() => Submit(new Panic());
+
+    [RelayCommand]
+    private void ToggleLock() => Locked = !Locked;
+
+    private bool CanPlay() => !Locked;
+
+    private bool CanPause() => !Locked;
+
+    private bool CanStop() => !Locked;
+
+    private bool CanNext() => !Locked;
+
+    private bool CanReplay() => !Locked;
+
+    partial void OnLockedChanged(bool value)
+    {
+        PlayCommand.NotifyCanExecuteChanged();
+        PauseCommand.NotifyCanExecuteChanged();
+        StopCommand.NotifyCanExecuteChanged();
+        NextCommand.NotifyCanExecuteChanged();
+        ReplayCommand.NotifyCanExecuteChanged();
+    }
 
     public void Dispose()
     {
