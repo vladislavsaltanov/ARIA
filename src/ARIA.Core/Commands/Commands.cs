@@ -1,0 +1,57 @@
+namespace Aria.Core.Commands;
+
+using System.Collections.Immutable;
+using Aria.Core.Model;
+
+public readonly record struct ClientId(string Value);
+
+public abstract record Command;
+
+public sealed record Play : Command;
+
+public sealed record Pause : Command;
+
+public sealed record Stop : Command;
+
+public sealed record Next : Command;
+
+public sealed record Replay : Command;
+
+public sealed record Panic : Command;
+
+public sealed record JumpTo(EntryId Entry) : Command;
+
+public sealed record EnqueueEntry(EntryId Entry) : Command;
+
+public sealed record EnqueueTrack(TrackId Track) : Command;
+
+public sealed record RemoveFromQueue(int Index) : Command;
+
+public sealed record ClearQueue : Command;
+
+public sealed record CreatePlaylist(string Name) : Command;
+
+public sealed record RenamePlaylist(PlaylistId Id, string Name) : Command;
+
+public sealed record DeletePlaylist(PlaylistId Id) : Command;
+
+public sealed record SetActivePlaylist(PlaylistId Id) : Command;
+
+public sealed record AddEntry(PlaylistId Playlist, TrackId Track, int? Index = null) : Command;
+
+public sealed record RemoveEntry(EntryId Entry) : Command;
+
+public sealed record MoveEntry(EntryId Entry, int NewIndex) : Command;
+
+public sealed record SetEntryOverrides(EntryId Entry, PlaylistOverrides? Overrides) : Command;
+
+public sealed record MoveQueueItem(int From, int To) : Command;
+
+public sealed record SetMasterGain(double GainDb) : Command;
+
+public sealed record SetPanicFade(TimeSpan Duration) : Command;
+
+public sealed record LoadShow(
+    ImmutableArray<Track> Tracks,
+    ImmutableArray<Playlist> Playlists,
+    PlaylistId? Active) : Command;
