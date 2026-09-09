@@ -15,3 +15,7 @@ ARIA_EXPORT int aria_engine_space(aria_engine* engine);
 ARIA_EXPORT void aria_engine_set_master_gain(aria_engine* engine, float gain);
 ARIA_EXPORT void aria_engine_flush(aria_engine* engine);
 ARIA_EXPORT long aria_engine_played_frames(aria_engine* engine);
+typedef struct aria_decoder aria_decoder;
+ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channels, aria_decoder** out_decoder);
+ARIA_EXPORT int aria_decoder_read(aria_decoder* decoder, float* out, int frame_count);
+ARIA_EXPORT void aria_decoder_close(aria_decoder* decoder);

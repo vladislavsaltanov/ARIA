@@ -33,6 +33,14 @@ internal static class AriaShim
 
     internal static long EnginePlayedFrames(IntPtr engine) => aria_engine_played_frames(engine);
 
+    internal static int DecoderOpen(string path, int sampleRate, int channels, out IntPtr decoder)
+        => aria_decoder_open(path, sampleRate, channels, out decoder);
+
+    internal static int DecoderRead(IntPtr decoder, IntPtr destination, int frameCount)
+        => aria_decoder_read(decoder, destination, frameCount);
+
+    internal static void DecoderClose(IntPtr decoder) => aria_decoder_close(decoder);
+
     private static IntPtr Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
         if (libraryName != LibraryName)
@@ -94,4 +102,13 @@ internal static class AriaShim
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern long aria_engine_played_frames(IntPtr engine);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_decoder_open([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int sampleRate, int channels, out IntPtr decoder);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_decoder_read(IntPtr decoder, IntPtr destination, int frameCount);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void aria_decoder_close(IntPtr decoder);
 }

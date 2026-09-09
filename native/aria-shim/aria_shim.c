@@ -259,3 +259,60 @@ ARIA_EXPORT long aria_engine_played_frames(aria_engine* engine)
     }
     return tail;
 }
+
+struct aria_decoder
+{
+    ma_decoder decoder;
+};
+
+ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channels, aria_decoder** out_decoder)
+{
+    if (out_decoder == NULL || path == NULL)
+    {
+        return -1;
+    }
+    *out_decoder = NULL;
+    aria_decoder* decoder = (aria_decoder*)calloc(1, sizeof(aria_decoder));
+    if (decoder == NULL)
+    {
+        return MA_OUT_OF_MEMORY;
+    }
+    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, (ma_uint32)channels, (ma_uint32)sample_rate);
+    ma_result result = ma_decoder_init_file(path, &config, &decoder->decoder);
+    if (result != MA_SUCCESS)
+    {
+        free(decoder);
+        return (int)result;
+    }
+    *out_decoder = decoder;
+    return 0;
+}
+
+ARIA_EXPORT int aria_decoder_read(aria_decoder* decoder, float* out, int frame_count)
+{
+    if (decoder == NULL || out == NULL || frame_count <= 0)
+    {
+        return 0;
+    }
+    ma_uint64 frames_read = 0;
+    ma_result result = ma_decoder_read_pcm_frames(&decoder->decoder, out, (ma_uint64)frame_count, &frames_read);
+    if (result != MA_SUCCESS && result != MA_AT_END)
+    {
+        return 0;
+    }
+    if (frames_read > (ma_uint64)frame_count)
+    {
+        frames_read = (ma_uint64)frame_count;
+    }
+    return (int)frames_read;
+}
+
+ARIA_EXPORT void aria_decoder_close(aria_decoder* decoder)
+{
+    if (decoder == NULL)
+    {
+        return;
+    }
+    ma_decoder_uninit(&decoder->decoder);
+    free(decoder);
+}
