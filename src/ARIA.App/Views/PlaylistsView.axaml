@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.PlaylistsView"
+             x:DataType="vm:PlaylistsViewModel"
+             Background="#0F0F0F">
+  <Grid ColumnDefinitions="260,*" Margin="12">
+    <Grid Grid.Column="0" RowDefinitions="*,Auto" Margin="0,0,12,0">
+      <ListBox Grid.Row="0" x:Name="PlaylistsList" ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist}" Background="#161616" BorderBrush="#2A2A2A">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:PlaylistsViewModel+PlaylistVm">
+            <StackPanel Orientation="Horizontal" Margin="4">
+              <TextBlock Text="{Binding Name}" Foreground="#EDEDED" FontSize="15" />
+              <TextBlock Text=" ●" Foreground="#F2F2F2" FontSize="10" VerticalAlignment="Center" IsVisible="{Binding IsActive}" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+        <Button Content="NEW" Command="{Binding CreatePlaylistCommand}" Width="72" Height="44" Margin="0,0,6,0" />
+        <Button Content="ACTIVATE" Command="{Binding ActivatePlaylistCommand}" Width="88" Height="44" Margin="0,0,6,0" />
+        <Button Content="DELETE" Command="{Binding DeletePlaylistCommand}" Width="80" Height="44" />
+      </StackPanel>
+    </Grid>
+    <Grid Grid.Column="1" RowDefinitions="*,Auto,Auto,Auto">
+      <ListBox Grid.Row="0" x:Name="EntriesList" ItemsSource="{Binding SelectedPlaylist.Entries}" SelectedItem="{Binding SelectedEntry}" Background="#161616" BorderBrush="#2A2A2A">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:PlaylistsViewModel+EntryVm">
+            <Grid ColumnDefinitions="12,*,Auto,Auto" Margin="4" MinHeight="36">
+              <Rectangle Grid.Column="0" Width="10" Height="24" VerticalAlignment="Center" Fill="{Binding ColorBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                <TextBlock Text="{Binding DisplayName}" Foreground="#EDEDED" FontSize="15" />
+                <TextBlock Text="{Binding Note}" Foreground="#8A8A8A" FontSize="11" IsVisible="{Binding HasNote}" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="●" Foreground="#8A8A8A" Margin="8,0" VerticalAlignment="Center" IsVisible="{Binding HasOverrides}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0" Spacing="6">
+        <Button Content="▲ UP" Command="{Binding MoveEntryUpCommand}" Width="80" Height="44" />
+        <Button Content="▼ DOWN" Command="{Binding MoveEntryDownCommand}" Width="88" Height="44" />
+        <Button Content="REMOVE" Command="{Binding RemoveEntryCommand}" Width="96" Height="44" />
+        <Button Content="RESET OVERRIDES" Command="{Binding ClearEntryOverridesCommand}" Width="152" Height="44" />
+      </StackPanel>
+      <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0" Spacing="6">
+        <TextBox x:Name="EntryNameBox" PlaceholderText="entry display name" Width="240" Height="44" VerticalContentAlignment="Center" />
+        <Button Content="SET NAME" Width="104" Height="44" Click="OnSetEntryName" />
+        <TextBox x:Name="PlaylistNameBox" PlaceholderText="playlist name" Width="200" Height="44" VerticalContentAlignment="Center" />
+        <Button Content="RENAME" Command="{Binding RenamePlaylistCommand}" CommandParameter="{Binding #EntryNameBox.Text}" Width="104" Height="44" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>
