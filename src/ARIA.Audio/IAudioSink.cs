@@ -7,6 +7,8 @@ public interface IAudioSink
     int Channels { get; }
 
     int Write(ReadOnlySpan<float> samples);
+
+    void Flush();
 }
 
 public sealed class NullSink(int sampleRate, int channels) : IAudioSink
@@ -16,6 +18,10 @@ public sealed class NullSink(int sampleRate, int channels) : IAudioSink
     public int Channels { get; } = channels;
 
     public int Write(ReadOnlySpan<float> samples) => samples.Length;
+
+    public void Flush()
+    {
+    }
 }
 
 public sealed class CapturingSink(int sampleRate, int channels) : IAudioSink
@@ -58,5 +64,9 @@ public sealed class CapturingSink(int sampleRate, int channels) : IAudioSink
             _totalFrames += samples.Length / Channels;
             return samples.Length;
         }
+    }
+
+    public void Flush()
+    {
     }
 }

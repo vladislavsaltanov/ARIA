@@ -5,4 +5,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ARIA.Core\ARIA.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\runtimes\**\native\*" CopyToOutputDirectory="PreserveNewest" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
 </Project>

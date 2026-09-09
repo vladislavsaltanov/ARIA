@@ -78,6 +78,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         _mixer.StopAll(spec.FadeDuration);
         Volatile.Write(ref _currentHandle, 0);
+        _sink.Flush();
     }
 
     public void DisposeStream(StreamHandle handle)
