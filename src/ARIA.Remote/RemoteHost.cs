@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Aria.Core.Commands;
+using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
 using Microsoft.AspNetCore.Builder;
@@ -24,9 +25,11 @@ public sealed class RemoteHost : IAsyncDisposable
 
     private readonly ICommandBus _bus;
     private readonly RemoteOptions _options;
+    private readonly PlaybackMonitor? _monitor;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly CancellationTokenSource _shutdown = new();
     private IDisposable? _subscription;
+    private Task? _positionTask;
     private WebApplication? _app;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -42,10 +45,11 @@ public sealed class RemoteHost : IAsyncDisposable
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null)
     {
         _bus = bus;
         _options = options;
+        _monitor = monitor;
     }
 
     public Uri HttpEndpoint { get; private set; } = new("http://127.0.0.1:0/");
@@ -72,6 +76,10 @@ public sealed class RemoteHost : IAsyncDisposable
         WebsocketEndpoint = new Uri($"ws://127.0.0.1:{port}/ws");
 
         _subscription = _bus.Subscribe(OnStateEvent);
+        if (_monitor is not null)
+        {
+            _positionTask = Task.Run(() => PositionLoopAsync(_monitor, _shutdown.Token));
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -104,6 +112,17 @@ public sealed class RemoteHost : IAsyncDisposable
     private async Task RunConnection(WebSocket socket)
     {
         var connection = new Connection(socket);
+        string snapshotFrame;
+        try
+        {
+            snapshotFrame = SnapshotFrame();
+        }
+        catch (Exception)
+        {
+            await socket.CloseAsync(WebSocketCloseStatus.InternalServerError, null, CancellationToken.None);
+            return;
+        }
+        connection.Outbound.Writer.TryWrite(snapshotFrame);
         _connections[connection.Id] = connection;
         var sender = Task.Run(() => SendLoopAsync(connection));
         try
@@ -203,6 +222,50 @@ public sealed class RemoteHost : IAsyncDisposable
         }
     }
 
+    private string SnapshotFrame()
+    {
+        var snapshot = _bus.Snapshot();
+        return JsonSerializer.Serialize(new
+        {
+            Event = "snapshot",
+            Show = new { Version = snapshot.ShowVersion, State = snapshot.Show },
+            Transport = new { Version = snapshot.TransportVersion, State = snapshot.Transport },
+            Queue = new { Version = snapshot.QueueVersion, State = snapshot.Queue },
+            Mixer = new { Version = snapshot.MixerVersion, State = snapshot.Mixer },
+        }, JsonOptions);
+    }
+
+    private async Task PositionLoopAsync(PlaybackMonitor monitor, CancellationToken ct)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+            while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
+            {
+                var latest = monitor.Latest;
+                if (latest is null || _connections.IsEmpty)
+                {
+                    continue;
+                }
+                Broadcast(PositionFrame(latest));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static string PositionFrame(PositionSnapshot snapshot) =>
+        JsonSerializer.Serialize(new
+        {
+            Event = "position",
+            Deck = snapshot.Deck,
+            FilePositionMs = Milliseconds(snapshot.FilePosition),
+            RemainingMs = Milliseconds(snapshot.Remaining),
+        }, JsonOptions);
+
+    private static long Milliseconds(TimeSpan value) => (long)Math.Round(value.TotalMilliseconds);
+
     private static string DeltaFrame(string partition, int version, object state) =>
         JsonSerializer.Serialize(new { Event = "delta", Partition = partition, Version = version, State = state }, JsonOptions);
 
@@ -237,6 +300,16 @@ public sealed class RemoteHost : IAsyncDisposable
         }
         _shutdown.Cancel();
         _subscription?.Dispose();
+        if (_positionTask is { } position)
+        {
+            try
+            {
+                await position.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
         foreach (var connection in _connections.Values)
         {
             connection.Lifetime.Cancel();
