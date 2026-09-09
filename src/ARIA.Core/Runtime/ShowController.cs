@@ -62,6 +62,9 @@ public sealed class ShowController : IShowHandler
             case LoadShow load:
                 OnLoadShow(client, seq, load);
                 break;
+            case RestoreShow restore:
+                OnRestoreShow(client, seq, restore);
+                break;
             case Play:
                 OnPlay(client, seq);
                 break;
@@ -156,7 +159,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "show-data-required");
             return;
         }
-        if (!ValidateLoad(load))
+        if (!ValidateShow(load.Tracks, load.Playlists, []))
         {
             Reject(client, seq, "invalid-show");
             return;
@@ -189,10 +192,70 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private static bool ValidateLoad(LoadShow load)
+    private void OnRestoreShow(ClientId client, long seq, RestoreShow restore)
+    {
+        if (_status != TransportStatus.Stopped)
+        {
+            Reject(client, seq, "show-load-requires-stopped");
+            return;
+        }
+        if (restore.Tracks.IsDefault || restore.Playlists.IsDefault || restore.Queue.IsDefault)
+        {
+            Reject(client, seq, "show-data-required");
+            return;
+        }
+        if (!ValidateShow(restore.Tracks, restore.Playlists, restore.Queue))
+        {
+            Reject(client, seq, "invalid-show");
+            return;
+        }
+        if (restore.Active is { } active && !restore.Playlists.Any(p => p.Id == active))
+        {
+            Reject(client, seq, "unknown-active-playlist");
+            return;
+        }
+        if (restore.MasterGainDb is < MasterGainMinDb or > MasterGainMaxDb)
+        {
+            Reject(client, seq, "gain-out-of-range");
+            return;
+        }
+        if (restore.PanicFade < TimeSpan.Zero || restore.PanicFade > PanicFadeMax)
+        {
+            Reject(client, seq, "panic-fade-out-of-range");
+            return;
+        }
+
+        if (_current is { Handle: { } handle })
+        {
+            _engine.DisposeStream(handle);
+            _monitor?.Unbind(handle);
+        }
+
+        _tracks = restore.Tracks;
+        _playlists = restore.Playlists;
+        _trackMap = restore.Tracks.ToDictionary(t => t.Id);
+        RebuildEntryMap();
+        _activePlaylistId = restore.Active ?? (_playlists.Length > 0 ? _playlists[0].Id : null);
+        _cursor = 0;
+        _queue.Clear();
+        _queue.AddRange(restore.Queue);
+        _masterGainDb = restore.MasterGainDb;
+        _panicFade = restore.PanicFade;
+        _engine.SetMasterGain(restore.MasterGainDb);
+        _current = null;
+        _atEndBoundary = false;
+        _panicked = false;
+
+        EmitShow();
+        EmitQueue();
+        EmitMixer();
+        EmitTransport();
+    }
+
+    private static bool ValidateShow(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists, ImmutableArray<QueueItem> queue)
     {
         var trackIds = new HashSet<TrackId>();
-        foreach (var track in load.Tracks)
+        foreach (var track in tracks)
         {
             if (!trackIds.Add(track.Id))
             {
@@ -200,7 +263,7 @@ public sealed class ShowController : IShowHandler
             }
         }
         var entryIds = new HashSet<EntryId>();
-        foreach (var playlist in load.Playlists)
+        foreach (var playlist in playlists)
         {
             foreach (var entry in playlist.Entries)
             {
@@ -208,6 +271,13 @@ public sealed class ShowController : IShowHandler
                 {
                     return false;
                 }
+            }
+        }
+        foreach (var item in queue)
+        {
+            if (!trackIds.Contains(item.TrackId) || (item.EntryId is { } entry && !entryIds.Contains(entry)))
+            {
+                return false;
             }
         }
         return true;

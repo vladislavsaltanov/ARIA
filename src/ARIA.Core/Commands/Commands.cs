@@ -2,6 +2,7 @@ namespace Aria.Core.Commands;
 
 using System.Collections.Immutable;
 using Aria.Core.Model;
+using Aria.Core.State;
 
 public readonly record struct ClientId(string Value);
 
@@ -55,3 +56,11 @@ public sealed record LoadShow(
     ImmutableArray<Track> Tracks,
     ImmutableArray<Playlist> Playlists,
     PlaylistId? Active) : Command;
+
+public sealed record RestoreShow(
+    ImmutableArray<Track> Tracks,
+    ImmutableArray<Playlist> Playlists,
+    PlaylistId? Active,
+    ImmutableArray<QueueItem> Queue,
+    double MasterGainDb,
+    TimeSpan PanicFade) : Command;

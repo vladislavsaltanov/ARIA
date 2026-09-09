@@ -9,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ARIA.Core\ARIA.Core.csproj" />
+    <ProjectReference Include="..\..\src\ARIA.Persistence\ARIA.Persistence.csproj" />
   </ItemGroup>
 </Project>
