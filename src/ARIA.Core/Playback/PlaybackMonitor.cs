@@ -15,6 +15,8 @@ public sealed class PlaybackMonitor
 
     public event Action<PositionSnapshot>? Changed;
 
+    public event Action? Cleared;
+
     public void Bind(StreamHandle handle, DeckContent deck)
     {
         lock (_gate)
@@ -25,6 +27,7 @@ public sealed class PlaybackMonitor
 
     public void Unbind(StreamHandle handle)
     {
+        bool cleared;
         lock (_gate)
         {
             if (!_bindings.Remove(handle))
@@ -35,7 +38,16 @@ public sealed class PlaybackMonitor
             {
                 _latestHandle = null;
                 _latest = null;
+                cleared = true;
             }
+            else
+            {
+                cleared = false;
+            }
+        }
+        if (cleared)
+        {
+            Cleared?.Invoke();
         }
     }
 

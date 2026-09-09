@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Aria.App.ViewModels"
+        x:Class="Aria.App.Views.MainWindow"
+        x:DataType="vm:TransportViewModel"
+        Title="ARIA"
+        Width="720" Height="480"
+        Background="#0F0F0F"
+        CanResize="True">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24">
+    <TextBlock Grid.Row="0" Text="{Binding StatusText}" Foreground="#8A8A8A" FontSize="14" FontFamily="Consolas, Menlo" />
+    <TextBlock Grid.Row="1" Text="{Binding DisplayName}" Foreground="#EDEDED" FontSize="22" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
+    <TextBlock Grid.Row="2" Text="{Binding Remaining}" Foreground="#F2F2F2" FontSize="112" FontWeight="Bold"
+               FontFamily="Consolas, Menlo" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,*">
+      <Button Grid.Column="1" Content="PLAY" Command="{Binding PlayCommand}" Width="96" Height="56" Margin="0,0,8,0" />
+      <Button Grid.Column="2" Content="PAUSE" Command="{Binding PauseCommand}" Width="96" Height="56" Margin="0,0,8,0" />
+      <Button Grid.Column="3" Content="STOP" Command="{Binding StopCommand}" Width="96" Height="56" Margin="0,0,8,0" />
+      <Button Grid.Column="4" Content="NEXT" Command="{Binding NextCommand}" Width="96" Height="56" Margin="0,0,8,0" />
+      <Button Grid.Column="5" Content="REPLAY" Command="{Binding ReplayCommand}" Width="96" Height="56" Margin="0,0,8,0" />
+      <Button Grid.Column="6" Content="PANIC" Command="{Binding PanicCommand}" Width="112" Height="56"
+              Background="#1A0A0A" BorderBrush="#C43A3A" BorderThickness="2" Foreground="#E86A6A"
+              FontSize="18" FontWeight="Bold" />
+    </Grid>
+  </Grid>
+</Window>

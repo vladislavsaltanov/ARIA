@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Aria.App</RootNamespace>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ARIA.Core\ARIA.Core.csproj" />
+    <ProjectReference Include="..\ARIA.Audio\ARIA.Audio.csproj" />
+    <ProjectReference Include="..\ARIA.Persistence\ARIA.Persistence.csproj" />
+    <ProjectReference Include="..\ARIA.Remote\ARIA.Remote.csproj" />
+  </ItemGroup>
+</Project>
