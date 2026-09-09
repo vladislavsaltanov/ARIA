@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ARIA.Audio/ARIA.Audio.csproj" />
+    <Project Path="src/ARIA.Core/ARIA.Core.csproj" />
+    <Project Path="src/ARIA.Persistence/ARIA.Persistence.csproj" />
+    <Project Path="src/ARIA.Remote/ARIA.Remote.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ARIA.Audio.Tests/ARIA.Audio.Tests.csproj" />
+    <Project Path="tests/ARIA.Core.Tests/ARIA.Core.Tests.csproj" />
+    <Project Path="tests/ARIA.Persistence.Tests/ARIA.Persistence.Tests.csproj" />
+    <Project Path="tests/ARIA.Remote.Tests/ARIA.Remote.Tests.csproj" />
+  </Folder>
+</Solution>
