@@ -41,11 +41,18 @@ public sealed class ShowController : IShowHandler
 
     public Action<StateEvent>? Emitted { get; set; }
 
-    public ShowController(IAudioEngine engine, PlaybackMonitor? monitor = null)
+    public ShowController(IAudioEngine engine, PlaybackMonitor? monitor = null, Action<Action>? marshalEngineEvents = null)
     {
         _engine = engine;
         _monitor = monitor;
-        _engine.Events += OnStreamEvent;
+        if (marshalEngineEvents is { } marshal)
+        {
+            _engine.Events += e => marshal(() => OnStreamEvent(e));
+        }
+        else
+        {
+            _engine.Events += OnStreamEvent;
+        }
     }
 
     public void Handle(ClientId client, long seq, Command command)

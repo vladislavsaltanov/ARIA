@@ -17,7 +17,7 @@ public sealed class CommandBus : ICommandBus, IDisposable
 
     private readonly IShowHandler _handler;
     private readonly BusMode _mode;
-    private readonly Channel<Envelope> _channel = Channel.CreateUnbounded<Envelope>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Channel<object> _channel = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
     private readonly Dictionary<ClientId, RingSet> _seen = [];
     private readonly object _gate = new();
     private List<Action<StateEvent>> _subscribers = [];
@@ -44,6 +44,17 @@ public sealed class CommandBus : ICommandBus, IDisposable
             return;
         }
         _channel.Writer.TryWrite(new Envelope { Client = client, Seq = seq, Command = command });
+    }
+
+    public void Post(Action work)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+        if (_mode == BusMode.Inline)
+        {
+            work();
+            return;
+        }
+        _channel.Writer.TryWrite(work);
     }
 
     public IDisposable Subscribe(Action<StateEvent> observer)
@@ -117,9 +128,16 @@ public sealed class CommandBus : ICommandBus, IDisposable
         {
             while (await _channel.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
             {
-                while (_channel.Reader.TryRead(out var envelope))
+                while (_channel.Reader.TryRead(out var item))
                 {
-                    Dispatch(envelope.Client, envelope.Seq, envelope.Command);
+                    if (item is Envelope envelope)
+                    {
+                        Dispatch(envelope.Client, envelope.Seq, envelope.Command);
+                    }
+                    else
+                    {
+                        ((Action)item)();
+                    }
                 }
             }
         }

@@ -22,9 +22,10 @@ public sealed class MixerBus : IDisposable
         Remove,
         Transport,
         SetMix,
+        StopAll,
     }
 
-    private readonly record struct Command(CommandKind Kind, Voice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix);
+    private readonly record struct Command(CommandKind Kind, Voice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix, TimeSpan Duration);
 
     private sealed class Voice
     {
@@ -46,7 +47,7 @@ public sealed class MixerBus : IDisposable
 
         public required double CueOutSeconds { get; init; }
 
-        public long StartFrame { get; set; }
+        public long StartFrame;
 
         public bool Active { get; set; }
 
@@ -89,21 +90,39 @@ public sealed class MixerBus : IDisposable
             throw new ArgumentException("Source channel count does not match the mixer.", nameof(config));
         }
         var handle = new StreamHandle((int)Interlocked.Increment(ref _handleCounter));
-        _commands.Enqueue(new Command(CommandKind.Add, CreateVoice(handle, config), handle, default, null));
+        _commands.Enqueue(new Command(CommandKind.Add, CreateVoice(handle, config), handle, default, null, default));
         return handle;
     }
 
+    public bool TryGetPosition(StreamHandle handle, out TimeSpan position)
+    {
+        for (var index = 0; index < _voices.Count; index++)
+        {
+            var voice = _voices[index];
+            if (voice.Handle.Value == handle.Value && !voice.Dead && !voice.RemoveRequested)
+            {
+                position = TimeSpan.FromSeconds(Volatile.Read(ref voice.StartFrame) / (double)_sampleRate);
+                return true;
+            }
+        }
+        position = TimeSpan.Zero;
+        return false;
+    }
+
+    public void StopAll(TimeSpan fadeDuration)
+        => _commands.Enqueue(new Command(CommandKind.StopAll, null, default, default, null, fadeDuration));
+
     public void Transport(StreamHandle handle, TransportCommand command)
-        => _commands.Enqueue(new Command(CommandKind.Transport, null, handle, command, null));
+        => _commands.Enqueue(new Command(CommandKind.Transport, null, handle, command, null, default));
 
     public void SetMix(StreamHandle handle, MixParameters mix)
     {
         ArgumentNullException.ThrowIfNull(mix);
-        _commands.Enqueue(new Command(CommandKind.SetMix, null, handle, default, mix));
+        _commands.Enqueue(new Command(CommandKind.SetMix, null, handle, default, mix, default));
     }
 
     public void RemoveVoice(StreamHandle handle)
-        => _commands.Enqueue(new Command(CommandKind.Remove, null, handle, default, null));
+        => _commands.Enqueue(new Command(CommandKind.Remove, null, handle, default, null, default));
 
     public int Render(Span<float> output)
     {
@@ -187,6 +206,30 @@ public sealed class MixerBus : IDisposable
                 case CommandKind.SetMix:
                     ApplyMix(FindVoice(command.Handle), command.Mix!);
                     break;
+                case CommandKind.StopAll:
+                    ApplyStopAll(command.Duration);
+                    break;
+            }
+        }
+    }
+
+    private void ApplyStopAll(TimeSpan fadeDuration)
+    {
+        for (var index = 0; index < _voices.Count; index++)
+        {
+            var voice = _voices[index];
+            if (voice.Dead || voice.RemoveRequested)
+            {
+                continue;
+            }
+            if (fadeDuration > TimeSpan.Zero)
+            {
+                var rampFrames = Math.Max(1, (int)Math.Round(fadeDuration.TotalSeconds * _sampleRate));
+                voice.Fader = new FaderNode(rampFrames, FadeCurve.Linear, 1.0, 0.0, stopWhenDone: true);
+            }
+            else
+            {
+                EndVoice(voice, StreamEndReason.StoppedByCommand);
             }
         }
     }
