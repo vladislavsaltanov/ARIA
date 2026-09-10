@@ -21,6 +21,11 @@ Effort: ui-redesign
 
 <!-- по закрытии тикета: - [название тикета](путь): суть ответа одной строкой -->
 
+- [Аудит аудио-движка: громкость, метринг, LUFS](issues/01-research-audio-engine-volume-meters.md): мастер-громкость уже есть целиком (SetMasterGain → движок, UI просто не читает MixerState); momentary LUFS феасибилен в рендер-пути C# (тап после ApplyMasterGain, биквады + ring 400 мс, ноль аллокаций); не хватает сима публикации метрик, тапа и классов K-weighting; Preview не играется вовсе.
+- [Аудит UI-кода и Show-состояния](issues/02-research-ui-state-audit.md): мёртвое — QueueViewModel, NextName, Lock-команды нет (только локальные флаги), двойной путь импорта; waveform-кэш пишется, но не читается никем; сценарий ляжет в Show без миграции (опциональные поля), у Note на PlaylistEntry уже есть семантика; аллокационный тест покрывает только аудио-рендер, не UI.
+- [Прецеденты сценария оператора](issues/03-research-operator-script-precedents.md): рекомендован гибрид — свободный текст с mention-ссылками по TrackId (Slack-паттерн «хранится ID, рендерится имя», переименование бесплатно, повисшая ссылка деградирует в плашку) + время строки кнопкой «пометить сейчас» (elapsed, абсолют — проекция); прецеденты: QLab memo cues, ТВ-rundown с soft/hard time.
+- [Avalonia-паттерны](issues/04-research-avalonia-patterns.md): волна — custom Control с кэшированной StreamGeometry (WriteableBitmap избыточен); drawer — SplitView Right Overlay/CompactOverlay; иконки — PathIcon + StreamGeometry из Lucide/Feather с конвертацией stroke→fill (риск закрыть прототипом); хоткеи — жесты в ToolTip из HotkeyConfig + help-оверлей по F1.
+
 ## Not yet specified
 
 - Сборка спеки: структура spec.md и нарезка на реализационные усилия — ясна будет, когда закроются тикеты компоновки и транспорта.
