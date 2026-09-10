@@ -3,6 +3,7 @@ namespace Aria.Remote;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.WebSockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,16 +18,20 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
 
-public sealed record RemoteOptions(string AuthToken, int Port = 0);
+public sealed record RemoteOptions(string AuthToken, int Port = 0, IRemoteCredentials? Credentials = null, IPAddress? BindAddress = null);
+
+internal sealed record AuthRequest(string? Identifier, string? Password);
 
 public sealed class RemoteHost : IAsyncDisposable
 {
     private const int DedupeWindow = 256;
+    private const int FailedAuthDelayMs = 300;
 
     private readonly ICommandBus _bus;
     private readonly RemoteOptions _options;
     private readonly PlaybackMonitor? _monitor;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
+    private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
     private IDisposable? _subscription;
     private Task? _positionTask;
@@ -58,13 +63,19 @@ public sealed class RemoteHost : IAsyncDisposable
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
+        var bindAddress = _options.BindAddress ?? IPAddress.Loopback;
+        if (!IPAddress.IsLoopback(bindAddress) && _options.Credentials is null)
+        {
+            throw new InvalidOperationException("non-loopback bind requires remote credentials");
+        }
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
-        builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, _options.Port));
+        builder.WebHost.UseKestrel(options => options.Listen(bindAddress, _options.Port));
 
         var app = builder.Build();
         app.UseWebSockets();
         app.MapGet("/health", () => Results.Text("ok"));
+        app.MapPost("/auth", AuthenticateAsync);
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
@@ -95,9 +106,41 @@ public sealed class RemoteHost : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
+    private async Task<IResult> AuthenticateAsync(HttpRequest request)
+    {
+        var credentials = _options.Credentials;
+        if (credentials is null)
+        {
+            return Results.NotFound();
+        }
+        AuthRequest? body;
+        try
+        {
+            body = await request.ReadFromJsonAsync<AuthRequest>(JsonOptions, CancellationToken.None);
+        }
+        catch (Exception e) when (e is JsonException or InvalidOperationException or NotSupportedException)
+        {
+            body = null;
+        }
+        if (body is null || !credentials.Verify(body.Identifier ?? string.Empty, body.Password ?? string.Empty))
+        {
+            await Task.Delay(FailedAuthDelayMs);
+            return Results.Json(new { error = "invalid-credentials" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        _sessionTokens[token] = 0;
+        return Results.Ok(new { token });
+    }
+
+    private bool IsTokenValid(string? token) =>
+        !string.IsNullOrEmpty(token)
+        && (_options.Credentials is null
+            ? token == _options.AuthToken
+            : _sessionTokens.ContainsKey(token));
+
     private async Task HandleWebSocket(HttpContext context)
     {
-        if (context.Request.Query["token"] != _options.AuthToken)
+        if (!IsTokenValid(context.Request.Query["token"]))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;

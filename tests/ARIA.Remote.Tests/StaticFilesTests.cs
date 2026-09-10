@@ -12,7 +12,7 @@ public sealed class StaticFilesTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
-        _host = new RemoteHost(_bus, new RemoteOptions("secret"));
+        _host = new RemoteHost(_bus, new RemoteOptions("secret", TestPorts.Next()));
         await _host.StartAsync();
     }
 

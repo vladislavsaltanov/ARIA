@@ -5,6 +5,13 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
+public static class TestPorts
+{
+    private static int _next = 31000;
+
+    public static int Next() => Interlocked.Increment(ref _next);
+}
+
 public sealed class TestClient : IDisposable
 {
     private ClientWebSocket _socket = new();
@@ -29,7 +36,7 @@ public sealed class TestClient : IDisposable
             {
                 await socket.ConnectAsync(new Uri($"{websocketEndpoint}?token={Uri.EscapeDataString(token)}"), CancellationToken.None);
             }
-            catch (Exception e) when (attempt < 3 && e is WebSocketException or IOException)
+            catch (Exception e) when (attempt < 3 && IsTransient(e))
             {
                 socket.Dispose();
                 continue;
@@ -47,6 +54,10 @@ public sealed class TestClient : IDisposable
             _socket.Dispose();
         }
     }
+
+    private static bool IsTransient(Exception e) =>
+        e is IOException
+        || (e is WebSocketException ws && ws.WebSocketErrorCode != WebSocketError.NotAWebSocket);
 
     private async Task<bool> ReceivedAnyFrameAsync(TimeSpan timeout)
     {

@@ -16,7 +16,7 @@ public sealed class PlaybackChannelTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _bus = new CommandBus(new ShowController(new StubEngine(), _monitor), BusMode.Pumped);
-        _host = new RemoteHost(_bus, new RemoteOptions("secret"), _monitor);
+        _host = new RemoteHost(_bus, new RemoteOptions("secret", TestPorts.Next()), _monitor);
         await _host.StartAsync();
     }
 
@@ -125,7 +125,7 @@ public sealed class PositionChannelNullMonitorTests
     public async Task NoPositionFrames_WhenMonitorNull()
     {
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
-        var host = new RemoteHost(bus, new RemoteOptions("secret"));
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()));
         await host.StartAsync();
         try
         {
