@@ -148,14 +148,7 @@ public sealed class AppHost : IAsyncDisposable
 
     private void SyncShowState(ImmutableArray<Track> tracks)
     {
-        var snapshot = Bus.Snapshot();
-        Submit(new RestoreShow(
-            tracks,
-            snapshot.Show.Playlists,
-            snapshot.Show.ActiveId,
-            snapshot.Queue.Items,
-            snapshot.Mixer.MasterGainDb,
-            snapshot.Mixer.PanicFade));
+        Submit(new MergeTracks(tracks));
     }
 
     public async ValueTask DisposeAsync()

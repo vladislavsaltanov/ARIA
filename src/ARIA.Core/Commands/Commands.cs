@@ -64,3 +64,5 @@ public sealed record RestoreShow(
     ImmutableArray<QueueItem> Queue,
     double MasterGainDb,
     TimeSpan PanicFade) : Command;
+
+public sealed record MergeTracks(ImmutableArray<Track> Tracks) : Command;

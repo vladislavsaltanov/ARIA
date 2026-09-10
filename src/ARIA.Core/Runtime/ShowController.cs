@@ -65,6 +65,9 @@ public sealed class ShowController : IShowHandler
             case RestoreShow restore:
                 OnRestoreShow(client, seq, restore);
                 break;
+            case MergeTracks merge:
+                OnMergeTracks(client, seq, merge);
+                break;
             case Play:
                 OnPlay(client, seq);
                 break;
@@ -250,6 +253,40 @@ public sealed class ShowController : IShowHandler
         EmitQueue();
         EmitMixer();
         EmitTransport();
+    }
+
+    private void OnMergeTracks(ClientId client, long seq, MergeTracks merge)
+    {
+        if (merge.Tracks.IsDefault || merge.Tracks.Length == 0)
+        {
+            Reject(client, seq, "show-data-required");
+            return;
+        }
+        var incoming = new HashSet<TrackId>();
+        foreach (var track in merge.Tracks)
+        {
+            if (!incoming.Add(track.Id))
+            {
+                Reject(client, seq, "duplicate-track");
+                return;
+            }
+        }
+        var added = false;
+        foreach (var track in merge.Tracks)
+        {
+            if (_trackMap.ContainsKey(track.Id))
+            {
+                continue;
+            }
+            _tracks = _tracks.Add(track);
+            _trackMap.Add(track.Id, track);
+            added = true;
+        }
+        if (!added)
+        {
+            return;
+        }
+        EmitShow();
     }
 
     private static bool ValidateShow(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists, ImmutableArray<QueueItem> queue)
