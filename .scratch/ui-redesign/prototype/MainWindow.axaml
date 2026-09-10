@@ -52,6 +52,10 @@
     </ControlTheme>
   </Window.Resources>
   <Window.Styles>
+    <Style Selector="Button">
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
     <Style Selector="Button.transport">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="BorderThickness" Value="0"/>
@@ -143,24 +147,36 @@
     <Style Selector="Button.panic:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#281314"/>
     </Style>
-    <Style Selector="Button.panic:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#E5484D"/>
-    </Style>
-    <Style Selector="Button.panic:pressed /template/ ContentPresenter#PART_ContentPresenter^">
+    <Style Selector="Button.panic:pressed">
       <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#E5484D"/>
+      </Style>
     </Style>
     <Style Selector="Border.libRow:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
+    <Style Selector="Border.libRow.selected">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
     <Style Selector="Border.plRow:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="Border.plRow.selected">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="3,0,0,0"/>
+    </Style>
+    <Style Selector="Border.dropTarget">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="2"/>
     </Style>
     <Style Selector="Border.scriptLine:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
   </Window.Styles>
   <Panel>
-    <Grid RowDefinitions="*,64">
+    <Grid RowDefinitions="*,76">
       <SplitView x:Name="Drawer" Grid.Row="0" PanePlacement="Right" DisplayMode="Overlay" OpenPaneLength="340" IsPaneOpen="False" Background="Transparent">
         <SplitView.Pane>
           <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1,0,0,0">
@@ -172,8 +188,7 @@
                   <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
                 </Button>
               </Grid>
-              <ScrollViewer Grid.Row="1">
-                <StackPanel Spacing="3">
+              <StackPanel Grid.Row="1" Spacing="3">
                   <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
                     <Grid ColumnDefinitions="58,*">
                       <TextBlock Text="00:00" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
@@ -256,12 +271,12 @@
                       <StackPanel Grid.Column="1" Spacing="6">
                         <TextBlock Text="Свет вверх, тишина, поклон" FontSize="12" TextWrapping="Wrap"/>
                       </StackPanel>
-                    </Grid>
+                     </Grid>
                   </Border>
                 </StackPanel>
-              </ScrollViewer>
-            </Grid>
-          </Border>
+                <TextBlock x:Name="StatusText" Grid.Row="2" Text="" FontSize="10" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushFaint}" Margin="12,0,12,8" TextTrimming="CharacterEllipsis"/>
+              </Grid>
+            </Border>
         </SplitView.Pane>
         <Grid RowDefinitions="Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="20,12,20,8">
@@ -269,17 +284,12 @@
               <TextBlock Text="01:23:45" FontFamily="{StaticResource MonoFont}" FontSize="42" Foreground="{StaticResource BrushFg}"/>
               <TextBlock Text="21:47:03 · 02:11" FontFamily="{StaticResource MonoFont}" FontSize="14" Foreground="{StaticResource BrushDim}" Margin="2,0,0,0"/>
             </StackPanel>
-            <Grid Grid.Column="1" Height="56" VerticalAlignment="Center">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="3*"/>
-              </Grid.ColumnDefinitions>
-              <Path Grid.ColumnSpan="3" Data="{StaticResource wave_main}" Stretch="Fill" Height="56" Fill="{StaticResource BrushWave}"/>
-              <Rectangle Grid.Column="1" Width="2" Height="56" Fill="{StaticResource BrushFg}"/>
-            </Grid>
+            <Panel x:Name="WaveSeek" Grid.Column="1" Height="56" VerticalAlignment="Center" Background="Transparent" PointerPressed="OnWaveSeekPressed" ToolTip.Tip="Перемотка — клик по волне">
+              <Path Data="{StaticResource wave_main}" Stretch="Fill" Height="56" Fill="{StaticResource BrushWave}"/>
+              <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushFg}" HorizontalAlignment="Left"/>
+            </Panel>
           </Grid>
-          <Grid Grid.Row="1" ColumnDefinitions="260,*">
+          <Grid Grid.Row="1" ColumnDefinitions="260,*,300">
             <Border Grid.Column="0" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,0,1,0">
               <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="14,10,14,8">
@@ -289,84 +299,82 @@
                 <Grid Grid.Row="1" RowDefinitions="Auto,*">
                   <Grid Grid.Row="0" Margin="12,0,12,8">
                     <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                    <TextBox PlaceholderText="Поиск по имени" Padding="28,5,8,5" FontSize="12" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
+                    <TextBox PlaceholderText="Поиск по имени" Padding="28,6,8,8" VerticalContentAlignment="Center" FontSize="12" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
                   </Grid>
-                  <ScrollViewer Grid.Row="1">
-                    <StackPanel Margin="0,0,0,4">
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                  <StackPanel Grid.Row="1" Margin="0,0,0,4">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t1}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Осенний дождь" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="3:42" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t2}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Night Drive" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="4:15" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t3}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Гул маяка" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="2:58" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
-                          <PathIcon Grid.Column="3" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,2,0"/>
+                          <PathIcon Grid.Column="3" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10,0,2,0"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t4}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Deep Current" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="5:07" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t5}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Полночь" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="3:21" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t6}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Slow Tide" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="4:48" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t7}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Стекло" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="3:05" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
-                          <PathIcon Grid.Column="3" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,2,0"/>
+                          <PathIcon Grid.Column="3" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10,0,2,0"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t8}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Amber Loop" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="6:12" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t9}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Тихий час" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="2:34" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
-                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0">
-                        <Grid ColumnDefinitions="56,*,34,15">
+                      <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                        <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t10}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Text="Copper Sky" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"/>
                           <TextBlock Grid.Column="2" Text="4:56" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{StaticResource BrushDim}" TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                       </Border>
                     </StackPanel>
-                  </ScrollViewer>
                 </Grid>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="14,10,14,6">
                   <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}"/>
@@ -384,93 +392,96 @@
                   </Border>
                 </StackPanel>
                 <Button Grid.Row="4" Classes="railAction" Margin="8,4,8,0">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
+                  <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15"/>
-                    <TextBlock Text="Очередь" FontSize="13"/>
+                    <TextBlock Text="Очередь" FontSize="13" Margin="0,3,0,0"/>
                   </StackPanel>
                 </Button>
                 <Button Grid.Row="5" Classes="railAction" Margin="8,6,8,10" ToolTip.Tip="Импорт — выбрать файлы или папку">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
+                  <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <PathIcon Data="{StaticResource icon_plus}" Width="15" Height="15"/>
-                    <TextBlock Text="Import" FontSize="13"/>
+                    <TextBlock Text="Import" FontSize="13" Margin="0,3,0,0"/>
                   </StackPanel>
                 </Button>
               </Grid>
             </Border>
             <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="16,0,0,0">
-              <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,10,0,8">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,10,0,8">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                   <TextBlock Text="Вечерний сет" FontSize="17" FontWeight="SemiBold"/>
                   <TextBlock Text="5 треков · 19:07" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Margin="0,3,0,0"/>
                 </StackPanel>
                 <Grid Grid.Column="2" Width="180" Margin="0,0,10,0">
                   <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                  <TextBox PlaceholderText="Поиск-подстрока" Padding="28,5,8,5" FontSize="12" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
+                  <TextBox PlaceholderText="Поиск-подстрока" Padding="28,6,8,8" VerticalContentAlignment="Center" FontSize="12" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
                 </Grid>
-                <Button Grid.Column="3" x:Name="ScenarioToggle" Classes="ghost" Width="32" Height="32" Click="OnScenarioToggleClick" ToolTip.Tip="Сценарий — Ctrl+T" VerticalAlignment="Center">
-                  <PathIcon Data="{StaticResource icon_script}" Width="16" Height="16"/>
+                <Button Grid.Column="3" x:Name="ScenarioToggle" Classes="ghost" Height="32" Padding="10,0" Click="OnScenarioToggleClick" ToolTip.Tip="Сценарий — Ctrl+T" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource icon_script}" Width="14" Height="14"/>
+                    <TextBlock Text="Сценарий" FontSize="12" Margin="0,3,0,0"/>
+                  </StackPanel>
                 </Button>
                 <Button Grid.Column="4" Classes="ghost" Width="32" Height="32" Click="OnHelpToggleClick" ToolTip.Tip="Горячие клавиши — F1" VerticalAlignment="Center" Margin="6,0,0,0">
                   <TextBlock Text="?" FontSize="14" FontWeight="SemiBold"/>
                 </Button>
               </Grid>
-              <StackPanel Grid.Row="1" Margin="0,0,0,10" Spacing="2">
-                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="7,0,12,0" BorderThickness="3,0,0,0" BorderBrush="{StaticResource BrushFg}" Background="{StaticResource BrushSurfaceAlt}">
-                  <Grid ColumnDefinitions="28,*,58,130,20">
+              <StackPanel x:Name="PlaylistStack" Grid.Row="1" Margin="0,0,0,10" Spacing="2">
+                <Border Classes="plRow selected" Height="44" CornerRadius="6" Padding="7,0,12,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                  <Grid ColumnDefinitions="28,*,58,130,30">
                     <TextBlock Text="01" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="Осенний дождь" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     <TextBlock Grid.Column="2" Text="3:42" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                     <Path Grid.Column="3" Data="{StaticResource wave_t1}" Stretch="Fill" Width="118" Height="18" Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
                   </Grid>
                 </Border>
-                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0">
-                  <Grid ColumnDefinitions="28,*,58,130,20">
+                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                  <Grid ColumnDefinitions="28,*,58,130,30">
                     <TextBlock Text="02" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="Night Drive" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     <TextBlock Grid.Column="2" Text="4:15" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                     <Path Grid.Column="3" Data="{StaticResource wave_t2}" Stretch="Fill" Width="118" Height="18" Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
                   </Grid>
                 </Border>
-                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0">
-                  <Grid ColumnDefinitions="28,*,58,130,20">
+                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                  <Grid ColumnDefinitions="28,*,58,130,30">
                     <TextBlock Text="03" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="Гул маяка" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     <TextBlock Grid.Column="2" Text="2:58" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                     <Path Grid.Column="3" Data="{StaticResource wave_t3}" Stretch="Fill" Width="118" Height="18" Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    <PathIcon Grid.Column="4" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                    <PathIcon Grid.Column="4" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,4,0"/>
                   </Grid>
                 </Border>
-                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0">
-                  <Grid ColumnDefinitions="28,*,58,130,20">
+                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                  <Grid ColumnDefinitions="28,*,58,130,30">
                     <TextBlock Text="04" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="Deep Current" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     <TextBlock Grid.Column="2" Text="5:07" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                     <Path Grid.Column="3" Data="{StaticResource wave_t4}" Stretch="Fill" Width="118" Height="18" Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
                   </Grid>
                 </Border>
-                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0">
-                  <Grid ColumnDefinitions="28,*,58,130,20">
+                <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
+                  <Grid ColumnDefinitions="28,*,58,130,30">
                     <TextBlock Text="05" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="Стекло" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     <TextBlock Grid.Column="2" Text="3:05" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                     <Path Grid.Column="3" Data="{StaticResource wave_t7}" Stretch="Fill" Width="118" Height="18" Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    <PathIcon Grid.Column="4" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                    <PathIcon Grid.Column="4" Data="{StaticResource icon_alert}" Width="13" Height="13" Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,4,0"/>
                   </Grid>
                 </Border>
               </StackPanel>
             </Grid>
-            <Border Grid.Column="2" Margin="14,10,14,10" Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="8">
-              <Grid RowDefinitions="Auto,*">
+            <Border x:Name="QueuePanel" Grid.Column="2" Margin="14,10,14,10" Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="8">
+              <Grid RowDefinitions="Auto,*,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,10,10,6">
                   <TextBlock Text="Очередь" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                  <Button Grid.Column="1" Classes="ghost" Height="26" Padding="8,0" ToolTip.Tip="Очистить очередь">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Button Grid.Column="1" Classes="ghost" Height="26" Padding="8,0" ToolTip.Tip="Очистить очередь" Click="OnClearQueueClick">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                       <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
-                      <TextBlock Text="Очистить" FontSize="11"/>
+                      <TextBlock Text="Очистить" FontSize="11" Margin="0,3,0,0"/>
                     </StackPanel>
                   </Button>
                 </Grid>
-                <StackPanel Grid.Row="1" Margin="6,0,6,10" Spacing="2">
+                <StackPanel x:Name="QueueStack" Grid.Row="1" Margin="6,0,6,4" Spacing="2">
                   <Border Height="36" CornerRadius="6" Background="{StaticResource BrushSurfaceAlt}" Padding="10,0">
                     <Grid ColumnDefinitions="18,*">
                       <PathIcon Data="{StaticResource icon_play}" Width="12" Height="12" VerticalAlignment="Center"/>
@@ -509,15 +520,15 @@
           <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,0">
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,18,0" MinWidth="170">
               <TextBlock Text="Осенний дождь" FontSize="16" FontWeight="SemiBold"/>
-              <TextBlock Text="Далее: Полночь" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0"/>
+              <TextBlock Text="Далее: Полночь" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,3,0,0"/>
             </StackPanel>
-            <ToggleButton x:Name="PlayPause" Grid.Column="1" Classes="transport" Width="44" Height="44" IsChecked="True" Checked="OnPlayPauseChanged" Unchecked="OnPlayPauseChanged" VerticalAlignment="Center">
+            <ToggleButton x:Name="PlayPause" Grid.Column="1" Classes="transport" Width="44" Height="44" IsChecked="True" Margin="0,0,7,0" VerticalAlignment="Center">
               <Panel>
                 <PathIcon Classes="iconPlay" Data="{StaticResource icon_play}" Width="20" Height="20"/>
                 <PathIcon Classes="iconPause" Data="{StaticResource icon_pause}" Width="20" Height="20"/>
               </Panel>
             </ToggleButton>
-            <Button Grid.Column="2" Classes="transport" Width="44" Height="44" ToolTip.Tip="Стоп" VerticalAlignment="Center">
+            <Button Grid.Column="2" Classes="transport" Width="44" Height="44" ToolTip.Tip="Стоп" Margin="0,0,7,0" VerticalAlignment="Center">
               <PathIcon Data="{StaticResource icon_stop}" Width="18" Height="18"/>
             </Button>
             <Button Grid.Column="3" Classes="transport" Width="44" Height="44" ToolTip.Tip="Следующий — Ctrl+N" VerticalAlignment="Center" Margin="0,0,6,0">
@@ -534,7 +545,7 @@
             </StackPanel>
             <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
               <Button x:Name="MuteButton" Classes="ghost" Width="30" Height="30" Click="OnMuteClick" ToolTip.Tip="Мьют — только мышь">
-                <Panel>
+  <Panel PointerPressed="OnRootPointerPressed">
                   <PathIcon x:Name="SoundIcon" Data="{StaticResource icon_volume}" Width="17" Height="17"/>
                   <PathIcon x:Name="MutedIcon" Data="{StaticResource icon_volume_off}" Width="17" Height="17" IsVisible="False"/>
                 </Panel>
@@ -552,14 +563,13 @@
               <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
             </Button>
             <Button Grid.Column="10" Classes="panic" ToolTip.Tip="PANIC — Ctrl+Shift+P" VerticalAlignment="Center" Margin="6,0,0,0">
-              <TextBlock Text="PANIC" LetterSpacing="2"/>
+              <TextBlock Text="PANIC" LetterSpacing="2" VerticalAlignment="Center" Margin="0,3,0,0"/>
             </Button>
           </Grid>
         </Grid>
       </Border>
     </Grid>
-    <Border x:Name="HelpOverlay" IsVisible="False" Background="#D90F0F0F" Focusable="True" PointerPressed="OnHelpOverlayClick">
-      <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="10" Padding="28,22" MinWidth="470">
+    <Border x:Name="HelpOverlay" IsVisible="False" Background="#D90F0F0F" Focusable="True" PointerPressed="OnHelpOverlayClick">      <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="10" Padding="28,22" MinWidth="470">
         <StackPanel>
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
             <TextBlock Text="Горячие клавиши" FontSize="16" FontWeight="SemiBold"/>
@@ -588,5 +598,6 @@
         </StackPanel>
       </Border>
     </Border>
+    <Border x:Name="FocusSink" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
   </Panel>
 </Window>
