@@ -129,6 +129,47 @@ public sealed class DecoderTests : IDisposable
     }
 
     [Fact]
+    public void Ogg_DecodesSine_ResampledToTarget()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "sine-44100.ogg");
+        var factory = new MiniaudioSourceFactory(SampleRate, 1);
+        var source = factory.Open(path, TimeSpan.Zero, null);
+        Assert.NotNull(source);
+        using var scope = (IDisposable)source;
+
+        var buffer = new float[1024];
+        var total = 0;
+        var peak = 0f;
+        while (source.ReadFrames(buffer) is var read && read > 0)
+        {
+            total += read;
+            peak = Math.Max(peak, Peak(buffer.AsSpan(0, read)));
+        }
+        Assert.InRange(total, 8000 - 200, 8000 + 200);
+        Assert.InRange(peak, 0.5 - 0.05, 0.5 + 0.05);
+        Assert.Equal(0, source.ReadFrames(buffer));
+    }
+
+    [Fact]
+    public void Ogg_CueInCueOut_SlicesFile()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "sine-44100.ogg");
+        var factory = new MiniaudioSourceFactory(SampleRate, 1);
+        var source = factory.Open(path, TimeSpan.FromSeconds(0.25), TimeSpan.FromSeconds(0.75));
+        Assert.NotNull(source);
+        using var scope = (IDisposable)source;
+
+        var buffer = new float[1024];
+        var total = 0;
+        while (source.ReadFrames(buffer) is var read && read > 0)
+        {
+            total += read;
+        }
+        Assert.InRange(total, 4000 - 200, 4000 + 200);
+        Assert.Equal(0, source.ReadFrames(buffer));
+    }
+
+    [Fact]
     public void Missing_File_OpenReturnsNull()
     {
         var factory = new MiniaudioSourceFactory(SampleRate, 1);

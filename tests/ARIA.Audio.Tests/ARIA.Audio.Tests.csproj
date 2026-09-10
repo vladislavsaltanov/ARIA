@@ -8,6 +8,9 @@
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\ARIA.Audio\ARIA.Audio.csproj" />
     <ProjectReference Include="..\..\src\ARIA.Core\ARIA.Core.csproj" />
   </ItemGroup>
