@@ -7,7 +7,7 @@ using System.Text.Json;
 
 public sealed class TestClient : IDisposable
 {
-    private readonly ClientWebSocket _socket = new();
+    private ClientWebSocket _socket = new();
     private readonly BlockingCollection<string> _frames = [];
     private readonly CancellationTokenSource _readerCts = new();
     private Task? _reader;
@@ -22,8 +22,44 @@ public sealed class TestClient : IDisposable
 
     public async Task ConnectAsync(Uri websocketEndpoint, string token)
     {
-        await _socket.ConnectAsync(new Uri($"{websocketEndpoint}?token={Uri.EscapeDataString(token)}"), CancellationToken.None);
-        _reader = Task.Run(ReaderLoop);
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            var socket = new ClientWebSocket();
+            try
+            {
+                await socket.ConnectAsync(new Uri($"{websocketEndpoint}?token={Uri.EscapeDataString(token)}"), CancellationToken.None);
+            }
+            catch (Exception e) when (attempt < 3 && e is WebSocketException or IOException)
+            {
+                socket.Dispose();
+                continue;
+            }
+            _socket.Dispose();
+            _socket = socket;
+            while (_frames.TryTake(out _))
+            {
+            }
+            _reader = Task.Run(ReaderLoop);
+            if (await ReceivedAnyFrameAsync(TimeSpan.FromSeconds(2)))
+            {
+                return;
+            }
+            _socket.Dispose();
+        }
+    }
+
+    private async Task<bool> ReceivedAnyFrameAsync(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (_frames.Count > 0)
+            {
+                return true;
+            }
+            await Task.Delay(20);
+        }
+        return false;
     }
 
     private async Task ReaderLoop()
