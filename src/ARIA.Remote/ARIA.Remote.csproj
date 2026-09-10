@@ -7,6 +7,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="RemoteClient\**" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\ARIA.Core\ARIA.Core.csproj" />
   </ItemGroup>
 </Project>

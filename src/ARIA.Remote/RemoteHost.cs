@@ -66,6 +66,8 @@ public sealed class RemoteHost : IAsyncDisposable
         app.UseWebSockets();
         app.MapGet("/health", () => Results.Text("ok"));
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
+        app.MapGet("/", RemoteStaticFiles.ServeIndex);
+        app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
         await app.StartAsync(cancellationToken);
         _app = app;

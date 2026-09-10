@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>ARIA пульт</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div id="conn" class="conn conn-off">OFFLINE</div>
+
+  <main id="app">
+    <section class="now">
+      <div class="status" id="status">STOP</div>
+      <div class="title" id="title">—</div>
+      <div class="next" id="next">далее: —</div>
+      <div class="remaining" id="remaining">--:--</div>
+    </section>
+
+    <section class="transport">
+      <button id="btn-play" class="pad">▶<span>PLAY</span></button>
+      <button id="btn-pause" class="pad">‖<span>PAUSE</span></button>
+      <button id="btn-stop" class="pad">■<span>STOP</span></button>
+      <button id="btn-next" class="pad">→<span>NEXT</span></button>
+      <button id="btn-replay" class="pad">⟲<span>REPLAY</span></button>
+    </section>
+
+    <button id="btn-panic" class="panic">PANIC</button>
+
+    <section class="queue">
+      <h2>ОЧЕРЕДЬ</h2>
+      <ol id="queue"></ol>
+    </section>
+  </main>
+
+  <div id="panic-confirm" class="overlay hidden">
+    <div class="dialog">
+      <p>Заглушить всё?</p>
+      <div class="dialog-buttons">
+        <button id="panic-yes" class="pad danger">ДА, PANIC</button>
+        <button id="panic-no" class="pad">ОТМЕНА</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
