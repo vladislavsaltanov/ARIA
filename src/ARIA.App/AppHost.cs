@@ -31,6 +31,7 @@ public sealed class AppHost : IAsyncDisposable
     private CommandBus? _busRef;
     private long _seq;
     private bool _started;
+    private bool _disposed;
 
     public PlaybackMonitor Monitor { get; } = new();
 
@@ -159,6 +160,11 @@ public sealed class AppHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
         if (_autosaver is { } autosaver)
         {
             autosaver.FlushNow();
