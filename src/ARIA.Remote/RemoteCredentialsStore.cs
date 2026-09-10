@@ -12,32 +12,25 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
     private const string Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     private readonly string _filePath;
-    private readonly object _gate = new();
-    private StoredCredentials? _cached;
 
     public RemoteCredentialsStore(string filePath)
     {
         _filePath = filePath;
     }
 
-    public string Identifier
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return Load().Identifier;
-            }
-        }
-    }
+    public string Identifier => Load().Identifier;
 
     public RemoteCredentials Load()
     {
-        lock (_gate)
+        if (File.Exists(_filePath))
         {
-            var stored = LoadStored();
-            return new RemoteCredentials(stored.Identifier, stored.Password);
+            return JsonSerializer.Deserialize<StoredCredentials>(File.ReadAllText(_filePath)) is { } stored
+                ? new RemoteCredentials(stored.Identifier, stored.Password)
+                : throw new InvalidOperationException("remote credentials file is corrupt");
         }
+        var generated = new StoredCredentials(GenerateIdentifier(), GeneratePassword());
+        Persist(generated);
+        return new RemoteCredentials(generated.Identifier, generated.Password);
     }
 
     public bool Verify(string identifier, string password)
@@ -46,40 +39,28 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
         {
             return false;
         }
-        byte[] expected;
-        byte[] actual;
-        lock (_gate)
+        var stored = Load();
+        if (!string.Equals(identifier, stored.Identifier, StringComparison.Ordinal))
         {
-            var stored = LoadStored();
-            if (!string.Equals(identifier, stored.Identifier, StringComparison.Ordinal))
-            {
-                return false;
-            }
-            actual = System.Text.Encoding.UTF8.GetBytes(password);
-            expected = System.Text.Encoding.UTF8.GetBytes(stored.Password);
+            return false;
         }
-        return actual.Length == expected.Length && CryptographicOperations.FixedTimeEquals(actual, expected);
+        var expected = System.Text.Encoding.UTF8.GetBytes(stored.Password);
+        var actual = System.Text.Encoding.UTF8.GetBytes(password);
+        return expected.Length == actual.Length && CryptographicOperations.FixedTimeEquals(expected, actual);
     }
 
     public void Set(string identifier, string password)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
         ArgumentException.ThrowIfNullOrEmpty(password);
-        lock (_gate)
-        {
-            Persist(new StoredCredentials(identifier.Trim(), password));
-        }
+        Persist(new StoredCredentials(identifier.Trim(), password));
     }
 
     public string ResetPassword()
     {
-        lock (_gate)
-        {
-            var stored = LoadStored();
-            var password = GeneratePassword();
-            Persist(new StoredCredentials(stored.Identifier, password));
-            return password;
-        }
+        var password = GeneratePassword();
+        Set(Identifier, password);
+        return password;
     }
 
     public static string GeneratePassword()
@@ -90,27 +71,6 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
 
     private static string GenerateIdentifier() => $"ARIA-{GeneratePassword()[..4]}";
 
-    private StoredCredentials LoadStored()
-    {
-        if (_cached is { } cached)
-        {
-            return cached;
-        }
-        StoredCredentials stored;
-        if (File.Exists(_filePath))
-        {
-            stored = JsonSerializer.Deserialize<StoredCredentials>(File.ReadAllText(_filePath))
-                ?? throw new InvalidOperationException("remote credentials file is corrupt");
-        }
-        else
-        {
-            stored = new StoredCredentials(GenerateIdentifier(), GeneratePassword());
-            Persist(stored);
-        }
-        _cached = stored;
-        return stored;
-    }
-
     private void Persist(StoredCredentials stored)
     {
         var directory = Path.GetDirectoryName(_filePath);
@@ -119,7 +79,6 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
             Directory.CreateDirectory(directory);
         }
         File.WriteAllText(_filePath, JsonSerializer.Serialize(stored, JsonOptions));
-        _cached = stored;
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };

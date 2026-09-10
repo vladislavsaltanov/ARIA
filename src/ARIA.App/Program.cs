@@ -1,6 +1,7 @@
 namespace Aria.App;
 
 using System.Collections.Immutable;
+using Aria.App.Services;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Aria.Core.Commands;
@@ -13,6 +14,14 @@ internal static class Program
         if (args.Any(a => a == "--selftest"))
         {
             return RunSelfTestAsync().GetAwaiter().GetResult();
+        }
+        if (args.Any(a => a.StartsWith("--remote-")))
+        {
+            var dataDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "ARIA");
+            Directory.CreateDirectory(dataDirectory);
+            return RemoteCredentialCli.Run(args, dataDirectory);
         }
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         return 0;

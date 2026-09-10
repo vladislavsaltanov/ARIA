@@ -12,6 +12,16 @@
 <body>
   <div id="conn" class="conn conn-off">OFFLINE</div>
 
+  <div id="login" class="overlay">
+    <div class="dialog">
+      <p class="login-title">ARIA ПУЛЬТ</p>
+      <input id="login-id" class="login-input" type="text" autocomplete="username" placeholder="идентификатор">
+      <input id="login-password" class="login-input" type="password" autocomplete="current-password" placeholder="пароль">
+      <p id="login-error" class="login-error hidden">неверный идентификатор или пароль</p>
+      <button id="login-go" class="pad">ПОДКЛЮЧИТЬСЯ</button>
+    </div>
+  </div>
+
   <main id="app">
     <section class="now">
       <div class="status" id="status">STOP</div>
@@ -31,7 +41,7 @@
     <button id="btn-panic" class="panic">PANIC</button>
 
     <section class="queue">
-      <h2>ОЧЕРЕДЬ</h2>
+      <h2>ОЧЕРЕДЬ <button id="btn-forget" class="forget">забыть пару</button></h2>
       <ol id="queue"></ol>
     </section>
   </main>

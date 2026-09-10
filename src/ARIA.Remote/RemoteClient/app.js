@@ -6,6 +6,10 @@
   var clientId = "pult-" + Math.random().toString(36).slice(2, 8);
   var reconnectDelay = 500;
   var pendingAck = new Map();
+  var sessionToken = null;
+  var creds = null;
+
+  var STORAGE_KEY = "aria-remote-pairing";
 
   var el = {
     conn: document.getElementById("conn"),
@@ -16,7 +20,72 @@
     queue: document.getElementById("queue"),
     panicConfirm: document.getElementById("panic-confirm"),
     panic: document.getElementById("btn-panic"),
+    login: document.getElementById("login"),
+    loginId: document.getElementById("login-id"),
+    loginPassword: document.getElementById("login-password"),
+    loginError: document.getElementById("login-error"),
+    loginGo: document.getElementById("login-go"),
+    forget: document.getElementById("btn-forget"),
   };
+
+  function savedPairing() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var value = JSON.parse(raw);
+      if (value && value.host === location.origin && value.identifier && value.password) return value;
+    } catch (e) { }
+    return null;
+  }
+
+  function savePairing(identifier, password) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ host: location.origin, identifier: identifier, password: password }));
+    } catch (e) { }
+  }
+
+  function forgetPairing() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) { }
+    closeSocket();
+    sessionToken = null;
+    creds = null;
+    showLogin("");
+  }
+
+  function showLogin(error) {
+    el.login.classList.remove("hidden");
+    document.getElementById("app").style.display = "none";
+    el.loginError.classList.toggle("hidden", !error);
+    el.loginError.textContent = error || "неверный идентификатор или пароль";
+    el.loginId.value = creds ? creds.identifier : el.loginId.value;
+  }
+
+  function hideLogin() {
+    el.login.classList.add("hidden");
+    document.getElementById("app").style.display = "";
+  }
+
+  function authRequest(identifier, password) {
+    return fetch("/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: identifier, password: password }),
+    }).then(function (response) {
+      if (!response.ok) return null;
+      return response.json().then(function (body) { return body.token; });
+    });
+  }
+
+  function ensureToken() {
+    if (sessionToken) return Promise.resolve(sessionToken);
+    if (!creds) return Promise.resolve(null);
+    return authRequest(creds.identifier, creds.password).then(function (token) {
+      sessionToken = token;
+      return token;
+    });
+  }
 
   function send(type, payload) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -27,21 +96,27 @@
   }
 
   function connect() {
-    var url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws" + location.search;
-    ws = new WebSocket(url);
-
-    ws.onopen = function () {
-      reconnectDelay = 500;
-      el.conn.textContent = "ONLINE";
-      el.conn.className = "conn conn-on";
-    };
-    ws.onclose = function () {
-      el.conn.textContent = "OFFLINE";
-      el.conn.className = "conn conn-off";
-      setTimeout(connect, reconnectDelay);
-      reconnectDelay = Math.min(reconnectDelay * 2, 5000);
-    };
-    ws.onmessage = onMessage;
+    ensureToken().then(function (token) {
+      if (!token) {
+        showLogin("");
+        return;
+      }
+      var url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws?token=" + encodeURIComponent(token);
+      ws = new WebSocket(url);
+      ws.onopen = function () {
+        reconnectDelay = 500;
+        el.conn.textContent = "ONLINE";
+        el.conn.className = "conn conn-on";
+      };
+      ws.onclose = function () {
+        el.conn.textContent = "OFFLINE";
+        el.conn.className = "conn conn-off";
+        sessionToken = null;
+        setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+      };
+      ws.onmessage = onMessage;
+    });
   }
 
   function onMessage(event) {
@@ -177,6 +252,67 @@
     if (document.visibilityState === "visible") requestWakeLock();
   });
 
+  function closeSocket() {
+    if (!ws) return;
+    try {
+      ws.onclose = null;
+      ws.close();
+    } catch (e) { }
+    ws = null;
+  }
+
+  function startWithSaved() {
+    creds = savedPairing();
+    if (creds) {
+      hideLogin();
+      connect();
+      return;
+    }
+    showLogin("");
+  }
+
+  el.loginGo.addEventListener("click", function () {
+    var identifier = el.loginId.value.trim();
+    var password = el.loginPassword.value;
+    if (!identifier || !password) {
+      showLogin("заполните оба поля");
+      return;
+    }
+    authRequest(identifier, password).then(function (token) {
+      if (!token) {
+        showLogin("неверный идентификатор или пароль");
+        return;
+      }
+      sessionToken = token;
+      creds = { identifier: identifier, password: password };
+      savePairing(identifier, password);
+      hideLogin();
+      closeSocket();
+      connect();
+    });
+  });
+
+  el.forget.addEventListener("click", forgetPairing);
+
+  (function boot() {
+    var params = new URLSearchParams(location.search);
+    var urlId = params.get("id");
+    var urlKey = params.get("key");
+    if (urlId && urlKey) {
+      history.replaceState(null, "", location.pathname);
+      authRequest(urlId, urlKey).then(function (token) {
+        if (token) {
+          sessionToken = token;
+          creds = { identifier: urlId, password: urlKey };
+          savePairing(urlId, urlKey);
+          hideLogin();
+        }
+        connect();
+      });
+      return;
+    }
+    startWithSaved();
+  })();
+
   requestWakeLock();
-  connect();
 })();

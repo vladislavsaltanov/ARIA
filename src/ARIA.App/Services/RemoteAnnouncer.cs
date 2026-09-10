@@ -3,6 +3,7 @@ namespace Aria.App.Services;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using Aria.Remote;
 using Makaretu.Dns;
 using QRCoder;
 
@@ -11,15 +12,20 @@ public sealed record RemoteInfo(Uri Url, byte[] QrPng);
 public sealed class RemoteAnnouncer : IDisposable
 {
     private readonly Uri _httpEndpoint;
-    private readonly string _token;
+    private readonly Func<RemoteCredentials> _pair;
     private readonly object _gate = new();
     private ServiceDiscovery? _discovery;
     private IPAddress? _lanAddress;
 
-    public RemoteAnnouncer(Uri httpEndpoint, string token)
+    public RemoteAnnouncer(Uri httpEndpoint, Func<RemoteCredentials> pair)
     {
         _httpEndpoint = httpEndpoint;
-        _token = token;
+        _pair = pair;
+    }
+
+    public RemoteAnnouncer(Uri httpEndpoint, RemoteCredentials credentials)
+        : this(httpEndpoint, () => credentials)
+    {
     }
 
     public RemoteInfo? Announce()
@@ -29,7 +35,8 @@ public sealed class RemoteAnnouncer : IDisposable
         {
             _lanAddress = address;
         }
-        return address is null ? null : BuildInfo(_httpEndpoint, _token, address);
+        var pair = _pair();
+        return address is null ? null : BuildInfo(_httpEndpoint, pair.Identifier, pair.Password, address);
     }
 
     public bool Start()
@@ -104,15 +111,15 @@ public sealed class RemoteAnnouncer : IDisposable
         }
     }
 
-    public static string BuildUrl(Uri endpoint, string token, IPAddress lanIp)
+    public static string BuildUrl(Uri endpoint, string identifier, string password, IPAddress lanIp)
     {
         var host = lanIp.AddressFamily == AddressFamily.InterNetworkV6 ? $"[{lanIp}]" : lanIp.ToString();
-        return $"http://{host}:{endpoint.Port}/?token={Uri.EscapeDataString(token)}";
+        return $"http://{host}:{endpoint.Port}/?id={Uri.EscapeDataString(identifier)}&key={Uri.EscapeDataString(password)}";
     }
 
-    public static RemoteInfo BuildInfo(Uri endpoint, string token, IPAddress lanIp)
+    public static RemoteInfo BuildInfo(Uri endpoint, string identifier, string password, IPAddress lanIp)
     {
-        var url = BuildUrl(endpoint, token, lanIp);
+        var url = BuildUrl(endpoint, identifier, password, lanIp);
         var generator = new QRCodeGenerator();
         var data = generator.CreateQrCode(url, QRCodeGenerator.ECCLevel.M);
         var png = new PngByteQRCode(data).GetGraphic(16);
