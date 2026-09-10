@@ -38,8 +38,14 @@
           </Grid>
         </Grid>
       </TabItem>
-      <TabItem Header="SHOW" Foreground="#EDEDED">
+      <TabItem x:Name="ShowTab" Header="SHOW" Foreground="#EDEDED">
         <views:PlaylistsView />
+      </TabItem>
+      <TabItem x:Name="LibraryTab" Header="LIBRARY" Foreground="#EDEDED">
+        <views:LibraryView />
+      </TabItem>
+      <TabItem x:Name="RemoteTab" Header="REMOTE" Foreground="#EDEDED">
+        <views:RemotePanel />
       </TabItem>
     </TabControl>
   </Grid>

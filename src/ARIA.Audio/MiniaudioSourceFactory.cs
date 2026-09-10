@@ -62,7 +62,7 @@ public sealed class MiniaudioSourceFactory : ISourceFactory
             {
                 return 0;
             }
-            var frames = (int)Math.Min(request, _maxFrames - _delivered);
+            var frames = (int)Math.Min(Math.Min(request, ChunkFrames), _maxFrames - _delivered);
             var read = AriaShim.DecoderRead(_handle, _scratchPointer, frames);
             if (read <= 0)
             {

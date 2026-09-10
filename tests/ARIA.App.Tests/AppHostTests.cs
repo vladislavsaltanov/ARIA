@@ -70,6 +70,34 @@ public sealed class AppHostTests : IDisposable
         Assert.True(File.Exists(Path.Combine(_directory, "show.json")));
     }
 
+    [Fact]
+    public async Task AppHost_ImportTracks_EndToEnd()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        host.Submit(new CreatePlaylist("Main"));
+        await PollAsync(() => host.Bus.Snapshot().Show.Playlists.Length == 1);
+        var wav = TestWav.Write(_directory, "e2e.wav");
+
+        var imported = await host.ImportTracksAsync([wav]);
+
+        var track = Assert.Single(imported);
+        Assert.Equal("e2e", track.DefaultName);
+        var (storedTracks, _) = host.Library!.Load();
+        var stored = Assert.Single(storedTracks);
+        Assert.Equal(track.Id, stored.Id);
+        Assert.NotNull(host.Waveforms!.Load(track.Id));
+
+        var again = await host.ImportTracksAsync([wav]);
+        var deduped = Assert.Single(again);
+        Assert.Equal(track.Id, deduped.Id);
+        Assert.Single(host.Library.Load().Tracks);
+
+        host.Submit(new EnqueueTrack(track.Id));
+        await PollAsync(() => host.Bus.Snapshot().Queue.Items.Length == 1);
+        Assert.Equal(track.Id, host.Bus.Snapshot().Queue.Items[0].TrackId);
+    }
+
     private static async Task PollAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);

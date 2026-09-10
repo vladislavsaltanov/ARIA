@@ -2,6 +2,7 @@ namespace Aria.App.Views;
 
 using System.Text;
 using Aria.App.Services;
+using Aria.App.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -14,10 +15,22 @@ public partial class MainWindow : Window
     {
     }
 
-    public MainWindow(HotkeyService? hotkeys)
+    public MainWindow(HotkeyService? hotkeys, PlaylistsViewModel? playlistsViewModel = null, RemotePanelViewModel? remoteViewModel = null, LibraryViewModel? libraryViewModel = null)
     {
         InitializeComponent();
         _hotkeys = hotkeys;
+        if (playlistsViewModel is not null)
+        {
+            ShowTab.DataContext = playlistsViewModel;
+        }
+        if (remoteViewModel is not null)
+        {
+            RemoteTab.DataContext = remoteViewModel;
+        }
+        if (libraryViewModel is not null)
+        {
+            LibraryTab.DataContext = libraryViewModel;
+        }
         Opened += OnOpened;
     }
 

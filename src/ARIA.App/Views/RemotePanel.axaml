@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.RemotePanel"
+             x:DataType="vm:RemotePanelViewModel"
+             Background="#0F0F0F">
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" Margin="24" MaxWidth="520">
+    <TextBlock Text="ПУЛЬТ" Foreground="#EDEDED" FontSize="22" FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
+    <Border Background="#FFFFFF" Padding="12" HorizontalAlignment="Center" IsVisible="{Binding HasInfo}">
+      <Image Source="{Binding QrImage}" Width="232" Height="232" />
+    </Border>
+    <TextBlock Text="LAN-адрес не найден" IsVisible="{Binding !HasInfo}" Foreground="#8A8A8A"
+               FontSize="16" FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
+    <SelectableTextBlock Text="{Binding UrlText}" Foreground="#F2F2F2" FontSize="18" FontFamily="Consolas, Menlo"
+                         TextWrapping="Wrap" TextAlignment="Center" />
+    <TextBlock Text="{Binding MdnsStatus}" Foreground="#8A8A8A" FontSize="13" FontFamily="Consolas, Menlo"
+               HorizontalAlignment="Center" />
+    <TextBlock Text="подключение с телефона: камера → QR. если пульт не открывается — включите доступ из сети в настройках (позже)"
+               Foreground="#8A8A8A" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" />
+  </StackPanel>
+</UserControl>
