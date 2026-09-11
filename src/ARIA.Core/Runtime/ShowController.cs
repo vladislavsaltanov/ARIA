@@ -332,8 +332,14 @@ public sealed class ShowController : IShowHandler
         var added = false;
         foreach (var track in merge.Tracks)
         {
-            if (_trackMap.ContainsKey(track.Id))
+            if (_trackMap.TryGetValue(track.Id, out var existing))
             {
+                if (!existing.Equals(track))
+                {
+                    _tracks = _tracks.Replace(existing, track);
+                    _trackMap[track.Id] = track;
+                    added = true;
+                }
                 continue;
             }
             _tracks = _tracks.Add(track);
@@ -880,6 +886,9 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
+    private static ImmutableArray<Mention> ToMentions(ImmutableArray<TrackId> tracks) =>
+        tracks.IsDefault ? [] : [.. tracks.Select(m => new Mention(m))];
+
     private void OnAddScriptLine(ClientId client, long seq, AddScriptLine command)
     {
         var index = IndexOfScript(command.Script);
@@ -893,9 +902,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "bad-time");
             return;
         }
-        var mentions = command.Mentions.IsDefault
-            ? ImmutableArray<Mention>.Empty
-            : [.. command.Mentions.Select(m => new Mention(m))];
+        var mentions = ToMentions(command.Mentions);
         var script = _scripts[index];
         var line = new ScriptLine(ScriptLineId.New(), command.AtElapsed, command.Text, mentions);
         _scripts = _scripts.SetItem(index, script with { Lines = script.Lines.Add(line) });
@@ -922,9 +929,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "bad-time");
             return;
         }
-        var mentions = command.Mentions.IsDefault
-            ? ImmutableArray<Mention>.Empty
-            : [.. command.Mentions.Select(m => new Mention(m))];
+        var mentions = ToMentions(command.Mentions);
         var line = script.Lines[lineIndex] with { AtElapsed = command.AtElapsed, Text = command.Text, Mentions = mentions };
         _scripts = _scripts.SetItem(index, script with { Lines = script.Lines.SetItem(lineIndex, line) });
         EmitShow();

@@ -4,6 +4,7 @@ using Aria.App.Views;
 using Avalonia.Controls;
 using Avalonia.Headless;
 
+[Collection("headless")]
 public sealed class TransportBarHeadlessTests : IDisposable
 {
     private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
@@ -11,9 +12,9 @@ public sealed class TransportBarHeadlessTests : IDisposable
     public void Dispose() => _session.Dispose();
 
     [Fact]
-    public void MainWindow_Composes_TransportBar_AndHelpOverlay()
+    public async Task MainWindow_Composes_TransportBar_AndHelpOverlay()
     {
-        _session.Dispatch(() =>
+        await _session.Dispatch(() =>
         {
             var window = new Views.MainWindow(null);
             window.Show();
@@ -33,13 +34,14 @@ public sealed class TransportBarHeadlessTests : IDisposable
             Assert.NotNull(window.FindControl<Avalonia.Controls.Grid>("HotkeyTable"));
 
             window.Close();
+            return 0;
         }, CancellationToken.None);
     }
 
     [Fact]
-    public void TransportBar_Binds_ToViewModel()
+    public async Task TransportBar_Binds_ToViewModel()
     {
-        _session.Dispatch(() =>
+        await _session.Dispatch(() =>
         {
             using var bus = new Core.Runtime.CommandBus(new ShowControllerStub(), Core.Runtime.BusMode.Inline);
             using var viewModel = new ViewModels.TransportViewModel(bus);
@@ -51,6 +53,7 @@ public sealed class TransportBarHeadlessTests : IDisposable
             Assert.Same(viewModel, bar.DataContext);
 
             window.Close();
+            return 0;
         }, CancellationToken.None);
     }
 

@@ -20,7 +20,9 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private readonly HashSet<ScriptId> _knownScripts = [];
     private readonly HashSet<ScriptLineId> _knownLines = [];
     private bool _editNextArrival;
+    private bool _addLinePending;
     private TimeSpan _elapsed;
+    private bool _clockRunning;
     private int _newScriptCounter;
     private long _seq;
 
@@ -108,6 +110,8 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         CommitOpenEdit();
         if (SelectedScript is null)
         {
+            _addLinePending = true;
+            Submit(new CreateScript(UniqueScriptName()));
             return;
         }
         _knownLines.Clear();
@@ -197,6 +201,8 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             case 0:
                 break;
+            case 1 when line.Mentions[0].IsDangling || !IsKnownTrack(line.Mentions[0].Track):
+                break;
             case 1:
                 Submit(new EnqueueTrack(line.Mentions[0].Track));
                 break;
@@ -209,15 +215,27 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     public void ChooseCandidate(ScriptLineVm line, MentionVm mention)
     {
         CommitOpenEdit();
+        if (mention.IsDangling || !IsKnownTrack(mention.Track))
+        {
+            line.CandidatesVisible = false;
+            return;
+        }
         Submit(new EnqueueTrack(mention.Track));
         line.CandidatesVisible = false;
     }
 
     public void ExecuteMention(MentionVm mention)
     {
+        if (mention.IsDangling || !IsKnownTrack(mention.Track))
+        {
+            return;
+        }
         CommitOpenEdit();
         Submit(new EnqueueTrack(mention.Track));
     }
+
+    private bool IsKnownTrack(TrackId track) =>
+        (_trackSource?.Invoke() ?? []).Any(t => t.Id == track);
 
     public void InsertMention(ScriptLineVm line, TrackId track)
     {
@@ -307,10 +325,25 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private void Rebuild(ShowState state)
     {
         _elapsed = state.Clock.Elapsed;
+        _clockRunning = state.Clock.Running;
         var tracks = _trackSource?.Invoke() ?? [];
         SyncScripts(state);
         SyncLines(state, tracks);
         RefreshFollow(state);
+        if (_addLinePending)
+        {
+            _addLinePending = false;
+            if (SelectedScript is not null)
+            {
+                _knownLines.Clear();
+                foreach (var line in Lines)
+                {
+                    _knownLines.Add(line.Id);
+                }
+                _editNextArrival = true;
+                Submit(new AddScriptLine(SelectedScript.Id, _elapsed, string.Empty, []));
+            }
+        }
     }
 
     private void SyncScripts(ShowState state)
@@ -386,8 +419,14 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         foreach (var line in Lines)
         {
             line.IsCurrent = current is not null && line.Id == current.Id;
+            line.WallTimeTip = WallTimeTip(line.AtElapsed);
         }
     }
+
+    private string WallTimeTip(TimeSpan atElapsed) =>
+        _clockRunning
+            ? (DateTime.Now - _elapsed + atElapsed).ToString("HH:mm:ss")
+            : "часы не запущены";
 
     private string UniqueScriptName()
     {
@@ -414,12 +453,17 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         var result = new List<MentionVm>(mentions.Length);
         foreach (var mention in mentions)
         {
-            var track = tracks.FirstOrDefault(t => t.Id == mention.Track);
-            result.Add(track is null
-                ? new MentionVm(mention.Track, "—", true, "--:--")
-                : new MentionVm(mention.Track, track.DefaultName, false, track.Duration.ToString(@"mm\:ss")));
+            result.Add(ResolveDisplay(mention.Track, tracks));
         }
         return result;
+    }
+
+    private static MentionVm ResolveDisplay(TrackId track, ImmutableArray<Track> tracks)
+    {
+        var known = tracks.FirstOrDefault(t => t.Id == track);
+        return known is null
+            ? new MentionVm(track, "—", true, "--:--")
+            : new MentionVm(track, known.DefaultName, false, known.Duration.ToString(@"mm\:ss"));
     }
 
     public sealed class ScriptVm(ScriptId id, string name)
@@ -525,6 +569,19 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             set => SetProperty(ref _suggestionsVisible, value);
         }
 
+        public string WallTimeTip
+        {
+            get;
+            set
+            {
+                if (value != field)
+                {
+                    field = value;
+                    OnPropertyChanged();
+                }
+            }
+        } = string.Empty;
+
         public string EditTimeText
         {
             get => _editTimeText;
@@ -586,10 +643,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             for (var i = 0; i < StagedMentions.Count; i++)
             {
                 var staged = StagedMentions[i];
-                var track = tracks.FirstOrDefault(t => t.Id == staged.Track);
-                var resolved = track is null
-                    ? new MentionVm(staged.Track, "—", true, "--:--")
-                    : new MentionVm(staged.Track, track.DefaultName, false, track.Duration.ToString(@"mm\:ss"));
+                var resolved = ResolveDisplay(staged.Track, tracks);
                 if (resolved.DisplayName != staged.DisplayName || resolved.IsDangling != staged.IsDangling)
                 {
                     StagedMentions[i] = resolved;

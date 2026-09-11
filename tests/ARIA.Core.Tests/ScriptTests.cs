@@ -300,6 +300,20 @@ public sealed class ScriptTests : IDisposable
         Assert.Equal(baseline, _harness.Events.OfType<ShowDelta>().Count());
     }
 
+    [Fact]
+    public void MergeTracks_RenamedTrack_UpdatesDigest()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        var renamed = t1 with { DefaultName = "uno" };
+
+        h.Submit(new MergeTracks([renamed]));
+
+        Assert.Equal("uno", Assert.Single(h.Snapshot.Show.TrackDigest.Entries).DisplayName);
+    }
+
     [Theory]
     [InlineData(0, 0)]
     [InlineData(30, 0)]

@@ -5,6 +5,7 @@ using Aria.App.ViewModels;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Runtime;
+using Aria.Core.State;
 
 public sealed class ScriptPanelViewModelTests : IDisposable
 {
@@ -178,14 +179,53 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
-    public void DanglingMention_RendersPlaque()
+    public void WallTimeTip_ProjectsElapsedOntoTimeOfDay()
+    {
+        _viewModel.CreateScriptCommand.Execute(null);
+        AddCommittedLine("1:40", "b", []);
+        Assert.Equal("часы не запущены", _viewModel.Lines[0].WallTimeTip);
+        _bus.Submit(new ClientId("clock"), 60, new RestoreShow(
+            [FirstTrack, SecondTrack], [], null, [], 0, TimeSpan.FromMilliseconds(100),
+            TimeSpan.FromSeconds(150), true, _bus.Snapshot().Show.Scripts));
+
+        var tip = _viewModel.Lines[0].WallTimeTip;
+        var projected = DateTime.ParseExact(tip, "HH:mm:ss", null).TimeOfDay;
+        var expected = (DateTime.Now - TimeSpan.FromSeconds(150) + TimeSpan.FromSeconds(100)).TimeOfDay;
+        Assert.InRange((projected - expected).Duration(), TimeSpan.Zero, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void ExecuteMention_Dangling_DoesNotEnqueue()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("0:10", "удалён", [TrackId.New()]);
         var mention = Assert.Single(Assert.Single(_viewModel.Lines).Mentions);
-
         Assert.True(mention.IsDangling);
-        Assert.Equal("повисшее упоминание", mention.Tooltip);
+        Rejected? rejection = null;
+        using var subscription = _bus.Subscribe(e =>
+        {
+            if (e is Rejected rejected)
+            {
+                rejection = rejected;
+            }
+        });
+
+        _viewModel.ExecuteMention(mention);
+
+        Assert.Null(rejection);
+        Assert.Empty(_bus.Snapshot().Queue.Items);
+    }
+
+    [Fact]
+    public void AddLine_WithoutScripts_CreatesScriptAndOpensLine()
+    {
+        Assert.Empty(_viewModel.Scripts);
+
+        _viewModel.AddLineCommand.Execute(null);
+
+        Assert.Single(_viewModel.Scripts);
+        var line = Assert.Single(_viewModel.Lines);
+        Assert.True(line.IsEditing);
     }
 
     [Fact]

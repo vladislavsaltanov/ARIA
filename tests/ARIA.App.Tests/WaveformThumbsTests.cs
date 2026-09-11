@@ -6,6 +6,7 @@ using Aria.Core.Model;
 using Aria.Persistence;
 using Avalonia.Headless;
 
+[Collection("headless")]
 public sealed class WaveformThumbsTests : IDisposable
 {
     private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
@@ -21,9 +22,9 @@ public sealed class WaveformThumbsTests : IDisposable
     }
 
     [Fact]
-    public void Peaks_BuildNonEmptyGeometry_AndMemoize()
+    public async Task Peaks_BuildNonEmptyGeometry_AndMemoize()
     {
-        _session.Dispatch(() =>
+        await _session.Dispatch(() =>
         {
             var store = new MemoryWaveformStore();
             var id = TrackId.New();
@@ -40,6 +41,7 @@ public sealed class WaveformThumbsTests : IDisposable
             Assert.NotNull(first);
             Assert.True(first.Bounds.Width > 0 && first.Bounds.Height > 0);
             Assert.Same(first, thumbs.For(id));
+            return 0;
         }, CancellationToken.None);
     }
 

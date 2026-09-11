@@ -107,6 +107,7 @@ public partial class MainWindow : Window
         }
         ScriptPanel.CommitOpenEdit();
         ScriptDrawer.IsPaneOpen = false;
+        FocusSink.Focus();
     }
 
     private void OnOpened(object? sender, EventArgs e)

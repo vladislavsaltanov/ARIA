@@ -8,9 +8,6 @@
     <Style Selector="Border.scriptLine:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
-    <Style Selector="Border.scriptLine:pointerover Button.goHint">
-      <Setter Property="IsVisible" Value="True"/>
-    </Style>
     <Style Selector="Border.scriptLine.current">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
@@ -82,12 +79,14 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ScriptPanelViewModel+ScriptLineVm">
               <Border Classes="scriptLine" Classes.current="{Binding IsCurrent}" Classes.editing="{Binding IsEditing}"
-                      MinHeight="34" CornerRadius="6" Padding="8,6" Background="Transparent" Tapped="OnLineTapped">
+                      MinHeight="34" CornerRadius="6" Padding="8,6" Background="Transparent" Tapped="OnLineTapped"
+                      PointerEntered="OnRowHover" PointerExited="OnRowHover">
                 <Grid>
                   <Grid ColumnDefinitions="52,*,24" IsVisible="{Binding !IsEditing}">
                     <Grid Grid.Column="0">
                       <Button Tag="ScriptTime" Classes="ghost" FontFamily="{StaticResource MonoFont}" FontSize="12"
                               Foreground="{StaticResource BrushDim}" Content="{Binding DisplayTime}"
+                              ToolTip.Tip="{Binding WallTimeTip}"
                               HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"/>
                       <Button Tag="ScriptGo" Classes="ghost goHint" Width="26" Height="26" IsVisible="False"
                               HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"
