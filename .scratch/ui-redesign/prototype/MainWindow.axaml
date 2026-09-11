@@ -174,107 +174,48 @@
     <Style Selector="Border.scriptLine:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
+    <Style Selector="Border.scriptLine:pointerover PathIcon.goHint">
+      <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <Style Selector="Border.scriptLine.current">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="3,0,0,0"/>
+    </Style>
+    <Style Selector="Border.scriptLine.editing">
+      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushDim}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Border.mention:pointerover">
+      <Setter Property="Background" Value="#343434"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
   </Window.Styles>
   <Panel>
     <Grid RowDefinitions="*,76">
       <SplitView x:Name="Drawer" Grid.Row="0" PanePlacement="Right" DisplayMode="Overlay" OpenPaneLength="340" IsPaneOpen="False" Background="Transparent">
         <SplitView.Pane>
           <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1,0,0,0">
-            <Grid RowDefinitions="Auto,*" Margin="16,14,12,10">
-              <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16,14,12,10">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
                 <TextBlock Text="Сценарий" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="Ctrl+T" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <Button Grid.Column="2" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28" Click="OnPaneCloseClick" ToolTip.Tip="Закрыть — Ctrl+T">
                   <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
                 </Button>
               </Grid>
-              <StackPanel Grid.Row="1" Spacing="3">
-                  <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="00:00" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Открытие: тихий вход, свет 30%" FontSize="12" TextWrapping="Wrap"/>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                  <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="03:41" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Дать первый трек, подвести гул" FontSize="12" TextWrapping="Wrap"/>
-                        <WrapPanel>
-                          <Border Background="{StaticResource BrushSurfaceHi}" CornerRadius="9" Padding="9,3" Margin="0,0,6,0">
-                            <TextBlock Text="Осенний дождь" FontSize="11"/>
-                          </Border>
-                        </WrapPanel>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                  <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="12:05" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Смена настроения, два трека подряд" FontSize="12" TextWrapping="Wrap"/>
-                        <WrapPanel>
-                          <Border Background="{StaticResource BrushSurfaceHi}" CornerRadius="9" Padding="9,3" Margin="0,0,6,0">
-                            <TextBlock Text="Night Drive" FontSize="11"/>
-                          </Border>
-                          <Border Background="{StaticResource BrushSurfaceHi}" CornerRadius="9" Padding="9,3" Margin="0,0,6,0">
-                            <TextBlock Text="Deep Current" FontSize="11"/>
-                          </Border>
-                        </WrapPanel>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                  <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="58:20" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Разговор с залом, фоном спокойное" FontSize="12" TextWrapping="Wrap"/>
-                        <WrapPanel>
-                          <Border Background="{StaticResource BrushSurfaceHi}" CornerRadius="9" Padding="9,3" Margin="0,0,6,0">
-                            <TextBlock Text="Тихий час" FontSize="11"/>
-                          </Border>
-                        </WrapPanel>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                  <Border Classes="scriptLine" Background="{StaticResource BrushSurfaceHi}" CornerRadius="6" Padding="7,8,10,8" BorderBrush="{StaticResource BrushFg}" BorderThickness="3,0,0,0">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="1:22:10" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushFg}" VerticalAlignment="Top" Margin="3,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Сейчас играем — медленный финал блока" FontSize="12" TextWrapping="Wrap"/>
-                        <WrapPanel>
-                          <Border Background="{StaticResource BrushSurfaceAlt}" CornerRadius="9" Padding="9,3" Margin="0,0,6,0">
-                            <TextBlock Text="Slow Tide" FontSize="11"/>
-                          </Border>
-                        </WrapPanel>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                  <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="1:24:00" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Новый трек из ноутбука, имя уточняю" FontSize="12" TextWrapping="Wrap"/>
-                        <WrapPanel>
-                          <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="9" Padding="9,3" Margin="0,0,6,0">
-                            <TextBlock Text="неизвестный трек" FontSize="11" FontStyle="Italic" Foreground="{StaticResource BrushDim}"/>
-                          </Border>
-                        </WrapPanel>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                  <Border Classes="scriptLine" Background="Transparent" CornerRadius="6" Padding="10,8">
-                    <Grid ColumnDefinitions="58,*">
-                      <TextBlock Text="1:27:00" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Top" Margin="0,1,0,0"/>
-                      <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBlock Text="Свет вверх, тишина, поклон" FontSize="12" TextWrapping="Wrap"/>
-                      </StackPanel>
-                     </Grid>
-                  </Border>
+              <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
+                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="7 строк" Tag="seven" Click="OnScriptDemoClick"/>
+                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="50 строк" Tag="fifty" Click="OnScriptDemoClick"/>
+                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="пусто" Tag="empty" Click="OnScriptDemoClick"/>
+              </StackPanel>
+              <ScrollViewer Grid.Row="2">
+                <StackPanel x:Name="ScriptLinesHost" Spacing="3">
                 </StackPanel>
-                <TextBlock x:Name="StatusText" Grid.Row="2" Text="" FontSize="10" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushFaint}" Margin="12,0,12,8" TextTrimming="CharacterEllipsis"/>
+              </ScrollViewer>
+                <TextBlock x:Name="StatusText" Grid.Row="3" Text="" FontSize="10" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushFaint}" Margin="12,0,12,8" TextTrimming="CharacterEllipsis"/>
               </Grid>
             </Border>
         </SplitView.Pane>
@@ -599,5 +540,10 @@
       </Border>
     </Border>
     <Border x:Name="FocusSink" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
+    <Popup x:Name="ScriptPopup" IsLightDismissEnabled="True" Placement="Bottom">
+      <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="8" Padding="6" MinWidth="200">
+        <StackPanel x:Name="ScriptPopupList" Spacing="2"/>
+      </Border>
+    </Popup>
   </Panel>
 </Window>
