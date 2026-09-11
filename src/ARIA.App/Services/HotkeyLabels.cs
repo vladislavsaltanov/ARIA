@@ -1,4 +1,4 @@
-namespace Aria.App.Views;
+namespace Aria.App.Services;
 
 public static class HotkeyLabels
 {

@@ -1,6 +1,8 @@
 namespace Aria.App.Tests;
 
 using Aria.App.Services;
+using Aria.App.Views;
+using Avalonia.Input;
 
 public sealed class HotkeyTests
 {
@@ -122,6 +124,48 @@ public sealed class HotkeyTests
         var service = new HotkeyService(HotkeyConfig.Default, _ => { });
 
         Assert.Equal(string.Empty, service.GestureFor("no-such-action"));
+    }
+
+    [Theory]
+    [InlineData(Key.Space, KeyModifiers.None, "space")]
+    [InlineData(Key.Escape, KeyModifiers.None, "escape")]
+    [InlineData(Key.T, KeyModifiers.Control, "ctrl+t")]
+    [InlineData(Key.P, KeyModifiers.Control | KeyModifiers.Shift, "ctrl+shift+p")]
+    [InlineData(Key.D5, KeyModifiers.None, "5")]
+    public void HotkeyInput_BuildsCanonicalGesture(Key key, KeyModifiers modifiers, string gesture)
+    {
+        Assert.Equal(gesture, HotkeyInput.GestureFor(key, modifiers));
+    }
+
+    [Fact]
+    public void Reset_ReplacesBindings()
+    {
+        var service = new HotkeyService(HotkeyConfig.Default, _ => { });
+        service.Reset(new HotkeyConfig([new HotkeyBinding("F5", "play")]));
+
+        Assert.Equal("f5", service.GestureFor("play"));
+        Assert.Equal(string.Empty, service.GestureFor("pause"));
+    }
+
+    [Fact]
+    public void ConflictFor_ReportsOtherAction()
+    {
+        var service = new HotkeyService(HotkeyConfig.Default, _ => { });
+
+        Assert.Equal("play", service.ConflictFor("pause", "Space"));
+        Assert.Null(service.ConflictFor("play", "Space"));
+        Assert.Null(service.ConflictFor("pause", "F9"));
+    }
+
+    [Theory]
+    [InlineData("Meta+Q", true)]
+    [InlineData("meta+tab", true)]
+    [InlineData("Ctrl+Space", true)]
+    [InlineData("Ctrl+T", false)]
+    [InlineData("Space", false)]
+    public void IsSystemReserved_FlagsMacOsGestures(string gesture, bool reserved)
+    {
+        Assert.Equal(reserved, HotkeyService.IsSystemReserved(gesture));
     }
 
     private static string TempPath() => Path.Combine(
