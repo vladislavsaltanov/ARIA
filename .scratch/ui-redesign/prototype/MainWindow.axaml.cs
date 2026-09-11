@@ -17,6 +17,8 @@ public sealed record ScriptLineData(string Time, int Seconds, string Text, List<
 
 public sealed record KnownTrack(string Name, string Duration, string WaveKey);
 
+public sealed record MentionRef(ScriptLineData Line, ScriptMention Mention);
+
 public partial class MainWindow : Window
 {
     private Border? _dragSource;
@@ -28,6 +30,11 @@ public partial class MainWindow : Window
     private List<ScriptLineData>? _scriptFifty;
     private readonly List<ScriptLineData> _scriptEmpty = [];
     private ScriptLineData? _suggestTarget;
+    private TextBox? _editBox;
+    private TextBox? _timeBox;
+    private Border? _scriptDragSource;
+    private Point _scriptPressPos;
+    private bool _scriptDragging;
     private const int ShowElapsedSeconds = 5025;
 
     private static readonly List<KnownTrack> KnownTracks =
@@ -109,7 +116,11 @@ public partial class MainWindow : Window
         CloseHelp();
     }
 
-    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e) => FocusSink.Focus();
+    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        FocusSink.Focus();
+        CommitScriptEdit();
+    }
 
     private void OnRowTap(object? sender, PointerPressedEventArgs e)
     {
@@ -119,6 +130,7 @@ public partial class MainWindow : Window
         }
         SelectRow(row, stack);
         TopLevel.GetTopLevel(this)?.FocusManager?.Focus(FocusSink, NavigationMethod.Unspecified, KeyModifiers.None);
+        CommitScriptEdit();
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             _dragSource = row;
@@ -419,6 +431,10 @@ public partial class MainWindow : Window
     private void RenderScript()
     {
         ScriptPopup.IsOpen = false;
+        _editBox = null;
+        _timeBox = null;
+        _scriptDragSource = null;
+        _scriptDragging = false;
         ScriptLinesHost.Children.Clear();
         var list = ActiveScriptList();
         MarkCurrent(list);
@@ -460,6 +476,18 @@ public partial class MainWindow : Window
         {
             ScriptLinesHost.Children.Add(BuildScriptLine(line));
         }
+        var more = new Button
+        {
+            Classes = { "ghost" },
+            Height = 30,
+            Padding = new Avalonia.Thickness(10, 0),
+            FontSize = 12,
+            Content = "+ строка",
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+            Margin = new Avalonia.Thickness(2, 4, 0, 0),
+        };
+        more.Click += OnScriptAddClick;
+        ScriptLinesHost.Children.Add(more);
     }
 
     private List<ScriptLineData> ActiveScriptList() => _scriptDemo switch
@@ -543,54 +571,96 @@ public partial class MainWindow : Window
     private Border BuildScriptLine(ScriptLineData data)
     {
         var app = Application.Current!.Resources;
-        var time = new TextBlock
+        var left = new StackPanel();
+        if (data.Editing)
         {
-            Text = data.Time,
-            FontFamily = (FontFamily)app["MonoFont"]!,
-            FontSize = 11,
-            Foreground = (IBrush)app[data.Current ? "BrushFg" : "BrushDim"]!,
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
-            Margin = new Avalonia.Thickness(0, 1, 0, 0),
+            _timeBox = new TextBox
+            {
+                Text = data.Time,
+                PlaceholderText = "м:сс",
+                FontFamily = (FontFamily)app["MonoFont"]!,
+                FontSize = 11,
+                Width = 58,
+                Padding = new Avalonia.Thickness(4, 2),
+                Background = (IBrush)app["BrushSurface"]!,
+                BorderBrush = (IBrush)app["BrushLine"]!,
+            };
+            _timeBox.KeyDown += OnScriptEditKey;
+            left.Children.Add(_timeBox);
+        }
+        else
+        {
+            left.Children.Add(new TextBlock
+            {
+                Text = data.Time,
+                FontFamily = (FontFamily)app["MonoFont"]!,
+                FontSize = 11,
+                Foreground = (IBrush)app[data.Current ? "BrushFg" : "BrushDim"]!,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                Margin = new Avalonia.Thickness(0, 1, 0, 0),
+            });
+        }
+        var goButton = new Button
+        {
+            Classes = { "ghost", "goHint" },
+            Width = 24,
+            Height = 24,
+            Padding = new Avalonia.Thickness(0),
+            IsVisible = false,
+            Tag = data,
+            Margin = new Avalonia.Thickness(0, 4, 0, 0),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
         };
-        var go = new PathIcon
+        ToolTip.SetTip(goButton, "Исполнить строку");
+        goButton.Content = new PathIcon
         {
-            Classes = { "goHint" },
             Data = (StreamGeometry)app["icon_play"]!,
             Width = 11,
             Height = 11,
             Foreground = (IBrush)app["BrushDim"]!,
-            IsVisible = false,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
-            Margin = new Avalonia.Thickness(1, 5, 0, 0),
         };
-        var left = new StackPanel();
-        left.Children.Add(time);
-        left.Children.Add(go);
+        goButton.Click += OnScriptGoClick;
+        left.Children.Add(goButton);
         Grid.SetColumn(left, 0);
         var content = new StackPanel { Spacing = 6 };
         Grid.SetColumn(content, 1);
         if (data.Editing)
         {
-            content.Children.Add(new TextBox
+            _editBox = new TextBox
             {
-                Name = "ScriptEditBox",
                 Text = data.Text,
                 PlaceholderText = "Текст строки…",
                 FontSize = 12,
                 Background = (IBrush)app["BrushSurface"]!,
                 BorderBrush = (IBrush)app["BrushLine"]!,
-            });
+            };
+            _editBox.KeyDown += OnScriptEditKey;
+            content.Children.Add(_editBox);
         }
-        else if (!string.IsNullOrEmpty(data.Text))
+        else
         {
-            content.Children.Add(new TextBlock { Text = data.Text, FontSize = 12, TextWrapping = TextWrapping.Wrap });
+            var blank = string.IsNullOrEmpty(data.Text);
+            var body = new TextBlock
+            {
+                Text = blank ? "пустая строка" : data.Text,
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Tag = data,
+            };
+            if (blank)
+            {
+                body.Foreground = (IBrush)app["BrushFaint"]!;
+                body.FontStyle = FontStyle.Italic;
+            }
+            body.PointerPressed += OnScriptTextTap;
+            content.Children.Add(body);
         }
         if (data.Mentions.Count > 0 || data.Editing)
         {
             var chips = new WrapPanel();
             foreach (var mention in data.Mentions)
             {
-                chips.Children.Add(BuildMentionChip(mention));
+                chips.Children.Add(BuildMentionChip(data, mention));
             }
             content.Children.Add(chips);
         }
@@ -645,10 +715,124 @@ public partial class MainWindow : Window
             border.Classes.Add("editing");
         }
         border.PointerPressed += OnScriptLineTap;
+        border.PointerMoved += OnScriptDragMove;
+        border.PointerReleased += OnScriptDragRelease;
         return border;
     }
 
-    private Border BuildMentionChip(ScriptMention mention)
+    private void OnScriptDragMove(object? sender, PointerEventArgs e)
+    {
+        if (_scriptDragSource is null || sender != _scriptDragSource)
+        {
+            return;
+        }
+        var pos = e.GetPosition(this);
+        if (!_scriptDragging && (Math.Abs(pos.X - _scriptPressPos.X) > 6 || Math.Abs(pos.Y - _scriptPressPos.Y) > 6))
+        {
+            _scriptDragging = true;
+            _scriptDragSource.Opacity = 0.45;
+        }
+        if (!_scriptDragging)
+        {
+            return;
+        }
+        RemoveScriptHint();
+        var p = e.GetPosition(ScriptLinesHost);
+        if (p.X >= 0 && p.Y >= 0 && p.X <= ScriptLinesHost.Bounds.Width && p.Y <= ScriptLinesHost.Bounds.Height)
+        {
+            var hint = new Border
+            {
+                Classes = { "dropHint" },
+                Height = 4,
+                CornerRadius = new Avalonia.CornerRadius(2),
+                Background = (IBrush)Application.Current!.Resources["BrushFg"]!,
+                Opacity = 0.9,
+                Margin = new Avalonia.Thickness(0, -2),
+            };
+            ScriptLinesHost.Children.Insert(Math.Clamp(DropScriptIndex(p), 0, ScriptLinesHost.Children.Count), hint);
+        }
+    }
+
+    private void RemoveScriptHint()
+    {
+        for (int i = ScriptLinesHost.Children.Count - 1; i >= 0; i--)
+        {
+            if (ScriptLinesHost.Children[i] is Border { Classes: var c } && c.Contains("dropHint"))
+            {
+                ScriptLinesHost.Children.RemoveAt(i);
+            }
+        }
+    }
+
+    private int DropScriptIndex(Point point)
+    {
+        int index = 0;
+        foreach (var child in ScriptLinesHost.Children)
+        {
+            if (child is Border { Classes: var c } && c.Contains("dropHint"))
+            {
+                continue;
+            }
+            if (child is Button)
+            {
+                continue;
+            }
+            var center = child.Bounds.Y + child.Bounds.Height / 2;
+            if (point.Y > center)
+            {
+                index++;
+            }
+        }
+        return index;
+    }
+
+    private void OnScriptDragRelease(object? sender, PointerReleasedEventArgs e)
+    {
+        var source = _scriptDragSource;
+        _scriptDragSource = null;
+        if (source is null || source.Tag is not ScriptLineData data)
+        {
+            return;
+        }
+        if (_scriptDragging)
+        {
+            source.Opacity = 1;
+        }
+        bool moved = _scriptDragging;
+        _scriptDragging = false;
+        RemoveScriptHint();
+        if (!moved)
+        {
+            ExecuteScriptLine(source, data);
+            e.Handled = true;
+            return;
+        }
+        var p = e.GetPosition(ScriptLinesHost);
+        if (p.X < 0 || p.Y < 0 || p.X > ScriptLinesHost.Bounds.Width || p.Y > ScriptLinesHost.Bounds.Height)
+        {
+            e.Handled = true;
+            return;
+        }
+        SyncEditText();
+        var list = ActiveScriptList();
+        var old = list.IndexOf(data);
+        if (old < 0)
+        {
+            e.Handled = true;
+            return;
+        }
+        var index = Math.Clamp(DropScriptIndex(p), 0, list.Count);
+        list.RemoveAt(old);
+        if (old < index)
+        {
+            index--;
+        }
+        list.Insert(Math.Clamp(index, 0, list.Count), data);
+        RenderScript();
+        e.Handled = true;
+    }
+
+    private Border BuildMentionChip(ScriptLineData line, ScriptMention mention)
     {
         var app = Application.Current!.Resources;
         var label = new TextBlock { FontSize = 11 };
@@ -658,7 +842,7 @@ public partial class MainWindow : Window
             CornerRadius = new Avalonia.CornerRadius(9),
             Padding = new Avalonia.Thickness(9, 3),
             Margin = new Avalonia.Thickness(0, 0, 6, 0),
-            Tag = mention,
+            Tag = new MentionRef(line, mention),
         };
         if (mention.Dangling)
         {
@@ -679,7 +863,38 @@ public partial class MainWindow : Window
         }
         chip.Child = label;
         chip.PointerPressed += OnMentionTap;
+        chip.PointerEntered += OnMentionHover;
+        chip.PointerExited += OnMentionUnhover;
         return chip;
+    }
+
+    private void OnScriptTextTap(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is TextBlock body && body.Tag is ScriptLineData data)
+        {
+            StartEdit(data);
+        }
+        e.Handled = true;
+    }
+
+    private void StartEdit(ScriptLineData data)
+    {
+        SyncEditText();
+        var list = ActiveScriptList();
+        for (int i = 0; i < list.Count; i++)
+        {
+            list[i] = list[i] with { Editing = list[i] == data };
+        }
+        RenderScript();
+        this.FindControl<TextBox>("ScriptEditBox")?.Focus();
+    }
+
+    private void OnScriptGoClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button go && go.Tag is ScriptLineData data)
+        {
+            ExecuteScriptLine(go, data);
+        }
     }
 
     private void OnScriptLineTap(object? sender, PointerPressedEventArgs e)
@@ -688,6 +903,80 @@ public partial class MainWindow : Window
         {
             return;
         }
+        if (data.Editing)
+        {
+            CommitScriptEdit();
+            e.Handled = true;
+            return;
+        }
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            _scriptDragSource = row;
+            _scriptPressPos = e.GetPosition(this);
+            _scriptDragging = false;
+            e.Pointer.Capture(row);
+        }
+        e.Handled = true;
+    }
+
+    private void OnScriptEditKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            CommitNewScriptLine();
+            e.Handled = true;
+        }
+    }
+
+    private void CommitNewScriptLine()
+    {
+        SyncEditText();
+        var list = ActiveScriptList();
+        var index = list.FindIndex(l => l.Editing);
+        if (index < 0)
+        {
+            return;
+        }
+        list[index] = list[index] with { Editing = false };
+        list.Add(new ScriptLineData("—", int.MaxValue, "", [], false, true));
+        RenderScript();
+        _editBox?.Focus();
+    }
+
+    private void CommitScriptEdit()
+    {
+        SyncEditText();
+        var list = ActiveScriptList();
+        bool changed = false;
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].Editing)
+            {
+                list[i] = list[i] with { Editing = false };
+                changed = true;
+            }
+        }
+        if (changed)
+        {
+            RenderScript();
+        }
+    }
+
+    private void OnScriptAddClick(object? sender, RoutedEventArgs e)
+    {
+        SyncEditText();
+        var list = ActiveScriptList();
+        for (int i = 0; i < list.Count; i++)
+        {
+            list[i] = list[i] with { Editing = false };
+        }
+        list.Add(new ScriptLineData("—", int.MaxValue, "", [], false, true));
+        RenderScript();
+        _editBox?.Focus();
+    }
+
+    private void ExecuteScriptLine(Control anchor, ScriptLineData data)
+    {
         var live = data.Mentions.Where(m => !m.Dangling).Select(m => m.Name).Distinct().ToList();
         if (live.Count == 1)
         {
@@ -695,7 +984,7 @@ public partial class MainWindow : Window
         }
         else if (live.Count > 1)
         {
-            OpenPopup(row, live.Select(name => (name, TrackDuration(name))).ToList(), OnChoicePick);
+            OpenPopup(anchor, live.Select(name => (name, TrackDuration(name))).ToList(), OnChoicePick);
         }
         else if (data.Mentions.Any(m => m.Dangling))
         {
@@ -706,23 +995,58 @@ public partial class MainWindow : Window
             StatusText.Text = "заметка — не исполняется";
         }
         TopLevel.GetTopLevel(this)?.FocusManager?.Focus(FocusSink, NavigationMethod.Unspecified, KeyModifiers.None);
-        e.Handled = true;
     }
 
     private void OnMentionTap(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Border chip && chip.Tag is ScriptMention mention)
+        if (sender is Border chip && chip.Tag is MentionRef target)
         {
-            if (mention.Dangling)
+            if (target.Line.Editing)
+            {
+                SyncEditText();
+                target.Line.Mentions.Remove(target.Mention);
+                RenderScript();
+                StatusText.Text = "упоминание убрано";
+            }
+            else if (target.Mention.Dangling)
             {
                 StatusText.Text = "повисшее упоминание — трек удалён";
             }
             else
             {
-                EnqueueScriptTrack(mention.Name);
+                EnqueueScriptTrack(target.Mention.Name);
             }
         }
         e.Handled = true;
+    }
+
+    private void OnMentionHover(object? sender, PointerEventArgs e)
+    {
+        if (sender is Border chip && chip.Tag is MentionRef target && !target.Mention.Dangling)
+        {
+            HighlightLibrary(target.Mention.Name, true);
+        }
+    }
+
+    private void OnMentionUnhover(object? sender, PointerEventArgs e) => HighlightLibrary("", false);
+
+    private void HighlightLibrary(string name, bool on)
+    {
+        foreach (var host in new StackPanel[] { LibraryStack, PlaylistStack })
+        {
+            foreach (var child in host.Children.OfType<Border>())
+            {
+                child.Classes.Remove("linked");
+                if (on && child.Child is Grid grid)
+                {
+                    var label = grid.Children.OfType<TextBlock>().FirstOrDefault(t => Grid.GetColumn(t) == 1);
+                    if (label?.Text == name)
+                    {
+                        child.Classes.Add("linked");
+                    }
+                }
+            }
+        }
     }
 
     private void EnqueueScriptTrack(string name)
@@ -836,21 +1160,22 @@ public partial class MainWindow : Window
     {
         _scriptEmpty.Add(new ScriptLineData("—", int.MaxValue, "", [], false, true));
         RenderScript();
+        _editBox?.Focus();
     }
 
     private void SyncEditText()
     {
-        var box = this.FindControl<TextBox>("ScriptEditBox");
-        if (box is null)
+        var list = ActiveScriptList();
+        var index = list.FindIndex(l => l.Editing);
+        if (index < 0)
         {
             return;
         }
-        var list = ActiveScriptList();
-        var index = list.FindIndex(l => l.Editing);
-        if (index >= 0)
+        list[index] = list[index] with
         {
-            list[index] = list[index] with { Text = box.Text ?? "" };
-        }
+            Text = _editBox?.Text ?? list[index].Text,
+            Time = _timeBox?.Text ?? list[index].Time,
+        };
     }
 
     private void OnWaveSeekPressed(object? sender, PointerPressedEventArgs e)

@@ -156,6 +156,16 @@
     <Style Selector="Border.libRow:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
+    <Style Selector="Border.libRow.linked">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Border.plRow.linked">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="1,0,0,0"/>
+    </Style>
     <Style Selector="Border.libRow.selected">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
@@ -174,7 +184,7 @@
     <Style Selector="Border.scriptLine:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
-    <Style Selector="Border.scriptLine:pointerover PathIcon.goHint">
+    <Style Selector="Border.scriptLine:pointerover Button.goHint">
       <Setter Property="IsVisible" Value="True"/>
     </Style>
     <Style Selector="Border.scriptLine.current">
@@ -209,10 +219,10 @@
               <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
                 <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="7 строк" Tag="seven" Click="OnScriptDemoClick"/>
                 <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="50 строк" Tag="fifty" Click="OnScriptDemoClick"/>
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="пусто" Tag="empty" Click="OnScriptDemoClick"/>
+                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="новый" Tag="empty" Click="OnScriptDemoClick"/>
               </StackPanel>
               <ScrollViewer Grid.Row="2">
-                <StackPanel x:Name="ScriptLinesHost" Spacing="3">
+                <StackPanel x:Name="ScriptLinesHost" Spacing="8">
                 </StackPanel>
               </ScrollViewer>
                 <TextBlock x:Name="StatusText" Grid.Row="3" Text="" FontSize="10" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushFaint}" Margin="12,0,12,8" TextTrimming="CharacterEllipsis"/>
@@ -242,7 +252,7 @@
                     <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0"/>
                     <TextBox PlaceholderText="Поиск по имени" Padding="28,6,8,8" VerticalContentAlignment="Center" FontSize="12" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
                   </Grid>
-                  <StackPanel Grid.Row="1" Margin="0,0,0,4">
+                  <StackPanel x:Name="LibraryStack" Grid.Row="1" Margin="0,0,0,4">
                       <Border Classes="libRow" Height="30" CornerRadius="6" Margin="6,0" Padding="10,0" Background="Transparent" PointerPressed="OnRowTap" PointerMoved="OnRowMove" PointerReleased="OnRowRelease">
                         <Grid ColumnDefinitions="56,*,34,28">
                           <Path Data="{StaticResource wave_t1}" Stretch="Fill" Width="53" Height="14" Fill="{StaticResource BrushWaveDim}" VerticalAlignment="Center"/>
