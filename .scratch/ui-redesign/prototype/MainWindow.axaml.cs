@@ -5,7 +5,9 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using System.Text.Json;
 using Path = Avalonia.Controls.Shapes.Path;
 
 namespace Aria.Prototype;
@@ -19,6 +21,10 @@ public sealed record ScriptLineData(string Time, int Seconds, string Text, List<
 public sealed record KnownTrack(string Name, string Duration, string WaveKey);
 
 public sealed record MentionRef(ScriptLineData Line, ScriptMention Mention);
+
+public sealed record ScriptMentionDto(string? Name, bool Dangling);
+
+public sealed record ScriptLineDto(string Time, int Seconds, string? Text, List<ScriptMentionDto> Mentions);
 
 public partial class MainWindow : Window
 {
@@ -713,8 +719,20 @@ public partial class MainWindow : Window
             };
             ToolTip.SetTip(mark, "Время строки = elapsed шоу");
             mark.Click += OnMarkTimeClick;
+            var del = new Button
+            {
+                Classes = { "ghost" },
+                Height = 26,
+                Padding = new Avalonia.Thickness(10, 0),
+                FontSize = 11,
+                Content = "удалить",
+                Tag = data,
+            };
+            ToolTip.SetTip(del, "Удалить строку");
+            del.Click += OnScriptDeleteClick;
             buttons.Children.Add(at);
             buttons.Children.Add(mark);
+            buttons.Children.Add(del);
             content.Children.Add(buttons);
         }
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("58,*") };
@@ -1185,6 +1203,82 @@ public partial class MainWindow : Window
         _scriptEmpty.Add(new ScriptLineData("—", int.MaxValue, "", [], false, true));
         RenderScript();
         _editBox?.Focus();
+    }
+
+    private void OnScriptDeleteClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button del && del.Tag is ScriptLineData data)
+        {
+            var list = ActiveScriptList();
+            list.Remove(data);
+            RenderScript();
+            StatusText.Text = "строка удалена";
+        }
+    }
+
+    private async void OnScriptSaveClick(object? sender, RoutedEventArgs e)
+    {
+        var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (storage is null)
+        {
+            return;
+        }
+        SyncEditText();
+        var dto = ActiveScriptList().Select(line => new ScriptLineDto(
+            line.Time,
+            line.Seconds,
+            line.Text,
+            line.Mentions.Select(mention => new ScriptMentionDto(mention.Name, mention.Dangling)).ToList())).ToList();
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Сохранить сценарий",
+            SuggestedFileName = "script.json",
+            FileTypeChoices = [new FilePickerFileType("Сценарий JSON") { Patterns = ["*.json"] }],
+        });
+        if (file is null)
+        {
+            return;
+        }
+        await using var stream = await file.OpenWriteAsync();
+        await JsonSerializer.SerializeAsync(stream, dto, new JsonSerializerOptions { WriteIndented = true });
+        StatusText.Text = "сценарий сохранён";
+    }
+
+    private async void OnScriptOpenClick(object? sender, RoutedEventArgs e)
+    {
+        var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (storage is null)
+        {
+            return;
+        }
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Открыть сценарий",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Сценарий JSON") { Patterns = ["*.json"] }],
+        });
+        var file = files.FirstOrDefault();
+        if (file is null)
+        {
+            return;
+        }
+        await using var stream = await file.OpenReadAsync();
+        var dto = await JsonSerializer.DeserializeAsync<List<ScriptLineDto>>(stream);
+        if (dto is null)
+        {
+            return;
+        }
+        _scriptEmpty.Clear();
+        _scriptEmpty.AddRange(dto.Select(line => new ScriptLineData(
+            line.Time,
+            line.Seconds,
+            line.Text ?? "",
+            line.Mentions.Select(mention => new ScriptMention(mention.Name ?? "", mention.Dangling)).ToList(),
+            false,
+            false)));
+        _scriptDemo = 2;
+        RenderScript();
+        StatusText.Text = "сценарий загружен";
     }
 
     private void SyncEditText()
