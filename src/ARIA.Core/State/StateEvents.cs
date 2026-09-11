@@ -46,7 +46,13 @@ public sealed record QueueState(ImmutableArray<QueueItem> Items);
 
 public sealed record ShowClockState(TimeSpan Elapsed, bool Running);
 
-public sealed record ShowState(ImmutableArray<Playlist> Playlists, PlaylistId? ActiveId, bool Locked, ShowClockState Clock);
+public sealed record ShowState(
+    ImmutableArray<Playlist> Playlists,
+    PlaylistId? ActiveId,
+    bool Locked,
+    ShowClockState Clock,
+    ImmutableArray<Script> Scripts,
+    TrackDigest TrackDigest);
 
 public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade);
 

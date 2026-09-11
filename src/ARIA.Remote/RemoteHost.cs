@@ -30,6 +30,7 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly ICommandBus _bus;
     private readonly RemoteOptions _options;
     private readonly PlaybackMonitor? _monitor;
+    private readonly MeterMonitor? _meters;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -47,14 +48,17 @@ public sealed class RemoteHost : IAsyncDisposable
             new TrackIdConverter(),
             new EntryIdConverter(),
             new PlaylistIdConverter(),
+            new ScriptIdConverter(),
+            new ScriptLineIdConverter(),
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null)
     {
         _bus = bus;
         _options = options;
         _monitor = monitor;
+        _meters = meters;
     }
 
     public Uri HttpEndpoint { get; private set; } = new("http://127.0.0.1:0/");
@@ -89,9 +93,9 @@ public sealed class RemoteHost : IAsyncDisposable
         WebsocketEndpoint = new Uri($"ws://127.0.0.1:{port}/ws");
 
         _subscription = _bus.Subscribe(OnStateEvent);
-        if (_monitor is not null)
+        if (_monitor is not null || _meters is not null)
         {
-            _positionTask = Task.Run(() => PositionLoopAsync(_monitor, _shutdown.Token));
+            _positionTask = Task.Run(() => LatestValueLoopAsync(_monitor, _meters, _shutdown.Token));
         }
     }
 
@@ -280,19 +284,25 @@ public sealed class RemoteHost : IAsyncDisposable
         }, JsonOptions);
     }
 
-    private async Task PositionLoopAsync(PlaybackMonitor monitor, CancellationToken ct)
+    private async Task LatestValueLoopAsync(PlaybackMonitor? monitor, MeterMonitor? meters, CancellationToken ct)
     {
         try
         {
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
             {
-                var latest = monitor.Latest;
-                if (latest is null || _connections.IsEmpty)
+                if (_connections.IsEmpty)
                 {
                     continue;
                 }
-                Broadcast(PositionFrame(latest));
+                if (monitor?.Latest is { } latest)
+                {
+                    Broadcast(PositionFrame(latest));
+                }
+                if (meters?.Latest is { } lufs)
+                {
+                    Broadcast(LufsFrame(lufs));
+                }
             }
         }
         catch (OperationCanceledException)
@@ -307,6 +317,13 @@ public sealed class RemoteHost : IAsyncDisposable
             Deck = snapshot.Deck,
             FilePositionMs = Milliseconds(snapshot.FilePosition),
             RemainingMs = Milliseconds(snapshot.Remaining),
+        }, JsonOptions);
+
+    private static string LufsFrame(LufsSnapshot snapshot) =>
+        JsonSerializer.Serialize(new
+        {
+            Event = "lufs",
+            MomentaryLufs = snapshot.MomentaryLufs,
         }, JsonOptions);
 
     private static long Milliseconds(TimeSpan value) => (long)Math.Round(value.TotalMilliseconds);

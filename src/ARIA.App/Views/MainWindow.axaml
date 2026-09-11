@@ -25,9 +25,37 @@
     <Style Selector="Button.railAction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#1F1F1F"/>
     </Style>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Foreground" Value="#8A8A8A"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover">
+      <Setter Property="Foreground" Value="#ECECEC"/>
+    </Style>
+    <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1F1F1F"/>
+    </Style>
   </Window.Styles>
   <Grid RowDefinitions="*,Auto,Auto" Margin="24">
-    <Grid Grid.Row="0" ColumnDefinitions="260,*,300">
+    <SplitView Grid.Row="0" x:Name="ScriptDrawer" PanePlacement="Right" DisplayMode="Overlay"
+               OpenPaneLength="340" IsPaneOpen="False">
+      <SplitView.Pane>
+        <Border Background="#161616" BorderBrush="#2C2C2C" BorderThickness="1,0,0,0">
+          <Grid ColumnDefinitions="8,*">
+            <Thumb Grid.Column="0" x:Name="PaneResizer" Width="8" Background="Transparent"
+                   VerticalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
+                   ToolTip.Tip="Ширина панели"/>
+            <views:ScriptPanel Grid.Column="1" x:Name="ScriptPanel" Margin="10,14,12,10"/>
+          </Grid>
+        </Border>
+      </SplitView.Pane>
+      <Grid ColumnDefinitions="260,*,300">
       <Border Grid.Column="0" BorderBrush="#2C2C2C" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="3*,2*,Auto,Auto">
           <views:LibrarySection Grid.Row="0" x:Name="LibrarySection" />
@@ -48,13 +76,15 @@
       </Border>
       <views:PlaylistCenter Grid.Column="1" x:Name="PlaylistCenter" />
       <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
-    </Grid>
+      </Grid>
+    </SplitView>
     <TabControl Grid.Row="1" Background="#0F0F0F" BorderThickness="0" Margin="0,12,0,0">
       <TabItem x:Name="RemoteTab" Header="REMOTE" Foreground="#EDEDED">
         <views:RemotePanel />
       </TabItem>
     </TabControl>
     <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="76" Margin="-24,12,-24,-24" />
+    <Border x:Name="FocusSink" Grid.RowSpan="3" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
     <Border x:Name="HelpOverlay" Grid.RowSpan="3" IsVisible="False" Background="#D90F0F0F"
             PointerPressed="OnHelpOverlayClick">
       <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="#161616"

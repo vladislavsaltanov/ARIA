@@ -31,6 +31,7 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
     private readonly HashSet<TrackId> _faulted = [];
     private long _seq;
     private string _searchText = string.Empty;
+    private TrackId? _linkedTrackId;
 
     [ObservableProperty]
     private bool isBusy;
@@ -126,6 +127,16 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
 
     public void EnqueueTrack(TrackVm track) => Submit(new EnqueueTrack(track.Id));
 
+    public void SetLinkedTrack(TrackId? track)
+    {
+        if (_linkedTrackId == track)
+        {
+            return;
+        }
+        _linkedTrackId = track;
+        Reload();
+    }
+
     public void AddToPlaylist(PlaylistId playlist, TrackId track) => Submit(new AddEntry(playlist, track, null));
 
     public void EnqueueTracks(IEnumerable<TrackVm> tracks)
@@ -163,7 +174,8 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
                 track.FilePath,
                 track.Duration,
                 _thumbs?.For(track.Id),
-                _faulted.Contains(track.Id)));
+                _faulted.Contains(track.Id),
+                _linkedTrackId == track.Id));
         }
         Selected = Tracks.FirstOrDefault(t => t.Id == selectedId);
         RefreshFiltered();
@@ -209,7 +221,8 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         string FilePath,
         TimeSpan Duration,
         StreamGeometry? Waveform,
-        bool IsFaulted)
+        bool IsFaulted,
+        bool IsLinked = false)
     {
         public string DurationText => Duration.ToString(@"mm\:ss");
     }

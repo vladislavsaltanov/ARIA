@@ -30,3 +30,21 @@ internal sealed class PlaylistIdConverter : JsonConverter<PlaylistId>
     public override void Write(Utf8JsonWriter writer, PlaylistId value, JsonSerializerOptions options) =>
         writer.WriteStringValue(value.Value);
 }
+
+internal sealed class ScriptIdConverter : JsonConverter<ScriptId>
+{
+    public override ScriptId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        new(reader.GetGuid());
+
+    public override void Write(Utf8JsonWriter writer, ScriptId value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.Value);
+}
+
+internal sealed class ScriptLineIdConverter : JsonConverter<ScriptLineId>
+{
+    public override ScriptLineId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        new(reader.GetGuid());
+
+    public override void Write(Utf8JsonWriter writer, ScriptLineId value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.Value);
+}

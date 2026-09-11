@@ -1,5 +1,6 @@
 namespace Aria.App.Views;
 
+using Aria.App.Services;
 using Aria.App.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -12,7 +13,18 @@ public partial class PlaylistCenter : UserControl
         InitializeComponent();
     }
 
+    public event EventHandler? ScenarioToggleRequested;
+
+    public event EventHandler? HelpRequested;
+
     public ListBox EntryListBox => EntryList;
+
+    public void ApplyGestures(HotkeyService hotkeys) =>
+        ToolTip.SetTip(ScenarioButton, HotkeyLabels.Tip(HotkeyLabels.Label("toggle-script"), hotkeys.GestureFor("toggle-script")));
+
+    private void OnScenarioClick(object? sender, RoutedEventArgs e) => ScenarioToggleRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnHelpClick(object? sender, RoutedEventArgs e) => HelpRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnTitleDoubleTapped(object? sender, TappedEventArgs e)
     {

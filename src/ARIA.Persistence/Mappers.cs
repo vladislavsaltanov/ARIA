@@ -166,3 +166,28 @@ internal static class PlaylistMapper
         dto.Name,
         [.. dto.Entries.Select(ToDomain)]);
 }
+
+internal static class ScriptMapper
+{
+    public static ScriptDto ToDto(Script script) => new()
+    {
+        Id = script.Id.Value,
+        Name = script.Name,
+        Lines = [.. script.Lines.Select(line => new ScriptLineDto
+        {
+            Id = line.Id.Value,
+            AtElapsedTicks = line.AtElapsed.Ticks,
+            Text = line.Text,
+            Mentions = [.. line.Mentions.Select(m => m.Track.Value)],
+        })],
+    };
+
+    public static Script ToDomain(ScriptDto dto) => new(
+        new ScriptId(dto.Id),
+        dto.Name,
+        [.. dto.Lines.Select(line => new ScriptLine(
+            new ScriptLineId(line.Id),
+            new TimeSpan(line.AtElapsedTicks),
+            line.Text,
+            [.. line.Mentions.Select(id => new Mention(new TrackId(id)))]))]);
+}

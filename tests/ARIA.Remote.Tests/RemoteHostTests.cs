@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Aria.Core.Commands;
 using Aria.Core.Runtime;
 
 public sealed class RemoteHostTests : IAsyncLifetime
@@ -161,6 +162,25 @@ public sealed class RemoteHostTests : IAsyncLifetime
         var rejectedA = await clientA.WaitForAsync(e => e.GetProperty("event").GetString() == "rejected", TimeSpan.FromSeconds(5));
         Assert.Equal("gain-out-of-range", rejectedA.GetProperty("reason").GetString());
         Assert.True(await clientB.WaitSilenceAsync(TimeSpan.FromMilliseconds(700)), "rejected leaked to other client");
+    }
+
+    [Fact]
+    public async Task Snapshot_ContainsScriptsAndTrackDigest()
+    {
+        _bus.Submit(new ClientId("setup"), 500, new CreateScript("Вечер"));
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (_bus.Snapshot().Show.Scripts.Length == 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20);
+        }
+        Assert.Single(_bus.Snapshot().Show.Scripts);
+
+        using var client = Connected();
+
+        var snapshot = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "snapshot", TimeSpan.FromSeconds(5));
+        var show = snapshot.GetProperty("show").GetProperty("state");
+        Assert.Equal("Вечер", show.GetProperty("scripts")[0].GetProperty("name").GetString());
+        Assert.Equal(JsonValueKind.Array, show.GetProperty("trackDigest").GetProperty("entries").ValueKind);
     }
 }
 

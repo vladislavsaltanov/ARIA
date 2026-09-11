@@ -1,8 +1,18 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Aria.App.ViewModels"
-             x:Class="Aria.App.Views.LibrarySection"
-             x:DataType="vm:LibraryViewModel">
+              x:Class="Aria.App.Views.LibrarySection"
+              x:DataType="vm:LibraryViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.libRow:pointerover">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="Border.libRow.linked">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+  </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
     <Grid Grid.Row="0" Margin="12,0,12,8">
       <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}"
@@ -16,7 +26,7 @@
              DragDrop.AllowDrop="True" DragDrop.Drop="OnFilesDropped" DoubleTapped="OnDoubleTapped">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:LibraryViewModel+TrackVm">
-          <Border Classes="libRow" Height="30" CornerRadius="6" Padding="10,0" Background="Transparent">
+          <Border Classes="libRow" Classes.linked="{Binding IsLinked}" Height="30" CornerRadius="6" Padding="10,0" Background="Transparent">
             <Border.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="В очередь" Click="OnEnqueueClick"/>

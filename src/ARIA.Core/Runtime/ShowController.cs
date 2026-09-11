@@ -39,6 +39,8 @@ public sealed class ShowController : IShowHandler
     private TimeSpan _clockElapsed;
     private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
+    private ImmutableArray<Script> _scripts = [];
+    private TrackDigest _emittedDigest = TrackDigest.Empty;
 
     private int _showVersion;
     private int _transportVersion;
@@ -148,6 +150,27 @@ public sealed class ShowController : IShowHandler
             case SetLocked setLocked:
                 OnSetLocked(setLocked);
                 break;
+            case CreateScript createScript:
+                OnCreateScript(client, seq, createScript);
+                break;
+            case RenameScript renameScript:
+                OnRenameScript(client, seq, renameScript);
+                break;
+            case DeleteScript deleteScript:
+                OnDeleteScript(client, seq, deleteScript);
+                break;
+            case AddScriptLine addScriptLine:
+                OnAddScriptLine(client, seq, addScriptLine);
+                break;
+            case UpdateScriptLine updateScriptLine:
+                OnUpdateScriptLine(client, seq, updateScriptLine);
+                break;
+            case RemoveScriptLine removeScriptLine:
+                OnRemoveScriptLine(client, seq, removeScriptLine);
+                break;
+            case MoveScriptLine moveScriptLine:
+                OnMoveScriptLine(client, seq, moveScriptLine);
+                break;
             case TickShowClock:
                 OnTickShowClock();
                 break;
@@ -165,7 +188,7 @@ public sealed class ShowController : IShowHandler
 
     public ShowSnapshot Snapshot() => new(
         _showVersion,
-        new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning)),
+        new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest),
         _transportVersion,
         BuildTransport(),
         _queueVersion,
@@ -214,6 +237,7 @@ public sealed class ShowController : IShowHandler
         _panicked = false;
         _clockElapsed = TimeSpan.Zero;
         _clockRunning = false;
+        _scripts = load.Scripts.IsDefault ? [] : load.Scripts;
 
         EmitShow();
         EmitQueue();
@@ -277,6 +301,7 @@ public sealed class ShowController : IShowHandler
         _panicFade = restore.PanicFade;
         _clockElapsed = restore.ClockElapsed;
         _clockRunning = restore.ClockRunning;
+        _scripts = restore.Scripts.IsDefault ? [] : restore.Scripts;
         _engine.SetMasterGain(restore.MasterGainDb);
         _current = null;
         _atEndBoundary = false;
@@ -554,6 +579,7 @@ public sealed class ShowController : IShowHandler
         _queue.Add(new QueueItem(entry.Id, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
+        SyncDigest();
     }
 
     private void OnEnqueueTrack(ClientId client, long seq, EnqueueTrack command)
@@ -567,6 +593,7 @@ public sealed class ShowController : IShowHandler
         _queue.Add(new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
+        SyncDigest();
     }
 
     private void OnRemoveFromQueue(ClientId client, long seq, RemoveFromQueue command)
@@ -579,6 +606,7 @@ public sealed class ShowController : IShowHandler
         _queue.RemoveAt(command.Index);
         EmitQueue();
         EmitTransport();
+        SyncDigest();
     }
 
     private void OnClearQueue()
@@ -590,6 +618,7 @@ public sealed class ShowController : IShowHandler
         _queue.Clear();
         EmitQueue();
         EmitTransport();
+        SyncDigest();
     }
 
     private void OnCreatePlaylist(ClientId client, long seq, CreatePlaylist command)
@@ -787,6 +816,165 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
+    private int IndexOfScript(ScriptId id)
+    {
+        for (var i = 0; i < _scripts.Length; i++)
+        {
+            if (_scripts[i].Id == id)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int IndexOfLine(Script script, ScriptLineId line)
+    {
+        for (var i = 0; i < script.Lines.Length; i++)
+        {
+            if (script.Lines[i].Id == line)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void OnCreateScript(ClientId client, long seq, CreateScript command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name))
+        {
+            Reject(client, seq, "bad-name");
+            return;
+        }
+        _scripts = _scripts.Add(new Script(ScriptId.New(), command.Name, []));
+        EmitShow();
+    }
+
+    private void OnRenameScript(ClientId client, long seq, RenameScript command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name))
+        {
+            Reject(client, seq, "bad-name");
+            return;
+        }
+        var index = IndexOfScript(command.Id);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return;
+        }
+        _scripts = _scripts.SetItem(index, _scripts[index] with { Name = command.Name });
+        EmitShow();
+    }
+
+    private void OnDeleteScript(ClientId client, long seq, DeleteScript command)
+    {
+        var index = IndexOfScript(command.Id);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return;
+        }
+        _scripts = _scripts.RemoveAt(index);
+        EmitShow();
+    }
+
+    private void OnAddScriptLine(ClientId client, long seq, AddScriptLine command)
+    {
+        var index = IndexOfScript(command.Script);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return;
+        }
+        if (command.AtElapsed < TimeSpan.Zero)
+        {
+            Reject(client, seq, "bad-time");
+            return;
+        }
+        var mentions = command.Mentions.IsDefault
+            ? ImmutableArray<Mention>.Empty
+            : [.. command.Mentions.Select(m => new Mention(m))];
+        var script = _scripts[index];
+        var line = new ScriptLine(ScriptLineId.New(), command.AtElapsed, command.Text, mentions);
+        _scripts = _scripts.SetItem(index, script with { Lines = script.Lines.Add(line) });
+        EmitShow();
+    }
+
+    private void OnUpdateScriptLine(ClientId client, long seq, UpdateScriptLine command)
+    {
+        var index = IndexOfScript(command.Script);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return;
+        }
+        var script = _scripts[index];
+        var lineIndex = IndexOfLine(script, command.Line);
+        if (lineIndex < 0)
+        {
+            Reject(client, seq, "unknown-line");
+            return;
+        }
+        if (command.AtElapsed < TimeSpan.Zero)
+        {
+            Reject(client, seq, "bad-time");
+            return;
+        }
+        var mentions = command.Mentions.IsDefault
+            ? ImmutableArray<Mention>.Empty
+            : [.. command.Mentions.Select(m => new Mention(m))];
+        var line = script.Lines[lineIndex] with { AtElapsed = command.AtElapsed, Text = command.Text, Mentions = mentions };
+        _scripts = _scripts.SetItem(index, script with { Lines = script.Lines.SetItem(lineIndex, line) });
+        EmitShow();
+    }
+
+    private void OnRemoveScriptLine(ClientId client, long seq, RemoveScriptLine command)
+    {
+        var index = IndexOfScript(command.Script);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return;
+        }
+        var script = _scripts[index];
+        var lineIndex = IndexOfLine(script, command.Line);
+        if (lineIndex < 0)
+        {
+            Reject(client, seq, "unknown-line");
+            return;
+        }
+        _scripts = _scripts.SetItem(index, script with { Lines = script.Lines.RemoveAt(lineIndex) });
+        EmitShow();
+    }
+
+    private void OnMoveScriptLine(ClientId client, long seq, MoveScriptLine command)
+    {
+        var index = IndexOfScript(command.Script);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return;
+        }
+        var script = _scripts[index];
+        var lineIndex = IndexOfLine(script, command.Line);
+        if (lineIndex < 0)
+        {
+            Reject(client, seq, "unknown-line");
+            return;
+        }
+        if (command.NewIndex < 0 || command.NewIndex > script.Lines.Length - 1)
+        {
+            Reject(client, seq, "bad-index");
+            return;
+        }
+        var line = script.Lines[lineIndex];
+        var lines = script.Lines.RemoveAt(lineIndex).Insert(command.NewIndex, line);
+        _scripts = _scripts.SetItem(index, script with { Lines = lines });
+        EmitShow();
+    }
+
     private void OnTickShowClock()
     {
         if (!_clockRunning)
@@ -903,6 +1091,7 @@ public sealed class ShowController : IShowHandler
             _atEndBoundary = false;
             _current = null;
             EmitTransport();
+            SyncDigest();
         }
     }
 
@@ -923,6 +1112,7 @@ public sealed class ShowController : IShowHandler
             _panicked = false;
             EmitQueue();
             EmitTransport();
+            SyncDigest();
             return true;
         }
 
@@ -1072,7 +1262,76 @@ public sealed class ShowController : IShowHandler
 
     private void Emit(StateEvent e) => Emitted?.Invoke(e);
 
-    private void EmitShow() => Emit(new ShowDelta(++_showVersion, new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning))));
+    private TrackDigest BuildDigest()
+    {
+        var names = new Dictionary<TrackId, string>();
+        void Add(TrackId id)
+        {
+            if (!names.ContainsKey(id) && _trackMap.TryGetValue(id, out var track))
+            {
+                names.Add(id, EffectiveSettings.ForTrack(track).DisplayName);
+            }
+        }
+        foreach (var playlist in _playlists)
+        {
+            foreach (var entry in playlist.Entries)
+            {
+                Add(entry.TrackId);
+            }
+        }
+        foreach (var item in _queue)
+        {
+            Add(item.TrackId);
+        }
+        if (_current is not null)
+        {
+            Add(_current.Track.Id);
+        }
+        foreach (var script in _scripts)
+        {
+            foreach (var line in script.Lines)
+            {
+                foreach (var mention in line.Mentions)
+                {
+                    Add(mention.Track);
+                }
+            }
+        }
+        return new TrackDigest([.. names
+            .OrderBy(pair => pair.Key.Value)
+            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value))]);
+    }
+
+    private static bool DigestEquals(TrackDigest left, TrackDigest right)
+    {
+        if (left.Entries.Length != right.Entries.Length)
+        {
+            return false;
+        }
+        for (var i = 0; i < left.Entries.Length; i++)
+        {
+            if (!left.Entries[i].Equals(right.Entries[i]))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void EmitShow()
+    {
+        _emittedDigest = BuildDigest();
+        Emit(new ShowDelta(++_showVersion, new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest)));
+    }
+
+    private void SyncDigest()
+    {
+        var fresh = BuildDigest();
+        if (!DigestEquals(fresh, _emittedDigest))
+        {
+            EmitShow();
+        }
+    }
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));
 

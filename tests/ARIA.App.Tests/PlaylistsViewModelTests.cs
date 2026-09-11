@@ -167,4 +167,20 @@ public sealed class PlaylistsViewModelTests
         var name = vm.Playlists[0].Entries[0].DisplayName;
         Assert.StartsWith("track", name);
     }
+
+    [Fact]
+    public void SetLinkedTrack_MarksMatchingEntry()
+    {
+        var (bus, _, entry1) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        vm.SetLinkedTrack(entry1.TrackId);
+
+        Assert.True(vm.Playlists[0].Entries[0].IsLinked);
+        Assert.True(vm.Playlists[0].Entries[1].IsLinked);
+
+        vm.SetLinkedTrack(null);
+
+        Assert.All(vm.Playlists[0].Entries, e => Assert.False(e.IsLinked));
+    }
 }

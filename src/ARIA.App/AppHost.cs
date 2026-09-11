@@ -106,12 +106,12 @@ public sealed class AppHost : IAsyncDisposable
         var document = _snapshots.LoadLatest();
         if (document is { } saved)
         {
-            Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning));
+            Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
         }
 
         if (_remoteOptions is { } options)
         {
-            Remote = new RemoteHost(Bus, options, Monitor);
+            Remote = new RemoteHost(Bus, options, Monitor, Meters);
             await Remote.StartAsync(cancellationToken);
         }
 

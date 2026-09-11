@@ -73,6 +73,7 @@ public sealed class ShowAutosaver : IDisposable
             snapshot.Mixer.PanicFade,
             snapshot.Show.Clock.Elapsed,
             snapshot.Show.Clock.Running,
+            snapshot.Show.Scripts,
             DateTimeOffset.UtcNow);
         _store.Save(document);
     }

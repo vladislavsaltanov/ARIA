@@ -14,3 +14,13 @@ public readonly record struct PlaylistId(Guid Value)
 {
     public static PlaylistId New() => new(Guid.NewGuid());
 }
+
+public readonly record struct ScriptId(Guid Value)
+{
+    public static ScriptId New() => new(Guid.NewGuid());
+}
+
+public readonly record struct ScriptLineId(Guid Value)
+{
+    public static ScriptLineId New() => new(Guid.NewGuid());
+}

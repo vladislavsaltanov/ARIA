@@ -80,4 +80,21 @@ public sealed class LibraryViewModelTests : IDisposable
         Assert.Equal(2, vm.FilteredTracks.Count);
     }
 
+    [Fact]
+    public async Task SetLinkedTrack_MarksMatchingRow()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
+        await host.StartAsync();
+        using var vm = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync);
+        await vm.ImportAsync([TestWav.Write(_directory, "linked-song.wav")]);
+        var track = Assert.Single(vm.FilteredTracks);
+
+        vm.SetLinkedTrack(track.Id);
+
+        Assert.True(Assert.Single(vm.FilteredTracks).IsLinked);
+
+        vm.SetLinkedTrack(null);
+
+        Assert.False(Assert.Single(vm.FilteredTracks).IsLinked);
+    }
 }

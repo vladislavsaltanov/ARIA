@@ -66,10 +66,18 @@ public partial class App : Application
         var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs);
         var queue = new QueueViewModel(host.Bus);
         var remote = new RemotePanelViewModel(sync);
+        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks);
+        MainWindow? window = null;
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),
-            action => DispatchHotkey(transport, action));
-        var window = new MainWindow(hotkeys, library, playlists, queue, remote) { DataContext = transport };
+            action =>
+            {
+                if (window is not null)
+                {
+                    DispatchHotkey(window, transport, action);
+                }
+            });
+        window = new MainWindow(hotkeys, library, playlists, queue, remote, scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
 
@@ -92,7 +100,7 @@ public partial class App : Application
         }
     }
 
-    private static void DispatchHotkey(TransportViewModel viewModel, string action)
+    private static void DispatchHotkey(MainWindow window, TransportViewModel viewModel, string action)
     {
         switch (action)
         {
@@ -103,6 +111,7 @@ public partial class App : Application
             case "replay": Run(viewModel.ReplayCommand); break;
             case "panic": Run(viewModel.PanicCommand); break;
             case "lock": viewModel.ToggleLock(); break;
+            case "toggle-script": window.ToggleScriptPane(); break;
             case "reset-clock": viewModel.ResetClock(); break;
         }
     }

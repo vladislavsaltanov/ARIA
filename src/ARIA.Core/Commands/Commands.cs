@@ -54,6 +54,20 @@ public sealed record SetMuted(bool Muted) : Command;
 
 public sealed record SetLocked(bool Locked) : Command;
 
+public sealed record CreateScript(string Name) : Command;
+
+public sealed record RenameScript(ScriptId Id, string Name) : Command;
+
+public sealed record DeleteScript(ScriptId Id) : Command;
+
+public sealed record AddScriptLine(ScriptId Script, TimeSpan AtElapsed, string Text, ImmutableArray<TrackId> Mentions) : Command;
+
+public sealed record UpdateScriptLine(ScriptId Script, ScriptLineId Line, TimeSpan AtElapsed, string Text, ImmutableArray<TrackId> Mentions) : Command;
+
+public sealed record RemoveScriptLine(ScriptId Script, ScriptLineId Line) : Command;
+
+public sealed record MoveScriptLine(ScriptId Script, ScriptLineId Line, int NewIndex) : Command;
+
 public sealed record TickShowClock : Command;
 
 public sealed record ResetShowClock : Command;
@@ -63,7 +77,8 @@ public sealed record SetPanicFade(TimeSpan Duration) : Command;
 public sealed record LoadShow(
     ImmutableArray<Track> Tracks,
     ImmutableArray<Playlist> Playlists,
-    PlaylistId? Active) : Command;
+    PlaylistId? Active,
+    ImmutableArray<Script> Scripts = default) : Command;
 
 public sealed record RestoreShow(
     ImmutableArray<Track> Tracks,
@@ -73,6 +88,7 @@ public sealed record RestoreShow(
     double MasterGainDb,
     TimeSpan PanicFade,
     TimeSpan ClockElapsed,
-    bool ClockRunning) : Command;
+    bool ClockRunning,
+    ImmutableArray<Script> Scripts = default) : Command;
 
 public sealed record MergeTracks(ImmutableArray<Track> Tracks) : Command;

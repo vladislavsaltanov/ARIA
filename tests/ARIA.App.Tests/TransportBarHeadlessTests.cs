@@ -58,7 +58,7 @@ public sealed class TransportBarHeadlessTests : IDisposable
     {
         private readonly Core.State.ShowSnapshot _snapshot = new(
             0,
-            new Core.State.ShowState([], null, false, new Core.State.ShowClockState(TimeSpan.Zero, false)),
+            new Core.State.ShowState([], null, false, new Core.State.ShowClockState(TimeSpan.Zero, false), [], Core.Model.TrackDigest.Empty),
             0,
             new Core.State.TransportState(Core.State.TransportStatus.Stopped, null, null, []),
             0,

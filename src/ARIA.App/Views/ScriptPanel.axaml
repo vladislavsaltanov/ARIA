@@ -1,0 +1,214 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:model="using:Aria.Core.Model"
+             x:Class="Aria.App.Views.ScriptPanel"
+             x:DataType="vm:ScriptPanelViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.scriptLine:pointerover">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="Border.scriptLine:pointerover Button.goHint">
+      <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <Style Selector="Border.scriptLine.current">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="3,0,0,0"/>
+    </Style>
+    <Style Selector="Border.scriptLine.editing">
+      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushDim}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Border.mention">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="CornerRadius" Value="9"/>
+      <Setter Property="Padding" Value="9,3"/>
+    </Style>
+    <Style Selector="Border.mention:pointerover">
+      <Setter Property="Background" Value="#343434"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Border.mention.dangling">
+      <Setter Property="Background" Value="#232323"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Tapped="OnPanelTapped">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+      <TextBox x:Name="ScriptNameBox" Text="{Binding SelectedScript.Name, Mode=OneWay}"
+               FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
+               Background="Transparent" BorderThickness="0" Padding="0"
+               KeyDown="OnNameKeyDown" LostFocus="OnNameCommit"/>
+      <Button Grid.Column="1" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28"
+              Click="OnCloseClick" ToolTip.Tip="Закрыть — Ctrl+T">
+        <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
+      </Button>
+    </Grid>
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8" IsVisible="{Binding HasScripts}">
+      <ListBox x:Name="TabsList" ItemsSource="{Binding Scripts}" SelectedItem="{Binding SelectedScript, Mode=OneWay}"
+               SelectionChanged="OnTabSelection" Background="Transparent" BorderThickness="0" Padding="0">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:ScriptPanelViewModel+ScriptVm">
+            <TextBlock Text="{Binding Name}" FontSize="12" Margin="0,0,8,0"/>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Command="{Binding CreateScriptCommand}"
+              ToolTip.Tip="Новый сценарий">
+        <PathIcon Data="{StaticResource icon_plus}" Width="13" Height="13"/>
+      </Button>
+    </Grid>
+    <ScrollViewer Grid.Row="2" x:Name="LinesScroller" VerticalScrollBarVisibility="Auto">
+      <Grid>
+        <ItemsControl x:Name="LinesControl" ItemsSource="{Binding Lines}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="8"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ScriptPanelViewModel+ScriptLineVm">
+              <Border Classes="scriptLine" Classes.current="{Binding IsCurrent}" Classes.editing="{Binding IsEditing}"
+                      MinHeight="34" CornerRadius="6" Padding="8,6" Background="Transparent" Tapped="OnLineTapped">
+                <Grid>
+                  <Grid ColumnDefinitions="52,*,24" IsVisible="{Binding !IsEditing}">
+                    <Grid Grid.Column="0">
+                      <Button Tag="ScriptTime" Classes="ghost" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                              Foreground="{StaticResource BrushDim}" Content="{Binding DisplayTime}"
+                              HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"/>
+                      <Button Tag="ScriptGo" Classes="ghost goHint" Width="26" Height="26" IsVisible="False"
+                              HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"
+                              ToolTip.Tip="Исполнить строку">
+                        <PathIcon Data="{StaticResource icon_play}" Width="13" Height="13"/>
+                      </Button>
+                    </Grid>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock Tag="ScriptText" Text="{Binding Text}" FontSize="13" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasText}"/>
+                      <TextBlock Tag="ScriptText" Text="пустая строка…" FontSize="13" FontStyle="Italic"
+                                 Foreground="{StaticResource BrushFaint}" IsVisible="{Binding !HasText}"/>
+                      <ItemsControl ItemsSource="{Binding Mentions}" Margin="0,4,0,0">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:ScriptPanelViewModel+MentionVm">
+                            <Button Tag="ScriptChip" Classes="ghost" Margin="0,0,6,4" Click="OnChipClick"
+                                    PointerEntered="OnChipEnter" PointerExited="OnChipLeave"
+                                    ToolTip.Tip="{Binding Tooltip}">
+                              <Border Classes="mention" Classes.dangling="{Binding IsDangling}">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                              </Border>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <ItemsControl ItemsSource="{Binding Candidates}" Margin="0,4,0,0"
+                                    IsVisible="{Binding CandidatesVisible}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:ScriptPanelViewModel+MentionVm">
+                            <Button Tag="ScriptCandidate" Classes="ghost" Margin="0,0,6,0" Click="OnCandidateClick"
+                                    ToolTip.Tip="{Binding Tooltip}">
+                              <Border Classes="mention">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                              </Border>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                    <Button Grid.Column="2" Tag="ScriptDelete" Classes="ghost" Width="24" Height="24"
+                            VerticalAlignment="Top" Click="OnDeleteClick" ToolTip.Tip="Удалить строку">
+                      <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
+                    </Button>
+                  </Grid>
+                  <Grid RowDefinitions="Auto,Auto,Auto" IsVisible="{Binding IsEditing}">
+                    <Grid Grid.Row="0" ColumnDefinitions="64,Auto" Margin="0,0,0,6">
+                      <TextBox Text="{Binding EditTimeText, Mode=TwoWay}" FontFamily="{StaticResource MonoFont}"
+                               FontSize="12" Padding="6,4" KeyDown="OnEditKeyDown"/>
+                      <Button Grid.Column="1" Tag="ScriptMark" Classes="ghost" Height="26" Padding="10,0"
+                              FontSize="11" Content="сейчас" Margin="8,0,0,0" Click="OnMarkNowClick"
+                              ToolTip.Tip="Пометить текущее время шоу"/>
+                    </Grid>
+                    <TextBox Grid.Row="1" Text="{Binding EditText, Mode=TwoWay}" FontSize="13" TextWrapping="Wrap"
+                             Padding="6,4" KeyDown="OnEditKeyDown" TextChanged="OnEditTextChanged"/>
+                    <ItemsControl Grid.Row="2" ItemsSource="{Binding StagedMentions}" Margin="0,6,0,0">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ScriptPanelViewModel+MentionVm">
+                          <Button Tag="ScriptStaged" Classes="ghost" Margin="0,0,6,4" Click="OnStagedClick"
+                                  ToolTip.Tip="Убрать упоминание">
+                            <Border Classes="mention" Classes.dangling="{Binding IsDangling}">
+                              <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                            </Border>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Popup Grid.Row="1" IsOpen="{Binding SuggestionsVisible, Mode=TwoWay}"
+                           IsLightDismissEnabled="True" Placement="Bottom">
+                      <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"
+                              BorderThickness="1" CornerRadius="8" Padding="6" MinWidth="200">
+                        <ItemsControl ItemsSource="{Binding Suggestions}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="model:Track">
+                              <Button Tag="ScriptSuggest" Classes="ghost" HorizontalAlignment="Stretch"
+                                      HorizontalContentAlignment="Left" Padding="8,6" Click="OnSuggestClick">
+                                <TextBlock Text="{Binding DefaultName}" FontSize="12"/>
+                              </Button>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </Border>
+                    </Popup>
+                  </Grid>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Canvas x:Name="DropIndicator" IsVisible="False" IsHitTestVisible="False">
+          <Border x:Name="DropLine" Height="2" Background="{StaticResource BrushFg}" CornerRadius="1" Width="100"/>
+        </Canvas>
+      </Grid>
+    </ScrollViewer>
+    <StackPanel Grid.Row="3" Margin="0,10,0,0">
+      <StackPanel IsVisible="{Binding ShowNoScripts}" Spacing="6" Margin="0,20,0,0">
+        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="13"
+                Command="{Binding CreateScriptCommand}" Content="+ Новый сценарий"/>
+      </StackPanel>
+      <StackPanel IsVisible="{Binding ShowEmptyScript}" Spacing="6" Margin="0,20,0,0">
+        <TextBlock Text="Сценарий пуст" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource BrushFg}"/>
+        <TextBlock Text="Первая строка станет отсчётом шоу" FontSize="12" Foreground="{StaticResource BrushDim}"/>
+        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="13"
+                Command="{Binding AddLineCommand}" Content="+ Добавить строку"/>
+      </StackPanel>
+      <Button Classes="ghost" Height="30" Padding="12,0" FontSize="13" Margin="0,6,0,0"
+              Command="{Binding AddLineCommand}" Content="+ строка" IsVisible="{Binding HasScripts}"/>
+    </StackPanel>
+  </Grid>
+</UserControl>

@@ -20,6 +20,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly HashSet<TrackId> _faulted = [];
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
+    private TrackId? _linkedTrackId;
     private long _seq;
 
     [ObservableProperty]
@@ -135,6 +136,19 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public void EnqueueEntry(EntryVm entry) => Submit(new EnqueueEntry(entry.Id));
 
+    public void SetLinkedTrack(TrackId? track)
+    {
+        if (_linkedTrackId == track)
+        {
+            return;
+        }
+        _linkedTrackId = track;
+        if (_lastShow is { } show)
+        {
+            Rebuild(show, _trackSource?.Invoke() ?? []);
+        }
+    }
+
     public void Dispose() => _subscription.Dispose();
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
@@ -206,7 +220,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                     _thumbs?.For(entry.TrackId),
                     _faulted.Contains(entry.TrackId),
                     $"{index + 1:00}",
-                    trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero)));
+                    trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero),
+                    _linkedTrackId == entry.TrackId));
             }
             Playlists.Add(playlistVm);
         }
@@ -298,7 +313,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         StreamGeometry? Waveform,
         bool IsFaulted,
         string Position,
-        TimeSpan Duration)
+        TimeSpan Duration,
+        bool IsLinked = false)
     {
         public bool HasOverrides => Overrides is not null;
 

@@ -1,5 +1,6 @@
 namespace Aria.App.Views;
 
+using System.ComponentModel;
 using System.Text;
 using Aria.App.Services;
 using Aria.App.ViewModels;
@@ -11,6 +12,8 @@ using Avalonia.Media;
 public partial class MainWindow : Window
 {
     private readonly HotkeyService? _hotkeys;
+    private LibraryViewModel? _library;
+    private PlaylistsViewModel? _playlists;
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
 
@@ -23,17 +26,20 @@ public partial class MainWindow : Window
         LibraryViewModel? libraryViewModel = null,
         PlaylistsViewModel? playlistsViewModel = null,
         QueueViewModel? queueViewModel = null,
-        RemotePanelViewModel? remoteViewModel = null)
+        RemotePanelViewModel? remoteViewModel = null,
+        ScriptPanelViewModel? scriptViewModel = null)
     {
         InitializeComponent();
         _hotkeys = hotkeys;
         if (libraryViewModel is not null)
         {
+            _library = libraryViewModel;
             LibrarySection.DataContext = libraryViewModel;
             ImportButton.Command = libraryViewModel.ImportCommand;
         }
         if (playlistsViewModel is not null)
         {
+            _playlists = playlistsViewModel;
             RailPlaylists.DataContext = playlistsViewModel;
             PlaylistCenter.DataContext = playlistsViewModel;
         }
@@ -46,16 +52,72 @@ public partial class MainWindow : Window
         {
             RemoteTab.DataContext = remoteViewModel;
         }
+        if (scriptViewModel is not null)
+        {
+            ScriptPanel.DataContext = scriptViewModel;
+            ScriptPanel.CloseRequested += (_, _) => ToggleScriptPane();
+            scriptViewModel.PropertyChanged += OnScriptPropertyChanged;
+        }
+        PlaylistCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
+        PlaylistCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
         Opened += OnOpened;
+    }
+
+    public void ToggleScriptPane()
+    {
+        if (ScriptDrawer.IsPaneOpen)
+        {
+            ScriptPanel.CommitOpenEdit();
+            ScriptDrawer.IsPaneOpen = false;
+            FocusSink.Focus();
+        }
+        else
+        {
+            ScriptDrawer.IsPaneOpen = true;
+        }
+    }
+
+    private void OnPaneResize(object? sender, VectorEventArgs e) =>
+        ScriptDrawer.OpenPaneLength = Math.Clamp(ScriptDrawer.OpenPaneLength - e.Vector.X, 240, 600);
+
+    private void OnScriptPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ScriptPanelViewModel.HighlightedTrack)
+            && sender is ScriptPanelViewModel viewModel)
+        {
+            _library?.SetLinkedTrack(viewModel.HighlightedTrack);
+            _playlists?.SetLinkedTrack(viewModel.HighlightedTrack);
+        }
+    }
+
+    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!ScriptDrawer.IsPaneOpen)
+        {
+            return;
+        }
+        var current = e.Source as Control;
+        while (current is not null)
+        {
+            if (current == ScriptPanel || current == PaneResizer || current.Name == "ScenarioButton")
+            {
+                return;
+            }
+            current = current.Parent as Control;
+        }
+        ScriptPanel.CommitOpenEdit();
+        ScriptDrawer.IsPaneOpen = false;
     }
 
     private void OnOpened(object? sender, EventArgs e)
     {
         Opened -= OnOpened;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
         if (_hotkeys is not null)
         {
             TransportBar.ApplyGestures(_hotkeys);
+            PlaylistCenter.ApplyGestures(_hotkeys);
             BuildHotkeyTable();
         }
         _drag = new DragCoordinator(

@@ -14,6 +14,7 @@ public sealed record ShowDocument(
     TimeSpan PanicFade,
     TimeSpan ClockElapsed,
     bool ClockRunning,
+    ImmutableArray<Script> Scripts,
     DateTimeOffset SavedAt);
 
 public interface ISnapshotStore : IDisposable
@@ -78,8 +79,24 @@ public sealed class JsonSnapshotStore : ISnapshotStore
         PanicFadeTicks = document.PanicFade.Ticks,
         ClockElapsedTicks = document.ClockElapsed.Ticks,
         ClockRunning = document.ClockRunning,
+        Scripts = [.. document.Scripts.Select(ScriptMapper.ToDto)],
         SavedAt = document.SavedAt,
     };
+}
+
+internal sealed class ScriptLineDto
+{
+    public Guid Id { get; set; }
+    public long AtElapsedTicks { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public List<Guid> Mentions { get; set; } = [];
+}
+
+internal sealed class ScriptDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public List<ScriptLineDto> Lines { get; set; } = [];
 }
 
 internal sealed class ShowDocumentDto
@@ -92,6 +109,7 @@ internal sealed class ShowDocumentDto
     public long PanicFadeTicks { get; set; }
     public long ClockElapsedTicks { get; set; }
     public bool ClockRunning { get; set; }
+    public List<ScriptDto>? Scripts { get; set; }
     public DateTimeOffset SavedAt { get; set; }
 
     public ShowDocument ToDomain() => new(
@@ -107,6 +125,7 @@ internal sealed class ShowDocumentDto
         new TimeSpan(PanicFadeTicks),
         new TimeSpan(ClockElapsedTicks),
         ClockRunning,
+        Scripts is null ? [] : [.. Scripts.Select(ScriptMapper.ToDomain)],
         SavedAt);
 }
 

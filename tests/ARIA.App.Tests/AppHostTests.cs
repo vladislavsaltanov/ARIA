@@ -43,7 +43,7 @@ public sealed class AppHostTests : IDisposable
         var snapshotPath = Path.Combine(_directory, "show.json");
         using (var store = new JsonSnapshotStore(snapshotPath))
         {
-            store.Save(new ShowDocument([track], [playlist], playlist.Id, queue, -3, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([track], [playlist], playlist.Id, queue, -3, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, [], DateTimeOffset.UtcNow));
         }
 
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
@@ -68,7 +68,7 @@ public sealed class AppHostTests : IDisposable
         var snapshotPath = Path.Combine(_directory, "show.json");
         using (var store = new JsonSnapshotStore(snapshotPath))
         {
-            store.Save(new ShowDocument([track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, [], DateTimeOffset.UtcNow));
         }
 
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());

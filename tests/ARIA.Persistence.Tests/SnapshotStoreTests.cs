@@ -38,7 +38,7 @@ public sealed class SnapshotStoreTests : IDisposable
             new QueueItem(e1.Id, t1.Id, "из очереди", "amber"),
             new QueueItem(null, t1.Id, "без вхождения", null));
         var document = new ShowDocument(
-            [t1], [p1], p1.Id, queue, -3.5, TimeSpan.FromMilliseconds(80), TimeSpan.FromMinutes(3), true, DateTimeOffset.UtcNow);
+            [t1], [p1], p1.Id, queue, -3.5, TimeSpan.FromMilliseconds(80), TimeSpan.FromMinutes(3), true, [], DateTimeOffset.UtcNow);
 
         using (var store = new JsonSnapshotStore(_path))
         {
@@ -75,8 +75,8 @@ public sealed class SnapshotStoreTests : IDisposable
     public void Save_Twice_LoadLatestReturnsSecondDocument()
     {
         var t1 = TestFactory.Track("one");
-        var first = new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, DateTimeOffset.UtcNow);
-        var second = new ShowDocument([t1], [], null, [], -7, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, DateTimeOffset.UtcNow);
+        var first = new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
+        var second = new ShowDocument([t1], [], null, [], -7, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
 
         using (var store = new JsonSnapshotStore(_path))
         {
@@ -99,7 +99,7 @@ public sealed class SnapshotStoreTests : IDisposable
         using (var store = new JsonSnapshotStore(_path))
         {
             var t1 = TestFactory.Track("one");
-            store.Save(new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow));
         }
 
         Assert.True(File.Exists(_path));
@@ -113,5 +113,59 @@ public sealed class SnapshotStoreTests : IDisposable
         using var store = new JsonSnapshotStore(_path);
 
         Assert.Null(store.LoadLatest());
+    }
+
+    [Fact]
+    public void RoundTrip_PreservesScripts()
+    {
+        var t1 = TestFactory.Track("one");
+        var dangling = Guid.NewGuid();
+        var scripts = ImmutableArray.Create(
+            new Script(
+                ScriptId.New(),
+                "Вечер",
+                [
+                    new ScriptLine(ScriptLineId.New(), TimeSpan.FromSeconds(105), "вступление", [new Mention(t1.Id), new Mention(new TrackId(dangling))]),
+                    new ScriptLine(ScriptLineId.New(), TimeSpan.Zero, "заметка", []),
+                ]),
+            new Script(ScriptId.New(), "Пустой", []));
+        var document = new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, scripts, DateTimeOffset.UtcNow);
+
+        using (var store = new JsonSnapshotStore(_path))
+        {
+            store.Save(document);
+        }
+
+        using (var store = new JsonSnapshotStore(_path))
+        {
+            var loaded = store.LoadLatest();
+
+            Assert.NotNull(loaded);
+            Assert.Equal(2, loaded.Scripts.Length);
+            Assert.Equal(scripts[0].Id, loaded.Scripts[0].Id);
+            Assert.Equal("Вечер", loaded.Scripts[0].Name);
+            Assert.Equal(2, loaded.Scripts[0].Lines.Length);
+            Assert.Equal(scripts[0].Lines[0].Id, loaded.Scripts[0].Lines[0].Id);
+            Assert.Equal(TimeSpan.FromSeconds(105), loaded.Scripts[0].Lines[0].AtElapsed);
+            Assert.Equal("вступление", loaded.Scripts[0].Lines[0].Text);
+            Assert.Equal([t1.Id, new TrackId(dangling)], loaded.Scripts[0].Lines[0].Mentions.Select(m => m.Track));
+            Assert.Empty(loaded.Scripts[0].Lines[1].Mentions);
+            Assert.Equal("Пустой", loaded.Scripts[1].Name);
+            Assert.Empty(loaded.Scripts[1].Lines);
+        }
+    }
+
+    [Fact]
+    public void MissingScriptsField_LoadsEmptyScripts()
+    {
+        File.WriteAllText(_path, """
+            {"tracks":[],"playlists":[],"queue":[],"masterGainDb":0,"panicFadeTicks":1000000,"clockElapsedTicks":0,"clockRunning":false,"savedAt":"2026-09-11T00:00:00Z"}
+            """);
+        using var store = new JsonSnapshotStore(_path);
+
+        var loaded = store.LoadLatest();
+
+        Assert.NotNull(loaded);
+        Assert.Empty(loaded.Scripts);
     }
 }
