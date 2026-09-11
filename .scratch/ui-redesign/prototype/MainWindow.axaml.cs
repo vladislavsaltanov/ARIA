@@ -22,6 +22,8 @@ public sealed record KnownTrack(string Name, string Duration, string WaveKey);
 
 public sealed record MentionRef(ScriptLineData Line, ScriptMention Mention);
 
+public sealed record ScriptTab(string Name, List<ScriptLineData> Lines, bool Canned);
+
 public sealed record PlTrack(string Name, bool Faulted);
 
 public sealed record PlaylistData(string Name, List<PlTrack> Tracks);
@@ -36,17 +38,15 @@ public partial class MainWindow : Window
     private Point _pressPos;
     private bool _dragging;
     private Border? _hint;
-    private int _scriptDemo;
-    private List<ScriptLineData>? _scriptSeven;
-    private List<ScriptLineData>? _scriptFifty;
-    private readonly List<ScriptLineData> _scriptEmpty = [];
+    private readonly List<ScriptTab> _scriptTabs = [];
+    private int _activeScriptTab;
+    private int _newScriptCounter;
     private ScriptLineData? _suggestTarget;
     private TextBox? _editBox;
     private TextBox? _timeBox;
     private Border? _scriptDragSource;
     private Point _scriptPressPos;
     private bool _scriptDragging;
-    private string _scriptName = "Новый сценарий";
     private readonly List<PlaylistData> _playlists = [];
     private PlaylistData? _activePlaylist;
     private int _newPlaylistCounter;
@@ -80,7 +80,11 @@ public partial class MainWindow : Window
         Opened += (_, _) => SetWaveCursorFraction(0.4);
         AddHandler(KeyDownEvent, OnTunnelKey, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerPressedEvent, OnPressTunnel, RoutingStrategies.Tunnel);
-        ScriptNameBox.TextChanged += (_, _) => _scriptName = ScriptNameBox.Text ?? "";
+        ScriptNameBox.TextChanged += (_, _) => RenameActiveScriptTab(ScriptNameBox.Text ?? "");
+        _scriptTabs.Add(new ScriptTab("7 строк", BuildSevenLines(), true));
+        _scriptTabs.Add(new ScriptTab("50 строк", BuildFiftyLines(), true));
+        _activeScriptTab = 0;
+        RenderScript();
         _playlists.Add(new PlaylistData("Вечерний сет", [
             new PlTrack("Осенний дождь", false),
             new PlTrack("Night Drive", false),
@@ -150,11 +154,19 @@ public partial class MainWindow : Window
 
     private void OnScriptCloseClick(object? sender, RoutedEventArgs e)
     {
-        _scriptEmpty.Clear();
-        _scriptDemo = 2;
-        _scriptName = "Новый сценарий";
-        ScriptNameBox.Text = _scriptName;
-        RenderScript();
+        if (_scriptTabs.Count == 0)
+        {
+            return;
+        }
+        var active = _scriptTabs[_activeScriptTab];
+        if (active.Canned)
+        {
+            StatusText.Text = "демо-вкладки не закрываются";
+            return;
+        }
+        _scriptTabs.RemoveAt(_activeScriptTab);
+        _activeScriptTab = Math.Clamp(_activeScriptTab, 0, _scriptTabs.Count - 1);
+        ActiveScriptTabChanged();
         StatusText.Text = "сценарий закрыт";
     }
 
@@ -643,11 +655,35 @@ public partial class MainWindow : Window
 
     private void OnScriptDemoClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is string tag)
+        if (sender is Button button && button.Tag is int index && index >= 0 && index < _scriptTabs.Count)
         {
-            _scriptDemo = tag switch { "fifty" => 1, "empty" => 2, _ => 0 };
+            CommitScriptEdit();
+            _activeScriptTab = index;
             RenderScript();
         }
+    }
+
+    private void OnScriptTabAdd(object? sender, RoutedEventArgs e)
+    {
+        CommitScriptEdit();
+        _newScriptCounter++;
+        _scriptTabs.Add(new ScriptTab(
+            "Новый сценарий " + _newScriptCounter,
+            [new ScriptLineData("—", int.MaxValue, "", [], false, true)],
+            false));
+        _activeScriptTab = _scriptTabs.Count - 1;
+        RenderScript();
+        _editBox?.Focus();
+    }
+
+    private void ActiveScriptTabChanged()
+    {
+        var tab = _scriptTabs[_activeScriptTab];
+        if (ScriptNameBox.Text != tab.Name)
+        {
+            ScriptNameBox.Text = tab.Name;
+        }
+        RenderScript();
     }
 
     private void RenderScript()
@@ -657,10 +693,16 @@ public partial class MainWindow : Window
         _timeBox = null;
         _scriptDragSource = null;
         _scriptDragging = false;
+        RenderScriptTabs();
+        var tab = _scriptTabs[_activeScriptTab];
+        if (ScriptNameBox.Text != tab.Name)
+        {
+            ScriptNameBox.Text = tab.Name;
+        }
         ScriptLinesHost.Children.Clear();
-        var list = ActiveScriptList();
+        var list = tab.Lines;
         MarkCurrent(list);
-        if (_scriptDemo == 2 && list.Count == 0)
+        if (list.Count == 0)
         {
             var app = Application.Current!.Resources;
             var title = new TextBlock
@@ -686,7 +728,7 @@ public partial class MainWindow : Window
                 Content = "+ Добавить строку",
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             };
-            add.Click += OnEmptyAddClick;
+            add.Click += OnScriptAddClick;
             var empty = new StackPanel { Spacing = 8, Margin = new Avalonia.Thickness(0, 48, 0, 0) };
             empty.Children.Add(title);
             empty.Children.Add(hint);
@@ -712,12 +754,56 @@ public partial class MainWindow : Window
         ScriptLinesHost.Children.Add(more);
     }
 
-    private List<ScriptLineData> ActiveScriptList() => _scriptDemo switch
+    private List<ScriptLineData> ActiveScriptList()
     {
-        1 => _scriptFifty ??= BuildFiftyLines(),
-        2 => _scriptEmpty,
-        _ => _scriptSeven ??= BuildSevenLines(),
-    };
+        if (_scriptTabs.Count == 0)
+        {
+            _scriptTabs.Add(new ScriptTab("Новый сценарий 1", [], false));
+            _activeScriptTab = 0;
+        }
+        _activeScriptTab = Math.Clamp(_activeScriptTab, 0, _scriptTabs.Count - 1);
+        return _scriptTabs[_activeScriptTab].Lines;
+    }
+
+    private void RenderScriptTabs()
+    {
+        var app = Application.Current!.Resources;
+        ScriptTabStrip.Children.Clear();
+        for (int i = 0; i < _scriptTabs.Count; i++)
+        {
+            var tab = _scriptTabs[i];
+            var button = new Button
+            {
+                Classes = { "ghost" },
+                Height = 26,
+                Padding = new Avalonia.Thickness(10, 0),
+                FontSize = 11,
+                Content = tab.Name,
+                Tag = i,
+                Margin = new Avalonia.Thickness(0, 0, 6, 6),
+            };
+            if (i == _activeScriptTab)
+            {
+                button.Background = (IBrush)app["BrushSurfaceAlt"]!;
+                button.Foreground = (IBrush)app["BrushFg"]!;
+            }
+            button.Click += OnScriptDemoClick;
+            ScriptTabStrip.Children.Add(button);
+        }
+        var add = new Button
+        {
+            Classes = { "ghost" },
+            Height = 26,
+            Padding = new Avalonia.Thickness(10, 0),
+            FontSize = 13,
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            Content = "+",
+            Margin = new Avalonia.Thickness(0, 0, 6, 6),
+        };
+        ToolTip.SetTip(add, "Новый сценарий");
+        add.Click += OnScriptTabAdd;
+        ScriptTabStrip.Children.Add(add);
+    }
 
     private static List<ScriptLineData> BuildSevenLines() =>
     [
@@ -1390,11 +1476,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnEmptyAddClick(object? sender, RoutedEventArgs e)
+    private void RenameActiveScriptTab(string name)
     {
-        _scriptEmpty.Add(new ScriptLineData("—", int.MaxValue, "", [], false, true));
-        RenderScript();
-        _editBox?.Focus();
+        if (_scriptTabs.Count == 0)
+        {
+            return;
+        }
+        _activeScriptTab = Math.Clamp(_activeScriptTab, 0, _scriptTabs.Count - 1);
+        _scriptTabs[_activeScriptTab] = _scriptTabs[_activeScriptTab] with { Name = name };
+        RenderScriptTabs();
     }
 
     private void OnScriptDeleteClick(object? sender, RoutedEventArgs e)
@@ -1424,7 +1514,7 @@ public partial class MainWindow : Window
         var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Сохранить сценарий",
-            SuggestedFileName = SanitizeFileName(_scriptName) + ".json",
+            SuggestedFileName = SanitizeFileName(_scriptTabs[_activeScriptTab].Name) + ".json",
             FileTypeChoices = [new FilePickerFileType("Сценарий JSON") { Patterns = ["*.json"] }],
         });
         if (file is null)
@@ -1433,8 +1523,8 @@ public partial class MainWindow : Window
         }
         await using var stream = await file.OpenWriteAsync();
         await JsonSerializer.SerializeAsync(stream, dto, new JsonSerializerOptions { WriteIndented = true });
-        _scriptName = System.IO.Path.GetFileNameWithoutExtension(file.Name);
-        ScriptNameBox.Text = _scriptName;
+        RenameActiveScriptTab(System.IO.Path.GetFileNameWithoutExtension(file.Name));
+        ScriptNameBox.Text = _scriptTabs[_activeScriptTab].Name;
         StatusText.Text = "сценарий сохранён";
     }
 
@@ -1462,17 +1552,17 @@ public partial class MainWindow : Window
         {
             return;
         }
-        _scriptEmpty.Clear();
-        _scriptEmpty.AddRange(dto.Select(line => new ScriptLineData(
-            line.Time,
-            line.Seconds,
-            line.Text ?? "",
-            line.Mentions.Select(mention => new ScriptMention(mention.Name ?? "", mention.Dangling)).ToList(),
-            false,
-            false)));
-        _scriptDemo = 2;
-        _scriptName = System.IO.Path.GetFileNameWithoutExtension(file.Name);
-        ScriptNameBox.Text = _scriptName;
+        _scriptTabs.Add(new ScriptTab(
+            System.IO.Path.GetFileNameWithoutExtension(file.Name),
+            dto.Select(line => new ScriptLineData(
+                line.Time,
+                line.Seconds,
+                line.Text ?? "",
+                line.Mentions.Select(mention => new ScriptMention(mention.Name ?? "", mention.Dangling)).ToList(),
+                false,
+                false)).ToList(),
+            false));
+        _activeScriptTab = _scriptTabs.Count - 1;
         RenderScript();
         StatusText.Text = "сценарий загружен";
     }

@@ -220,9 +220,7 @@
                   <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
                 </Button>
               </Grid>
-              <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="7 строк" Tag="seven" Click="OnScriptDemoClick" Margin="0,0,6,6"/>
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="50 строк" Tag="fifty" Click="OnScriptDemoClick" Margin="0,0,6,6"/>
+              <WrapPanel x:Name="ScriptTabStrip" Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
               </WrapPanel>
               <ScrollViewer Grid.Row="2">
                 <StackPanel x:Name="ScriptLinesHost" Spacing="8">
@@ -230,7 +228,6 @@
               </ScrollViewer>
               <Border Grid.Row="3" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
                 <WrapPanel Orientation="Horizontal">
-                  <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="новый" Tag="empty" Click="OnScriptDemoClick" ToolTip.Tip="Новый сценарий" Margin="0,0,6,0"/>
                   <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="сохранить" Click="OnScriptSaveClick" ToolTip.Tip="Сохранить сценарий в файл" Margin="0,0,6,0"/>
                   <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="открыть" Click="OnScriptOpenClick" ToolTip.Tip="Открыть сценарий из файла" Margin="0,0,6,0"/>
                   <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="закрыть" Click="OnScriptCloseClick" ToolTip.Tip="Закрыть сценарий" Margin="0,0,6,0"/>
