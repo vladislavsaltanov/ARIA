@@ -10,6 +10,8 @@ using Aria.Core.Runtime;
 using Aria.Persistence;
 using Aria.Remote;
 
+public sealed record ImportReport(int Added, int Skipped, ImmutableArray<string> Failed);
+
 public sealed class AppHost : IAsyncDisposable
 {
     public const int SampleRate = 48000;
@@ -19,6 +21,14 @@ public sealed class AppHost : IAsyncDisposable
     private readonly RemoteOptions? _remoteOptions;
     private readonly Func<IAudioSink>? _sinkFactory;
     private readonly Func<ISourceFactory>? _sourceFactory;
+
+    private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".wav",
+        ".flac",
+        ".mp3",
+        ".ogg",
+    };
 
     private CommandBus? _ownedBus;
     private SqliteLibraryStore? _library;
@@ -116,7 +126,7 @@ public sealed class AppHost : IAsyncDisposable
 
     public void Submit(Command command) => Bus.Submit(new ClientId("app"), Interlocked.Increment(ref _seq), command);
 
-    public async Task<ImmutableArray<Track>> ImportTracksAsync(IReadOnlyList<string> filePaths, IProgress<string>? progress = null)
+    public async Task<ImportReport> ImportTracksAsync(IReadOnlyList<string> paths, IProgress<string>? progress = null)
     {
         if (_library is null || _importer is null || _waveforms is null)
         {
@@ -124,35 +134,66 @@ public sealed class AppHost : IAsyncDisposable
         }
         var (tracks, playlists) = _library.Load();
         var current = tracks;
-        var changed = false;
-        var result = ImmutableArray.CreateBuilder<Track>(filePaths.Count);
-        foreach (var filePath in filePaths)
+        var added = 0;
+        var skipped = 0;
+        var failed = ImmutableArray.CreateBuilder<string>();
+        foreach (var filePath in ExpandAudioFiles(paths))
         {
             progress?.Report(Path.GetFileName(filePath));
             var imported = await Task.Run(() => _importer.Import(filePath));
             if (imported is null)
             {
+                failed.Add(filePath);
                 continue;
             }
-            if (current.FirstOrDefault(t => t.FilePath == imported.Track.FilePath) is { } existing)
+            if (current.Any(t => t.FilePath == imported.Track.FilePath))
             {
-                result.Add(existing);
+                skipped++;
                 continue;
             }
             current = current.Add(imported.Track);
-            changed = true;
             if (imported.Peaks is { } peaks)
             {
                 _waveforms.Save(peaks);
             }
-            _library.Upsert(current, playlists);
-            result.Add(imported.Track);
+            added++;
         }
-        if (changed)
+        if (added > 0)
         {
+            _library.Upsert(current, playlists);
             SyncShowState(current);
         }
-        return result.ToImmutable();
+        return new ImportReport(added, skipped, failed.ToImmutable());
+    }
+
+    private static IEnumerable<string> ExpandAudioFiles(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                string[] files;
+                try
+                {
+                    files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    continue;
+                }
+                foreach (var file in files.Order(StringComparer.Ordinal))
+                {
+                    if (AudioExtensions.Contains(Path.GetExtension(file)))
+                    {
+                        yield return file;
+                    }
+                }
+            }
+            else if (File.Exists(path))
+            {
+                yield return path;
+            }
+        }
     }
 
     private void SyncShowState(ImmutableArray<Track> tracks)

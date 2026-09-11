@@ -1,0 +1,260 @@
+namespace Aria.App.Views;
+
+using Aria.App.ViewModels;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.VisualTree;
+
+internal sealed class DragCoordinator
+{
+    private readonly ListBox _library;
+    private readonly ListBox _playlist;
+    private readonly ListBox _queue;
+    private ListBox? _source;
+    private Point _pressPos;
+    private bool _dragging;
+    private List<LibraryViewModel.TrackVm>? _tracks;
+    private PlaylistsViewModel.EntryVm? _entry;
+    private QueueViewModel.QueueItemVm? _queueItem;
+    private Border? _highlight;
+
+    public DragCoordinator(ListBox library, ListBox playlist, ListBox queue)
+    {
+        _library = library;
+        _playlist = playlist;
+        _queue = queue;
+        library.PointerPressed += OnPress;
+        library.PointerMoved += OnMove;
+        library.PointerReleased += OnRelease;
+        playlist.PointerPressed += OnPress;
+        playlist.PointerMoved += OnMove;
+        playlist.PointerReleased += OnRelease;
+        queue.PointerPressed += OnPress;
+        queue.PointerMoved += OnMove;
+        queue.PointerReleased += OnRelease;
+    }
+
+    private void OnPress(object? sender, PointerPressedEventArgs e)
+    {
+        Clear();
+        if (sender is not ListBox list)
+        {
+            return;
+        }
+        var row = RowAt(list, e);
+        if (row is null || !e.GetCurrentPoint(list).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+        if (ReferenceEquals(list, _library) && row is LibraryViewModel.TrackVm track)
+        {
+            var selected = list.SelectedItems?.OfType<LibraryViewModel.TrackVm>().ToList() ?? [];
+            _tracks = selected.Contains(track) && selected.Count > 0 ? selected : [track];
+        }
+        else if (ReferenceEquals(list, _playlist) && row is PlaylistsViewModel.EntryVm entry)
+        {
+            _entry = entry;
+        }
+        else if (ReferenceEquals(list, _queue) && row is QueueViewModel.QueueItemVm item)
+        {
+            _queueItem = item;
+        }
+        else
+        {
+            return;
+        }
+        _source = list;
+        _pressPos = e.GetPosition(list);
+        e.Pointer.Capture(list);
+    }
+
+    private void OnMove(object? sender, PointerEventArgs e)
+    {
+        if (_source is null || sender != _source)
+        {
+            return;
+        }
+        var pos = e.GetPosition(_source);
+        if (!_dragging && (Math.Abs(pos.X - _pressPos.X) > 6 || Math.Abs(pos.Y - _pressPos.Y) > 6))
+        {
+            _dragging = true;
+        }
+        if (!_dragging)
+        {
+            return;
+        }
+        ClearHighlight();
+        if (_tracks is not null)
+        {
+            var playlistPos = e.GetPosition(_playlist);
+            if (IsInside(_playlist, playlistPos))
+            {
+                HighlightAt(_playlist, playlistPos);
+                return;
+            }
+            HighlightAt(_queue, e.GetPosition(_queue));
+        }
+        else if (_entry is not null)
+        {
+            HighlightAt(_playlist, e.GetPosition(_playlist));
+        }
+        else if (_queueItem is not null)
+        {
+            HighlightAt(_queue, e.GetPosition(_queue));
+        }
+    }
+
+    private void OnRelease(object? sender, PointerReleasedEventArgs e)
+    {
+        var source = _source;
+        var tracks = _tracks;
+        var entry = _entry;
+        var queueItem = _queueItem;
+        var moved = _dragging;
+        Clear();
+        if (source is null || !moved)
+        {
+            return;
+        }
+        if (ReferenceEquals(source, _playlist) && entry is not null
+            && source.DataContext is PlaylistsViewModel playlists
+            && IsInside(_playlist, e.GetPosition(_playlist)))
+        {
+            var visible = playlists.VisibleEntries;
+            var visual = DropIndex(_playlist, e.GetPosition(_playlist), visible.Count);
+            var model = visual >= visible.Count
+                ? playlists.SelectedPlaylist?.Entries.Count ?? 0
+                : playlists.EntryIndex(visible[visual].Id);
+            var old = playlists.EntryIndex(entry.Id);
+            if (old >= 0 && model >= 0)
+            {
+                var to = old < model ? model - 1 : model;
+                if (to != old)
+                {
+                    playlists.MoveEntry(entry.Id, to);
+                }
+            }
+        }
+        else if (ReferenceEquals(source, _queue) && queueItem is not null
+            && source.DataContext is QueueViewModel queue
+            && IsInside(_queue, e.GetPosition(_queue)))
+        {
+            var from = queue.Items.IndexOf(queueItem);
+            var visual = DropIndex(_queue, e.GetPosition(_queue), queue.Items.Count);
+            if (from >= 0)
+            {
+                var to = from < visual ? visual - 1 : visual;
+                if (to != from)
+                {
+                    queue.MoveItem(from, to);
+                }
+            }
+        }
+        else if (tracks is not null && tracks.Count > 0)
+        {
+            if (IsInside(_playlist, e.GetPosition(_playlist))
+                && _playlist.DataContext is PlaylistsViewModel target)
+            {
+                var index = DropIndex(_playlist, e.GetPosition(_playlist), target.VisibleEntries.Count);
+                var at = index;
+                foreach (var track in tracks)
+                {
+                    target.AddEntryAt(track.Id, at);
+                    at++;
+                }
+            }
+            else if (IsInside(_queue, e.GetPosition(_queue))
+                && _queue.DataContext is LibraryViewModel library)
+            {
+                library.EnqueueTracks(tracks);
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void Clear()
+    {
+        _source = null;
+        _dragging = false;
+        _tracks = null;
+        _entry = null;
+        _queueItem = null;
+        ClearHighlight();
+    }
+
+    private void ClearHighlight()
+    {
+        if (_highlight is not null)
+        {
+            _highlight.Background = Brushes.Transparent;
+            _highlight = null;
+        }
+    }
+
+    private void HighlightAt(ListBox list, Point pos)
+    {
+        var container = ContainerAt(list, pos);
+        var border = container?.GetVisualDescendants().OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("plRow") || b.Classes.Contains("qRow"));
+        if (border is not null)
+        {
+            border.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
+            _highlight = border;
+        }
+    }
+
+    private static object? RowAt(ListBox list, PointerPressedEventArgs e)
+    {
+        var container = ContainerAt(list, e.GetPosition(list));
+        if (container?.DataContext is { } item
+            && (item is LibraryViewModel.TrackVm || item is PlaylistsViewModel.EntryVm || item is QueueViewModel.QueueItemVm))
+        {
+            return item;
+        }
+        return null;
+    }
+
+    private static ListBoxItem? ContainerAt(ListBox list, Point pos)
+    {
+        if (list.ItemsPanelRoot is not Panel panel)
+        {
+            return null;
+        }
+        foreach (var child in panel.Children.OfType<ListBoxItem>())
+        {
+            var bounds = child.Bounds;
+            var origin = child.TranslatePoint(new Point(0, 0), panel);
+            if (origin is { } o
+                && pos.X >= o.X && pos.X <= o.X + bounds.Width
+                && pos.Y >= o.Y && pos.Y <= o.Y + bounds.Height)
+            {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    private static int DropIndex(ListBox list, Point pos, int count)
+    {
+        if (list.ItemsPanelRoot is not Panel panel)
+        {
+            return count;
+        }
+        var index = 0;
+        foreach (var child in panel.Children.OfType<ListBoxItem>())
+        {
+            var bounds = child.Bounds;
+            var origin = child.TranslatePoint(new Point(0, 0), panel);
+            if (origin is { } o && pos.Y > o.Y + bounds.Height / 2)
+            {
+                index++;
+            }
+        }
+        return Math.Min(index, count);
+    }
+
+    private static bool IsInside(ListBox list, Point pos) =>
+        pos.X >= 0 && pos.Y >= 0 && pos.X <= list.Bounds.Width && pos.Y <= list.Bounds.Height;
+}

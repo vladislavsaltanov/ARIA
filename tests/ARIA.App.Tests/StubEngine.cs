@@ -7,7 +7,9 @@ internal sealed class StubEngine : IAudioEngine
 {
     private int _next;
 
-    public event Action<StreamEvent>? Events { add { } remove { } }
+    public event Action<StreamEvent>? Events;
+
+    public void Raise(StreamEvent e) => Events?.Invoke(e);
 
     public StreamHandle StartStream(TrackSource source, StreamOptions options) => new(++_next);
 

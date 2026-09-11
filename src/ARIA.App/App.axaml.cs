@@ -60,14 +60,16 @@ public partial class App : Application
         RemoteCredentials credentials)
     {
         var sync = SynchronizationContext.Current;
+        var thumbs = new WaveformThumbs(host.Waveforms!);
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks);
-        var library = new LibraryViewModel(host.Bus, host.Library!, host.Waveforms!, host.Importer!, () => desktop.MainWindow);
+        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs);
+        var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs);
+        var queue = new QueueViewModel(host.Bus);
         var remote = new RemotePanelViewModel(sync);
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),
             action => DispatchHotkey(transport, action));
-        var window = new MainWindow(hotkeys, playlists, remote, library) { DataContext = transport };
+        var window = new MainWindow(hotkeys, library, playlists, queue, remote) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
 

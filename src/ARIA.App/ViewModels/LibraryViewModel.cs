@@ -9,6 +9,7 @@ using Aria.Core.Runtime;
 using Aria.Core.State;
 using Aria.Persistence;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,12 +23,14 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
 
     private readonly ICommandBus _bus;
     private readonly ILibraryStore _library;
-    private readonly IWaveformStore _waveforms;
-    private readonly TrackImporter _importer;
+    private readonly WaveformThumbs? _thumbs;
+    private readonly Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>> _import;
     private readonly Func<TopLevel?>? _topLevel;
     private readonly ClientId _client = new("desktop");
     private readonly IDisposable _subscription;
+    private readonly HashSet<TrackId> _faulted = [];
     private long _seq;
+    private string _searchText = string.Empty;
 
     [ObservableProperty]
     private bool isBusy;
@@ -40,20 +43,34 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<TrackVm> Tracks { get; } = [];
 
+    public ObservableCollection<TrackVm> FilteredTracks { get; } = [];
+
     public LibraryViewModel(
         ICommandBus bus,
         ILibraryStore library,
-        IWaveformStore waveforms,
-        TrackImporter importer,
-        Func<TopLevel?>? topLevel = null)
+        Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>> import,
+        Func<TopLevel?>? topLevel = null,
+        WaveformThumbs? thumbs = null)
     {
         _bus = bus;
         _library = library;
-        _waveforms = waveforms;
-        _importer = importer;
+        _import = import;
         _topLevel = topLevel;
+        _thumbs = thumbs;
         _subscription = bus.Subscribe(Apply);
         Reload();
+    }
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+            {
+                RefreshFiltered();
+            }
+        }
     }
 
     [RelayCommand]
@@ -92,30 +109,14 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            var importedCount = 0;
-            foreach (var filePath in filePaths)
-            {
-                StatusText = $"импорт: {Path.GetFileName(filePath)}";
-                var imported = await Task.Run(() => _importer.Import(filePath));
-                if (imported is null)
-                {
-                    StatusText = $"не удалось открыть: {Path.GetFileName(filePath)}";
-                    continue;
-                }
-                if (Upsert(imported.Track) && imported.Peaks is { } peaks)
-                {
-                    _waveforms.Save(peaks);
-                }
-                importedCount++;
-            }
+            var progress = new Progress<string>(name => StatusText = $"импорт: {name}");
+            var report = await _import(filePaths, progress);
             Reload();
             if (Selected is null && Tracks.Count > 0)
             {
                 Selected = Tracks[0];
             }
-            StatusText = importedCount == filePaths.Length
-                ? $"импортировано: {importedCount}"
-                : $"импортировано: {importedCount} из {filePaths.Length}";
+            StatusText = FormatReport(report);
         }
         finally
         {
@@ -123,66 +124,30 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanSendToActive))]
-    private void AddToActive()
-    {
-        if (Selected is not { } track || _bus.Snapshot().Show.ActiveId is not { } active)
-        {
-            return;
-        }
-        Submit(new AddEntry(active, track.Id));
-    }
-
-    private bool CanSendToActive() => Selected is not null && _bus.Snapshot().Show.ActiveId is not null;
-
-    [RelayCommand(CanExecute = nameof(CanEnqueueSelected))]
-    private void EnqueueSelected()
-    {
-        if (Selected is { } track)
-        {
-            EnqueueTrack(track);
-        }
-    }
-
-    private bool CanEnqueueSelected() => Selected is not null;
-
     public void EnqueueTrack(TrackVm track) => Submit(new EnqueueTrack(track.Id));
+
+    public void AddToPlaylist(PlaylistId playlist, TrackId track) => Submit(new AddEntry(playlist, track, null));
+
+    public void EnqueueTracks(IEnumerable<TrackVm> tracks)
+    {
+        foreach (var track in tracks)
+        {
+            Submit(new EnqueueTrack(track.Id));
+        }
+    }
 
     public void Dispose() => _subscription.Dispose();
 
-    partial void OnSelectedChanged(TrackVm? value)
-    {
-        AddToActiveCommand.NotifyCanExecuteChanged();
-        EnqueueSelectedCommand.NotifyCanExecuteChanged();
-    }
-
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    private bool Upsert(Track track)
+    private static string FormatReport(ImportReport report)
     {
-        var (tracks, playlists) = _library.Load();
-        if (tracks.Any(t => t.FilePath == track.FilePath))
+        var text = $"добавлено {report.Added}, пропущено {report.Skipped}";
+        if (report.Failed.Length > 0)
         {
-            return false;
+            text += $", не удалось: {report.Failed.Length}";
         }
-        var merged = tracks.Add(track);
-        _library.Upsert(merged, playlists);
-        SyncShowState(merged);
-        return true;
-    }
-
-    private void SyncShowState(ImmutableArray<Track> tracks)
-    {
-        var snapshot = _bus.Snapshot();
-        Submit(new RestoreShow(
-            tracks,
-            snapshot.Show.Playlists,
-            snapshot.Show.ActiveId,
-            snapshot.Queue.Items,
-            snapshot.Mixer.MasterGainDb,
-            snapshot.Mixer.PanicFade,
-            snapshot.Show.Clock.Elapsed,
-            snapshot.Show.Clock.Running));
+        return text;
     }
 
     private void Reload()
@@ -192,20 +157,59 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         Tracks.Clear();
         foreach (var track in tracks)
         {
-            Tracks.Add(new TrackVm(track.Id, track.DefaultName, track.FilePath, track.Duration));
+            Tracks.Add(new TrackVm(
+                track.Id,
+                track.DefaultName,
+                track.FilePath,
+                track.Duration,
+                _thumbs?.For(track.Id),
+                _faulted.Contains(track.Id)));
         }
         Selected = Tracks.FirstOrDefault(t => t.Id == selectedId);
+        RefreshFiltered();
+    }
+
+    private void RefreshFiltered()
+    {
+        FilteredTracks.Clear();
+        foreach (var track in Tracks)
+        {
+            if (_searchText.Length == 0 || track.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+            {
+                FilteredTracks.Add(track);
+            }
+        }
+        if (Selected is null || !FilteredTracks.Contains(Selected))
+        {
+            Selected = FilteredTracks.FirstOrDefault();
+        }
     }
 
     private void Apply(StateEvent e)
     {
-        if (e is ShowDelta)
+        if (e is not TransportDelta delta)
         {
-            AddToActiveCommand.NotifyCanExecuteChanged();
+            return;
+        }
+        var incoming = new HashSet<TrackId>(delta.State.Faulted);
+        if (!incoming.SetEquals(_faulted))
+        {
+            _faulted.Clear();
+            foreach (var id in incoming)
+            {
+                _faulted.Add(id);
+            }
+            Reload();
         }
     }
 
-    public sealed record TrackVm(TrackId Id, string Name, string FilePath, TimeSpan Duration)
+    public sealed record TrackVm(
+        TrackId Id,
+        string Name,
+        string FilePath,
+        TimeSpan Duration,
+        StreamGeometry? Waveform,
+        bool IsFaulted)
     {
         public string DurationText => Duration.ToString(@"mm\:ss");
     }

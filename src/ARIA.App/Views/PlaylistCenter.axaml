@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.PlaylistCenter"
+             x:DataType="vm:PlaylistsViewModel">
+  <UserControl.Styles>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*" Margin="16,0,0,0">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,10,0,8">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <TextBlock x:Name="TitleText" Text="{Binding SelectedPlaylist.Name}" FontSize="17" FontWeight="SemiBold"
+                   DoubleTapped="OnTitleDoubleTapped"/>
+        <TextBox x:Name="TitleBox" Text="{Binding SelectedPlaylist.Name, Mode=OneWay}" FontSize="17" FontWeight="SemiBold"
+                 IsVisible="False" MinWidth="200" KeyDown="OnTitleKeyDown" LostFocus="OnTitleCommit"/>
+        <TextBlock Text="{Binding EntryCountText}" FontSize="12" Foreground="{StaticResource BrushDim}"
+                   VerticalAlignment="Center" Margin="0,3,0,0"/>
+      </StackPanel>
+      <Grid Grid.Column="1" Width="180" Margin="0,0,10,0">
+        <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}"
+                  HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0"/>
+        <TextBox PlaceholderText="Поиск-подстрока" Text="{Binding CenterSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Padding="28,5,8,5" FontSize="12" Background="{StaticResource BrushSurfaceAlt}"
+                 BorderBrush="{StaticResource BrushLine}"/>
+      </Grid>
+    </Grid>
+    <ListBox Grid.Row="1" x:Name="EntryList" ItemsSource="{Binding VisibleEntries}" SelectedItem="{Binding SelectedEntry}"
+             Background="Transparent" BorderThickness="0" Margin="0,0,0,10">
+      <ListBox.ItemContainerTheme>
+        <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+          <Setter Property="Background" Value="Transparent"/>
+          <Setter Property="Padding" Value="0"/>
+          <Setter Property="Margin" Value="0"/>
+        </ControlTheme>
+      </ListBox.ItemContainerTheme>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:PlaylistsViewModel+EntryVm">
+          <Border Classes="plRow" Height="44" CornerRadius="6" Padding="10,0,12,0" Background="Transparent">
+            <Border.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="В очередь" Click="OnEnqueueClick"/>
+                <MenuItem Header="Убрать из плейлиста" Click="OnRemoveClick"/>
+              </ContextMenu>
+            </Border.ContextMenu>
+            <Grid ColumnDefinitions="28,*,58,130,20">
+              <TextBlock Text="{Binding Position}" FontFamily="{StaticResource MonoFont}" FontSize="11"
+                         Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
+              <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                         Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+              <Path Grid.Column="3" Data="{Binding Waveform}" Stretch="Fill" Width="118" Height="18"
+                    Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <PathIcon Grid.Column="4" Data="{StaticResource icon_alert}" Width="13" Height="13"
+                        Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                        Margin="12,0,4,0" IsVisible="{Binding IsFaulted}"/>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</UserControl>

@@ -33,7 +33,8 @@ public sealed record DeckContent(
 public sealed record TransportState(
     TransportStatus Status,
     DeckContent? Current,
-    DeckContent? Next);
+    DeckContent? Next,
+    ImmutableArray<TrackId> Faulted);
 
 public sealed record QueueItem(
     EntryId? EntryId,

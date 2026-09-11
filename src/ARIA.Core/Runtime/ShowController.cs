@@ -29,6 +29,7 @@ public sealed class ShowController : IShowHandler
     private TransportStatus _status = TransportStatus.Stopped;
     private DeckInstance? _current;
     private readonly HashSet<StreamHandle> _retired = [];
+    private readonly HashSet<TrackId> _faulted = [];
     private bool _atEndBoundary;
     private bool _panicked;
 
@@ -846,6 +847,10 @@ public sealed class ShowController : IShowHandler
     {
         if (e.Kind == StreamEventKind.Faulted)
         {
+            if (_current is { } failed)
+            {
+                _faulted.Add(failed.Track.Id);
+            }
             DisposeCurrentHandle();
             if (!StartFromOrder())
             {
@@ -955,6 +960,7 @@ public sealed class ShowController : IShowHandler
         {
             _monitor?.Unbind(previous);
         }
+        _faulted.Remove(deck.Track.Id);
         var settings = deck.Settings;
         var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut);
         var options = new StreamOptions(
@@ -1023,7 +1029,7 @@ public sealed class ShowController : IShowHandler
     private TransportState BuildTransport()
     {
         var current = _current is null ? null : Content(_current);
-        return new TransportState(_status, current, PeekNext());
+        return new TransportState(_status, current, PeekNext(), [.. _faulted]);
     }
 
     private static DeckContent Content(DeckInstance deck) => new(

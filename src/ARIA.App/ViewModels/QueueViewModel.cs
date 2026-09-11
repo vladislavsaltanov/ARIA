@@ -17,9 +17,6 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
     private long _seq;
 
     [ObservableProperty]
-    private bool locked;
-
-    [ObservableProperty]
     private QueueItemVm? selected;
 
     public ObservableCollection<QueueItemVm> Items { get; } = [];
@@ -32,16 +29,21 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
         Rebuild(snapshot.Queue.Items, snapshot.Transport.Current);
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void ClearQueue() => Submit(new ClearQueue());
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void RemoveSelected()
     {
         if (Selected is not { } item)
         {
             return;
         }
+        RemoveItem(item);
+    }
+
+    public void RemoveItem(QueueItemVm item)
+    {
         var index = Items.IndexOf(item);
         if (index >= 0)
         {
@@ -49,29 +51,23 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void MoveUp()
+    public void MoveItem(int from, int to)
     {
-        if (Selected is not { } item)
+        if (from < 0 || from >= Items.Count || to < 0 || to >= Items.Count)
         {
             return;
         }
-        var index = Items.IndexOf(item);
-        Submit(new MoveQueueItem(index, Math.Max(0, index - 1)));
+        Submit(new MoveQueueItem(from, to));
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void MoveDown()
+    public void FocusPlaying()
     {
-        if (Selected is not { } item)
+        var current = Items.FirstOrDefault(item => item.IsCurrent);
+        if (current is not null)
         {
-            return;
+            Selected = current;
         }
-        var index = Items.IndexOf(item);
-        Submit(new MoveQueueItem(index, Math.Min(Items.Count - 1, index + 1)));
     }
-
-    public bool CanEdit() => !Locked;
 
     public void Dispose() => _subscription.Dispose();
 

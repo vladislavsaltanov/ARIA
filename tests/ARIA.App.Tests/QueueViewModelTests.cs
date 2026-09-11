@@ -88,19 +88,35 @@ public sealed class QueueViewModelTests
     }
 
     [Fact]
-    public void Lock_BlocksEditing()
+    public void RemoveItem_RemovesGivenRow()
     {
         var bus = LoadedBus();
         bus.Submit(new ClientId("setup"), 2, new EnqueueTrack(TestTrack.Id));
+        bus.Submit(new ClientId("setup"), 3, new EnqueueTrack(TestTrack.Id));
         using var vm = new QueueViewModel(bus);
 
-        vm.Locked = true;
+        vm.RemoveItem(vm.Items[0]);
 
-        Assert.False(vm.ClearQueueCommand.CanExecute(null));
-        Assert.False(vm.RemoveSelectedCommand.CanExecute(null));
+        Assert.Single(vm.Items);
+    }
 
-        vm.Locked = false;
+    [Fact]
+    public void FocusPlaying_SelectsCurrent()
+    {
+        var track = TestTrack;
+        var entry = new PlaylistEntry(EntryId.New(), track.Id);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 2, new EnqueueEntry(entry.Id));
+        bus.Submit(new ClientId("setup"), 3, new EnqueueEntry(entry.Id));
+        bus.Submit(new ClientId("setup"), 4, new Play());
+        using var vm = new QueueViewModel(bus);
+        vm.Selected = null;
 
-        Assert.True(vm.ClearQueueCommand.CanExecute(null));
+        vm.FocusPlaying();
+
+        Assert.NotNull(vm.Selected);
+        Assert.True(vm.Selected.IsCurrent);
     }
 }

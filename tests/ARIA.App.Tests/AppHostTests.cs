@@ -99,23 +99,46 @@ public sealed class AppHostTests : IDisposable
         await PollAsync(() => host.Bus.Snapshot().Show.Playlists.Length == 1);
         var wav = TestWav.Write(_directory, "e2e.wav");
 
-        var imported = await host.ImportTracksAsync([wav]);
+        var report = await host.ImportTracksAsync([wav]);
 
-        var track = Assert.Single(imported);
-        Assert.Equal("e2e", track.DefaultName);
+        Assert.Equal(1, report.Added);
+        Assert.Equal(0, report.Skipped);
+        Assert.Empty(report.Failed);
         var (storedTracks, _) = host.Library!.Load();
         var stored = Assert.Single(storedTracks);
-        Assert.Equal(track.Id, stored.Id);
-        Assert.NotNull(host.Waveforms!.Load(track.Id));
+        Assert.Equal("e2e", stored.DefaultName);
+        Assert.NotNull(host.Waveforms!.Load(stored.Id));
 
         var again = await host.ImportTracksAsync([wav]);
-        var deduped = Assert.Single(again);
-        Assert.Equal(track.Id, deduped.Id);
+
+        Assert.Equal(0, again.Added);
+        Assert.Equal(1, again.Skipped);
         Assert.Single(host.Library.Load().Tracks);
 
-        host.Submit(new EnqueueTrack(track.Id));
+        host.Submit(new EnqueueTrack(stored.Id));
         await PollAsync(() => host.Bus.Snapshot().Queue.Items.Length == 1);
-        Assert.Equal(track.Id, host.Bus.Snapshot().Queue.Items[0].TrackId);
+        Assert.Equal(stored.Id, host.Bus.Snapshot().Queue.Items[0].TrackId);
+    }
+
+    [Fact]
+    public async Task AppHost_ImportTracks_ExpandsFolders_SkipsNoise_ReportsFailures()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        var folder = Path.Combine(_directory, "incoming");
+        var subfolder = Path.Combine(folder, "sub");
+        Directory.CreateDirectory(subfolder);
+        TestWav.Write(folder, "one.wav");
+        TestWav.Write(subfolder, "two.wav");
+        File.WriteAllText(Path.Combine(folder, "notes.txt"), "not audio");
+        File.WriteAllText(Path.Combine(folder, "broken.wav"), "not a wave file");
+
+        var report = await host.ImportTracksAsync([folder]);
+
+        Assert.Equal(2, report.Added);
+        Assert.Equal(0, report.Skipped);
+        Assert.Single(report.Failed);
+        Assert.Equal(2, host.Library!.Load().Tracks.Length);
     }
 
     private static async Task PollAsync(Func<bool> condition)

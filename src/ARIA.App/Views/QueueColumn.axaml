@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.QueueColumn"
+             x:DataType="vm:QueueViewModel">
+  <UserControl.Styles>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}"
+          BorderThickness="1" CornerRadius="8" Margin="14,10,14,10">
+    <Grid RowDefinitions="Auto,*">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,10,10,6">
+        <TextBlock Text="Очередь" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        <Button Grid.Column="1" Classes="ghost" Height="26" Padding="8,0" ToolTip.Tip="Очистить очередь"
+                Command="{Binding ClearQueueCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
+            <TextBlock Text="Очистить" FontSize="11" Margin="0,2,0,0"/>
+          </StackPanel>
+        </Button>
+      </Grid>
+      <ListBox Grid.Row="1" x:Name="QueueList" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+               Background="Transparent" BorderThickness="0" Margin="6,0,6,10">
+        <ListBox.ItemContainerTheme>
+          <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+          </ControlTheme>
+        </ListBox.ItemContainerTheme>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:QueueViewModel+QueueItemVm">
+            <Border Classes="qRow" Height="36" CornerRadius="6" Padding="10,0" Background="Transparent">
+              <Border.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Убрать из очереди" Click="OnRemoveClick"/>
+                </ContextMenu>
+              </Border.ContextMenu>
+              <Grid ColumnDefinitions="18,*">
+                <PathIcon Data="{StaticResource icon_play}" Width="12" Height="12" VerticalAlignment="Center"
+                          IsVisible="{Binding IsCurrent}"/>
+                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+  </Border>
+</UserControl>

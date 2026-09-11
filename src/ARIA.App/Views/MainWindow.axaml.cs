@@ -11,26 +11,40 @@ using Avalonia.Media;
 public partial class MainWindow : Window
 {
     private readonly HotkeyService? _hotkeys;
+    private QueueViewModel? _queue;
+    private DragCoordinator? _drag;
 
     public MainWindow() : this(null)
     {
     }
 
-    public MainWindow(HotkeyService? hotkeys, PlaylistsViewModel? playlistsViewModel = null, RemotePanelViewModel? remoteViewModel = null, LibraryViewModel? libraryViewModel = null)
+    public MainWindow(
+        HotkeyService? hotkeys,
+        LibraryViewModel? libraryViewModel = null,
+        PlaylistsViewModel? playlistsViewModel = null,
+        QueueViewModel? queueViewModel = null,
+        RemotePanelViewModel? remoteViewModel = null)
     {
         InitializeComponent();
         _hotkeys = hotkeys;
+        if (libraryViewModel is not null)
+        {
+            LibrarySection.DataContext = libraryViewModel;
+            ImportButton.Command = libraryViewModel.ImportCommand;
+        }
         if (playlistsViewModel is not null)
         {
-            ShowTab.DataContext = playlistsViewModel;
+            RailPlaylists.DataContext = playlistsViewModel;
+            PlaylistCenter.DataContext = playlistsViewModel;
+        }
+        if (queueViewModel is not null)
+        {
+            _queue = queueViewModel;
+            QueueColumn.DataContext = queueViewModel;
         }
         if (remoteViewModel is not null)
         {
             RemoteTab.DataContext = remoteViewModel;
-        }
-        if (libraryViewModel is not null)
-        {
-            LibraryTab.DataContext = libraryViewModel;
         }
         Opened += OnOpened;
     }
@@ -44,6 +58,16 @@ public partial class MainWindow : Window
             TransportBar.ApplyGestures(_hotkeys);
             BuildHotkeyTable();
         }
+        _drag = new DragCoordinator(
+            LibrarySection.TrackListBox,
+            PlaylistCenter.EntryListBox,
+            QueueColumn.QueueListBox);
+    }
+
+    private void OnQueueJumpClick(object? sender, RoutedEventArgs e)
+    {
+        _queue?.FocusPlaying();
+        QueueColumn.ScrollToSelected();
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

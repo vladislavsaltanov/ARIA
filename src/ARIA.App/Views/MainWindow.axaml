@@ -5,39 +5,51 @@
         x:Class="Aria.App.Views.MainWindow"
         x:DataType="vm:TransportViewModel"
         Title="ARIA"
-        Width="900" Height="560"
+        Width="1440" Height="900" MinWidth="1100" MinHeight="700"
         Background="#0F0F0F"
         CanResize="True">
-  <Grid RowDefinitions="Auto,*,Auto" Margin="24">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-      <TextBlock Grid.Column="0" Text="{Binding StatusText}" Foreground="#8A8A8A" FontSize="14" FontFamily="Consolas, Menlo" />
-      <TextBlock Grid.Column="1" Text="LOCKED" IsVisible="{Binding Locked}" Foreground="#E8B44A" FontSize="14"
-                 FontWeight="Bold" FontFamily="Consolas, Menlo" Margin="12,0,0,0" />
+  <Window.Styles>
+    <Style Selector="Button.railAction">
+      <Setter Property="Height" Value="34"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Padding" Value="12,0"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Foreground" Value="#ECECEC"/>
+    </Style>
+    <Style Selector="Button.railAction /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.railAction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1F1F1F"/>
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="*,Auto,Auto" Margin="24">
+    <Grid Grid.Row="0" ColumnDefinitions="260,*,300">
+      <Border Grid.Column="0" BorderBrush="#2C2C2C" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="3*,2*,Auto,Auto">
+          <views:LibrarySection Grid.Row="0" x:Name="LibrarySection" />
+          <views:RailPlaylists Grid.Row="1" x:Name="RailPlaylists" />
+          <Button Grid.Row="2" x:Name="QueueButton" Classes="railAction" Margin="8,4,8,0" Click="OnQueueJumpClick">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15"/>
+              <TextBlock Text="Очередь" FontSize="13"/>
+            </StackPanel>
+          </Button>
+          <Button Grid.Row="3" x:Name="ImportButton" Classes="railAction" Margin="8,6,8,10">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <PathIcon Data="{StaticResource icon_plus}" Width="15" Height="15"/>
+              <TextBlock Text="Import" FontSize="13"/>
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+      <views:PlaylistCenter Grid.Column="1" x:Name="PlaylistCenter" />
+      <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
     </Grid>
     <TabControl Grid.Row="1" Background="#0F0F0F" BorderThickness="0" Margin="0,12,0,0">
-      <TabItem Header="TRANSPORT" Foreground="#EDEDED">
-        <Grid RowDefinitions="Auto,Auto,*,Auto">
-          <TextBlock Grid.Row="0" Text="{Binding DisplayName}" Foreground="#EDEDED" FontSize="22" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
-          <TextBlock Grid.Row="1" Text="{Binding Remaining}" Foreground="#F2F2F2" FontSize="112" FontWeight="Bold"
-                     FontFamily="Consolas, Menlo" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,*">
-            <Button Grid.Column="1" Content="PLAY" Command="{Binding PlayCommand}" Width="96" Height="56" Margin="0,0,8,0" />
-            <Button Grid.Column="2" Content="PAUSE" Command="{Binding PauseCommand}" Width="96" Height="56" Margin="0,0,8,0" />
-            <Button Grid.Column="3" Content="STOP" Command="{Binding StopCommand}" Width="96" Height="56" Margin="0,0,8,0" />
-            <Button Grid.Column="4" Content="NEXT" Command="{Binding NextCommand}" Width="96" Height="56" Margin="0,0,8,0" />
-            <Button Grid.Column="5" Content="REPLAY" Command="{Binding ReplayCommand}" Width="96" Height="56" Margin="0,0,8,0" />
-            <Button Grid.Column="6" Content="PANIC" Command="{Binding PanicCommand}" IsEnabled="{Binding !Panicked}" Width="112" Height="56"
-                    Background="#1A0A0A" BorderBrush="#C43A3A" BorderThickness="2" Foreground="#E86A6A"
-                    FontSize="18" FontWeight="Bold" />
-          </Grid>
-        </Grid>
-      </TabItem>
-      <TabItem x:Name="ShowTab" Header="SHOW" Foreground="#EDEDED">
-        <views:PlaylistsView />
-      </TabItem>
-      <TabItem x:Name="LibraryTab" Header="LIBRARY" Foreground="#EDEDED">
-        <views:LibraryView />
-      </TabItem>
       <TabItem x:Name="RemoteTab" Header="REMOTE" Foreground="#EDEDED">
         <views:RemotePanel />
       </TabItem>

@@ -2,6 +2,7 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Runtime;
@@ -15,10 +16,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly ICommandBus _bus;
     private readonly ClientId _client = new("desktop");
     private readonly Func<ImmutableArray<Track>>? _trackSource;
+    private readonly WaveformThumbs? _thumbs;
+    private readonly HashSet<TrackId> _faulted = [];
+    private readonly IDisposable _subscription;
+    private ShowState? _lastShow;
     private long _seq;
-
-    [ObservableProperty]
-    private bool locked;
 
     [ObservableProperty]
     private PlaylistVm? selectedPlaylist;
@@ -26,26 +28,29 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private EntryVm? selectedEntry;
 
+    [ObservableProperty]
+    private string centerSearchText = string.Empty;
+
+    [ObservableProperty]
+    private string entryCountText = string.Empty;
+
     public ObservableCollection<PlaylistVm> Playlists { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null)
+    public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
+
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null)
     {
         _bus = bus;
         _trackSource = trackSource;
-        _bus.Subscribe(e =>
-        {
-            if (e is ShowDelta delta)
-            {
-                Rebuild(delta.State, _trackSource?.Invoke() ?? []);
-            }
-        });
+        _thumbs = thumbs;
+        _subscription = bus.Subscribe(Apply);
         Rebuild(bus.Snapshot().Show, _trackSource?.Invoke() ?? []);
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void CreatePlaylist() => Submit(new CreatePlaylist($"Новый плейлист {++_newPlaylistCounter}"));
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void RenamePlaylist(string? name)
     {
         if (SelectedPlaylist is not { } playlist || string.IsNullOrWhiteSpace(name))
@@ -55,7 +60,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         Submit(new RenamePlaylist(playlist.Id, name));
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void DeletePlaylist()
     {
         if (SelectedPlaylist is not { } playlist)
@@ -65,7 +70,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         Submit(new DeletePlaylist(playlist.Id));
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void ActivatePlaylist()
     {
         if (SelectedPlaylist is not { } playlist)
@@ -75,70 +80,88 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         Submit(new SetActivePlaylist(playlist.Id));
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand]
     private void RemoveEntry()
     {
         if (SelectedEntry is not { } entry)
         {
             return;
         }
-        Submit(new RemoveEntry(entry.Id));
+        RemoveEntryAt(entry);
     }
 
-    [RelayCommand(CanExecute = nameof(CanMoveUp))]
-    private void MoveEntryUp()
+    public void RemoveEntryAt(EntryVm entry) => Submit(new RemoveEntry(entry.Id));
+
+    public void DeletePlaylistAt(PlaylistVm playlist) => Submit(new DeletePlaylist(playlist.Id));
+
+    public void MoveEntry(EntryId id, int newIndex)
     {
-        if (SelectedEntry is not { } entry)
+        if (SelectedPlaylist is not { } playlist)
         {
             return;
         }
-        Submit(new MoveEntry(entry.Id, IndexOf(entry.Id) - 1));
-    }
-
-    [RelayCommand(CanExecute = nameof(CanMoveDown))]
-    private void MoveEntryDown()
-    {
-        if (SelectedEntry is not { } entry)
+        var from = EntryIndex(id);
+        if (from < 0 || newIndex < 0 || newIndex >= playlist.Entries.Count)
         {
             return;
         }
-        Submit(new MoveEntry(entry.Id, IndexOf(entry.Id) + 1));
+        Submit(new MoveEntry(id, newIndex));
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void SetEntryName(string? name)
+    public int EntryIndex(EntryId id)
     {
-        if (SelectedEntry is not { } entry)
+        if (SelectedPlaylist is not { } playlist)
+        {
+            return -1;
+        }
+        for (var i = 0; i < playlist.Entries.Count; i++)
+        {
+            if (playlist.Entries[i].Id == id)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public void AddEntryAt(TrackId track, int index)
+    {
+        if (SelectedPlaylist is not { } playlist)
         {
             return;
         }
-        var trimmed = name?.Trim();
-        var overrides = string.IsNullOrEmpty(trimmed)
-            ? ClearName(entry.Overrides)
-            : (entry.Overrides ?? new PlaylistOverrides()) with { Name = trimmed };
-        Submit(new SetEntryOverrides(entry.Id, overrides));
+        Submit(new AddEntry(playlist.Id, track, Math.Clamp(index, 0, playlist.Entries.Count)));
     }
 
-    [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void ClearEntryOverrides() => Submit(new SetEntryOverrides(SelectedEntry!.Id, null));
+    public void EnqueueEntry(EntryVm entry) => Submit(new EnqueueEntry(entry.Id));
 
-    public bool CanEdit() => !Locked;
+    public void Dispose() => _subscription.Dispose();
 
-    public bool CanMoveUp() => !Locked && SelectedEntry is { } entry && IndexOf(entry.Id) > 0;
+    private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    public bool CanMoveDown() => !Locked && SelectedEntry is { } entry && SelectedPlaylist is { } playlist && IndexOf(entry.Id) < playlist.Entries.Count - 1;
-
-    public void Dispose()
+    private void Apply(StateEvent e)
     {
-    }
-
-    private static PlaylistOverrides? ClearName(PlaylistOverrides? overrides)
-    {
-        if (overrides is null || overrides.Name is null)
+        switch (e)
         {
-            return overrides;
+            case ShowDelta delta:
+                Rebuild(delta.State, _trackSource?.Invoke() ?? []);
+                break;
+            case TransportDelta delta:
+                var incoming = new HashSet<TrackId>(delta.State.Faulted);
+                if (!incoming.SetEquals(_faulted))
+                {
+                    _faulted.Clear();
+                    foreach (var id in incoming)
+                    {
+                        _faulted.Add(id);
+                    }
+                    if (_lastShow is { } show)
+                    {
+                        Rebuild(show, _trackSource?.Invoke() ?? []);
+                    }
+                }
+                break;
         }
-        return overrides with { Name = null };
     }
 
     private int IndexOf(EntryId entryId)
@@ -157,11 +180,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return -1;
     }
 
-    private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
-
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
+        _lastShow = state;
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
+        var trackDurations = tracks.ToDictionary(t => t.Id, t => t.Duration);
         var selectedPlaylistId = SelectedPlaylist?.Id;
         var selectedEntryId = SelectedEntry?.Id;
 
@@ -169,8 +192,9 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         foreach (var playlist in state.Playlists)
         {
             var playlistVm = new PlaylistVm(playlist.Id, playlist.Name, playlist.Id == state.ActiveId);
-            foreach (var entry in playlist.Entries)
+            for (var index = 0; index < playlist.Entries.Length; index++)
             {
+                var entry = playlist.Entries[index];
                 var displayName = entry.Overrides?.Name ?? trackNames.GetValueOrDefault(entry.TrackId, $"track {entry.TrackId.Value:N}");
                 playlistVm.Entries.Add(new EntryVm(
                     entry.Id,
@@ -178,13 +202,77 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                     displayName,
                     entry.Overrides?.Color,
                     entry.Overrides?.Note,
-                    entry.Overrides));
+                    entry.Overrides,
+                    _thumbs?.For(entry.TrackId),
+                    _faulted.Contains(entry.TrackId),
+                    $"{index + 1:00}",
+                    trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero)));
             }
             Playlists.Add(playlistVm);
         }
 
         SelectedPlaylist = Playlists.FirstOrDefault(p => p.Id == selectedPlaylistId) ?? Playlists.FirstOrDefault();
         SelectedEntry = SelectedPlaylist?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedPlaylist?.Entries.FirstOrDefault();
+        RefreshVisible();
+        RefreshCenterHeader();
+    }
+
+    partial void OnSelectedPlaylistChanged(PlaylistVm? value)
+    {
+        RefreshVisible();
+        RefreshCenterHeader();
+    }
+
+    partial void OnCenterSearchTextChanged(string value) => RefreshVisible();
+
+    private void RefreshCenterHeader()
+    {
+        if (SelectedPlaylist is null)
+        {
+            EntryCountText = string.Empty;
+            return;
+        }
+        var seconds = 0;
+        foreach (var entry in SelectedPlaylist.Entries)
+        {
+            seconds += (int)entry.Duration.TotalSeconds;
+        }
+        var total = seconds >= 3600
+            ? $"{seconds / 3600}:{seconds % 3600 / 60:00}:{seconds % 60:00}"
+            : $"{seconds / 60}:{seconds % 60:00}";
+        var count = SelectedPlaylist.Entries.Count;
+        EntryCountText = $"{count} {TrackCountWord(count)} · {total}";
+    }
+
+    private static string TrackCountWord(int count)
+    {
+        var mod10 = count % 10;
+        var mod100 = count % 100;
+        if (mod10 == 1 && mod100 != 11)
+        {
+            return "трек";
+        }
+        if (mod10 is 2 or 3 or 4 && mod100 is not (12 or 13 or 14))
+        {
+            return "трека";
+        }
+        return "треков";
+    }
+
+    private void RefreshVisible()
+    {
+        VisibleEntries.Clear();
+        if (SelectedPlaylist is null)
+        {
+            return;
+        }
+        foreach (var entry in SelectedPlaylist.Entries)
+        {
+            if (CenterSearchText.Length == 0 || entry.DisplayName.Contains(CenterSearchText, StringComparison.OrdinalIgnoreCase))
+            {
+                VisibleEntries.Add(entry);
+            }
+        }
     }
 
     private int _newPlaylistCounter;
@@ -206,11 +294,17 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         string DisplayName,
         string? Color,
         string? Note,
-        PlaylistOverrides? Overrides)
+        PlaylistOverrides? Overrides,
+        StreamGeometry? Waveform,
+        bool IsFaulted,
+        string Position,
+        TimeSpan Duration)
     {
         public bool HasOverrides => Overrides is not null;
 
         public bool HasNote => !string.IsNullOrEmpty(Note);
+
+        public string DurationText => Duration.ToString(@"mm\:ss");
 
         public IBrush ColorBrush => string.IsNullOrEmpty(Color) ? Brushes.DimGray : new SolidColorBrush(Avalonia.Media.Color.Parse(Color));
     }

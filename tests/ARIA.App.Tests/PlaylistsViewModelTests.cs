@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using Aria.App.ViewModels;
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
 
@@ -68,29 +69,26 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
-    public void MoveEntryUp_DisabledAtTop()
-    {
-        var (bus, playlist, entry1) = Setup();
-        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
-
-        Assert.False(vm.MoveEntryUpCommand.CanExecute(null));
-        Assert.True(vm.MoveEntryDownCommand.CanExecute(null));
-
-        vm.SelectedEntry = vm.Playlists[0].Entries[0];
-        vm.MoveEntryUpCommand.Execute(null);
-        Assert.Equal(playlist.Entries[0].Id, vm.Playlists[0].Entries[0].Id);
-    }
-
-    [Fact]
-    public void MoveEntryDown_Reorders()
+    public void MoveEntry_Reorders()
     {
         var (bus, _, entry1) = Setup();
         using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
-        vm.SelectedEntry = vm.Playlists[0].Entries[0];
 
-        vm.MoveEntryDownCommand.Execute(null);
+        vm.MoveEntry(entry1.Id, 1);
 
         Assert.Equal(entry1.Id, vm.Playlists[0].Entries[1].Id);
+    }
+
+    [Fact]
+    public void MoveEntry_OutOfRange_IsIgnored()
+    {
+        var (bus, _, entry1) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        vm.MoveEntry(entry1.Id, 9);
+        vm.MoveEntry(EntryId.New(), 0);
+
+        Assert.Equal(entry1.Id, vm.Playlists[0].Entries[0].Id);
     }
 
     [Fact]
@@ -105,49 +103,59 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
-    public void SetEntryName_OverridesAndClears()
+    public void RemoveEntryAt_RemovesGivenRow()
     {
         var (bus, _, _) = Setup();
         using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
-        vm.SelectedEntry = vm.Playlists[0].Entries[0];
+        var second = vm.Playlists[0].Entries[1];
 
-        vm.SetEntryNameCommand.Execute("Финал");
+        vm.RemoveEntryAt(second);
 
-        var entry = vm.Playlists[0].Entries[0];
-        Assert.Equal("Финал", entry.DisplayName);
-        Assert.True(entry.HasOverrides);
-
-        vm.SetEntryNameCommand.Execute(" ");
-        Assert.Equal("test", vm.Playlists[0].Entries[0].DisplayName);
+        Assert.Single(vm.Playlists[0].Entries);
     }
 
     [Fact]
-    public void ClearEntryOverrides_ResetsDisplayName()
+    public void AddEntryAt_InsertsAtPosition()
     {
         var (bus, _, _) = Setup();
         using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
 
-        vm.SetEntryNameCommand.Execute("Финал");
-        vm.ClearEntryOverridesCommand.Execute(null);
+        vm.AddEntryAt(TestTrack.Id, 0);
 
-        Assert.Equal("test", vm.Playlists[0].Entries[0].DisplayName);
+        Assert.Equal(3, vm.Playlists[0].Entries.Count);
+        Assert.Equal(TestTrack.Id, vm.Playlists[0].Entries[0].TrackId);
     }
 
     [Fact]
-    public void Lock_BlocksEditing()
+    public void CenterSearch_FiltersVisibleRows()
     {
         var (bus, _, _) = Setup();
         using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        Assert.Equal(2, vm.VisibleEntries.Count);
 
-        vm.Locked = true;
+        vm.CenterSearchText = "no-such-name";
 
-        Assert.False(vm.CreatePlaylistCommand.CanExecute(null));
-        Assert.False(vm.RemoveEntryCommand.CanExecute(null));
-        Assert.False(vm.MoveEntryDownCommand.CanExecute(null));
+        Assert.Empty(vm.VisibleEntries);
 
-        vm.Locked = false;
+        vm.CenterSearchText = string.Empty;
 
-        Assert.True(vm.CreatePlaylistCommand.CanExecute(null));
+        Assert.Equal(2, vm.VisibleEntries.Count);
+    }
+
+    [Fact]
+    public void EngineFault_MarksRowFaulted()
+    {
+        var engine = new StubEngine();
+        var entry = new PlaylistEntry(EntryId.New(), TestTrack.Id);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        bus.Submit(new ClientId("setup"), 2, new Play());
+
+        engine.Raise(new StreamEvent(new StreamHandle(1), StreamEventKind.Faulted, StreamEndReason.Faulted));
+
+        Assert.True(vm.Playlists[0].Entries[0].IsFaulted);
     }
 
     [Fact]
