@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private Border? _scriptDragSource;
     private Point _scriptPressPos;
     private bool _scriptDragging;
+    private string _scriptName = "Новый сценарий";
     private const int ShowElapsedSeconds = 5025;
 
     private static readonly List<KnownTrack> KnownTracks =
@@ -72,6 +73,7 @@ public partial class MainWindow : Window
         Opened += (_, _) => SetWaveCursorFraction(0.4);
         AddHandler(KeyDownEvent, OnTunnelKey, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerPressedEvent, OnPressTunnel, RoutingStrategies.Tunnel);
+        ScriptNameBox.TextChanged += (_, _) => _scriptName = ScriptNameBox.Text ?? "";
         Drawer.PropertyChanged += (_, e) =>
         {
             if (e.Property == SplitView.IsPaneOpenProperty && !Drawer.IsPaneOpen)
@@ -115,6 +117,27 @@ public partial class MainWindow : Window
     private void OnScenarioToggleClick(object? sender, RoutedEventArgs e) => Drawer.IsPaneOpen = !Drawer.IsPaneOpen;
 
     private void OnPaneCloseClick(object? sender, RoutedEventArgs e) => Drawer.IsPaneOpen = false;
+
+    private void OnPaneResize(object? sender, VectorEventArgs e)
+    {
+        Drawer.OpenPaneLength = Math.Clamp(Drawer.OpenPaneLength - e.Vector.X, 240, 600);
+    }
+
+    private void OnScriptCloseClick(object? sender, RoutedEventArgs e)
+    {
+        _scriptEmpty.Clear();
+        _scriptDemo = 2;
+        _scriptName = "Новый сценарий";
+        ScriptNameBox.Text = _scriptName;
+        RenderScript();
+        StatusText.Text = "сценарий закрыт";
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var clean = new string(name.Select(ch => System.IO.Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch).ToArray()).Trim();
+        return string.IsNullOrEmpty(clean) ? "script" : clean;
+    }
 
     private void OnMuteClick(object? sender, RoutedEventArgs e)
     {
@@ -1232,7 +1255,7 @@ public partial class MainWindow : Window
         var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Сохранить сценарий",
-            SuggestedFileName = "script.json",
+            SuggestedFileName = SanitizeFileName(_scriptName) + ".json",
             FileTypeChoices = [new FilePickerFileType("Сценарий JSON") { Patterns = ["*.json"] }],
         });
         if (file is null)
@@ -1241,6 +1264,8 @@ public partial class MainWindow : Window
         }
         await using var stream = await file.OpenWriteAsync();
         await JsonSerializer.SerializeAsync(stream, dto, new JsonSerializerOptions { WriteIndented = true });
+        _scriptName = System.IO.Path.GetFileNameWithoutExtension(file.Name);
+        ScriptNameBox.Text = _scriptName;
         StatusText.Text = "сценарий сохранён";
     }
 
@@ -1277,6 +1302,8 @@ public partial class MainWindow : Window
             false,
             false)));
         _scriptDemo = 2;
+        _scriptName = System.IO.Path.GetFileNameWithoutExtension(file.Name);
+        ScriptNameBox.Text = _scriptName;
         RenderScript();
         StatusText.Text = "сценарий загружен";
     }
