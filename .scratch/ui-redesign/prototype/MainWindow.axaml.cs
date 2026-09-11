@@ -64,6 +64,14 @@ public partial class MainWindow : Window
         };
         Opened += (_, _) => SetWaveCursorFraction(0.4);
         AddHandler(KeyDownEvent, OnTunnelKey, RoutingStrategies.Tunnel);
+        Drawer.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == SplitView.IsPaneOpenProperty && !Drawer.IsPaneOpen)
+            {
+                CommitScriptEdit();
+                FocusSink.Focus();
+            }
+        };
         RenderScript();
     }
 
