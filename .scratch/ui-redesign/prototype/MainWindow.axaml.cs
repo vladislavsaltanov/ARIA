@@ -22,6 +22,10 @@ public sealed record KnownTrack(string Name, string Duration, string WaveKey);
 
 public sealed record MentionRef(ScriptLineData Line, ScriptMention Mention);
 
+public sealed record PlTrack(string Name, bool Faulted);
+
+public sealed record PlaylistData(string Name, List<PlTrack> Tracks);
+
 public sealed record ScriptMentionDto(string? Name, bool Dangling);
 
 public sealed record ScriptLineDto(string Time, int Seconds, string? Text, List<ScriptMentionDto> Mentions);
@@ -43,6 +47,9 @@ public partial class MainWindow : Window
     private Point _scriptPressPos;
     private bool _scriptDragging;
     private string _scriptName = "Новый сценарий";
+    private readonly List<PlaylistData> _playlists = [];
+    private PlaylistData? _activePlaylist;
+    private int _newPlaylistCounter;
     private const int ShowElapsedSeconds = 5025;
 
     private static readonly List<KnownTrack> KnownTracks =
@@ -74,6 +81,24 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnTunnelKey, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerPressedEvent, OnPressTunnel, RoutingStrategies.Tunnel);
         ScriptNameBox.TextChanged += (_, _) => _scriptName = ScriptNameBox.Text ?? "";
+        _playlists.Add(new PlaylistData("Вечерний сет", [
+            new PlTrack("Осенний дождь", false),
+            new PlTrack("Night Drive", false),
+            new PlTrack("Гул маяка", true),
+            new PlTrack("Deep Current", false),
+            new PlTrack("Стекло", true),
+        ]));
+        _playlists.Add(new PlaylistData("Дневной фон", [
+            new PlTrack("Полночь", false),
+            new PlTrack("Slow Tide", false),
+            new PlTrack("Тихий час", false),
+        ]));
+        _playlists.Add(new PlaylistData("Резерв", [
+            new PlTrack("Amber Loop", false),
+            new PlTrack("Copper Sky", false),
+        ]));
+        _activePlaylist = _playlists[0];
+        RenderRailPlaylists();
         Drawer.PropertyChanged += (_, e) =>
         {
             if (e.Property == SplitView.IsPaneOpenProperty && !Drawer.IsPaneOpen)
@@ -302,7 +327,8 @@ public partial class MainWindow : Window
                 var track = ExtractTrack(source);
                 if (track is not null)
                 {
-                    PlaylistStack.Children.Insert(index, BuildPlaylistRow(track));
+                    var faulted = source.Child is Grid dropGrid && dropGrid.Children.OfType<PathIcon>().Any();
+                    PlaylistStack.Children.Insert(index, BuildCenterRow(track.Name, track.Duration, track.Wave, faulted));
                     RenumberPlaylist();
                     StatusText.Text = "+ в плейлист позиция " + (index + 1) + ": " + track.Name;
                 }
@@ -349,6 +375,10 @@ public partial class MainWindow : Window
         int index = 0;
         foreach (var child in PlaylistStack.Children)
         {
+            if (child is not Border)
+            {
+                continue;
+            }
             if (child is Border { Classes: var c } && c.Contains("dropHint"))
             {
                 continue;
@@ -362,7 +392,7 @@ public partial class MainWindow : Window
         return index;
     }
 
-    private Border BuildPlaylistRow(DragTrack track)
+    private Border BuildCenterRow(string name, string duration, StreamGeometry? wave, bool faulted)
     {
         var number = new TextBlock
         {
@@ -372,42 +402,60 @@ public partial class MainWindow : Window
             Foreground = (IBrush)Application.Current!.Resources["BrushDim"]!,
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
         };
-        var name = new TextBlock
+        var label = new TextBlock
         {
-            Text = track.Name,
+            Text = name,
             FontSize = 13,
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             Margin = new Avalonia.Thickness(8, 0, 0, 0),
         };
-        var duration = new TextBlock
+        var length = new TextBlock
         {
-            Text = track.Duration,
+            Text = duration,
             FontFamily = (FontFamily)Application.Current!.Resources["MonoFont"]!,
             FontSize = 12,
             Foreground = (IBrush)Application.Current!.Resources["BrushDim"]!,
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
         };
-        var wave = new Path
-        {
-            Data = track.Wave,
-            Stretch = Stretch.Fill,
-            Width = 118,
-            Height = 18,
-            Fill = (IBrush)Application.Current!.Resources["BrushWave"]!,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            Margin = new Avalonia.Thickness(12, 0, 0, 0),
-        };
         Grid.SetColumn(number, 0);
-        Grid.SetColumn(name, 1);
-        Grid.SetColumn(duration, 2);
-        Grid.SetColumn(wave, 3);
+        Grid.SetColumn(label, 1);
+        Grid.SetColumn(length, 2);
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*,58,130,30") };
         grid.Children.Add(number);
-        grid.Children.Add(name);
-        grid.Children.Add(duration);
-        grid.Children.Add(wave);
+        grid.Children.Add(label);
+        grid.Children.Add(length);
+        if (wave is not null)
+        {
+            var thumb = new Path
+            {
+                Data = wave,
+                Stretch = Stretch.Fill,
+                Width = 118,
+                Height = 18,
+                Fill = (IBrush)Application.Current!.Resources["BrushWave"]!,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Margin = new Avalonia.Thickness(12, 0, 0, 0),
+            };
+            Grid.SetColumn(thumb, 3);
+            grid.Children.Add(thumb);
+        }
+        if (faulted)
+        {
+            var alert = new PathIcon
+            {
+                Data = (StreamGeometry)Application.Current!.Resources["icon_alert"]!,
+                Width = 13,
+                Height = 13,
+                Foreground = (IBrush)Application.Current!.Resources["BrushFaulted"]!,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                Margin = new Avalonia.Thickness(12, 0, 4, 0),
+            };
+            Grid.SetColumn(alert, 4);
+            grid.Children.Add(alert);
+        }
         var border = new Border
         {
             Child = grid,
@@ -421,6 +469,127 @@ public partial class MainWindow : Window
         border.PointerMoved += OnRowMove;
         border.PointerReleased += OnRowRelease;
         return border;
+    }
+
+    private void RenderRailPlaylists()
+    {
+        RailPlaylists.Children.Clear();
+        foreach (var playlist in _playlists)
+        {
+            RailPlaylists.Children.Add(BuildRailPlaylistRow(playlist, playlist == _activePlaylist));
+        }
+    }
+
+    private Border BuildRailPlaylistRow(PlaylistData data, bool active)
+    {
+        var app = Application.Current!.Resources;
+        var label = new TextBlock
+        {
+            Text = data.Name,
+            FontSize = 12,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Foreground = (IBrush)app[active ? "BrushFg" : "BrushDim"]!,
+        };
+        var border = new Border
+        {
+            Child = label,
+            Classes = { "railPl" },
+            Height = 30,
+            CornerRadius = new Avalonia.CornerRadius(6),
+            Padding = new Avalonia.Thickness(active ? 10 : 12, 0),
+            Background = active ? (IBrush)app["BrushSurfaceAlt"]! : Brushes.Transparent,
+            Tag = data,
+        };
+        if (active)
+        {
+            border.BorderBrush = (IBrush)app["BrushFg"]!;
+            border.BorderThickness = new Avalonia.Thickness(2, 0, 0, 0);
+        }
+        border.PointerPressed += OnRailPlaylistClick;
+        return border;
+    }
+
+    private void OnRailPlaylistClick(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Border row && row.Tag is PlaylistData data)
+        {
+            OpenPlaylist(data);
+        }
+    }
+
+    private void OnRailPlaylistAddClick(object? sender, RoutedEventArgs e)
+    {
+        _newPlaylistCounter++;
+        OpenPlaylist(new PlaylistData("Новый плейлист " + _newPlaylistCounter, []));
+    }
+
+    private void OpenPlaylist(PlaylistData data)
+    {
+        _playlists.Remove(data);
+        _playlists.Insert(0, data);
+        _activePlaylist = data;
+        RenderRailPlaylists();
+        RenderCenter();
+    }
+
+    private void RenderCenter()
+    {
+        if (_activePlaylist is null)
+        {
+            return;
+        }
+        CenterTitle.Text = _activePlaylist.Name;
+        var total = _activePlaylist.Tracks.Sum(track => ParseDuration(TrackDuration(track.Name)));
+        CenterSub.Text = _activePlaylist.Tracks.Count + " " + TrackCountWord(_activePlaylist.Tracks.Count) + " · " + FormatTotal(total);
+        PlaylistStack.Children.Clear();
+        foreach (var track in _activePlaylist.Tracks)
+        {
+            var known = KnownTracks.FirstOrDefault(t => t.Name == track.Name);
+            PlaylistStack.Children.Add(BuildCenterRow(
+                track.Name,
+                TrackDuration(track.Name),
+                known is null ? null : Application.Current!.Resources[known.WaveKey] as StreamGeometry,
+                track.Faulted));
+        }
+        if (_activePlaylist.Tracks.Count == 0)
+        {
+            PlaylistStack.Children.Add(new TextBlock
+            {
+                Text = "Перетащите треки сюда из библиотеки",
+                FontSize = 12,
+                Foreground = (IBrush)Application.Current!.Resources["BrushFaint"]!,
+                Margin = new Avalonia.Thickness(12, 8, 0, 0),
+            });
+        }
+        RenumberPlaylist();
+    }
+
+    private static int ParseDuration(string value)
+    {
+        var parts = value.Split(':');
+        if (parts.Length == 2 && int.TryParse(parts[0], out var minutes) && int.TryParse(parts[1], out var seconds))
+        {
+            return minutes * 60 + seconds;
+        }
+        return 0;
+    }
+
+    private static string FormatTotal(int seconds) =>
+        seconds >= 3600 ? $"{seconds / 3600}:{seconds % 3600 / 60:00}:{seconds % 60:00}" : $"{seconds / 60}:{seconds % 60:00}";
+
+    private static string TrackCountWord(int count)
+    {
+        var mod10 = count % 10;
+        var mod100 = count % 100;
+        if (mod10 == 1 && mod100 != 11)
+        {
+            return "трек";
+        }
+        if (mod10 is 2 or 3 or 4 && mod100 is not (12 or 13 or 14))
+        {
+            return "трека";
+        }
+        return "треков";
     }
 
     private Border BuildQueueItem(DragTrack track)

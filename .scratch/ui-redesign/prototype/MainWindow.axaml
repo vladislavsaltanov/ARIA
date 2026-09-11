@@ -156,6 +156,9 @@
     <Style Selector="Border.libRow:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
+    <Style Selector="Border.railPl:pointerover">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
     <Style Selector="Border.libRow.linked">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
@@ -210,7 +213,7 @@
           <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}" BorderThickness="1,0,0,0">
             <Grid ColumnDefinitions="8,*">
               <Thumb Grid.Column="0" x:Name="PaneResizer" Width="8" Background="Transparent" Cursor="SizeWestEast" DragDelta="OnPaneResize" VerticalAlignment="Stretch" ToolTip.Tip="Ширина панели"/>
-              <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto" Margin="10,14,12,10">
+              <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="10,14,12,10">
               <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
                 <TextBox x:Name="ScriptNameBox" Text="Новый сценарий" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Padding="0"/>
                 <Button Grid.Column="1" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28" Click="OnPaneCloseClick" ToolTip.Tip="Закрыть — Ctrl+T">
@@ -220,16 +223,20 @@
               <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
                 <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="7 строк" Tag="seven" Click="OnScriptDemoClick" Margin="0,0,6,6"/>
                 <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="50 строк" Tag="fifty" Click="OnScriptDemoClick" Margin="0,0,6,6"/>
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="новый" Tag="empty" Click="OnScriptDemoClick" Margin="0,0,6,6"/>
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="сохранить" Click="OnScriptSaveClick" ToolTip.Tip="Сохранить сценарий в файл" Margin="0,0,6,6"/>
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="открыть" Click="OnScriptOpenClick" ToolTip.Tip="Открыть сценарий из файла" Margin="0,0,6,6"/>
-                <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="закрыть" Click="OnScriptCloseClick" ToolTip.Tip="Закрыть сценарий" Margin="0,0,6,6"/>
               </WrapPanel>
               <ScrollViewer Grid.Row="2">
                 <StackPanel x:Name="ScriptLinesHost" Spacing="8">
                 </StackPanel>
               </ScrollViewer>
-                <TextBlock x:Name="StatusText" Grid.Row="3" Text="" FontSize="10" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushFaint}" Margin="12,0,12,8" TextTrimming="CharacterEllipsis"/>
+              <Border Grid.Row="3" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
+                <WrapPanel Orientation="Horizontal">
+                  <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="новый" Tag="empty" Click="OnScriptDemoClick" ToolTip.Tip="Новый сценарий" Margin="0,0,6,0"/>
+                  <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="сохранить" Click="OnScriptSaveClick" ToolTip.Tip="Сохранить сценарий в файл" Margin="0,0,6,0"/>
+                  <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="открыть" Click="OnScriptOpenClick" ToolTip.Tip="Открыть сценарий из файла" Margin="0,0,6,0"/>
+                  <Button Classes="ghost" Height="26" Padding="10,0" FontSize="11" Content="закрыть" Click="OnScriptCloseClick" ToolTip.Tip="Закрыть сценарий" Margin="0,0,6,0"/>
+                </WrapPanel>
+              </Border>
+                <TextBlock x:Name="StatusText" Grid.Row="4" Text="" FontSize="10" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushFaint}" Margin="12,0,12,8" TextTrimming="CharacterEllipsis"/>
               </Grid>
             </Grid>
             </Border>
@@ -332,20 +339,16 @@
                       </Border>
                     </StackPanel>
                 </Grid>
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="14,10,14,6">
-                  <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}"/>
-                  <TextBlock Text="Плейлисты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <StackPanel Grid.Row="3" Margin="8,0,8,4" Spacing="2">
-                  <Border Height="30" CornerRadius="6" Background="{StaticResource BrushSurfaceAlt}" Padding="10,0" BorderBrush="{StaticResource BrushFg}" BorderThickness="2,0,0,0">
-                    <TextBlock Text="Вечерний сет" FontSize="12" VerticalAlignment="Center"/>
-                  </Border>
-                  <Border Height="30" CornerRadius="6" Padding="12,0">
-                    <TextBlock Text="Дневной фон" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-                  </Border>
-                  <Border Height="30" CornerRadius="6" Padding="12,0">
-                    <TextBlock Text="Резерв" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-                  </Border>
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
+                  <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}"/>
+                    <TextBlock Text="Плейлисты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Click="OnRailPlaylistAddClick" ToolTip.Tip="Новый плейлист">
+                    <PathIcon Data="{StaticResource icon_plus}" Width="13" Height="13"/>
+                  </Button>
+                </Grid>
+                <StackPanel x:Name="RailPlaylists" Grid.Row="3" Margin="8,0,8,4" Spacing="2">
                 </StackPanel>
                 <Button Grid.Row="4" Classes="railAction" Margin="8,4,8,0">
                   <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
@@ -364,8 +367,8 @@
             <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="16,0,0,0">
               <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,10,0,8">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                  <TextBlock Text="Вечерний сет" FontSize="17" FontWeight="SemiBold"/>
-                  <TextBlock Text="5 треков · 19:07" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Margin="0,3,0,0"/>
+                  <TextBlock x:Name="CenterTitle" Text="Вечерний сет" FontSize="17" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="CenterSub" Text="5 треков · 19:07" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Margin="0,3,0,0"/>
                 </StackPanel>
                 <Grid Grid.Column="2" Width="180" Margin="0,0,10,0">
                   <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0"/>
