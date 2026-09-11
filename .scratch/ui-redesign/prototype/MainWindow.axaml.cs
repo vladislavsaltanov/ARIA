@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Path = Avalonia.Controls.Shapes.Path;
 
 namespace Aria.Prototype;
@@ -64,6 +65,7 @@ public partial class MainWindow : Window
         };
         Opened += (_, _) => SetWaveCursorFraction(0.4);
         AddHandler(KeyDownEvent, OnTunnelKey, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerPressedEvent, OnPressTunnel, RoutingStrategies.Tunnel);
         Drawer.PropertyChanged += (_, e) =>
         {
             if (e.Property == SplitView.IsPaneOpenProperty && !Drawer.IsPaneOpen)
@@ -127,6 +129,20 @@ public partial class MainWindow : Window
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         FocusSink.Focus();
+        CommitScriptEdit();
+    }
+
+    private void OnPressTunnel(object? sender, PointerPressedEventArgs e)
+    {
+        var visual = e.Source as Visual;
+        while (visual is not null && !ReferenceEquals(visual, this))
+        {
+            if (visual is Border border && border.Tag is ScriptLineData line && line.Editing)
+            {
+                return;
+            }
+            visual = visual.GetVisualParent();
+        }
         CommitScriptEdit();
     }
 
