@@ -60,7 +60,7 @@ public partial class App : Application
         RemoteCredentials credentials)
     {
         var sync = SynchronizationContext.Current;
-        var transport = new TransportViewModel(host.Bus, host.Monitor, sync);
+        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
         var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks);
         var library = new LibraryViewModel(host.Bus, host.Library!, host.Waveforms!, host.Importer!, () => desktop.MainWindow);
         var remote = new RemotePanelViewModel(sync);
@@ -100,7 +100,8 @@ public partial class App : Application
             case "next": Run(viewModel.NextCommand); break;
             case "replay": Run(viewModel.ReplayCommand); break;
             case "panic": Run(viewModel.PanicCommand); break;
-            case "lock": Run(viewModel.ToggleLockCommand); break;
+            case "lock": viewModel.ToggleLock(); break;
+            case "reset-clock": viewModel.ResetClock(); break;
         }
     }
 

@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.TransportBar"
+             x:DataType="vm:TransportViewModel"
+             Height="76">
+  <UserControl.Styles>
+    <Style Selector="Button.bar">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.bar /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.bar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+    <Style Selector="Button.panic">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#E5484D"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Padding" Value="14,0"/>
+      <Setter Property="Height" Value="44"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="BorderThickness" Value="2"/>
+      <Setter Property="BorderBrush" Value="#E5484D"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.panic /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="#E5484D"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+    <Style Selector="Button.panic:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#281314"/>
+    </Style>
+    <Style Selector="Button.panic:pressed">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#E5484D"/>
+      </Style>
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0">
+    <Grid RowDefinitions="3,*">
+      <ProgressBar Grid.Row="0" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
+                   Height="3" Background="Transparent" Foreground="{StaticResource BrushFg}" Opacity="0.85"
+                   BorderThickness="0" CornerRadius="0"/>
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,0">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,18,0" MinWidth="170">
+          <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+        <Button Grid.Column="1" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
+                Command="{Binding TogglePlayPauseCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
+          <Panel>
+            <PathIcon Data="{StaticResource icon_play}" Width="20" Height="20" IsVisible="{Binding !IsPlaying}"/>
+            <PathIcon Data="{StaticResource icon_pause}" Width="20" Height="20" IsVisible="{Binding IsPlaying}"/>
+          </Panel>
+        </Button>
+        <Button Grid.Column="2" x:Name="StopButton" Classes="bar" Width="44" Height="44"
+                Command="{Binding StopCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
+          <PathIcon Data="{StaticResource icon_stop}" Width="18" Height="18"/>
+        </Button>
+        <Button Grid.Column="3" x:Name="NextButton" Classes="bar" Width="44" Height="44"
+                Command="{Binding NextCommand}" VerticalAlignment="Center" Margin="0,0,6,0">
+          <PathIcon Data="{StaticResource icon_next}" Width="20" Height="20"/>
+        </Button>
+        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+          <TextBlock Text="{Binding LufsText}" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+          <ProgressBar Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Width="44" Height="4"
+                       Background="{StaticResource BrushLine}" Foreground="{Binding LufsBarBrush}"
+                       VerticalAlignment="Center" BorderThickness="0"/>
+        </StackPanel>
+        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+          <Button x:Name="MuteButton" Classes="bar" Width="30" Height="30" Command="{Binding ToggleMuteCommand}">
+            <Panel>
+              <PathIcon Data="{StaticResource icon_volume}" Width="17" Height="17" IsVisible="{Binding !Muted}"/>
+              <PathIcon Data="{StaticResource icon_volume_off}" Width="17" Height="17" IsVisible="{Binding Muted}"/>
+            </Panel>
+          </Button>
+          <Slider Width="120" Minimum="0" Maximum="100" Value="{Binding VolumePercent, Mode=TwoWay}"
+                  ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Grid.Column="7" VerticalAlignment="Center" Margin="0,0,14,0" MinWidth="86">
+          <TextBlock Text="{Binding ShowClockText}" FontFamily="{StaticResource MonoFont}" FontSize="14"
+                     Foreground="{StaticResource BrushFg}"/>
+          <TextBlock Text="{Binding TimerSubText}" FontFamily="{StaticResource MonoFont}" FontSize="11"
+                     Foreground="{StaticResource BrushDim}"/>
+        </StackPanel>
+        <PathIcon Grid.Column="8" x:Name="LockIcon" Data="{StaticResource icon_lock}" Width="18" Height="18"
+                  Foreground="{Binding LockBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+        <Button Grid.Column="9" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center">
+          <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
+        </Button>
+        <Button Grid.Column="10" x:Name="PanicButton" Classes="panic" Content="PANIC"
+                Command="{Binding PanicCommand}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

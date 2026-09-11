@@ -104,6 +104,26 @@ public sealed class HotkeyTests
         Assert.Equal(HotkeyConfig.Default.Bindings[2], loaded.Bindings[2]);
     }
 
+    [Fact]
+    public void Default_ContainsEightActions()
+    {
+        var service = new HotkeyService(HotkeyConfig.Default, _ => { });
+
+        Assert.Equal("Ctrl+T", service.GestureFor("toggle-script"));
+        Assert.Equal("Ctrl+Shift+C", service.GestureFor("reset-clock"));
+        Assert.Equal("Space", service.GestureFor("play"));
+        Assert.Equal("Esc", service.GestureFor("pause"));
+        Assert.Equal("Ctrl+Shift+P", service.GestureFor("panic"));
+    }
+
+    [Fact]
+    public void GestureFor_UnknownAction_ReturnsEmpty()
+    {
+        var service = new HotkeyService(HotkeyConfig.Default, _ => { });
+
+        Assert.Equal(string.Empty, service.GestureFor("no-such-action"));
+    }
+
     private static string TempPath() => Path.Combine(
         Path.GetTempPath(),
         "aria-hotkeys-" + Guid.NewGuid().ToString("N") + ".json");

@@ -2,6 +2,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Aria.App.App"
              RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://ARIA.App/Icons.axaml"/>
+      </ResourceDictionary.MergedDictionaries>
+      <SolidColorBrush x:Key="BrushBg" Color="#0F0F0F"/>
+      <SolidColorBrush x:Key="BrushSurface" Color="#161616"/>
+      <SolidColorBrush x:Key="BrushSurfaceAlt" Color="#1F1F1F"/>
+      <SolidColorBrush x:Key="BrushSurfaceHi" Color="#2A2A2A"/>
+      <SolidColorBrush x:Key="BrushLine" Color="#2C2C2C"/>
+      <SolidColorBrush x:Key="BrushFg" Color="#ECECEC"/>
+      <SolidColorBrush x:Key="BrushDim" Color="#8A8A8A"/>
+      <SolidColorBrush x:Key="BrushFaint" Color="#565656"/>
+      <SolidColorBrush x:Key="BrushFaulted" Color="#E5484D"/>
+      <FontFamily x:Key="MonoFont">Menlo, Consolas, monospace</FontFamily>
+    </ResourceDictionary>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
   </Application.Styles>

@@ -60,6 +60,24 @@ public sealed class AppHostTests : IDisposable
     }
 
     [Fact]
+    public async Task ClockTimer_AdvancesRestoredClock()
+    {
+        Directory.CreateDirectory(_directory);
+        var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+        var snapshotPath = Path.Combine(_directory, "show.json");
+        using (var store = new JsonSnapshotStore(snapshotPath))
+        {
+            store.Save(new ShowDocument([track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, DateTimeOffset.UtcNow));
+        }
+
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+
+        await PollAsync(() => host.Bus.Snapshot().Show.Clock.Elapsed > TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public async Task Dispose_FlushesAutosave()
     {
         var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());

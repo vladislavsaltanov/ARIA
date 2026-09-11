@@ -22,6 +22,8 @@ public sealed record HotkeyConfig(ImmutableArray<HotkeyBinding> Bindings)
         new HotkeyBinding("Ctrl+N", "next"),
         new HotkeyBinding("Ctrl+R", "replay"),
         new HotkeyBinding("Ctrl+L", "lock"),
+        new HotkeyBinding("Ctrl+T", "toggle-script"),
+        new HotkeyBinding("Ctrl+Shift+C", "reset-clock"),
     ]);
 
     public static HotkeyConfig Load(string path)

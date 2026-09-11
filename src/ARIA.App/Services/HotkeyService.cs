@@ -30,6 +30,38 @@ public sealed class HotkeyService
         return true;
     }
 
+    public string GestureFor(string action)
+    {
+        foreach (var (gesture, bound) in _bindings)
+        {
+            if (bound == action)
+            {
+                return Display(gesture);
+            }
+        }
+        return string.Empty;
+    }
+
+    private static string Display(string gesture)
+    {
+        var parts = gesture.Split('+');
+        for (var i = 0; i < parts.Length; i++)
+        {
+            parts[i] = parts[i] switch
+            {
+                "ctrl" => "Ctrl",
+                "alt" => "Alt",
+                "shift" => "Shift",
+                "meta" => "Meta",
+                "space" => "Space",
+                "escape" => "Esc",
+                _ when parts[i].Length == 1 => parts[i].ToUpperInvariant(),
+                _ => parts[i],
+            };
+        }
+        return string.Join('+', parts);
+    }
+
     private static string Normalize(string gesture)
     {
         var parts = gesture.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
