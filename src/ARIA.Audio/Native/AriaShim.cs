@@ -26,9 +26,6 @@ internal static class AriaShim
 
     internal static int EngineSpace(IntPtr engine) => aria_engine_space(engine);
 
-    internal static void EngineSetMasterGain(IntPtr engine, float gain)
-        => aria_engine_set_master_gain(engine, gain);
-
     internal static void EngineFlush(IntPtr engine) => aria_engine_flush(engine);
 
     internal static long EnginePlayedFrames(IntPtr engine) => aria_engine_played_frames(engine);
@@ -93,9 +90,6 @@ internal static class AriaShim
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern int aria_engine_space(IntPtr engine);
-
-    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void aria_engine_set_master_gain(IntPtr engine, float gain);
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern void aria_engine_flush(IntPtr engine);

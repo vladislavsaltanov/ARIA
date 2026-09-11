@@ -50,6 +50,14 @@ public sealed record MoveQueueItem(int From, int To) : Command;
 
 public sealed record SetMasterGain(double GainDb) : Command;
 
+public sealed record SetMuted(bool Muted) : Command;
+
+public sealed record SetLocked(bool Locked) : Command;
+
+public sealed record TickShowClock : Command;
+
+public sealed record ResetShowClock : Command;
+
 public sealed record SetPanicFade(TimeSpan Duration) : Command;
 
 public sealed record LoadShow(
@@ -63,6 +71,8 @@ public sealed record RestoreShow(
     PlaylistId? Active,
     ImmutableArray<QueueItem> Queue,
     double MasterGainDb,
-    TimeSpan PanicFade) : Command;
+    TimeSpan PanicFade,
+    TimeSpan ClockElapsed,
+    bool ClockRunning) : Command;
 
 public sealed record MergeTracks(ImmutableArray<Track> Tracks) : Command;

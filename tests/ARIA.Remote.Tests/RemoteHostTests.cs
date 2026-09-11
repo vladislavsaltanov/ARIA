@@ -90,6 +90,21 @@ public sealed class RemoteHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SetMuted_TogglesMixerMuted()
+    {
+        using var client = Connected();
+
+        await client.SendAsync("""{"client":"pult-1","seq":1,"command":{"type":"set_muted","muted":true}}""");
+
+        await client.WaitForAsync(e => e.GetProperty("event").GetString() == "ack", TimeSpan.FromSeconds(5));
+        var delta = await client.WaitForAsync(
+            e => e.GetProperty("event").GetString() == "delta" && e.GetProperty("partition").GetString() == "mixer",
+            TimeSpan.FromSeconds(5));
+        Assert.True(delta.GetProperty("state").GetProperty("muted").GetBoolean());
+        Assert.True(_bus.Snapshot().Mixer.Muted);
+    }
+
+    [Fact]
     public async Task DuplicateSeq_DeliveredOnce()
     {
         using var client = Connected();

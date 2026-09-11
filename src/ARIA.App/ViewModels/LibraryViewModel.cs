@@ -180,7 +180,9 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
             snapshot.Show.ActiveId,
             snapshot.Queue.Items,
             snapshot.Mixer.MasterGainDb,
-            snapshot.Mixer.PanicFade));
+            snapshot.Mixer.PanicFade,
+            snapshot.Show.Clock.Elapsed,
+            snapshot.Show.Clock.Running));
     }
 
     private void Reload()

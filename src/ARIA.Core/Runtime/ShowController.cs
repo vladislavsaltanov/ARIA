@@ -12,6 +12,7 @@ public sealed class ShowController : IShowHandler
     private const double MasterGainMaxDb = 12.0;
     private const double SilenceDb = -80.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
+    private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
 
     private readonly IAudioEngine _engine;
     private readonly PlaybackMonitor? _monitor;
@@ -32,6 +33,10 @@ public sealed class ShowController : IShowHandler
     private bool _panicked;
 
     private double _masterGainDb;
+    private bool _muted;
+    private bool _locked;
+    private TimeSpan _clockElapsed;
+    private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
 
     private int _showVersion;
@@ -57,6 +62,11 @@ public sealed class ShowController : IShowHandler
 
     public void Handle(ClientId client, long seq, Command command)
     {
+        if (_locked && command is not (Panic or SetLocked or TickShowClock))
+        {
+            Reject(client, seq, "locked");
+            return;
+        }
         switch (command)
         {
             case LoadShow load:
@@ -131,6 +141,18 @@ public sealed class ShowController : IShowHandler
             case SetMasterGain setMasterGain:
                 OnSetMasterGain(client, seq, setMasterGain);
                 break;
+            case SetMuted setMuted:
+                OnSetMuted(setMuted);
+                break;
+            case SetLocked setLocked:
+                OnSetLocked(setLocked);
+                break;
+            case TickShowClock:
+                OnTickShowClock();
+                break;
+            case ResetShowClock:
+                OnResetShowClock();
+                break;
             case SetPanicFade setPanicFade:
                 OnSetPanicFade(client, seq, setPanicFade);
                 break;
@@ -142,13 +164,13 @@ public sealed class ShowController : IShowHandler
 
     public ShowSnapshot Snapshot() => new(
         _showVersion,
-        new PlaylistsState(_playlists, _activePlaylistId),
+        new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning)),
         _transportVersion,
         BuildTransport(),
         _queueVersion,
         new QueueState([.. _queue]),
         _mixerVersion,
-        new MixerState(_masterGainDb, _panicFade));
+        new MixerState(_masterGainDb, _muted, _panicFade));
 
     private void OnLoadShow(ClientId client, long seq, LoadShow load)
     {
@@ -189,6 +211,8 @@ public sealed class ShowController : IShowHandler
         _current = null;
         _atEndBoundary = false;
         _panicked = false;
+        _clockElapsed = TimeSpan.Zero;
+        _clockRunning = false;
 
         EmitShow();
         EmitQueue();
@@ -227,6 +251,11 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "panic-fade-out-of-range");
             return;
         }
+        if (restore.ClockElapsed < TimeSpan.Zero)
+        {
+            Reject(client, seq, "bad-clock");
+            return;
+        }
 
         if (_current is { Handle: { } handle })
         {
@@ -243,7 +272,10 @@ public sealed class ShowController : IShowHandler
         _queue.Clear();
         _queue.AddRange(restore.Queue);
         _masterGainDb = restore.MasterGainDb;
+        _muted = false;
         _panicFade = restore.PanicFade;
+        _clockElapsed = restore.ClockElapsed;
+        _clockRunning = restore.ClockRunning;
         _engine.SetMasterGain(restore.MasterGainDb);
         _current = null;
         _atEndBoundary = false;
@@ -361,6 +393,7 @@ public sealed class ShowController : IShowHandler
             {
                 RestartCurrent();
             }
+            StartClockIfNeeded();
             return;
         }
 
@@ -395,6 +428,7 @@ public sealed class ShowController : IShowHandler
                 }
                 break;
         }
+        StartClockIfNeeded();
     }
 
     private void OnPause(ClientId client, long seq)
@@ -726,8 +760,57 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _masterGainDb = command.GainDb;
+        _muted = false;
         _engine.SetMasterGain(command.GainDb);
         EmitMixer();
+    }
+
+    private void OnSetMuted(SetMuted command)
+    {
+        if (command.Muted == _muted)
+        {
+            return;
+        }
+        _muted = command.Muted;
+        _engine.SetMasterGain(_muted ? SilenceDb : _masterGainDb);
+        EmitMixer();
+    }
+
+    private void OnSetLocked(SetLocked command)
+    {
+        if (command.Locked == _locked)
+        {
+            return;
+        }
+        _locked = command.Locked;
+        EmitShow();
+    }
+
+    private void OnTickShowClock()
+    {
+        if (!_clockRunning)
+        {
+            return;
+        }
+        _clockElapsed += ClockTick;
+        EmitShow();
+    }
+
+    private void OnResetShowClock()
+    {
+        _clockElapsed = TimeSpan.Zero;
+        _clockRunning = false;
+        EmitShow();
+    }
+
+    private void StartClockIfNeeded()
+    {
+        if (_clockRunning)
+        {
+            return;
+        }
+        _clockRunning = true;
+        EmitShow();
     }
 
     private void OnSetPanicFade(ClientId client, long seq, SetPanicFade command)
@@ -983,13 +1066,13 @@ public sealed class ShowController : IShowHandler
 
     private void Emit(StateEvent e) => Emitted?.Invoke(e);
 
-    private void EmitShow() => Emit(new ShowDelta(++_showVersion, new PlaylistsState(_playlists, _activePlaylistId)));
+    private void EmitShow() => Emit(new ShowDelta(++_showVersion, new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning))));
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));
 
     private void EmitQueue() => Emit(new QueueDelta(++_queueVersion, new QueueState([.. _queue])));
 
-    private void EmitMixer() => Emit(new MixerDelta(++_mixerVersion, new MixerState(_masterGainDb, _panicFade)));
+    private void EmitMixer() => Emit(new MixerDelta(++_mixerVersion, new MixerState(_masterGainDb, _muted, _panicFade)));
 
     private sealed class DeckInstance
     {

@@ -67,6 +67,7 @@ internal static class CommandCodec
                 "set_entry_overrides" => ParseSetEntryOverrides(commandElement),
                 "move_queue_item" => new MoveQueueItem(IntOf(commandElement, "from"), IntOf(commandElement, "to")),
                 "set_master_gain" => new SetMasterGain(DoubleOf(commandElement, "gain_db")),
+                "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
                 _ => null,
             };
@@ -135,6 +136,8 @@ internal static class CommandCodec
     private static int IntOf(JsonElement element, string name) =>
         element.GetProperty(name).GetInt32();
 
+    private static bool BoolOf(JsonElement element, string name) =>
+        element.GetProperty(name).GetBoolean();
     private static double DoubleOf(JsonElement element, string name) =>
         element.GetProperty(name).GetDouble();
 

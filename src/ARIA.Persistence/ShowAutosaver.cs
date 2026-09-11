@@ -71,6 +71,8 @@ public sealed class ShowAutosaver : IDisposable
             snapshot.Queue.Items,
             snapshot.Mixer.MasterGainDb,
             snapshot.Mixer.PanicFade,
+            snapshot.Show.Clock.Elapsed,
+            snapshot.Show.Clock.Running,
             DateTimeOffset.UtcNow);
         _store.Save(document);
     }

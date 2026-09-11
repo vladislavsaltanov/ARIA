@@ -12,6 +12,8 @@ public sealed record ShowDocument(
     ImmutableArray<QueueItem> Queue,
     double MasterGainDb,
     TimeSpan PanicFade,
+    TimeSpan ClockElapsed,
+    bool ClockRunning,
     DateTimeOffset SavedAt);
 
 public interface ISnapshotStore : IDisposable
@@ -74,6 +76,8 @@ public sealed class JsonSnapshotStore : ISnapshotStore
         })],
         MasterGainDb = document.MasterGainDb,
         PanicFadeTicks = document.PanicFade.Ticks,
+        ClockElapsedTicks = document.ClockElapsed.Ticks,
+        ClockRunning = document.ClockRunning,
         SavedAt = document.SavedAt,
     };
 }
@@ -86,6 +90,8 @@ internal sealed class ShowDocumentDto
     public List<QueueItemDto> Queue { get; set; } = [];
     public double MasterGainDb { get; set; }
     public long PanicFadeTicks { get; set; }
+    public long ClockElapsedTicks { get; set; }
+    public bool ClockRunning { get; set; }
     public DateTimeOffset SavedAt { get; set; }
 
     public ShowDocument ToDomain() => new(
@@ -99,6 +105,8 @@ internal sealed class ShowDocumentDto
             q.Color))],
         MasterGainDb,
         new TimeSpan(PanicFadeTicks),
+        new TimeSpan(ClockElapsedTicks),
+        ClockRunning,
         SavedAt);
 }
 

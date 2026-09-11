@@ -4,6 +4,24 @@ using Aria.Core.State;
 
 public sealed record PositionSnapshot(DeckContent Deck, TimeSpan FilePosition, TimeSpan Remaining);
 
+public sealed record LufsSnapshot(double MomentaryLufs);
+
+public sealed class MeterMonitor
+{
+    private volatile LufsSnapshot? _latest;
+
+    public LufsSnapshot? Latest => _latest;
+
+    public event Action<LufsSnapshot>? Changed;
+
+    public void Publish(double momentaryLufs)
+    {
+        var snapshot = new LufsSnapshot(momentaryLufs);
+        _latest = snapshot;
+        Changed?.Invoke(snapshot);
+    }
+}
+
 public sealed class PlaybackMonitor
 {
     private readonly object _gate = new();

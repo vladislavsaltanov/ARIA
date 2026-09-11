@@ -30,14 +30,13 @@ public sealed class MiniaudioSinkTests
     }
 
     [Fact]
-    public void MasterGain_Zero_SilencesClockStillAdvances()
+    public void Writes_AdvancePlayedClock()
     {
         using var sink = TryCreate(channels: 1, blockSizeFrames: 256);
         if (sink is null)
         {
             return;
         }
-        sink.SetMasterGain(0f);
         WriteFor(sink, 500);
         var before = sink.PlayedFrames;
         WriteFor(sink, 300);

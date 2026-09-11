@@ -29,11 +29,14 @@ public sealed class AppHost : IAsyncDisposable
     private ShowAutosaver? _autosaver;
     private AriaAudioEngine? _engine;
     private CommandBus? _busRef;
+    private System.Threading.Timer? _clockTimer;
     private long _seq;
     private bool _started;
     private bool _disposed;
 
     public PlaybackMonitor Monitor { get; } = new();
+
+    public MeterMonitor Meters { get; } = new();
 
     public ICommandBus Bus { get; private set; } = null!;
 
@@ -78,7 +81,7 @@ public sealed class AppHost : IAsyncDisposable
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
         WaveformScanner = new WaveformScanner(_decoderFactory);
         _importer = new TrackImporter(_decoderFactory, WaveformScanner);
-        _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink);
+        _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters);
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
 
@@ -93,7 +96,7 @@ public sealed class AppHost : IAsyncDisposable
         var document = _snapshots.LoadLatest();
         if (document is { } saved)
         {
-            Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade));
+            Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning));
         }
 
         if (_remoteOptions is { } options)
@@ -101,6 +104,12 @@ public sealed class AppHost : IAsyncDisposable
             Remote = new RemoteHost(Bus, options, Monitor);
             await Remote.StartAsync(cancellationToken);
         }
+
+        _clockTimer = new System.Threading.Timer(
+            _ => Submit(new TickShowClock()),
+            null,
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1));
     }
 
     private void MarshalEngineEvent(Action work) => _busRef?.Post(work);
@@ -158,6 +167,8 @@ public sealed class AppHost : IAsyncDisposable
             return;
         }
         _disposed = true;
+        _clockTimer?.Dispose();
+        _clockTimer = null;
         if (_autosaver is { } autosaver)
         {
             autosaver.FlushNow();

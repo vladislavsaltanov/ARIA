@@ -43,13 +43,15 @@ public sealed record QueueItem(
 
 public sealed record QueueState(ImmutableArray<QueueItem> Items);
 
-public sealed record PlaylistsState(ImmutableArray<Playlist> Playlists, PlaylistId? ActiveId);
+public sealed record ShowClockState(TimeSpan Elapsed, bool Running);
 
-public sealed record MixerState(double MasterGainDb, TimeSpan PanicFade);
+public sealed record ShowState(ImmutableArray<Playlist> Playlists, PlaylistId? ActiveId, bool Locked, ShowClockState Clock);
+
+public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade);
 
 public abstract record StateEvent;
 
-public sealed record ShowDelta(int Version, PlaylistsState State) : StateEvent;
+public sealed record ShowDelta(int Version, ShowState State) : StateEvent;
 
 public sealed record TransportDelta(int Version, TransportState State) : StateEvent;
 
@@ -61,7 +63,7 @@ public sealed record Rejected(ClientId Client, long Seq, string Reason) : StateE
 
 public sealed record ShowSnapshot(
     int ShowVersion,
-    PlaylistsState Show,
+    ShowState Show,
     int TransportVersion,
     TransportState Transport,
     int QueueVersion,

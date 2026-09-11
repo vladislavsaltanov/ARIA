@@ -159,7 +159,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    private void Rebuild(PlaylistsState state, ImmutableArray<Track> tracks)
+    private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
         var selectedPlaylistId = SelectedPlaylist?.Id;

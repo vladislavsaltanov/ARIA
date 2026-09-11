@@ -61,8 +61,6 @@ public sealed class MiniaudioSink : IAudioSink, IDisposable
         return total;
     }
 
-    public void SetMasterGain(float gain) => AriaShim.EngineSetMasterGain(_engine, gain);
-
     public void Flush() => AriaShim.EngineFlush(_engine);
 
     public void Dispose()

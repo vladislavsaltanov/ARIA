@@ -47,7 +47,7 @@ public sealed class RestoreShowTests : IDisposable
         }
 
         using var h = new Harness();
-        var restoreSeq = h.Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade));
+        var restoreSeq = h.Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning));
 
         Assert.Null(h.RejectionOf(restoreSeq));
         var snap = h.Snapshot;
@@ -84,7 +84,7 @@ public sealed class RestoreShowTests : IDisposable
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
-        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromMilliseconds(100)));
+        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
 
         Assert.Equal("show-load-requires-stopped", h.RejectionOf(seq)?.Reason);
         Assert.Equal(TransportStatus.Playing, h.Transport.Status);
@@ -100,7 +100,7 @@ public sealed class RestoreShowTests : IDisposable
         var before = h.Snapshot;
         var ghost = TestShow.Track("ghost");
 
-        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [new QueueItem(null, ghost.Id, "ghost", null)], 0, TimeSpan.FromMilliseconds(100)));
+        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [new QueueItem(null, ghost.Id, "ghost", null)], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
 
         Assert.Equal("invalid-show", h.RejectionOf(seq)?.Reason);
         Assert.Equal(before.Show, h.Snapshot.Show);
@@ -115,7 +115,7 @@ public sealed class RestoreShowTests : IDisposable
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
-        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [new QueueItem(EntryId.New(), t1.Id, "one", null)], 0, TimeSpan.FromMilliseconds(100)));
+        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [new QueueItem(EntryId.New(), t1.Id, "one", null)], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
 
         Assert.Equal("invalid-show", h.RejectionOf(seq)?.Reason);
     }
@@ -128,7 +128,7 @@ public sealed class RestoreShowTests : IDisposable
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
-        var seq = h.Submit(new RestoreShow([t1], [p], PlaylistId.New(), [], 0, TimeSpan.FromMilliseconds(100)));
+        var seq = h.Submit(new RestoreShow([t1], [p], PlaylistId.New(), [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
 
         Assert.Equal("unknown-active-playlist", h.RejectionOf(seq)?.Reason);
     }
@@ -141,7 +141,7 @@ public sealed class RestoreShowTests : IDisposable
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
-        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 50, TimeSpan.FromMilliseconds(100)));
+        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 50, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
 
         Assert.Equal("gain-out-of-range", h.RejectionOf(seq)?.Reason);
         Assert.Empty(h.Engine.MasterGains);
@@ -155,7 +155,7 @@ public sealed class RestoreShowTests : IDisposable
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
-        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromSeconds(3)));
+        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromSeconds(3), TimeSpan.Zero, false));
 
         Assert.Equal("panic-fade-out-of-range", h.RejectionOf(seq)?.Reason);
     }
@@ -173,7 +173,7 @@ public sealed class RestoreShowTests : IDisposable
         h.Submit(new EnqueueTrack(t3.Id));
         var queue = h.Snapshot.Queue.Items;
 
-        h.Submit(new RestoreShow([t1, t2, t3], [p1, p2], p1.Id, queue, 0, TimeSpan.FromMilliseconds(100)));
+        h.Submit(new RestoreShow([t1, t2, t3], [p1, p2], p1.Id, queue, 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
         h.Submit(new Play());
 
         Assert.Equal(t3.Id, h.Transport.Current!.TrackId);

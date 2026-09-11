@@ -38,7 +38,7 @@ public sealed class SnapshotStoreTests : IDisposable
             new QueueItem(e1.Id, t1.Id, "из очереди", "amber"),
             new QueueItem(null, t1.Id, "без вхождения", null));
         var document = new ShowDocument(
-            [t1], [p1], p1.Id, queue, -3.5, TimeSpan.FromMilliseconds(80), DateTimeOffset.UtcNow);
+            [t1], [p1], p1.Id, queue, -3.5, TimeSpan.FromMilliseconds(80), TimeSpan.FromMinutes(3), true, DateTimeOffset.UtcNow);
 
         using (var store = new JsonSnapshotStore(_path))
         {
@@ -65,6 +65,8 @@ public sealed class SnapshotStoreTests : IDisposable
             Assert.Null(loaded.Queue[1].Color);
             Assert.Equal(-3.5, loaded.MasterGainDb);
             Assert.Equal(TimeSpan.FromMilliseconds(80), loaded.PanicFade);
+            Assert.Equal(TimeSpan.FromMinutes(3), loaded.ClockElapsed);
+            Assert.True(loaded.ClockRunning);
             Assert.Equal(document.SavedAt, loaded.SavedAt);
         }
     }
@@ -73,8 +75,8 @@ public sealed class SnapshotStoreTests : IDisposable
     public void Save_Twice_LoadLatestReturnsSecondDocument()
     {
         var t1 = TestFactory.Track("one");
-        var first = new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), DateTimeOffset.UtcNow);
-        var second = new ShowDocument([t1], [], null, [], -7, TimeSpan.FromMilliseconds(100), DateTimeOffset.UtcNow);
+        var first = new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, DateTimeOffset.UtcNow);
+        var second = new ShowDocument([t1], [], null, [], -7, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, DateTimeOffset.UtcNow);
 
         using (var store = new JsonSnapshotStore(_path))
         {
@@ -97,7 +99,7 @@ public sealed class SnapshotStoreTests : IDisposable
         using (var store = new JsonSnapshotStore(_path))
         {
             var t1 = TestFactory.Track("one");
-            store.Save(new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([t1], [], null, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, DateTimeOffset.UtcNow));
         }
 
         Assert.True(File.Exists(_path));

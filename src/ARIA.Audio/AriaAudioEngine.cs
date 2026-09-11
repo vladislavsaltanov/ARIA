@@ -9,12 +9,15 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly IAudioSink _sink;
     private readonly ISourceFactory _sourceFactory;
     private readonly PlaybackMonitor? _monitor;
+    private readonly MeterMonitor? _meters;
+    private readonly LufsMeter _lufs;
     private readonly float[] _block;
     private readonly Thread _renderThread;
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<int, StreamHandle> _mixerHandles = new();
     private readonly ConcurrentQueue<int> _faultedAtBirth = [];
     private long _lastPublishTicks = Environment.TickCount64 - 1000;
+    private long _lastMeterTicks = Environment.TickCount64 - 1000;
     private long _masterGainBits = BitConverter.DoubleToInt64Bits(1.0);
     private int _handleCounter;
     private int _currentHandle;
@@ -25,11 +28,14 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         int sampleRate = 48000,
         int channels = 2,
         int blockSizeFrames = 512,
-        IAudioSink? sink = null)
+        IAudioSink? sink = null,
+        MeterMonitor? meters = null)
     {
         ArgumentNullException.ThrowIfNull(sourceFactory);
         _sourceFactory = sourceFactory;
         _monitor = monitor;
+        _meters = meters;
+        _lufs = new LufsMeter(channels, sampleRate, TimeSpan.FromMilliseconds(400));
         _sink = sink ?? new NullSink(sampleRate, channels);
         _mixer = new MixerBus(channels, sampleRate, blockSizeFrames);
         _block = new float[blockSizeFrames * channels];
@@ -106,6 +112,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             EmitFaults();
             _mixer.Render(_block);
             ApplyMasterGain();
+            PublishMeter();
             var accepted = _sink.Write(_block);
             if (accepted < _block.Length)
             {
@@ -134,6 +141,22 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         {
             _block[index] *= gain;
         }
+    }
+
+    private void PublishMeter()
+    {
+        if (_meters is null)
+        {
+            return;
+        }
+        _lufs.Process(_block.AsSpan(), _mixer.Channels);
+        var now = Environment.TickCount64;
+        if (now - Volatile.Read(ref _lastMeterTicks) < 100)
+        {
+            return;
+        }
+        Volatile.Write(ref _lastMeterTicks, now);
+        _meters.Publish(_lufs.MomentaryLufs);
     }
 
     private void PublishPosition()
