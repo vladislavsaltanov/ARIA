@@ -145,7 +145,7 @@
                     <Grid Grid.Row="0" ColumnDefinitions="64,Auto" Margin="0,0,0,6">
                       <TextBox Text="{Binding EditTimeText, Mode=TwoWay}" FontFamily="{StaticResource MonoFont}"
                                FontSize="12" Padding="6,4" KeyDown="OnEditKeyDown"/>
-                      <Button Grid.Column="1" Tag="ScriptMark" Classes="ghost" Height="26" Padding="10,0"
+                      <Button Grid.Column="1" Tag="ScriptMark" Classes="ghost" MinHeight="26" Padding="10,0"
                               FontSize="11" Content="сейчас" Margin="8,0,0,0" Click="OnMarkNowClick"
                               ToolTip.Tip="Пометить текущее время шоу"/>
                     </Grid>
@@ -197,14 +197,14 @@
     </ScrollViewer>
     <StackPanel Grid.Row="3" Margin="0,10,0,0">
       <StackPanel IsVisible="{Binding ShowNoScripts}" Spacing="6" Margin="0,20,0,0">
-        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="13"
+        <Button Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
                 Command="{Binding CreateScriptCommand}" Content="+ Новый сценарий"/>
       </StackPanel>
       <StackPanel IsVisible="{Binding ShowEmptyScript}" Spacing="6" Margin="0,20,0,0">
         <TextBlock Text="Сценарий пуст" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource BrushFg}"/>
         <TextBlock Text="Первая строка станет отсчётом шоу" FontSize="12" Foreground="{StaticResource BrushDim}"/>
       </StackPanel>
-      <Button Classes="ghost" Height="30" Padding="12,0" FontSize="13" Margin="0,6,0,0"
+      <Button Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13" Margin="0,6,0,0"
               Command="{Binding AddLineCommand}" Content="+ строка" IsVisible="{Binding HasScripts}"/>
       <Separator x:Name="ScriptFooterSeparator" Margin="0,10,0,6" IsVisible="{Binding HasScripts}"
                  Background="{StaticResource BrushLine}"/>
@@ -212,14 +212,14 @@
         <Button x:Name="NewScriptButton" Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
                 Command="{Binding CreateScriptCommand}" ToolTip.Tip="Новый сценарий">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_plus}" Width="12" Height="12"/>
+            <PathIcon Data="{StaticResource icon_plus}" Width="12" Height="12" VerticalAlignment="Center"/>
             <TextBlock Text="Новый" FontSize="13" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
         <Button x:Name="DeleteScriptButton" Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
                 Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="Удалить текущий сценарий">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_x}" Width="12" Height="12"/>
+            <PathIcon Data="{StaticResource icon_x}" Width="12" Height="12" VerticalAlignment="Center"/>
             <TextBlock Text="Удалить" FontSize="13" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>

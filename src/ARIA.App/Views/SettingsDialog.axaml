@@ -56,7 +56,7 @@
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="Жесты" Classes="sectionTitle"/>
             <Button Grid.Column="1" Classes="action" Content="сбросить" Command="{Binding ResetGesturesCommand}"
-                    ToolTip.Tip="Вернуть умолчания" Height="26" Padding="10,0" FontSize="11"/>
+                    ToolTip.Tip="Вернуть умолчания" MinHeight="26" Padding="10,0" FontSize="11"/>
           </Grid>
           <ItemsControl ItemsSource="{Binding Gestures}">
             <ItemsControl.ItemTemplate>

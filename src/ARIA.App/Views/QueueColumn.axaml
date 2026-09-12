@@ -19,8 +19,8 @@
         <Button Grid.Column="1" Classes="ghost" MinHeight="26" Padding="8,0" ToolTip.Tip="Очистить очередь"
                 Command="{Binding ClearQueueCommand}" Margin="0,0,2,0">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
-            <TextBlock Text="Очистить" FontSize="11"/>
+            <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Очистить" FontSize="11" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
         <Button Grid.Column="2" x:Name="QueueCloseButton" Classes="ghost" Width="26" Height="26"

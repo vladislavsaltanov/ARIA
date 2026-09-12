@@ -39,22 +39,22 @@
         <Button x:Name="StartClockButton" Classes="clockBtn" Command="{Binding StartClockCommand}"
                 IsEnabled="{Binding !ClockRunning}" ToolTip.Tip="Запустить часы шоу">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_play}" Width="11" Height="11"/>
-            <TextBlock Text="Старт" FontSize="12"/>
+            <PathIcon Data="{StaticResource icon_play}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Старт" FontSize="12" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
         <Button x:Name="PauseClockButton" Classes="clockBtn" Command="{Binding PauseClockCommand}"
                 IsEnabled="{Binding ClockRunning}" ToolTip.Tip="Остановить часы шоу">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_pause}" Width="11" Height="11"/>
-            <TextBlock Text="Пауза" FontSize="12"/>
+            <PathIcon Data="{StaticResource icon_pause}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Пауза" FontSize="12" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
         <Button x:Name="ResetClockButton" Classes="clockBtn" Command="{Binding ResetClockCommand}"
                 ToolTip.Tip="Сбросить часы шоу">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_stop}" Width="11" Height="11"/>
-            <TextBlock Text="Сброс" FontSize="12"/>
+            <PathIcon Data="{StaticResource icon_stop}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Сброс" FontSize="12" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
       </StackPanel>

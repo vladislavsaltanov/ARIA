@@ -63,14 +63,14 @@
           <views:RailPlaylists Grid.Row="1" x:Name="RailPlaylists" />
           <Button Grid.Row="2" x:Name="QueueButton" Classes="railAction" Margin="8,4,8,0" Click="OnQueueJumpClick">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15"/>
-              <TextBlock Text="Очередь" FontSize="13"/>
+              <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" VerticalAlignment="Center"/>
+              <TextBlock Text="Очередь" FontSize="13" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
           <Button Grid.Row="3" x:Name="ImportButton" Classes="railAction" Margin="8,6,8,10">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <PathIcon Data="{StaticResource icon_plus}" Width="15" Height="15"/>
-              <TextBlock Text="Import" FontSize="13"/>
+              <PathIcon Data="{StaticResource icon_plus}" Width="15" Height="15" VerticalAlignment="Center"/>
+              <TextBlock Text="Import" FontSize="13" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
         </Grid>
