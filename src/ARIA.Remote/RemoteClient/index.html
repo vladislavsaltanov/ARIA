@@ -63,7 +63,7 @@
     </section>
 
     <section class="queue">
-      <h2>ОЧЕРЕДЬ <button id="btn-forget" class="forget">забыть пару</button></h2>
+      <h2>ОЧЕРЕДЬ <button id="btn-queue-clear" class="forget">ОЧИСТИТЬ</button> <button id="btn-forget" class="forget">забыть пару</button></h2>
       <ol id="queue"></ol>
     </section>
 
@@ -95,6 +95,16 @@
       <div class="dialog-buttons">
         <button id="panic-yes" class="pad danger">ДА, PANIC</button>
         <button id="panic-no" class="pad">ОТМЕНА</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="clear-confirm" class="overlay hidden">
+    <div class="dialog">
+      <p>Очистить очередь?</p>
+      <div class="dialog-buttons">
+        <button id="clear-yes" class="pad danger">ДА, ОЧИСТИТЬ</button>
+        <button id="clear-no" class="pad">ОТМЕНА</button>
       </div>
     </div>
   </div>

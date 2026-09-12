@@ -17,6 +17,8 @@
     remaining: document.getElementById("remaining"),
     queue: document.getElementById("queue"),
     panicConfirm: document.getElementById("panic-confirm"),
+    queueClear: document.getElementById("btn-queue-clear"),
+    clearConfirm: document.getElementById("clear-confirm"),
     panic: document.getElementById("btn-panic"),
     login: document.getElementById("login"),
     loginId: document.getElementById("login-id"),
@@ -524,6 +526,13 @@
     el.lufsFill.style.width = width + "%";
   }
 
+  function transportPlaying(item) {
+    var current = state.transport && state.transport.current;
+    if (!current) return false;
+    if (item.entryId && current.entryId) return item.entryId === current.entryId;
+    return item.trackId === current.trackId;
+  }
+
   function renderQueue() {
     el.queue.textContent = "";
     if (!state.queue.length) {
@@ -534,10 +543,39 @@
       el.queue.appendChild(li);
       return;
     }
-    state.queue.forEach((item) => {
+    state.queue.forEach((item, index) => {
       var li = document.createElement("li");
       if (item.color) li.style.borderLeft = "4px solid " + item.color;
-      li.textContent = item.displayName;
+      if (transportPlaying(item)) li.classList.add("playing");
+      var name = document.createElement("span");
+      name.className = "queue-name";
+      name.textContent = item.displayName;
+      li.appendChild(name);
+      var actions = document.createElement("span");
+      actions.className = "queue-actions";
+      if (index > 0) {
+        var up = document.createElement("button");
+        up.className = "qbtn";
+        up.textContent = "↑";
+        up.setAttribute("data-action", "up");
+        up.setAttribute("data-index", index);
+        actions.appendChild(up);
+      }
+      if (index < state.queue.length - 1) {
+        var down = document.createElement("button");
+        down.className = "qbtn";
+        down.textContent = "↓";
+        down.setAttribute("data-action", "down");
+        down.setAttribute("data-index", index);
+        actions.appendChild(down);
+      }
+      var remove = document.createElement("button");
+      remove.className = "qbtn qbtn-remove";
+      remove.textContent = "×";
+      remove.setAttribute("data-action", "remove");
+      remove.setAttribute("data-index", index);
+      actions.appendChild(remove);
+      li.appendChild(actions);
       el.queue.appendChild(li);
     });
   }
@@ -932,6 +970,33 @@
   }
 
   el.panic.addEventListener("click", showConfirm);
+
+  el.queueClear.addEventListener("click", () => {
+    el.clearConfirm.classList.remove("hidden");
+  });
+  document.getElementById("clear-yes").addEventListener("click", () => {
+    el.clearConfirm.classList.add("hidden");
+    send("clear_queue");
+    vibrate();
+  });
+  document.getElementById("clear-no").addEventListener("click", () => {
+    el.clearConfirm.classList.add("hidden");
+  });
+
+  el.queue.addEventListener("click", (event) => {
+    var button = event.target.closest("button[data-action]");
+    if (!button) return;
+    var index = Number(button.getAttribute("data-index"));
+    var action = button.getAttribute("data-action");
+    if (action === "remove") {
+      send("remove_from_queue", { index: index });
+    } else if (action === "up") {
+      send("move_queue_item", { from: index, to: index - 1 });
+    } else if (action === "down") {
+      send("move_queue_item", { from: index, to: index + 1 });
+    }
+    vibrate();
+  });
   document.getElementById("panic-yes").addEventListener("click", () => {
     hideConfirm();
     send("panic");
