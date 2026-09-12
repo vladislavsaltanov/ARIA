@@ -13,6 +13,8 @@ using Aria.Remote;
 
 public partial class App : Application
 {
+    public const int RemoteDefaultPort = 48713;
+
     public static AppHost? Host { get; private set; }
 
     private static RemoteAnnouncer? _announcer;
@@ -28,7 +30,8 @@ public partial class App : Application
             var remoteOptions = new RemoteOptions(
                 credentials.Password,
                 BindAddress: IPAddress.Any,
-                Credentials: _credentials);
+                Credentials: _credentials,
+                Port: RemoteDefaultPort);
             var host = new AppHost(dataDirectory, remoteOptions);
             Host = host;
 
