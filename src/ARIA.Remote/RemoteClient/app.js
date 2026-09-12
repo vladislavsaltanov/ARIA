@@ -36,6 +36,8 @@
     scriptLines: document.getElementById("script-lines"),
     mentionMenu: document.getElementById("mention-menu"),
     mentionOptions: document.getElementById("mention-options"),
+    lock: document.getElementById("lock"),
+    toast: document.getElementById("toast"),
   };
 
   function savedPairing() {
@@ -175,6 +177,7 @@
         break;
       case "rejected":
         pendingAck.delete(frame.seq);
+        rejectFeedback();
         break;
       default:
         break;
@@ -192,6 +195,23 @@
   var LUFS_FLOOR = -60;
   var LUFS_WARN = -18;
 
+  var toastTimer = null;
+
+  function rejectFeedback() {
+    if (navigator.vibrate) navigator.vibrate(40);
+    el.toast.textContent = "команда отклонена";
+    el.toast.classList.remove("hidden");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.toast.classList.add("hidden");
+      toastTimer = null;
+    }, 2000);
+  }
+
+  function renderLock() {
+    el.lock.classList.toggle("hidden", !(state.show && state.show.locked));
+  }
+
   function applySnapshot(frame) {
     state.show = frame.show ? frame.show.state : null;
     state.mixer = frame.mixer ? frame.mixer.state : null;
@@ -201,6 +221,7 @@
     renderShowClock();
     renderPlaylists();
     renderScript();
+    renderLock();
   }
 
   function applyDelta(frame) {
@@ -215,6 +236,7 @@
       state.show = frame.state;
       renderShowClock();
       renderPlaylists();
+      renderLock();
       if (scriptContentChanged(prev, frame.state)) {
         renderScript();
       } else {
