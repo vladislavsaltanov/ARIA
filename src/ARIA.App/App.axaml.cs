@@ -66,11 +66,11 @@ public partial class App : Application
         var thumbs = new WaveformThumbs(host.Waveforms!);
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
         var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load());
-        var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs);
-        var queue = new QueueViewModel(host.Bus);
+        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load(), sync);
+        var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs, sync);
+        var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
-        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks);
+        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync);
         MainWindow? window = null;
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),
@@ -86,7 +86,8 @@ public partial class App : Application
             hotkeys,
             Path.Combine(dataDirectory, "hotkeys.json"),
             settingsStore,
-            updated => playlists.UpdateRowSettings(updated));
+            updated => playlists.UpdateRowSettings(updated),
+            sync);
         window = new MainWindow(hotkeys, library, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();

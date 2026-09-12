@@ -19,7 +19,8 @@ internal sealed class DragCoordinator
     private List<LibraryViewModel.TrackVm>? _tracks;
     private PlaylistsViewModel.EntryVm? _entry;
     private QueueViewModel.QueueItemVm? _queueItem;
-    private Border? _highlight;
+    private Border? _rowHighlight;
+    private ListBox? _listHighlight;
 
     public DragCoordinator(ListBox library, ListBox playlist, ListBox queue)
     {
@@ -187,10 +188,15 @@ internal sealed class DragCoordinator
 
     private void ClearHighlight()
     {
-        if (_highlight is not null)
+        if (_rowHighlight is not null)
         {
-            _highlight.Background = Brushes.Transparent;
-            _highlight = null;
+            _rowHighlight.Background = Brushes.Transparent;
+            _rowHighlight = null;
+        }
+        if (_listHighlight is not null)
+        {
+            _listHighlight.Background = Brushes.Transparent;
+            _listHighlight = null;
         }
     }
 
@@ -201,9 +207,22 @@ internal sealed class DragCoordinator
             .FirstOrDefault(b => b.Classes.Contains("plRow") || b.Classes.Contains("qRow"));
         if (border is not null)
         {
+            if (_rowHighlight == border)
+            {
+                return;
+            }
+            ClearHighlight();
             border.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
-            _highlight = border;
+            _rowHighlight = border;
+            return;
         }
+        if (_listHighlight == list)
+        {
+            return;
+        }
+        ClearHighlight();
+        list.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
+        _listHighlight = list;
     }
 
     private static object? RowAt(ListBox list, PointerPressedEventArgs e)

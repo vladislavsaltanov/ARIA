@@ -22,7 +22,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private static readonly SolidColorBrush BrushFaulted = new(Color.Parse("#E5484D"));
 
     private readonly ICommandBus _bus;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-transport");
     private readonly SynchronizationContext? _sync;
     private readonly IDisposable _subscription;
     private readonly IDisposable? _monitorSubscription;

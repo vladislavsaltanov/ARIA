@@ -2,6 +2,7 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Threading;
 using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
@@ -21,8 +22,9 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>> _import;
     private readonly Func<TopLevel?>? _topLevel;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-library");
     private readonly IDisposable _subscription;
+    private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private long _seq;
     private string _searchText = string.Empty;
@@ -46,13 +48,15 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         ILibraryStore library,
         Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>> import,
         Func<TopLevel?>? topLevel = null,
-        WaveformThumbs? thumbs = null)
+        WaveformThumbs? thumbs = null,
+        SynchronizationContext? sync = null)
     {
         _bus = bus;
         _library = library;
         _import = import;
         _topLevel = topLevel;
         _thumbs = thumbs;
+        _sync = sync;
         _subscription = bus.Subscribe(Apply);
         Reload();
     }
@@ -200,14 +204,31 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
             return;
         }
         var incoming = new HashSet<TrackId>(delta.State.Faulted);
-        if (!incoming.SetEquals(_faulted))
+        if (incoming.SetEquals(_faulted))
         {
+            return;
+        }
+        Post(() =>
+        {
+            var latest = incoming;
             _faulted.Clear();
-            foreach (var id in incoming)
+            foreach (var id in latest)
             {
                 _faulted.Add(id);
             }
             Reload();
+        });
+    }
+
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
         }
     }
 

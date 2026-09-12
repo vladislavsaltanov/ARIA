@@ -14,9 +14,10 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private const int SuggestLimit = 5;
 
     private readonly ICommandBus _bus;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-scripts");
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly IDisposable _subscription;
+    private readonly SynchronizationContext? _sync;
     private readonly HashSet<ScriptId> _knownScripts = [];
     private readonly HashSet<ScriptLineId> _knownLines = [];
     private bool _editNextArrival;
@@ -38,10 +39,11 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedScriptChanged(ScriptVm? value) => OnPropertyChanged(nameof(ShowEmptyScript));
 
-    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null)
+    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, SynchronizationContext? sync = null)
     {
         _bus = bus;
         _trackSource = trackSource;
+        _sync = sync;
         _subscription = bus.Subscribe(Apply);
         Scripts.CollectionChanged += (_, _) =>
         {
@@ -318,7 +320,19 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     {
         if (e is ShowDelta)
         {
-            Rebuild(_bus.Snapshot().Show);
+            Post(() => Rebuild(_bus.Snapshot().Show));
+        }
+    }
+
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
         }
     }
 

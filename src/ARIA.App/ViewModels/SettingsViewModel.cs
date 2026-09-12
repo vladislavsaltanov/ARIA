@@ -1,6 +1,7 @@
 namespace Aria.App.ViewModels;
 
 using System.Collections.ObjectModel;
+using System.Threading;
 using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Runtime;
@@ -16,12 +17,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     ];
 
     private readonly ICommandBus _bus;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-settings");
     private readonly HotkeyService _hotkeys;
     private readonly string _hotkeysPath;
     private readonly AppSettingsStore _settingsStore;
     private readonly Action<AppSettings>? _rowSettingsApplied;
     private readonly IDisposable _subscription;
+    private readonly SynchronizationContext? _sync;
     private double _panicFadeMs = 100;
     private long _seq;
 
@@ -44,13 +46,15 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         HotkeyService hotkeys,
         string hotkeysPath,
         AppSettingsStore settingsStore,
-        Action<AppSettings>? rowSettingsApplied = null)
+        Action<AppSettings>? rowSettingsApplied = null,
+        SynchronizationContext? sync = null)
     {
         _bus = bus;
         _hotkeys = hotkeys;
         _hotkeysPath = hotkeysPath;
         _settingsStore = settingsStore;
         _rowSettingsApplied = rowSettingsApplied;
+        _sync = sync;
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         UseFileName = settings.UseFileName;
@@ -167,11 +171,21 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void Apply(StateEvent e)
     {
-        switch (e)
+        if (e is MixerDelta delta)
         {
-            case MixerDelta delta:
-                ApplyMixer(delta.State);
-                break;
+            Post(() => ApplyMixer(delta.State));
+        }
+    }
+
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
         }
     }
 

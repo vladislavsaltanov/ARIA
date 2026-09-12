@@ -16,9 +16,10 @@ using CommunityToolkit.Mvvm.Input;
 public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 {
     private readonly ICommandBus _bus;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-playlists");
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly WaveformThumbs? _thumbs;
+    private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private string? _awaitedPlaylistName;
     private readonly IDisposable _subscription;
@@ -44,12 +45,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null)
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null)
     {
         _bus = bus;
         _trackSource = trackSource;
         _thumbs = thumbs;
         _rowSettings = rowSettings ?? AppSettings.Default;
+        _sync = sync;
         _subscription = bus.Subscribe(Apply);
         Rebuild(bus.Snapshot().Show, _trackSource?.Invoke() ?? []);
     }
@@ -168,11 +170,28 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
+        }
+    }
+
     public void Dispose() => _subscription.Dispose();
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
     private void Apply(StateEvent e)
+    {
+        Post(() => ApplyOnUi(e));
+    }
+
+    private void ApplyOnUi(StateEvent e)
     {
         switch (e)
         {
