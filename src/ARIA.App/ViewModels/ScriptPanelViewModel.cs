@@ -96,6 +96,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         Submit(new RenameScript(script.Id, name));
     }
 
+    [RelayCommand]
     public void DeleteSelected()
     {
         CommitOpenEdit();

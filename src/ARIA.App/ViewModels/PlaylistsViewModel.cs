@@ -157,6 +157,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public void EnqueueEntry(EntryVm entry) => Submit(new EnqueueEntry(entry.Id));
 
+    public void PlayEntry(EntryVm entry) => Submit(new JumpTo(entry.Id));
+
     public void SetLinkedTrack(TrackId? track)
     {
         if (_linkedTrackId == track)

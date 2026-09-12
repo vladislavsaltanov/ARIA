@@ -26,6 +26,24 @@ public partial class PlaylistCenter : UserControl
 
     private void OnHelpClick(object? sender, RoutedEventArgs e) => HelpRequested?.Invoke(this, EventArgs.Empty);
 
+    private void OnDeletePlaylistClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is PlaylistsViewModel viewModel)
+        {
+            viewModel.DeletePlaylistCommand.Execute(null);
+        }
+    }
+
+    private void OnEntryDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is ListBox list
+            && list.SelectedItem is PlaylistsViewModel.EntryVm entry
+            && DataContext is PlaylistsViewModel viewModel)
+        {
+            viewModel.PlayEntry(entry);
+        }
+    }
+
     private void OnTitleDoubleTapped(object? sender, TappedEventArgs e)
     {
         TitleText.IsVisible = false;
