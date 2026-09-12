@@ -13,6 +13,8 @@ public partial class QueueColumn : UserControl
 
     public ListBox QueueListBox => QueueList;
 
+    public event EventHandler? CloseRequested;
+
     public void ScrollToSelected()
     {
         if (QueueList.SelectedItem is not null)
@@ -20,6 +22,8 @@ public partial class QueueColumn : UserControl
             QueueList.ScrollIntoView(QueueList.SelectedItem);
         }
     }
+
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
     {

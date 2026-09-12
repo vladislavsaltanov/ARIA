@@ -56,7 +56,7 @@
           </Grid>
         </Border>
       </SplitView.Pane>
-      <Grid ColumnDefinitions="260,*,300">
+      <Grid x:Name="ContentGrid" ColumnDefinitions="260,*,300">
       <Border Grid.Column="0" BorderBrush="#2C2C2C" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="3*,2*,Auto,Auto">
           <views:LibrarySection Grid.Row="0" x:Name="LibrarySection" />
