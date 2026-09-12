@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 internal sealed class DragCoordinator
@@ -25,15 +26,15 @@ internal sealed class DragCoordinator
         _library = library;
         _playlist = playlist;
         _queue = queue;
-        library.PointerPressed += OnPress;
-        library.PointerMoved += OnMove;
-        library.PointerReleased += OnRelease;
-        playlist.PointerPressed += OnPress;
-        playlist.PointerMoved += OnMove;
-        playlist.PointerReleased += OnRelease;
-        queue.PointerPressed += OnPress;
-        queue.PointerMoved += OnMove;
-        queue.PointerReleased += OnRelease;
+        library.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        library.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        library.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
+        playlist.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        playlist.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        playlist.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
+        queue.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        queue.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        queue.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
     private void OnPress(object? sender, PointerPressedEventArgs e)
