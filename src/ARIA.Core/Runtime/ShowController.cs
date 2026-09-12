@@ -132,6 +132,9 @@ public sealed class ShowController : IShowHandler
             case AddEntry addEntry:
                 OnAddEntry(client, seq, addEntry);
                 break;
+            case ImportPlaylist importPlaylist:
+                OnImportPlaylist(client, seq, importPlaylist);
+                break;
             case RemoveEntry removeEntry:
                 OnRemoveEntry(client, seq, removeEntry);
                 break;
@@ -747,6 +750,34 @@ public sealed class ShowController : IShowHandler
         var entry = new PlaylistEntry(EntryId.New(), command.Track);
         var entries = command.Index is { } at ? playlist.Entries.Insert(at, entry) : playlist.Entries.Add(entry);
         _playlists = _playlists.SetItem(index, playlist with { Entries = entries });
+        RebuildEntryMap();
+        EmitShow();
+        EmitTransport();
+    }
+
+    private void OnImportPlaylist(ClientId client, long seq, ImportPlaylist command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name))
+        {
+            Reject(client, seq, "bad-name");
+            return;
+        }
+        if (command.Entries.IsDefaultOrEmpty)
+        {
+            Reject(client, seq, "empty-playlist");
+            return;
+        }
+        foreach (var entry in command.Entries)
+        {
+            if (!_trackMap.ContainsKey(entry.Track))
+            {
+                Reject(client, seq, "unknown-track");
+                return;
+            }
+        }
+        var entries = command.Entries.Select(imported =>
+            new PlaylistEntry(EntryId.New(), imported.Track, imported.Overrides));
+        _playlists = _playlists.Add(new Playlist(PlaylistId.New(), command.Name, [.. entries]));
         RebuildEntryMap();
         EmitShow();
         EmitTransport();

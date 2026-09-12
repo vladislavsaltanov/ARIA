@@ -29,6 +29,10 @@ public sealed class TransportBarHeadlessTests : IDisposable
             Assert.NotNull(window.FindControl<Views.LibrarySection>("LibrarySection"));
             Assert.NotNull(window.FindControl<Views.RailPlaylists>("RailPlaylists"));
             Assert.NotNull(window.FindControl<Views.PlaylistCenter>("PlaylistCenter"));
+            var center = window.FindControl<Views.PlaylistCenter>("PlaylistCenter");
+            Assert.NotNull(center);
+            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ImportPlaylistButton"));
+            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ExportPlaylistButton"));
             Assert.NotNull(window.FindControl<Views.QueueColumn>("QueueColumn"));
             Assert.NotNull(window.FindControl<Avalonia.Controls.Border>("HelpOverlay"));
             Assert.NotNull(window.FindControl<Avalonia.Controls.Grid>("HotkeyTable"));

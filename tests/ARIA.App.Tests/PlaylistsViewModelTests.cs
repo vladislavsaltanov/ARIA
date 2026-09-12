@@ -1,13 +1,11 @@
 namespace Aria.App.Tests;
 
-using System.Collections.Immutable;
 using Aria.App.ViewModels;
 using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
-using Aria.Core.State;
 
 public sealed class PlaylistsViewModelTests
 {
@@ -226,5 +224,70 @@ public sealed class PlaylistsViewModelTests
         Assert.Equal("01 rain.flac", vm.Playlists[0].Entries[0].RowText);
         Assert.Equal("Осенний дождь", vm.Playlists[0].Entries[0].DisplayName);
         bus.Dispose();
+    }
+
+    [Fact]
+    public async Task ExportSelectedDocument_RoundTrips_ThroughImport()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        var json = vm.ExportSelectedDocument();
+        var document = PlaylistFormat.Import(json);
+
+        Assert.Equal("Main", document.Name);
+        Assert.Equal(2, document.Entries.Length);
+        Assert.All(document.Entries, e => Assert.Equal("/audio/test.flac", e.File));
+        Assert.Equal("заметка", document.Entries[1].Note);
+    }
+
+    [Fact]
+    public async Task ImportDocumentAsync_CreatesPlaylist_ResolvesByFile()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var json = PlaylistFormat.Export("Вечер", [
+            new PlaylistExportEntry("/audio/test.flac", new PlaylistOverrides("Утро", GainDb: -3)),
+            new PlaylistExportEntry("/audio/missing.flac", Transition: new PlaylistFileTransition("crossfade", 4)),
+        ]);
+
+        var report = await vm.ImportDocumentAsync(json);
+
+        Assert.Null(report.Error);
+        Assert.Equal("Вечер", report.PlaylistName);
+        Assert.Equal(1, report.Added);
+        Assert.Equal("/audio/missing.flac", Assert.Single(report.MissingFiles));
+        Assert.Equal(0, report.PendingTransitions);
+        var imported = vm.Playlists.First(p => p.Name == "Вечер");
+        Assert.Equal("Утро", imported.Entries[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task ImportDocumentAsync_CountsPendingTransitions()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var json = PlaylistFormat.Export("Вечер", [
+            new PlaylistExportEntry("/audio/test.flac", Transition: new PlaylistFileTransition("gap", 2)),
+        ]);
+
+        var report = await vm.ImportDocumentAsync(json);
+
+        Assert.Null(report.Error);
+        Assert.Equal(1, report.Added);
+        Assert.Equal(1, report.PendingTransitions);
+    }
+
+    [Fact]
+    public async Task ImportDocumentAsync_BadJson_ReportsError()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        var report = await vm.ImportDocumentAsync("не json");
+
+        Assert.NotNull(report.Error);
+        Assert.Equal(0, report.Added);
+        Assert.DoesNotContain(vm.Playlists, p => p.Name == string.Empty);
     }
 }

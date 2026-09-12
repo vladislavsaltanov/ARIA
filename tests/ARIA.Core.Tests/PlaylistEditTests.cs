@@ -303,4 +303,70 @@ public sealed class PlaylistEditTests
         Assert.Equal(t3.Id, h.Transport.Current!.TrackId);
         Assert.Equal(TransportStatus.Playing, h.Transport.Status);
     }
+
+    [Fact]
+    public void ImportPlaylist_CreatesPlaylist_WithEntriesAndOverrides()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        h.Submit(new LoadShow([t1, t2], [], null));
+        var version = h.Snapshot.ShowVersion;
+
+        h.Submit(new ImportPlaylist("Вечер", [
+            new ImportPlaylistEntry(t1.Id, new PlaylistOverrides("Утро", GainDb: -3)),
+            new ImportPlaylistEntry(t2.Id),
+        ]));
+
+        var imported = Assert.Single(h.Snapshot.Show.Playlists);
+        Assert.Equal("Вечер", imported.Name);
+        Assert.Equal(2, imported.Entries.Length);
+        Assert.Equal(t1.Id, imported.Entries[0].TrackId);
+        Assert.Equal("Утро", imported.Entries[0].Overrides?.Name);
+        Assert.Equal(-3, imported.Entries[0].Overrides?.GainDb);
+        Assert.Equal(t2.Id, imported.Entries[1].TrackId);
+        Assert.Null(imported.Entries[1].Overrides);
+        Assert.True(h.Snapshot.ShowVersion > version);
+    }
+
+    [Theory]
+    [InlineData("", "bad-name")]
+    [InlineData("   ", "bad-name")]
+    public void ImportPlaylist_BlankName_IsRejected(string name, string reason)
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        h.Submit(new LoadShow([t1], [], null));
+
+        var seq = h.Submit(new ImportPlaylist(name, [new ImportPlaylistEntry(t1.Id)]));
+
+        Assert.Equal(reason, h.RejectionOf(seq)?.Reason);
+        Assert.Empty(h.Snapshot.Show.Playlists);
+    }
+
+    [Fact]
+    public void ImportPlaylist_EmptyEntries_IsRejected()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        h.Submit(new LoadShow([t1], [], null));
+
+        var seq = h.Submit(new ImportPlaylist("Вечер", []));
+
+        Assert.Equal("empty-playlist", h.RejectionOf(seq)?.Reason);
+        Assert.Empty(h.Snapshot.Show.Playlists);
+    }
+
+    [Fact]
+    public void ImportPlaylist_UnknownTrack_IsRejected()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        h.Submit(new LoadShow([t1], [], null));
+
+        var seq = h.Submit(new ImportPlaylist("Вечер", [new ImportPlaylistEntry(TrackId.New())]));
+
+        Assert.Equal("unknown-track", h.RejectionOf(seq)?.Reason);
+        Assert.Empty(h.Snapshot.Show.Playlists);
+    }
 }

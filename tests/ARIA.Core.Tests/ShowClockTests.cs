@@ -1,8 +1,6 @@
 namespace Aria.Core.Tests;
 
 using Aria.Core.Commands;
-using Aria.Core.Model;
-using Aria.Core.State;
 
 public sealed class ShowClockTests
 {

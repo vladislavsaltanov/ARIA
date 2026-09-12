@@ -1,6 +1,5 @@
 namespace Aria.App.ViewModels;
 
-using System.ComponentModel;
 using System.Globalization;
 using Aria.Core.Commands;
 using Aria.Core.Model;

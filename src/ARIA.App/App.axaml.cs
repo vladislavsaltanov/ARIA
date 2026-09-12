@@ -66,7 +66,7 @@ public partial class App : Application
         var thumbs = new WaveformThumbs(host.Waveforms!);
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
         var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load(), sync);
+        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load(), sync, topLevel: () => desktop.MainWindow);
         var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs, sync);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);

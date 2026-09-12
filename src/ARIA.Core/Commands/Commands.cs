@@ -42,6 +42,10 @@ public sealed record SetActivePlaylist(PlaylistId Id) : Command;
 
 public sealed record AddEntry(PlaylistId Playlist, TrackId Track, int? Index = null) : Command;
 
+public sealed record ImportPlaylistEntry(TrackId Track, PlaylistOverrides? Overrides = null);
+
+public sealed record ImportPlaylist(string Name, ImmutableArray<ImportPlaylistEntry> Entries) : Command;
+
 public sealed record RemoveEntry(EntryId Entry) : Command;
 
 public sealed record MoveEntry(EntryId Entry, int NewIndex) : Command;
