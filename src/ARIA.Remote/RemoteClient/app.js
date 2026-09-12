@@ -1,6 +1,4 @@
 (() => {
-  
-
   var ws = null;
   var seq = 0;
   var clientId = "pult-" + Math.random().toString(36).slice(2, 8);
@@ -39,21 +37,34 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       var value = JSON.parse(raw);
-      if (value && value.host === location.origin && value.identifier && value.password) return value;
-    } catch (e) { }
+      if (
+        value &&
+        value.host === location.origin &&
+        value.identifier &&
+        value.password
+      )
+        return value;
+    } catch (e) {}
     return null;
   }
 
   function savePairing(identifier, password) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ host: location.origin, identifier: identifier, password: password }));
-    } catch (e) { }
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          host: location.origin,
+          identifier: identifier,
+          password: password,
+        }),
+      );
+    } catch (e) {}
   }
 
   function forgetPairing() {
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch (e) { }
+    } catch (e) {}
     closeSocket();
     sessionToken = null;
     creds = null;
@@ -96,7 +107,11 @@
   function send(type, payload) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     var seqNo = ++seq;
-    var frame = { client: clientId, seq: seqNo, command: Object.assign({ type: type }, payload || {}) };
+    var frame = {
+      client: clientId,
+      seq: seqNo,
+      command: Object.assign({ type: type }, payload || {}),
+    };
     pendingAck.set(seqNo, Date.now());
     ws.send(JSON.stringify(frame));
   }
@@ -107,7 +122,11 @@
         showLogin("");
         return;
       }
-      var url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws?token=" + encodeURIComponent(token);
+      var url =
+        (location.protocol === "https:" ? "wss://" : "ws://") +
+        location.host +
+        "/ws?token=" +
+        encodeURIComponent(token);
       ws = new WebSocket(url);
       ws.onopen = () => {
         reconnectDelay = 500;
@@ -133,17 +152,36 @@
       return;
     }
     switch (frame.event) {
-      case "snapshot": applySnapshot(frame); break;
-      case "delta": applyDelta(frame); break;
-      case "position": applyPosition(frame); break;
-      case "lufs": applyLufs(frame); break;
-      case "ack": pendingAck.delete(frame.seq); break;
-      case "rejected": pendingAck.delete(frame.seq); break;
- default: break;
+      case "snapshot":
+        applySnapshot(frame);
+        break;
+      case "delta":
+        applyDelta(frame);
+        break;
+      case "position":
+        applyPosition(frame);
+        break;
+      case "lufs":
+        applyLufs(frame);
+        break;
+      case "ack":
+        pendingAck.delete(frame.seq);
+        break;
+      case "rejected":
+        pendingAck.delete(frame.seq);
+        break;
+      default:
+        break;
     }
   }
 
-  var state = { transport: null, show: null, mixer: null, queue: [], lufs: null };
+  var state = {
+    transport: null,
+    show: null,
+    mixer: null,
+    queue: [],
+    lufs: null,
+  };
 
   var LUFS_FLOOR = -60;
   var LUFS_WARN = -18;
@@ -175,7 +213,8 @@
 
   function applyPosition(frame) {
     var fileMs = frame.filePositionMs;
-    el.trackElapsed.textContent = fileMs == null ? "0:00" : formatSeconds(Math.floor(fileMs / 1000));
+    el.trackElapsed.textContent =
+      fileMs == null ? "0:00" : formatSeconds(Math.floor(fileMs / 1000));
     var ms = frame.remainingMs;
     if (ms == null) {
       el.remaining.textContent = "--:--";
@@ -187,14 +226,17 @@
     var h = Math.floor(total / 3600);
     var m = Math.floor((total % 3600) / 60);
     var s = total % 60;
-    var text = h > 0
-      ? h + ":" + pad(m) + ":" + pad(total % 60)
-      : pad(Math.floor(total / 60)) + ":" + pad(total % 60);
+    var text =
+      h > 0
+        ? h + ":" + pad(m) + ":" + pad(total % 60)
+        : pad(Math.floor(total / 60)) + ":" + pad(total % 60);
     el.remaining.textContent = text;
     el.remaining.classList.toggle("low", total <= 10 && total > 0);
   }
 
-  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function pad(n) {
+    return n < 10 ? "0" + n : "" + n;
+  }
 
   function renderTransport() {
     var t = state.transport;
@@ -236,7 +278,7 @@
   }
 
   function gainToPct(db) {
-    var pct = (db + 80) / 92 * 100;
+    var pct = ((db + 80) / 92) * 100;
     return Math.max(0, Math.min(100, pct));
   }
 
@@ -252,7 +294,8 @@
   }
 
   function applyLufs(frame) {
-    state.lufs = typeof frame.momentaryLufs === "number" ? frame.momentaryLufs : null;
+    state.lufs =
+      typeof frame.momentaryLufs === "number" ? frame.momentaryLufs : null;
     renderLufs();
   }
 
@@ -270,7 +313,10 @@
     el.lufsValue.textContent = clamped.toFixed(1);
     el.lufsValue.classList.toggle("hot", hot);
     el.lufsFill.classList.toggle("hot", hot);
-    var width = Math.max(0, Math.min(100, (clamped - LUFS_FLOOR) / -LUFS_FLOOR * 100));
+    var width = Math.max(
+      0,
+      Math.min(100, ((clamped - LUFS_FLOOR) / -LUFS_FLOOR) * 100),
+    );
     el.lufsFill.style.width = width + "%";
   }
 
@@ -292,8 +338,12 @@
     });
   }
 
-  function showConfirm() { el.panicConfirm.classList.remove("hidden"); }
-  function hideConfirm() { el.panicConfirm.classList.add("hidden"); }
+  function showConfirm() {
+    el.panicConfirm.classList.remove("hidden");
+  }
+  function hideConfirm() {
+    el.panicConfirm.classList.add("hidden");
+  }
 
   el.panic.addEventListener("click", showConfirm);
   document.getElementById("panic-yes").addEventListener("click", () => {
@@ -344,7 +394,9 @@
           setTimeout(requestWakeLock, 1000);
         });
       }
-    } catch (e) { /* denied - fine */ }
+    } catch (e) {
+      /* denied - fine */
+    }
   }
 
   document.addEventListener("visibilitychange", () => {
@@ -356,7 +408,7 @@
     try {
       ws.onclose = null;
       ws.close();
-    } catch (e) { }
+    } catch (e) {}
     ws = null;
   }
 
