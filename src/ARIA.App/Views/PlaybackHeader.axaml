@@ -22,9 +22,10 @@
       <Border Grid.Row="2" x:Name="WaveformStrip" Height="56" Background="Transparent"
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <Grid>
-          <Canvas x:Name="WaveformCanvas" Background="Transparent"/>
-          <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="#ECECEC"
-                     HorizontalAlignment="Left" IsVisible="False"/>
+          <Canvas x:Name="WaveformCanvas" Background="Transparent">
+            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="#ECECEC"
+                       IsVisible="False"/>
+          </Canvas>
         </Grid>
       </Border>
     </Grid>

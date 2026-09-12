@@ -71,6 +71,14 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
             var cursor = dragHeader.FindControl<Rectangle>("WaveCursor");
             Assert.NotNull(cursor);
             Assert.True(cursor.IsVisible);
+            var canvas = dragHeader.FindControl<Canvas>("WaveformCanvas");
+            Assert.NotNull(canvas);
+            Assert.True(canvas.Children.Count > 0);
+            Assert.Equal(canvas.Bounds.Width / 3, Canvas.GetLeft(cursor), 1);
+            Assert.Same(canvas, cursor.Parent);
+            var cursorAt = cursor.TranslatePoint(new Point(0, 0), canvas);
+            Assert.NotNull(cursorAt);
+            Assert.Equal(canvas.Bounds.Width / 3, cursorAt.Value.X, 0);
 
             var width = strip.Bounds.Width;
             var at = strip.TranslatePoint(new Point(width * 0.25, 28), dragWindow);

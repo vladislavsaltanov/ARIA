@@ -376,4 +376,26 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         }
         _viewModel.CommitEdit(line);
     }
+
+    [Fact]
+    public void UnrelatedShowDelta_KeepsEditingLine_WithoutCollectionReset()
+    {
+        _viewModel.CreateScriptCommand.Execute(null);
+        _viewModel.AddLineCommand.Execute(null);
+        var line = Assert.Single(_viewModel.Lines);
+        Assert.True(line.IsEditing);
+        line.EditText = "черновик";
+        var lineEvents = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        _viewModel.Lines.CollectionChanged += (_, e) => lineEvents.Add(e.Action);
+        var scriptEvents = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        _viewModel.Scripts.CollectionChanged += (_, e) => scriptEvents.Add(e.Action);
+
+        _bus.Submit(new ClientId("tick"), 1, new ResetShowClock());
+
+        Assert.True(line.IsEditing);
+        Assert.Same(line, Assert.Single(_viewModel.Lines));
+        Assert.Equal("черновик", line.EditText);
+        Assert.Empty(lineEvents);
+        Assert.Empty(scriptEvents);
+    }
 }

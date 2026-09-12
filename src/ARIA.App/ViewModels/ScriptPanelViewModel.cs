@@ -2,6 +2,7 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Text;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Runtime;
@@ -20,6 +21,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<ScriptId> _knownScripts = [];
     private readonly HashSet<ScriptLineId> _knownLines = [];
+    private string? _lastScriptKey;
     private bool _editNextArrival;
     private bool _addLinePending;
     private TimeSpan _elapsed;
@@ -364,6 +366,12 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private void SyncScripts(ShowState state)
     {
         var selectedId = SelectedScript?.Id;
+        var key = BuildScriptKey(state, selectedId);
+        if (key == _lastScriptKey && SelectedScript is not null)
+        {
+            return;
+        }
+        _lastScriptKey = key;
         Scripts.Clear();
         foreach (var script in state.Scripts)
         {
@@ -380,6 +388,33 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             _knownScripts.Add(script.Id);
         }
         SelectedScript = Scripts.FirstOrDefault(s => s.Id == selectedId) ?? Scripts.FirstOrDefault();
+    }
+
+    private static bool SameOrder(List<ScriptLineVm> fresh, ObservableCollection<ScriptLineVm> current)
+    {
+        if (fresh.Count != current.Count)
+        {
+            return false;
+        }
+        for (var index = 0; index < fresh.Count; index++)
+        {
+            if (!ReferenceEquals(fresh[index], current[index]))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static string BuildScriptKey(ShowState state, ScriptId? selectedId)
+    {
+        var sb = new StringBuilder();
+        sb.Append(selectedId);
+        foreach (var script in state.Scripts)
+        {
+            sb.Append('|').Append(script.Id).Append(':').Append(script.Name);
+        }
+        return sb.ToString();
     }
 
     private void SyncLines(ShowState state, ImmutableArray<Track> tracks)
@@ -410,10 +445,13 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             }
             fresh.Add(vm);
         }
-        Lines.Clear();
-        foreach (var vm in fresh)
+        if (!SameOrder(fresh, Lines))
         {
-            Lines.Add(vm);
+            Lines.Clear();
+            foreach (var vm in fresh)
+            {
+                Lines.Add(vm);
+            }
         }
         if (_editNextArrival)
         {

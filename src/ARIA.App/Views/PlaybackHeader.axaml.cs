@@ -103,7 +103,7 @@ public partial class PlaybackHeader : UserControl
 
     private void UpdateForTrack(TrackId? trackId)
     {
-        if (_currentTrackId == trackId)
+        if (_currentTrackId == trackId && _peaks is not null)
         {
             return;
         }
@@ -126,7 +126,13 @@ public partial class PlaybackHeader : UserControl
 
     private void DrawWaveform()
     {
-        WaveformCanvas.Children.Clear();
+        for (var index = WaveformCanvas.Children.Count - 1; index >= 0; index--)
+        {
+            if (WaveformCanvas.Children[index] is Path)
+            {
+                WaveformCanvas.Children.RemoveAt(index);
+            }
+        }
         if (_peaks is null)
         {
             return;
