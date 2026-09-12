@@ -179,6 +179,8 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
+    public void SeekToFilePosition(TimeSpan filePosition) => Submit(new SeekTo(filePosition));
+
     private void Post(Action work)
     {
         if (_sync is { } sync)

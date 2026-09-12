@@ -24,6 +24,76 @@ public sealed class DecoderTests : IDisposable
     }
 
     [Fact]
+    public void Seek_RepositionsDecoderSource_ToFileFrame()
+    {
+        var path = TestWav.WriteSine(_directory, "seek-mono.wav", SampleRate, 1, 1.0, 440.0, 0.5);
+        var factory = new MiniaudioSourceFactory(SampleRate, 1);
+        var source = factory.Open(path, TimeSpan.Zero, null);
+        Assert.NotNull(source);
+        using var scope = (IDisposable)source;
+        var reference = factory.Open(path, TimeSpan.Zero, null);
+        Assert.NotNull(reference);
+
+        var warm = new float[1000];
+        source.ReadFrames(warm);
+        source.Seek(4000);
+
+        var skip = new float[4000];
+        reference.ReadFrames(skip);
+        var buffer = new float[1024];
+        var expected = new float[1024];
+        var read = source.ReadFrames(buffer);
+        var expectedRead = reference.ReadFrames(expected);
+        Assert.Equal(expectedRead, read);
+        for (var sample = 0; sample < read; sample++)
+        {
+            Assert.InRange(buffer[sample], expected[sample] - 1e-4, expected[sample] + 1e-4);
+        }
+    }
+
+    [Fact]
+    public void Seek_AccountsForCueInOffset()
+    {
+        var path = TestWav.WriteSine(_directory, "seek-cuein.wav", SampleRate, 1, 1.0, 440.0, 0.5);
+        var factory = new MiniaudioSourceFactory(SampleRate, 1);
+        var source = factory.Open(path, TimeSpan.FromSeconds(0.25), null);
+        Assert.NotNull(source);
+        using var scope = (IDisposable)source;
+        var reference = factory.Open(path, TimeSpan.Zero, null);
+        Assert.NotNull(reference);
+
+        source.Seek(1000);
+
+        var skip = new float[2000 + 1000];
+        reference.ReadFrames(skip);
+        var buffer = new float[1024];
+        var expected = new float[1024];
+        var read = source.ReadFrames(buffer);
+        var expectedRead = reference.ReadFrames(expected);
+        Assert.Equal(expectedRead, read);
+        for (var sample = 0; sample < read; sample++)
+        {
+            Assert.InRange(buffer[sample], expected[sample] - 1e-4, expected[sample] + 1e-4);
+        }
+    }
+
+    [Fact]
+    public void Seek_BeyondCueOut_IsIgnored()
+    {
+        var path = TestWav.WriteSine(_directory, "seek-clamp.wav", SampleRate, 1, 1.0, 440.0, 0.5);
+        var factory = new MiniaudioSourceFactory(SampleRate, 1);
+        var source = factory.Open(path, TimeSpan.Zero, TimeSpan.FromSeconds(0.5));
+        Assert.NotNull(source);
+        using var scope = (IDisposable)source;
+
+        var buffer = new float[4000];
+        Assert.Equal(4000, source.ReadFrames(buffer));
+        source.Seek(5000);
+
+        Assert.Equal(0, source.ReadFrames(buffer));
+    }
+
+    [Fact]
     public void Wav_DecodesSine_EndOfStream()
     {
         var path = TestWav.WriteSine(_directory, "mono-8000.wav", SampleRate, 1, 1.0, 440.0, 0.5);

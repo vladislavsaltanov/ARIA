@@ -77,6 +77,16 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
     }
 
+    public void Seek(StreamHandle handle, TimeSpan position)
+    {
+        if (_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
+        {
+            var frames = (long)Math.Round(position.TotalSeconds * _mixer.SampleRate);
+            _mixer.Seek(mixerHandle, Math.Max(0, frames));
+            _sink.Flush();
+        }
+    }
+
     public void SetMasterGain(double gainDb)
         => Volatile.Write(ref _masterGainBits, BitConverter.DoubleToInt64Bits(Math.Pow(10.0, gainDb / 20.0)));
 

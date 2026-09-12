@@ -85,6 +85,21 @@ public sealed class MiniaudioSourceFactory : ISourceFactory
             _scratchHandle.Free();
         }
 
+        public void Seek(long frameIndex)
+        {
+            if (_handle == IntPtr.Zero || frameIndex < 0 || frameIndex > _maxFrames)
+            {
+                return;
+            }
+            var fileFrame = _skipFrames + frameIndex;
+            if (AriaShim.DecoderSeek(_handle, fileFrame) != 0)
+            {
+                return;
+            }
+            _consumed = fileFrame;
+            _delivered = frameIndex;
+        }
+
         private bool SkipPendingCueIn()
         {
             while (_consumed < _skipFrames)

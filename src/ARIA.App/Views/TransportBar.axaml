@@ -98,7 +98,8 @@
         </StackPanel>
         <PathIcon Grid.Column="8" x:Name="LockIcon" Data="{StaticResource icon_lock}" Width="18" Height="18"
                   Foreground="{Binding LockBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
-        <Button Grid.Column="9" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center">
+        <Button Grid.Column="9" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
+                Click="OnSettingsClick">
           <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
         </Button>
         <Button Grid.Column="10" x:Name="PanicButton" Classes="panic" Content="PANIC"

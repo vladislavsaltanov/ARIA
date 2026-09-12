@@ -21,6 +21,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
+    private AppSettings _rowSettings = AppSettings.Default;
     private long _seq;
 
     [ObservableProperty]
@@ -39,13 +40,23 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null)
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null)
     {
         _bus = bus;
         _trackSource = trackSource;
         _thumbs = thumbs;
+        _rowSettings = rowSettings ?? AppSettings.Default;
         _subscription = bus.Subscribe(Apply);
         Rebuild(bus.Snapshot().Show, _trackSource?.Invoke() ?? []);
+    }
+
+    public void UpdateRowSettings(AppSettings settings)
+    {
+        _rowSettings = settings;
+        if (_lastShow is { } show)
+        {
+            Rebuild(show, _trackSource?.Invoke() ?? []);
+        }
     }
 
     [RelayCommand]
@@ -199,6 +210,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         _lastShow = state;
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
         var trackDurations = tracks.ToDictionary(t => t.Id, t => t.Duration);
+        var trackFiles = tracks.ToDictionary(t => t.Id, t => Path.GetFileName(t.FilePath));
         var selectedPlaylistId = SelectedPlaylist?.Id;
         var selectedEntryId = SelectedEntry?.Id;
 
@@ -210,17 +222,27 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             {
                 var entry = playlist.Entries[index];
                 var displayName = entry.Overrides?.Name ?? trackNames.GetValueOrDefault(entry.TrackId, $"track {entry.TrackId.Value:N}");
+                var fileName = trackFiles.GetValueOrDefault(entry.TrackId, displayName);
+                var duration = trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero);
+                var position = $"{index + 1:00}";
                 playlistVm.Entries.Add(new EntryVm(
                     entry.Id,
                     entry.TrackId,
                     displayName,
+                    fileName,
+                    RowFormatter.Format(
+                        _rowSettings.RowFormat,
+                        position,
+                        RowFormatter.DisplayName(_rowSettings, displayName, fileName),
+                        fileName,
+                        duration.ToString(@"mm\:ss")),
                     entry.Overrides?.Color,
                     entry.Overrides?.Note,
                     entry.Overrides,
                     _thumbs?.For(entry.TrackId),
                     _faulted.Contains(entry.TrackId),
-                    $"{index + 1:00}",
-                    trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero),
+                    position,
+                    duration,
                     _linkedTrackId == entry.TrackId));
             }
             Playlists.Add(playlistVm);
@@ -307,6 +329,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         EntryId Id,
         TrackId TrackId,
         string DisplayName,
+        string FileName,
+        string RowText,
         string? Color,
         string? Note,
         PlaylistOverrides? Overrides,

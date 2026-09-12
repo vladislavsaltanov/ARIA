@@ -42,8 +42,9 @@
       <Setter Property="Background" Value="#1F1F1F"/>
     </Style>
   </Window.Styles>
-  <Grid RowDefinitions="*,Auto,Auto" Margin="24">
-    <SplitView Grid.Row="0" x:Name="ScriptDrawer" PanePlacement="Right" DisplayMode="Overlay"
+  <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+    <views:PlaybackHeader x:Name="PlaybackHeader" Grid.Row="0" Margin="0,0,0,12" />
+    <SplitView Grid.Row="1" x:Name="ScriptDrawer" PanePlacement="Right" DisplayMode="Overlay"
                OpenPaneLength="340" IsPaneOpen="False">
       <SplitView.Pane>
         <Border Background="#161616" BorderBrush="#2C2C2C" BorderThickness="1,0,0,0">
@@ -78,11 +79,6 @@
       <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
       </Grid>
     </SplitView>
-    <TabControl Grid.Row="1" Background="#0F0F0F" BorderThickness="0" Margin="0,12,0,0">
-      <TabItem x:Name="RemoteTab" Header="REMOTE" Foreground="#EDEDED">
-        <views:RemotePanel />
-      </TabItem>
-    </TabControl>
     <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="76" Margin="-24,12,-24,-24" />
     <Border x:Name="FocusSink" Grid.RowSpan="3" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
     <Border x:Name="HelpOverlay" Grid.RowSpan="3" IsVisible="False" Background="#D90F0F0F"

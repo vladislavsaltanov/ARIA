@@ -62,7 +62,8 @@ public partial class App : Application
         var sync = SynchronizationContext.Current;
         var thumbs = new WaveformThumbs(host.Waveforms!);
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs);
+        var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
+        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load());
         var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs);
         var queue = new QueueViewModel(host.Bus);
         var remote = new RemotePanelViewModel(sync);
@@ -77,9 +78,17 @@ public partial class App : Application
                     DispatchHotkey(window, transport, action);
                 }
             });
-        window = new MainWindow(hotkeys, library, playlists, queue, remote, scripts) { DataContext = transport };
+        var settings = new SettingsViewModel(
+            host.Bus,
+            hotkeys,
+            Path.Combine(dataDirectory, "hotkeys.json"),
+            settingsStore,
+            updated => playlists.UpdateRowSettings(updated));
+        window = new MainWindow(hotkeys, library, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
+
+        window.AttachPlaybackHeader(host.Monitor, host.Waveforms);
 
         if (host.Remote is { } remoteHost && _credentials is { } store)
         {

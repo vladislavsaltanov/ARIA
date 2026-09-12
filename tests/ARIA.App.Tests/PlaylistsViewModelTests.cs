@@ -2,6 +2,7 @@ namespace Aria.App.Tests;
 
 using System.Collections.Immutable;
 using Aria.App.ViewModels;
+using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Playback;
@@ -182,5 +183,23 @@ public sealed class PlaylistsViewModelTests
         vm.SetLinkedTrack(null);
 
         Assert.All(vm.Playlists[0].Entries, e => Assert.False(e.IsLinked));
+    }
+
+    [Fact]
+    public void RowText_FollowsFormatSettings()
+    {
+        var track = new Track(TrackId.New(), "/audio/rain.flac", "Осенний дождь", TimeSpan.FromSeconds(222), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [track]);
+
+        Assert.Equal("Осенний дождь", vm.Playlists[0].Entries[0].RowText);
+
+        vm.UpdateRowSettings(new AppSettings(true, "{position} {filename}"));
+
+        Assert.Equal("01 rain.flac", vm.Playlists[0].Entries[0].RowText);
+        Assert.Equal("Осенний дождь", vm.Playlists[0].Entries[0].DisplayName);
+        bus.Dispose();
     }
 }

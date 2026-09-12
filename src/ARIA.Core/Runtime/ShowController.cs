@@ -96,6 +96,9 @@ public sealed class ShowController : IShowHandler
             case Replay:
                 OnReplay(client, seq);
                 break;
+            case SeekTo seek:
+                OnSeekTo(client, seq, seek);
+                break;
             case Panic:
                 OnPanic();
                 break;
@@ -529,6 +532,26 @@ public sealed class ShowController : IShowHandler
             return;
         }
         RestartCurrent();
+    }
+
+    private void OnSeekTo(ClientId client, long seq, SeekTo command)
+    {
+        if (_status is not (TransportStatus.Playing or TransportStatus.Paused) || _current is not { Handle: { } handle, Settings: { } settings } deck)
+        {
+            Reject(client, seq, "nothing-to-seek");
+            return;
+        }
+        var end = settings.CueOut ?? deck.Track.Duration;
+        var filePosition = command.FilePosition;
+        if (filePosition < settings.CueIn)
+        {
+            filePosition = settings.CueIn;
+        }
+        if (filePosition > end)
+        {
+            filePosition = end;
+        }
+        _engine.Seek(handle, filePosition - settings.CueIn);
     }
 
     private void OnPanic()

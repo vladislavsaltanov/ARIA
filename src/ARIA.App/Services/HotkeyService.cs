@@ -2,6 +2,18 @@ namespace Aria.App.Services;
 
 public sealed class HotkeyService
 {
+    private static readonly HashSet<string> SystemReserved = new(StringComparer.Ordinal)
+    {
+        "meta+q",
+        "meta+w",
+        "meta+h",
+        "meta+m",
+        "meta+tab",
+        "meta+space",
+        "meta+,",
+        "ctrl+space",
+    };
+
     private readonly Dictionary<string, string> _bindings;
     private readonly Action<string> _dispatch;
 
@@ -17,6 +29,27 @@ public sealed class HotkeyService
                 _bindings.Add(gesture, binding.Action);
             }
         }
+    }
+
+    public void Reset(HotkeyConfig config)
+    {
+        _bindings.Clear();
+        foreach (var binding in config.Bindings)
+        {
+            var gesture = Normalize(binding.Gesture);
+            if (!_bindings.ContainsKey(gesture))
+            {
+                _bindings.Add(gesture, binding.Action);
+            }
+        }
+    }
+
+    public static bool IsSystemReserved(string gesture) => SystemReserved.Contains(Normalize(gesture));
+
+    public string? ConflictFor(string action, string gesture)
+    {
+        var normalized = Normalize(gesture);
+        return _bindings.TryGetValue(normalized, out var bound) && bound != action ? bound : null;
     }
 
     public bool TryHandle(string gesture)

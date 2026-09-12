@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Text;
 using Aria.App.Services;
 using Aria.App.ViewModels;
+using Aria.Core.Playback;
+using Aria.Persistence;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -12,6 +14,7 @@ using Avalonia.Media;
 public partial class MainWindow : Window
 {
     private readonly HotkeyService? _hotkeys;
+    private readonly Func<Window>? _settingsDialogFactory;
     private LibraryViewModel? _library;
     private PlaylistsViewModel? _playlists;
     private QueueViewModel? _queue;
@@ -26,11 +29,12 @@ public partial class MainWindow : Window
         LibraryViewModel? libraryViewModel = null,
         PlaylistsViewModel? playlistsViewModel = null,
         QueueViewModel? queueViewModel = null,
-        RemotePanelViewModel? remoteViewModel = null,
+        Func<Window>? settingsDialogFactory = null,
         ScriptPanelViewModel? scriptViewModel = null)
     {
         InitializeComponent();
         _hotkeys = hotkeys;
+        _settingsDialogFactory = settingsDialogFactory;
         if (libraryViewModel is not null)
         {
             _library = libraryViewModel;
@@ -48,10 +52,6 @@ public partial class MainWindow : Window
             _queue = queueViewModel;
             QueueColumn.DataContext = queueViewModel;
         }
-        if (remoteViewModel is not null)
-        {
-            RemoteTab.DataContext = remoteViewModel;
-        }
         if (scriptViewModel is not null)
         {
             ScriptPanel.DataContext = scriptViewModel;
@@ -60,7 +60,16 @@ public partial class MainWindow : Window
         }
         PlaylistCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
         PlaylistCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
+        TransportBar.SettingsRequested += OnSettingsRequested;
         Opened += OnOpened;
+    }
+
+    private void OnSettingsRequested(object? sender, EventArgs e)
+    {
+        if (_settingsDialogFactory?.Invoke() is { } dialog)
+        {
+            dialog.ShowDialog(this);
+        }
     }
 
     public void ToggleScriptPane()
@@ -127,6 +136,14 @@ public partial class MainWindow : Window
             QueueColumn.QueueListBox);
     }
 
+    public void AttachPlaybackHeader(PlaybackMonitor monitor, IWaveformStore? waveforms)
+    {
+        if (PlaybackHeader is { } header)
+        {
+            header.Attach(monitor, waveforms);
+        }
+    }
+
     private void OnQueueJumpClick(object? sender, RoutedEventArgs e)
     {
         _queue?.FocusPlaying();
@@ -151,7 +168,7 @@ public partial class MainWindow : Window
         {
             return;
         }
-        if (_hotkeys.TryHandle(BuildGesture(e.KeyModifiers, GestureKey(e.Key))))
+        if (_hotkeys.TryHandle(HotkeyInput.GestureFor(e.Key, e.KeyModifiers)))
         {
             e.Handled = true;
         }
@@ -196,45 +213,5 @@ public partial class MainWindow : Window
         {
             HotkeyTable.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         }
-    }
-
-    private static string GestureKey(Key key)
-    {
-        if (key is >= Key.D0 and <= Key.D9)
-        {
-            return ((char)('0' + (int)(key - Key.D0))).ToString();
-        }
-        if (key is >= Key.NumPad0 and <= Key.NumPad9)
-        {
-            return ((char)('0' + (int)(key - Key.NumPad0))).ToString();
-        }
-        return key switch
-        {
-            Key.Space => "space",
-            Key.Escape => "escape",
-            _ => key.ToString().ToLowerInvariant(),
-        };
-    }
-
-    private static string BuildGesture(KeyModifiers modifiers, string key)
-    {
-        var builder = new StringBuilder();
-        if (modifiers.HasFlag(KeyModifiers.Control))
-        {
-            builder.Append("ctrl+");
-        }
-        if (modifiers.HasFlag(KeyModifiers.Alt))
-        {
-            builder.Append("alt+");
-        }
-        if (modifiers.HasFlag(KeyModifiers.Shift))
-        {
-            builder.Append("shift+");
-        }
-        if (modifiers.HasFlag(KeyModifiers.Meta))
-        {
-            builder.Append("meta+");
-        }
-        return builder.Append(key).ToString();
     }
 }

@@ -12,12 +12,17 @@ public partial class TransportBar : UserControl
     private TransportViewModel? _viewModel;
     private IDisposable? _clockTimer;
 
+    public event EventHandler? SettingsRequested;
+
     public TransportBar()
     {
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
+
+    private void OnSettingsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        SettingsRequested?.Invoke(this, EventArgs.Empty);
 
     public void ApplyGestures(HotkeyService hotkeys)
     {

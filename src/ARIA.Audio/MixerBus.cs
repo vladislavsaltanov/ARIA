@@ -22,10 +22,11 @@ public sealed class MixerBus : IDisposable
         Remove,
         Transport,
         SetMix,
+        Seek,
         StopAll,
     }
 
-    private readonly record struct Command(CommandKind Kind, Voice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix, TimeSpan Duration);
+    private readonly record struct Command(CommandKind Kind, Voice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix, TimeSpan Duration, long SeekFrame = 0);
 
     private sealed class Voice
     {
@@ -124,6 +125,9 @@ public sealed class MixerBus : IDisposable
     public void RemoveVoice(StreamHandle handle)
         => _commands.Enqueue(new Command(CommandKind.Remove, null, handle, default, null, default));
 
+    public void Seek(StreamHandle handle, long frameIndex)
+        => _commands.Enqueue(new Command(CommandKind.Seek, null, handle, default, null, default, frameIndex));
+
     public int Render(Span<float> output)
     {
         if (output.Length % _channels != 0)
@@ -206,6 +210,9 @@ public sealed class MixerBus : IDisposable
                 case CommandKind.SetMix:
                     ApplyMix(FindVoice(command.Handle), command.Mix!);
                     break;
+                case CommandKind.Seek:
+                    ApplySeek(FindVoice(command.Handle), command.SeekFrame);
+                    break;
                 case CommandKind.StopAll:
                     ApplyStopAll(command.Duration);
                     break;
@@ -257,13 +264,22 @@ public sealed class MixerBus : IDisposable
         }
     }
 
+    private static void ApplySeek(Voice? voice, long frameIndex)
+    {
+        if (voice is null || voice.RemoveRequested || voice.Dead)
+        {
+            return;
+        }
+        voice.Source.Seek(frameIndex);
+        voice.StartFrame = frameIndex;
+    }
+
     private void ApplyMix(Voice? voice, MixParameters mix)
     {
         if (voice is null || voice.RemoveRequested)
         {
             return;
         }
-        voice.Gain.SetGainDb(mix.GainDb);
         if (mix.Fade is not { } fade)
         {
             return;
