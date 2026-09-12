@@ -95,6 +95,37 @@ public sealed class ScriptPanelHeadlessTests : IDisposable
     }
 
     [Fact]
+    public async Task ScriptPanel_ManagementFooter_SitsBelowSeparator()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var bus = NewBus();
+            using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
+            var window = new Window { Width = 500, Height = 700, Content = new ScriptPanel { DataContext = viewModel } };
+            window.Show();
+
+            var panel = (ScriptPanel)window.Content!;
+            viewModel.CreateScriptCommand.Execute(null);
+
+            var separator = panel.FindControl<Separator>("ScriptFooterSeparator");
+            Assert.NotNull(separator);
+            Assert.True(separator.IsVisible);
+            var create = panel.FindControl<Button>("NewScriptButton");
+            var delete = panel.FindControl<Button>("DeleteScriptButton");
+            Assert.NotNull(create);
+            Assert.NotNull(delete);
+            Assert.Same(viewModel.CreateScriptCommand, create.Command);
+            Assert.Same(viewModel.DeleteSelectedCommand, delete.Command);
+            var close = panel.FindControl<Button>("PaneCloseButton");
+            Assert.NotNull(close);
+            Assert.Null(close.Command);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task ScriptPanel_Binds_ScriptsAndLines()
     {
         await _session.Dispatch(() =>

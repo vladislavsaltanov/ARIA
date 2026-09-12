@@ -39,19 +39,14 @@
     </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,Auto,*,Auto" Tapped="OnPanelTapped">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
       <TextBox x:Name="ScriptNameBox" Text="{Binding SelectedScript.Name, Mode=OneWay}"
                FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
                Background="Transparent" BorderThickness="0" Padding="0"
                KeyDown="OnNameKeyDown" LostFocus="OnNameCommit"/>
-      <Button Grid.Column="1" Classes="ghost" Width="28" Height="28" Margin="0,0,6,0"
-              Command="{Binding DeleteSelectedCommand}"
-              ToolTip.Tip="Удалить сценарий">
-        <PathIcon Data="{StaticResource icon_x}" Width="12" Height="12"/>
-      </Button>
-      <Button Grid.Column="2" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28"
-              Click="OnCloseClick" ToolTip.Tip="Закрыть — Ctrl+T">
-        <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
+      <Button Grid.Column="1" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28"
+              Click="OnCloseClick" ToolTip.Tip="Скрыть панель — Ctrl+T">
+        <PathIcon Data="{StaticResource icon_next}" Width="13" Height="13"/>
       </Button>
     </Grid>
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8" IsVisible="{Binding HasScripts}">
@@ -211,6 +206,24 @@
       </StackPanel>
       <Button Classes="ghost" Height="30" Padding="12,0" FontSize="13" Margin="0,6,0,0"
               Command="{Binding AddLineCommand}" Content="+ строка" IsVisible="{Binding HasScripts}"/>
+      <Separator x:Name="ScriptFooterSeparator" Margin="0,10,0,6" IsVisible="{Binding HasScripts}"
+                 Background="{StaticResource BrushLine}"/>
+      <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasScripts}">
+        <Button x:Name="NewScriptButton" Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
+                Command="{Binding CreateScriptCommand}" ToolTip.Tip="Новый сценарий">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_plus}" Width="12" Height="12"/>
+            <TextBlock Text="Новый" FontSize="13" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="DeleteScriptButton" Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
+                Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="Удалить текущий сценарий">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_x}" Width="12" Height="12"/>
+            <TextBlock Text="Удалить" FontSize="13" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+      </StackPanel>
     </StackPanel>
   </Grid>
 </UserControl>
