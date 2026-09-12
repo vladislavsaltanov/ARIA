@@ -10,7 +10,7 @@
         CanResize="True">
   <Window.Styles>
     <Style Selector="Button.railAction">
-      <Setter Property="Height" Value="34"/>
+      <Setter Property="MinHeight" Value="34"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="Padding" Value="12,0"/>

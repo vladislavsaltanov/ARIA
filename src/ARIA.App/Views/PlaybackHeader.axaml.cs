@@ -1,5 +1,6 @@
 namespace Aria.App.Views;
 
+using System.ComponentModel;
 using System.Collections.Immutable;
 using Aria.App.Services;
 using Aria.App.ViewModels;
@@ -21,6 +22,7 @@ public partial class PlaybackHeader : UserControl
 
     private IWaveformStore? _waveforms;
     private PlaybackMonitor? _monitor;
+    private TransportViewModel? _viewModel;
     private PositionSnapshot? _latest;
     private TrackId? _currentTrackId;
     private WaveformPeaks? _peaks;
@@ -30,6 +32,7 @@ public partial class PlaybackHeader : UserControl
     public PlaybackHeader()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
         WaveformBorder.PointerPressed += OnWavePressed;
         WaveformBorder.PointerMoved += OnWaveMoved;
         WaveformBorder.PointerReleased += OnWaveReleased;
@@ -41,10 +44,48 @@ public partial class PlaybackHeader : UserControl
     {
         _monitor = monitor;
         _waveforms = waveforms;
+        if (_peaks is null)
+        {
+            _currentTrackId = null;
+        }
         monitor.Changed += OnPosition;
+        monitor.Cleared += OnMonitorCleared;
         if (monitor.Latest is { } latest)
         {
             Apply(latest);
+        }
+        else if (_viewModel?.CurrentTrackId is { } trackId)
+        {
+            UpdateForTrack(trackId);
+        }
+    }
+
+    private void OnMonitorCleared() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => WaveCursor.IsVisible = false);
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (_viewModel is not null)
+        {
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+        _viewModel = DataContext as TransportViewModel;
+        if (_viewModel is not null)
+        {
+            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+            if (_latest is null)
+            {
+                UpdateForTrack(_viewModel.CurrentTrackId);
+            }
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TransportViewModel.CurrentTrackId)
+            && sender is TransportViewModel viewModel)
+        {
+            UpdateForTrack(viewModel.CurrentTrackId);
         }
     }
 
@@ -60,14 +101,14 @@ public partial class PlaybackHeader : UserControl
         UpdateCursor(snapshot);
     }
 
-    private void UpdateForTrack(TrackId trackId)
+    private void UpdateForTrack(TrackId? trackId)
     {
         if (_currentTrackId == trackId)
         {
             return;
         }
         _currentTrackId = trackId;
-        _peaks = _waveforms?.Load(trackId);
+        _peaks = trackId is null ? null : _waveforms?.Load(trackId.Value);
         WaveCursor.IsVisible = _peaks is not null;
         DrawWaveform();
     }

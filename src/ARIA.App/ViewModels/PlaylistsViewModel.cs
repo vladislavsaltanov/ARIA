@@ -18,6 +18,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly WaveformThumbs? _thumbs;
     private readonly HashSet<TrackId> _faulted = [];
+    private string? _awaitedPlaylistName;
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
@@ -60,7 +61,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void CreatePlaylist() => Submit(new CreatePlaylist($"Новый плейлист {++_newPlaylistCounter}"));
+    private void CreatePlaylist()
+    {
+        _awaitedPlaylistName = $"Новый плейлист {++_newPlaylistCounter}";
+        Submit(new CreatePlaylist(_awaitedPlaylistName));
+    }
 
     [RelayCommand]
     private void RenamePlaylist(string? name)
@@ -208,11 +213,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
         _lastShow = state;
+        _newPlaylistCounter = Math.Max(_newPlaylistCounter, state.Playlists.Length);
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
         var trackDurations = tracks.ToDictionary(t => t.Id, t => t.Duration);
         var trackFiles = tracks.ToDictionary(t => t.Id, t => Path.GetFileName(t.FilePath));
         var selectedPlaylistId = SelectedPlaylist?.Id;
         var selectedEntryId = SelectedEntry?.Id;
+        var awaitedName = _awaitedPlaylistName;
 
         Playlists.Clear();
         foreach (var playlist in state.Playlists)
@@ -248,7 +255,16 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             Playlists.Add(playlistVm);
         }
 
-        SelectedPlaylist = Playlists.FirstOrDefault(p => p.Id == selectedPlaylistId) ?? Playlists.FirstOrDefault();
+        PlaylistVm? awaited = null;
+        if (awaitedName is not null)
+        {
+            awaited = Playlists.FirstOrDefault(p => p.Name == awaitedName);
+            if (awaited is not null)
+            {
+                _awaitedPlaylistName = null;
+            }
+        }
+        SelectedPlaylist = awaited ?? Playlists.FirstOrDefault(p => p.Id == selectedPlaylistId) ?? Playlists.FirstOrDefault();
         SelectedEntry = SelectedPlaylist?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedPlaylist?.Entries.FirstOrDefault();
         RefreshVisible();
         RefreshCenterHeader();

@@ -166,7 +166,7 @@ internal sealed class DragCoordinator
                 }
             }
             else if (IsInside(_queue, e.GetPosition(_queue))
-                && _queue.DataContext is LibraryViewModel library)
+                && source.DataContext is LibraryViewModel library)
             {
                 library.EnqueueTracks(tracks);
             }

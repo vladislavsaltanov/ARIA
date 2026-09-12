@@ -86,13 +86,54 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task Waveform_Draws_FromViewModelCurrentTrack_WhenTransportStopped()
+    {
+        await _session.Dispatch(() =>
+        {
+            var controller = new RecordingController();
+            using var bus = new CommandBus(controller, BusMode.Inline);
+            using var viewModel = new TransportViewModel(bus);
+            var header = new Views.PlaybackHeader { DataContext = viewModel };
+            var window = new Window { Width = 700, Height = 300, Content = header };
+            window.Show();
+
+            var store = new MemoryWaveformStore();
+            var points = ImmutableArray.CreateBuilder<PeakPoint>();
+            for (var index = 0; index < 100; index++)
+            {
+                points.Add(new PeakPoint(-0.5f, 0.5f));
+            }
+            store.Save(new WaveformPeaks(TestTrack.Id, 25, 48000, points.ToImmutable()));
+            var monitor = new PlaybackMonitor();
+            header.Attach(monitor, store);
+
+            window.UpdateLayout();
+            var canvas = header.FindControl<Canvas>("WaveformCanvas");
+            Assert.NotNull(canvas);
+            Assert.True(canvas.Children.Count > 0);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private sealed class RecordingController : IShowHandler
     {
+        private static readonly DeckContent TestDeck = new(
+            null,
+            TestTrack.Id,
+            "test",
+            null,
+            EndAction.Pause,
+            TimeSpan.FromSeconds(90),
+            TimeSpan.Zero);
+
         private readonly ShowSnapshot _snapshot = new(
             0,
             new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty),
             0,
-            new TransportState(TransportStatus.Stopped, null, null, []),
+            new TransportState(TransportStatus.Stopped, TestDeck, null, []),
             0,
             new QueueState([]),
             0,

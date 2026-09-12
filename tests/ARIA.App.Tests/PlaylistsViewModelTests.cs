@@ -70,6 +70,17 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public void CreatePlaylist_SelectsNewPlaylist()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        vm.CreatePlaylistCommand.Execute(null);
+
+        Assert.Equal("Новый плейлист 2", vm.SelectedPlaylist?.Name);
+    }
+
+    [Fact]
     public void MoveEntry_Reorders()
     {
         var (bus, _, entry1) = Setup();

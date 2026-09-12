@@ -9,6 +9,11 @@ public partial class SettingsDialog : Window
 {
     private readonly SettingsViewModel? _settings;
 
+    public SettingsDialog()
+        : this(null, null)
+    {
+    }
+
     public SettingsDialog(SettingsViewModel? settings = null, RemotePanelViewModel? remote = null)
     {
         InitializeComponent();

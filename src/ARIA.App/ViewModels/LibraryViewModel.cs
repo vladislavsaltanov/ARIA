@@ -16,11 +16,6 @@ using CommunityToolkit.Mvvm.Input;
 
 public sealed partial class LibraryViewModel : ObservableObject, IDisposable
 {
-    private static readonly FilePickerFileType AudioFilter = new("Аудио")
-    {
-        Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"],
-    };
-
     private readonly ICommandBus _bus;
     private readonly ILibraryStore _library;
     private readonly WaveformThumbs? _thumbs;
@@ -80,20 +75,19 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
         {
-            StatusText = "выбор файлов недоступен";
+            StatusText = "выбор папки недоступен";
             return;
         }
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Импорт треков",
+            Title = "Импорт папки с треками",
             AllowMultiple = true,
-            FileTypeFilter = [AudioFilter],
         });
-        if (files.Count == 0)
+        if (folders.Count == 0)
         {
             return;
         }
-        await ImportAsync(files.Select(file => file.Path.LocalPath));
+        await ImportAsync(folders.Select(folder => folder.Path.LocalPath));
     }
 
     public async Task ImportAsync(IEnumerable<string> paths)
@@ -126,6 +120,8 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
     }
 
     public void EnqueueTrack(TrackVm track) => Submit(new EnqueueTrack(track.Id));
+
+    public void Play() => Submit(new Play());
 
     public void SetLinkedTrack(TrackId? track)
     {

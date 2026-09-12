@@ -3,6 +3,7 @@ namespace Aria.App.ViewModels;
 using System.ComponentModel;
 using System.Globalization;
 using Aria.Core.Commands;
+using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
@@ -84,6 +85,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private double positionFraction;
+
+    [ObservableProperty]
+    private TrackId? currentTrackId;
 
     public TransportViewModel(
         ICommandBus bus,
@@ -219,6 +223,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             _ => "STOP",
         };
         DisplayName = state.Current?.DisplayName ?? "—";
+        CurrentTrackId = state.Current?.TrackId;
         var next = state.Next?.DisplayName;
         NextName = string.IsNullOrEmpty(next) ? "—" : next;
         NextLine = string.IsNullOrEmpty(next) ? "—" : $"Далее: {next}";
