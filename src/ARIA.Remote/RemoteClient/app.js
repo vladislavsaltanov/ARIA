@@ -529,7 +529,8 @@
   function transportPlaying(item) {
     var current = state.transport && state.transport.current;
     if (!current) return false;
-    if (item.entryId && current.entryId) return item.entryId === current.entryId;
+    if (item.entryId && current.entryId)
+      return item.entryId === current.entryId;
     return item.trackId === current.trackId;
   }
 
