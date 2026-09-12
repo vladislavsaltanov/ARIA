@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Text;
 using Aria.App.Services;
 using Aria.App.ViewModels;
+using Aria.Core.Playback;
+using Aria.Persistence;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -132,6 +134,14 @@ public partial class MainWindow : Window
             LibrarySection.TrackListBox,
             PlaylistCenter.EntryListBox,
             QueueColumn.QueueListBox);
+    }
+
+    public void AttachPlaybackHeader(PlaybackMonitor monitor, IWaveformStore? waveforms)
+    {
+        if (PlaybackHeader is { } header)
+        {
+            header.Attach(monitor, waveforms);
+        }
     }
 
     private void OnQueueJumpClick(object? sender, RoutedEventArgs e)

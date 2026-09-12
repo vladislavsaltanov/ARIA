@@ -646,6 +646,15 @@ ARIA_EXPORT int aria_decoder_read(aria_decoder* decoder, float* out, int frame_c
     return (int)frames_read;
 }
 
+ARIA_EXPORT int aria_decoder_seek(aria_decoder* decoder, long frame_index)
+{
+    if (decoder == NULL || frame_index < 0)
+    {
+        return -1;
+    }
+    return (int)ma_decoder_seek_to_pcm_frame(&decoder->decoder, (ma_uint64)frame_index);
+}
+
 ARIA_EXPORT void aria_decoder_close(aria_decoder* decoder)
 {
     if (decoder == NULL)

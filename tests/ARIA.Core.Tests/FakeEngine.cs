@@ -12,6 +12,7 @@ public sealed class FakeEngine : IAudioEngine
         public StreamOptions Options { get; } = options;
         public List<TransportCommand> Transports { get; } = [];
         public List<MixParameters> Mixes { get; } = [];
+        public List<TimeSpan> Seeks { get; } = [];
     }
 
     private int _next;
@@ -46,6 +47,14 @@ public sealed class FakeEngine : IAudioEngine
         if (_streams.TryGetValue(handle, out var stream))
         {
             stream.Mixes.Add(mix);
+        }
+    }
+
+    public void Seek(StreamHandle handle, TimeSpan position)
+    {
+        if (_streams.TryGetValue(handle, out var stream))
+        {
+            stream.Seeks.Add(position);
         }
     }
 

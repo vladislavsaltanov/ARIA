@@ -58,6 +58,8 @@ public interface IAudioEngine
 
     void SetMix(StreamHandle handle, MixParameters mix);
 
+    void Seek(StreamHandle handle, TimeSpan position);
+
     void SetMasterGain(double gainDb);
 
     void Panic(PanicSpec spec);

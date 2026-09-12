@@ -18,6 +18,8 @@ public sealed record Next : Command;
 
 public sealed record Replay : Command;
 
+public sealed record SeekTo(TimeSpan FilePosition) : Command;
+
 public sealed record Panic : Command;
 
 public sealed record JumpTo(EntryId Entry) : Command;

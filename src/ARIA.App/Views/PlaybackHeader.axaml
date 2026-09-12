@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.PlaybackHeader"
+             x:DataType="vm:TransportViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.headerWave">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Border.headerWave:pointerover">
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+  </UserControl.Styles>
+  <Border x:Name="WaveformBorder" Classes="headerWave">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,8">
+      <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
+                 FontFamily="{StaticResource MonoFont}" FontSize="36" FontWeight="SemiBold"
+                 Foreground="#ECECEC" HorizontalAlignment="Center"/>
+      <TextBlock Grid.Row="1" x:Name="TimerSubBig" Text="{Binding TimerSubText}"
+                 FontFamily="{StaticResource MonoFont}" FontSize="14"
+                 Foreground="#8A8A8A" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+      <Border Grid.Row="2" x:Name="WaveformStrip" Height="56" Background="Transparent"
+              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+        <Grid>
+          <Canvas x:Name="WaveformCanvas" Background="Transparent"/>
+          <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="#ECECEC"
+                     HorizontalAlignment="Left" IsVisible="False"/>
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

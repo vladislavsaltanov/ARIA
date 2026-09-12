@@ -88,6 +88,8 @@ public partial class App : Application
         desktop.MainWindow = window;
         window.Show();
 
+        window.AttachPlaybackHeader(host.Monitor, host.Waveforms);
+
         if (host.Remote is { } remoteHost && _credentials is { } store)
         {
             var announcer = new RemoteAnnouncer(remoteHost.HttpEndpoint, () => store.Load());

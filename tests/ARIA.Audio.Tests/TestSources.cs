@@ -14,14 +14,24 @@ public sealed class SyntheticSourceFactory(int sampleRate, int channels = 2) : I
             _ => null,
         };
 
-    private sealed class FiniteSource(int channels, int sampleRate, double frequency, double amplitude, int totalFrames) : ISampleSource
+    private sealed class FiniteSource : ISampleSource
     {
-        private readonly SineSource _inner = new(channels, sampleRate, frequency, amplitude);
-        private int _remaining = totalFrames;
+        private readonly SineSource _inner;
+        private readonly int _totalFrames;
+        private int _remaining;
 
-        public int Channels { get; } = channels;
+        public FiniteSource(int channels, int sampleRate, double frequency, double amplitude, int totalFrames)
+        {
+            _inner = new SineSource(channels, sampleRate, frequency, amplitude);
+            _totalFrames = totalFrames;
+            Channels = channels;
+            SampleRate = sampleRate;
+            _remaining = totalFrames;
+        }
 
-        public int SampleRate { get; } = sampleRate;
+        public int Channels { get; }
+
+        public int SampleRate { get; }
 
         public int ReadFrames(Span<float> destination)
         {
@@ -33,6 +43,13 @@ public sealed class SyntheticSourceFactory(int sampleRate, int channels = 2) : I
             var read = _inner.ReadFrames(destination.Slice(0, frames * Channels));
             _remaining -= read;
             return read;
+        }
+
+        public void Seek(long frameIndex)
+        {
+            var clamped = Math.Clamp(frameIndex, 0, _totalFrames);
+            _inner.Seek(clamped);
+            _remaining = _totalFrames - (int)clamped;
         }
     }
 }

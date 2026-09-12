@@ -22,6 +22,10 @@ internal sealed class StubEngine : IAudioEngine
     {
     }
 
+    public void Seek(StreamHandle handle, TimeSpan position)
+    {
+    }
+
     public void SetMasterGain(double gainDb)
     {
     }

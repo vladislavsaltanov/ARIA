@@ -227,6 +227,45 @@ public sealed class MixerBusTests
         await all;
     }
 
+    [Fact]
+    public void Seek_RepositionsVoice_PositionAndAudioMatchTarget()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 440, 0.5)));
+        bus.Render(output);
+
+        bus.Seek(handle, 24000);
+        bus.Render(output);
+
+        Assert.True(bus.TryGetPosition(handle, out var position));
+        Assert.Equal(TimeSpan.FromSeconds(0.5 + 512.0 / 48000), position);
+        var reference = new SineSource(1, 48000, 440, 0.5);
+        var skip = new float[24000];
+        reference.ReadFrames(skip);
+        var expected = new float[512];
+        reference.ReadFrames(expected);
+        for (var sample = 0; sample < output.Length; sample++)
+        {
+            Assert.InRange(output[sample], expected[sample] - 1e-5, expected[sample] + 1e-5);
+        }
+    }
+
+    [Fact]
+    public void Seek_UnknownHandle_IsIgnored()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 440, 0.5)));
+        bus.Render(output);
+
+        bus.Seek(new StreamHandle(999), 100);
+        bus.Render(output);
+
+        Assert.True(bus.TryGetPosition(handle, out var position));
+        Assert.Equal(TimeSpan.FromSeconds(1024.0 / 48000), position);
+    }
+
     private static VoiceConfig Config(
         ISampleSource source,
         double gainDb = 0.0,
@@ -239,11 +278,13 @@ public sealed class MixerBusTests
     private sealed class FiniteSource : ISampleSource
     {
         private readonly SineSource _inner;
+        private readonly int _totalFrames;
         private int _remaining;
 
         public FiniteSource(int channels, int sampleRate, double frequency, double amplitude, int totalFrames)
         {
             _inner = new SineSource(channels, sampleRate, frequency, amplitude);
+            _totalFrames = totalFrames;
             Channels = channels;
             SampleRate = sampleRate;
             _remaining = totalFrames;
@@ -263,6 +304,13 @@ public sealed class MixerBusTests
             var read = _inner.ReadFrames(destination.Slice(0, frames * Channels));
             _remaining -= read;
             return read;
+        }
+
+        public void Seek(long frameIndex)
+        {
+            var clamped = Math.Clamp(frameIndex, 0, _totalFrames);
+            _inner.Seek(clamped);
+            _remaining = _totalFrames - (int)clamped;
         }
     }
 }

@@ -36,6 +36,8 @@ internal static class AriaShim
     internal static int DecoderRead(IntPtr decoder, IntPtr destination, int frameCount)
         => aria_decoder_read(decoder, destination, frameCount);
 
+    internal static int DecoderSeek(IntPtr decoder, long frameIndex) => aria_decoder_seek(decoder, frameIndex);
+
     internal static void DecoderClose(IntPtr decoder) => aria_decoder_close(decoder);
 
     private static IntPtr Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
@@ -102,6 +104,9 @@ internal static class AriaShim
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern int aria_decoder_read(IntPtr decoder, IntPtr destination, int frameCount);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_decoder_seek(IntPtr decoder, long frameIndex);
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern void aria_decoder_close(IntPtr decoder);

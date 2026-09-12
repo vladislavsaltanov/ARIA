@@ -7,6 +7,8 @@ public interface ISampleSource
     int SampleRate { get; }
 
     int ReadFrames(Span<float> destination);
+
+    void Seek(long frameIndex);
 }
 
 public sealed class SilenceSource : ISampleSource
@@ -25,6 +27,10 @@ public sealed class SilenceSource : ISampleSource
     {
         destination.Clear();
         return destination.Length / Channels;
+    }
+
+    public void Seek(long frameIndex)
+    {
     }
 }
 
@@ -69,5 +75,11 @@ public sealed class SineSource : ISampleSource
             }
         }
         return frames;
+    }
+
+    public void Seek(long frameIndex)
+    {
+        var phase = frameIndex * _delta % TwoPi;
+        _phase = phase < 0 ? phase + TwoPi : phase;
     }
 }

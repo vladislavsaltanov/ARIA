@@ -145,6 +145,10 @@ public sealed class ShowAutosaverTests : IDisposable
         {
         }
 
+        public void Seek(StreamHandle handle, TimeSpan position)
+        {
+        }
+
         public void SetMasterGain(double gainDb)
         {
         }
