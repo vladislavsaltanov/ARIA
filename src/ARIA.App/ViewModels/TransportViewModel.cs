@@ -81,6 +81,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private string showClockText = "00:00:00";
 
     [ObservableProperty]
+    private bool clockRunning;
+
+    [ObservableProperty]
     private string timerSubText = "--:--:-- · --:--";
 
     [ObservableProperty]
@@ -161,9 +164,16 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleMute() => Submit(new SetMuted(!Muted));
 
-    public void ToggleLock() => Submit(new SetLocked(!Locked));
+    [RelayCommand]
+    private void StartClock() => Submit(new StartShowClock());
 
-    public void ResetClock() => Submit(new ResetShowClock());
+    [RelayCommand]
+    private void PauseClock() => Submit(new PauseShowClock());
+
+    [RelayCommand]
+    private void ResetClock() => Submit(new ResetShowClock());
+
+    public void ToggleLock() => Submit(new SetLocked(!Locked));
 
     public void RefreshWallClock()
     {
@@ -238,6 +248,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         Locked = state.Locked;
         LockBrush = state.Locked ? BrushFg : BrushDim;
         ShowClockText = FormatClock(state.Clock.Elapsed);
+        ClockRunning = state.Clock.Running;
     }
 
     private void ApplyMixer(MixerState state)

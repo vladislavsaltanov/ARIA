@@ -179,6 +179,34 @@ public sealed class TransportViewModelTests
     }
 
     [Fact]
+    public void ClockCommands_DriveShowClock()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), TestTrack.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
+
+        Assert.False(vm.ClockRunning);
+
+        vm.StartClockCommand.Execute(null);
+
+        Assert.True(vm.ClockRunning);
+        Assert.True(bus.Snapshot().Show.Clock.Running);
+
+        vm.PauseClockCommand.Execute(null);
+
+        Assert.False(vm.ClockRunning);
+        Assert.False(bus.Snapshot().Show.Clock.Running);
+
+        bus.Submit(new ClientId("setup"), 2, new StartShowClock());
+        bus.Submit(new ClientId("setup"), 3, new TickShowClock());
+        vm.ResetClockCommand.Execute(null);
+
+        Assert.False(vm.ClockRunning);
+        Assert.Equal("00:00:00", vm.ShowClockText);
+    }
+
+    [Fact]
     public void TogglePlayPause_DispatchesByState()
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);

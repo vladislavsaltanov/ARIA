@@ -125,7 +125,7 @@ public partial class App : Application
             case "panic": Run(viewModel.PanicCommand); break;
             case "lock": viewModel.ToggleLock(); break;
             case "toggle-script": window.ToggleScriptPane(); break;
-            case "reset-clock": viewModel.ResetClock(); break;
+            case "reset-clock": Run(viewModel.ResetClockCommand); break;
         }
     }
 

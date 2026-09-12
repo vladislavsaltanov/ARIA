@@ -72,6 +72,10 @@ public sealed record MoveScriptLine(ScriptId Script, ScriptLineId Line, int NewI
 
 public sealed record TickShowClock : Command;
 
+public sealed record StartShowClock : Command;
+
+public sealed record PauseShowClock : Command;
+
 public sealed record ResetShowClock : Command;
 
 public sealed record SetPanicFade(TimeSpan Duration) : Command;

@@ -177,6 +177,12 @@ public sealed class ShowController : IShowHandler
             case TickShowClock:
                 OnTickShowClock();
                 break;
+            case StartShowClock:
+                OnStartShowClock();
+                break;
+            case PauseShowClock:
+                OnPauseShowClock();
+                break;
             case ResetShowClock:
                 OnResetShowClock();
                 break;
@@ -1010,6 +1016,26 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _clockElapsed += ClockTick;
+        EmitShow();
+    }
+
+    private void OnStartShowClock()
+    {
+        if (_clockRunning)
+        {
+            return;
+        }
+        _clockRunning = true;
+        EmitShow();
+    }
+
+    private void OnPauseShowClock()
+    {
+        if (!_clockRunning)
+        {
+            return;
+        }
+        _clockRunning = false;
         EmitShow();
     }
 

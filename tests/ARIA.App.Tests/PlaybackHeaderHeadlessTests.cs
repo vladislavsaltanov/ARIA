@@ -42,6 +42,9 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
             Assert.NotNull(header.FindControl<Border>("WaveformStrip"));
             Assert.NotNull(header.FindControl<Canvas>("WaveformCanvas"));
             Assert.NotNull(header.FindControl<Rectangle>("WaveCursor"));
+            Assert.NotNull(header.FindControl<Button>("StartClockButton"));
+            Assert.NotNull(header.FindControl<Button>("PauseClockButton"));
+            Assert.NotNull(header.FindControl<Button>("ResetClockButton"));
             window.Close();
 
             var controller = new RecordingController();
