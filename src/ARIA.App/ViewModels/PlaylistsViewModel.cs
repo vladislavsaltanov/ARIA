@@ -2,6 +2,8 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
+using System.Text;
 using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
@@ -24,6 +26,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private TrackId? _linkedTrackId;
     private AppSettings _rowSettings = AppSettings.Default;
     private long _seq;
+    private string? _lastKey;
 
     [ObservableProperty]
     private PlaylistVm? selectedPlaylist;
@@ -194,6 +197,33 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private string BuildKey(ShowState state, ImmutableArray<Track> tracks)
+    {
+        var sb = new StringBuilder();
+        sb.Append(state.ActiveId);
+        foreach (var playlist in state.Playlists)
+        {
+            sb.Append('|').Append(playlist.Id).Append(':').Append(playlist.Name)
+                .Append(playlist.Id == state.ActiveId ? "*" : ".");
+            foreach (var entry in playlist.Entries)
+            {
+                sb.Append('|').Append(entry)
+                    .Append(RuntimeHelpers.GetHashCode(_thumbs?.For(entry.TrackId)));
+            }
+        }
+        foreach (var track in tracks)
+        {
+            sb.Append('|').Append(track);
+        }
+        var faultedHash = 0;
+        foreach (var id in _faulted)
+        {
+            faultedHash ^= id.GetHashCode();
+        }
+        sb.Append('|').Append(faultedHash).Append('|').Append(_linkedTrackId).Append('|').Append(_rowSettings);
+        return sb.ToString();
+    }
+
     private int IndexOf(EntryId entryId)
     {
         if (SelectedPlaylist is not { } playlist)
@@ -213,6 +243,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
         _lastShow = state;
+        var key = BuildKey(state, tracks);
+        if (key == _lastKey)
+        {
+            return;
+        }
+        _lastKey = key;
+
         _newPlaylistCounter = Math.Max(_newPlaylistCounter, state.Playlists.Length);
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
         var trackDurations = tracks.ToDictionary(t => t.Id, t => t.Duration);

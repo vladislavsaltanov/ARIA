@@ -25,6 +25,20 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public void ShowDeltaWithoutPlaylistChanges_KeepsPlaylistVms()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var before = vm.Playlists[0];
+
+        bus.Submit(new ClientId("test"), 2, new SetLocked(true));
+
+        Assert.Same(before, vm.Playlists[0]);
+        Assert.Same(before, vm.SelectedPlaylist);
+        Assert.Equal(2, before.Entries.Count);
+    }
+
+    [Fact]
     public void Rebuilds_FromShowDelta()
     {
         var (bus, playlist, _) = Setup();
