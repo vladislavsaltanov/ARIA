@@ -30,6 +30,7 @@
     mute: document.getElementById("btn-mute"),
     lufsValue: document.getElementById("lufs-value"),
     lufsFill: document.getElementById("lufs-fill"),
+    playlists: document.getElementById("playlists"),
   };
 
   function savedPairing() {
@@ -193,6 +194,7 @@
     renderTransport();
     renderMixer();
     renderShowClock();
+    renderPlaylists();
   }
 
   function applyDelta(frame) {
@@ -205,6 +207,7 @@
     } else if (frame.partition === "show") {
       state.show = frame.state;
       renderShowClock();
+      renderPlaylists();
     } else if (frame.partition === "mixer") {
       state.mixer = frame.state;
       renderMixer();
@@ -260,6 +263,17 @@
     var seconds = parseFloat(parts[2]);
     if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null;
     return hours * 3600 + minutes * 60 + Math.floor(seconds);
+  }
+
+  function parseIsoTicks(text) {
+    if (typeof text !== "string") return 0;
+    var parts = text.split(":");
+    if (parts.length < 3) return 0;
+    var hours = parseFloat(parts[0]);
+    var minutes = parseFloat(parts[1]);
+    var seconds = parseFloat(parts[2]);
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return 0;
+    return Math.round((hours * 3600 + minutes * 60 + seconds) * 1000) * 10000;
   }
 
   function formatSeconds(total) {
@@ -338,6 +352,388 @@
     });
   }
 
+  var openPlaylistId = null;
+  var overridesEntryId = null;
+  var creatingPlaylist = false;
+
+  function digestName(trackId) {
+    var entries =
+      (state.show &&
+        state.show.trackDigest &&
+        state.show.trackDigest.entries) ||
+      [];
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].track === trackId) return entries[i].displayName;
+    }
+    return null;
+  }
+
+  function smallButton(label, onClick, extraClass) {
+    var button = document.createElement("button");
+    button.className = "mini" + (extraClass ? " " + extraClass : "");
+    button.textContent = label;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      onClick();
+      vibrate();
+    });
+    return button;
+  }
+
+  function textInput(placeholder, value) {
+    var input = document.createElement("input");
+    input.className = "inline-input";
+    input.type = "text";
+    input.placeholder = placeholder;
+    if (value != null) input.value = value;
+    return input;
+  }
+
+  function renameRow(pl, refresh) {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var input = textInput("имя плейлиста", pl.name);
+    var ok = document.createElement("button");
+    ok.className = "mini ok";
+    ok.textContent = "ОК";
+    ok.addEventListener("click", () => {
+      var name = input.value.trim();
+      if (name && name !== pl.name)
+        send("rename_playlist", { id: pl.id, name: name });
+      refresh();
+    });
+    var cancel = document.createElement("button");
+    cancel.className = "mini";
+    cancel.textContent = "Отмена";
+    cancel.addEventListener("click", () => refresh());
+    wrap.appendChild(input);
+    wrap.appendChild(ok);
+    wrap.appendChild(cancel);
+    return wrap;
+  }
+
+  function deleteRow(pl, refresh) {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var label = document.createElement("span");
+    label.textContent = "Удалить «" + pl.name + "»?";
+    var yes = document.createElement("button");
+    yes.className = "mini danger";
+    yes.textContent = "Удалить";
+    yes.addEventListener("click", () => {
+      send("delete_playlist", { id: pl.id });
+      if (openPlaylistId === pl.id) openPlaylistId = null;
+      refresh();
+    });
+    var no = document.createElement("button");
+    no.className = "mini";
+    no.textContent = "Отмена";
+    no.addEventListener("click", () => refresh());
+    wrap.appendChild(label);
+    wrap.appendChild(yes);
+    wrap.appendChild(no);
+    return wrap;
+  }
+
+  function applyOverrides(entry, refresh) {
+    var form = document.querySelector('[data-ov-form="' + entry.id + '"]');
+    if (!form) return;
+    var overrides = {};
+    var name = form.querySelector("[data-ov=name]").value.trim();
+    var gain = form.querySelector("[data-ov=gain]").value.trim();
+    var cueIn = form.querySelector("[data-ov=cueIn]").value.trim();
+    var cueOut = form.querySelector("[data-ov=cueOut]").value.trim();
+    var endAction = form.querySelector("[data-ov=endAction]").value;
+    if (name) overrides.name = name;
+    if (gain !== "") overrides.gain_db = Number(gain);
+    if (cueIn !== "")
+      overrides.cue_in_ticks = Math.round(Number(cueIn) * 10000);
+    if (cueOut !== "")
+      overrides.cue_out_ticks = Math.round(Number(cueOut) * 10000);
+    if (endAction) overrides.end_action = endAction;
+    if (Object.keys(overrides).length === 0) {
+      send("set_entry_overrides", { entry: entry.id });
+    } else {
+      send("set_entry_overrides", { entry: entry.id, overrides: overrides });
+    }
+    overridesEntryId = null;
+    refresh();
+  }
+
+  function overridesForm(entry, refresh) {
+    var form = document.createElement("div");
+    form.className = "ov-form";
+    form.setAttribute("data-ov-form", entry.id);
+    var o = entry.overrides || {};
+    var fields = document.createElement("div");
+    fields.className = "ov-fields";
+    var nameInput = textInput("имя (override)", o.name == null ? null : o.name);
+    nameInput.setAttribute("data-ov", "name");
+    var gainInput = document.createElement("input");
+    gainInput.className = "inline-input";
+    gainInput.type = "number";
+    gainInput.step = "0.1";
+    gainInput.placeholder = "gain, дБ";
+    if (o.gainDb != null) gainInput.value = o.gainDb;
+    gainInput.setAttribute("data-ov", "gain");
+    var cueInInput = document.createElement("input");
+    cueInInput.className = "inline-input";
+    cueInInput.type = "number";
+    cueInInput.step = "10";
+    cueInInput.placeholder = "cue in, мс";
+    if (o.cueIn != null)
+      cueInInput.value = Math.round(parseIsoTicks(o.cueIn) / 10000);
+    cueInInput.setAttribute("data-ov", "cueIn");
+    var cueOutInput = document.createElement("input");
+    cueOutInput.className = "inline-input";
+    cueOutInput.type = "number";
+    cueOutInput.step = "10";
+    cueOutInput.placeholder = "cue out, мс";
+    if (o.cueOut != null)
+      cueOutInput.value = Math.round(parseIsoTicks(o.cueOut) / 10000);
+    cueOutInput.setAttribute("data-ov", "cueOut");
+    var endAction = document.createElement("select");
+    endAction.className = "inline-input";
+    endAction.setAttribute("data-ov", "endAction");
+    var emptyOption = document.createElement("option");
+    emptyOption.value = "";
+    emptyOption.textContent = "конец трека: как есть";
+    endAction.appendChild(emptyOption);
+    ["Pause", "Stop", "Replay", "Advance"].forEach((value) => {
+      var option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      if (o.endAction === value) option.selected = true;
+      endAction.appendChild(option);
+    });
+    [nameInput, gainInput, cueInInput, cueOutInput, endAction].forEach(
+      (field) => fields.appendChild(field),
+    );
+    form.appendChild(fields);
+    var buttons = document.createElement("div");
+    buttons.className = "inline-row";
+    var apply = document.createElement("button");
+    apply.className = "mini ok";
+    apply.textContent = "Применить";
+    apply.addEventListener("click", () => applyOverrides(entry, refresh));
+    var reset = document.createElement("button");
+    reset.className = "mini danger";
+    reset.textContent = "Сброс";
+    reset.addEventListener("click", () => {
+      send("set_entry_overrides", { entry: entry.id });
+      overridesEntryId = null;
+      refresh();
+    });
+    var cancel = document.createElement("button");
+    cancel.className = "mini";
+    cancel.textContent = "Отмена";
+    cancel.addEventListener("click", () => {
+      overridesEntryId = null;
+      refresh();
+    });
+    buttons.appendChild(apply);
+    buttons.appendChild(reset);
+    buttons.appendChild(cancel);
+    form.appendChild(buttons);
+    return form;
+  }
+
+  function entryRow(entry, index, count, refresh) {
+    var wrap = document.createElement("div");
+    wrap.className = "entry";
+    var line = document.createElement("div");
+    line.className = "entry-line";
+    var name = digestName(entry.trackId);
+    var label = document.createElement("span");
+    label.className = "entry-name" + (name == null ? " dangling" : "");
+    label.textContent = name == null ? "(повисшее упоминание)" : name;
+    if (entry.overrides && entry.overrides.name) {
+      label.textContent += " → " + entry.overrides.name;
+    }
+    line.appendChild(label);
+    if (index > 0) {
+      line.appendChild(
+        smallButton("↑", () => {
+          send("move_entry", { entry: entry.id, new_index: index - 1 });
+          refresh();
+        }),
+      );
+    }
+    if (index < count - 1) {
+      line.appendChild(
+        smallButton("↓", () => {
+          send("move_entry", { entry: entry.id, new_index: index + 1 });
+          refresh();
+        }),
+      );
+    }
+    line.appendChild(
+      smallButton("⚙", () => {
+        overridesEntryId = overridesEntryId === entry.id ? null : entry.id;
+        refresh();
+      }),
+    );
+    line.appendChild(
+      smallButton(
+        "✕",
+        () => {
+          send("remove_entry", { entry: entry.id });
+          refresh();
+        },
+        "danger",
+      ),
+    );
+    wrap.appendChild(line);
+    if (overridesEntryId === entry.id)
+      wrap.appendChild(overridesForm(entry, refresh));
+    return wrap;
+  }
+
+  function addEntryRow(pl, refresh) {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var select = document.createElement("select");
+    select.className = "inline-input";
+    var entries =
+      (state.show &&
+        state.show.trackDigest &&
+        state.show.trackDigest.entries) ||
+      [];
+    entries.forEach((digestEntry) => {
+      var option = document.createElement("option");
+      option.value = digestEntry.track;
+      option.textContent = digestEntry.displayName;
+      select.appendChild(option);
+    });
+    var add = document.createElement("button");
+    add.className = "mini ok";
+    add.textContent = "+ добавить";
+    add.addEventListener("click", () => {
+      if (select.value)
+        send("add_entry", { playlist: pl.id, track: select.value });
+      refresh();
+    });
+    wrap.appendChild(select);
+    wrap.appendChild(add);
+    return wrap;
+  }
+
+  function createPlaylistRow(refresh) {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var input = textInput("новый плейлист");
+    var ok = document.createElement("button");
+    ok.className = "mini ok";
+    ok.textContent = "Создать";
+    ok.addEventListener("click", () => {
+      var name = input.value.trim();
+      if (name) send("create_playlist", { name: name });
+      creatingPlaylist = false;
+      refresh();
+    });
+    var cancel = document.createElement("button");
+    cancel.className = "mini";
+    cancel.textContent = "Отмена";
+    cancel.addEventListener("click", () => {
+      creatingPlaylist = false;
+      refresh();
+    });
+    wrap.appendChild(input);
+    wrap.appendChild(ok);
+    wrap.appendChild(cancel);
+    return wrap;
+  }
+
+  function playlistBody(pl, refresh) {
+    var body = document.createElement("div");
+    body.className = "playlist-body";
+    if (!pl.entries.length) {
+      var empty = document.createElement("p");
+      empty.className = "empty-note";
+      empty.textContent = "пустой плейлист";
+      body.appendChild(empty);
+    }
+    pl.entries.forEach((entry, index) => {
+      body.appendChild(entryRow(entry, index, pl.entries.length, refresh));
+    });
+    body.appendChild(addEntryRow(pl, refresh));
+    return body;
+  }
+
+  function renderPlaylists() {
+    var host = el.playlists;
+    host.textContent = "";
+    if (!state.show) return;
+    var playlists = state.show.playlists || [];
+    if (openPlaylistId && !playlists.some((pl) => pl.id === openPlaylistId)) {
+      openPlaylistId = null;
+      overridesEntryId = null;
+    }
+    var refresh = () => renderPlaylists();
+    playlists.forEach((pl) => {
+      var row = document.createElement("div");
+      row.className = "playlist";
+      var active = state.show.activeId === pl.id;
+      if (active) row.classList.add("active");
+      var head = document.createElement("div");
+      head.className = "playlist-head";
+      var name = document.createElement("span");
+      name.className = "playlist-name";
+      name.textContent = pl.name;
+      head.appendChild(name);
+      if (active) {
+        var badge = document.createElement("span");
+        badge.className = "playlist-badge";
+        badge.textContent = "АКТИВНЫЙ";
+        head.appendChild(badge);
+      }
+      if (state.show.activeId !== pl.id) {
+        head.appendChild(
+          smallButton("активировать", () => {
+            send("set_active_playlist", { id: pl.id });
+          }),
+        );
+      }
+      head.appendChild(
+        smallButton("✎", () => {
+          row.textContent = "";
+          row.appendChild(renameRow(pl, refresh));
+        }),
+      );
+      head.appendChild(
+        smallButton(
+          "✕",
+          () => {
+            row.textContent = "";
+            row.appendChild(deleteRow(pl, refresh));
+          },
+          "danger",
+        ),
+      );
+      row.appendChild(head);
+      var isOpen = openPlaylistId === pl.id;
+      if (isOpen) {
+        row.classList.add("open");
+        row.appendChild(playlistBody(pl, refresh));
+      }
+      name.addEventListener("click", () => {
+        openPlaylistId = isOpen ? null : pl.id;
+        overridesEntryId = null;
+        refresh();
+      });
+      host.appendChild(row);
+    });
+    var createToggle = document.createElement("button");
+    createToggle.className = "playlist-create";
+    createToggle.textContent = creatingPlaylist ? "Отмена" : "+ новый плейлист";
+    createToggle.addEventListener("click", () => {
+      creatingPlaylist = !creatingPlaylist;
+      refresh();
+    });
+    if (creatingPlaylist) host.appendChild(createPlaylistRow(refresh));
+    host.appendChild(createToggle);
+  }
+
   function showConfirm() {
     el.panicConfirm.classList.remove("hidden");
   }
@@ -394,9 +790,7 @@
           setTimeout(requestWakeLock, 1000);
         });
       }
-    } catch (e) {
-      /* denied - fine */
-    }
+    } catch {}
   }
 
   document.addEventListener("visibilitychange", () => {
@@ -408,7 +802,7 @@
     try {
       ws.onclose = null;
       ws.close();
-    } catch (e) {}
+    } catch {}
     ws = null;
   }
 
