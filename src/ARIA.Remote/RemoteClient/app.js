@@ -1,5 +1,5 @@
-(function () {
-  "use strict";
+(() => {
+  
 
   var ws = null;
   var seq = 0;
@@ -26,6 +26,12 @@
     loginError: document.getElementById("login-error"),
     loginGo: document.getElementById("login-go"),
     forget: document.getElementById("btn-forget"),
+    showClock: document.getElementById("show-clock"),
+    trackElapsed: document.getElementById("track-elapsed"),
+    master: document.getElementById("master"),
+    mute: document.getElementById("btn-mute"),
+    lufsValue: document.getElementById("lufs-value"),
+    lufsFill: document.getElementById("lufs-fill"),
   };
 
   function savedPairing() {
@@ -72,16 +78,16 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier: identifier, password: password }),
-    }).then(function (response) {
+    }).then((response) => {
       if (!response.ok) return null;
-      return response.json().then(function (body) { return body.token; });
+      return response.json().then((body) => body.token);
     });
   }
 
   function ensureToken() {
     if (sessionToken) return Promise.resolve(sessionToken);
     if (!creds) return Promise.resolve(null);
-    return authRequest(creds.identifier, creds.password).then(function (token) {
+    return authRequest(creds.identifier, creds.password).then((token) => {
       sessionToken = token;
       return token;
     });
@@ -96,19 +102,19 @@
   }
 
   function connect() {
-    ensureToken().then(function (token) {
+    ensureToken().then((token) => {
       if (!token) {
         showLogin("");
         return;
       }
       var url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws?token=" + encodeURIComponent(token);
       ws = new WebSocket(url);
-      ws.onopen = function () {
+      ws.onopen = () => {
         reconnectDelay = 500;
         el.conn.textContent = "ONLINE";
         el.conn.className = "conn conn-on";
       };
-      ws.onclose = function () {
+      ws.onclose = () => {
         el.conn.textContent = "OFFLINE";
         el.conn.className = "conn conn-off";
         sessionToken = null;
@@ -130,16 +136,25 @@
       case "snapshot": applySnapshot(frame); break;
       case "delta": applyDelta(frame); break;
       case "position": applyPosition(frame); break;
+      case "lufs": applyLufs(frame); break;
       case "ack": pendingAck.delete(frame.seq); break;
+      case "rejected": pendingAck.delete(frame.seq); break;
  default: break;
     }
   }
 
-  var state = { transport: null, queue: [] };
+  var state = { transport: null, show: null, mixer: null, queue: [], lufs: null };
+
+  var LUFS_FLOOR = -60;
+  var LUFS_WARN = -18;
 
   function applySnapshot(frame) {
+    state.show = frame.show ? frame.show.state : null;
+    state.mixer = frame.mixer ? frame.mixer.state : null;
     state.transport = frame.transport.state;
     renderTransport();
+    renderMixer();
+    renderShowClock();
   }
 
   function applyDelta(frame) {
@@ -149,10 +164,18 @@
     } else if (frame.partition === "queue") {
       state.queue = frame.state.items || [];
       renderQueue();
+    } else if (frame.partition === "show") {
+      state.show = frame.state;
+      renderShowClock();
+    } else if (frame.partition === "mixer") {
+      state.mixer = frame.state;
+      renderMixer();
     }
   }
 
   function applyPosition(frame) {
+    var fileMs = frame.filePositionMs;
+    el.trackElapsed.textContent = fileMs == null ? "0:00" : formatSeconds(Math.floor(fileMs / 1000));
     var ms = frame.remainingMs;
     if (ms == null) {
       el.remaining.textContent = "--:--";
@@ -186,6 +209,71 @@
     return status === "Panicked";
   }
 
+  function parseIsoDuration(text) {
+    if (typeof text !== "string") return null;
+    var parts = text.split(":");
+    if (parts.length < 3) return null;
+    var hours = parseInt(parts[0], 10);
+    var minutes = parseInt(parts[1], 10);
+    var seconds = parseFloat(parts[2]);
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null;
+    return hours * 3600 + minutes * 60 + Math.floor(seconds);
+  }
+
+  function formatSeconds(total) {
+    if (total == null || isNaN(total)) return "--:--";
+    if (total < 0) total = 0;
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s);
+  }
+
+  function renderShowClock() {
+    var clock = state.show && state.show.clock;
+    var total = clock ? parseIsoDuration(clock.elapsed) : null;
+    el.showClock.textContent = total == null ? "--:--" : formatSeconds(total);
+  }
+
+  function gainToPct(db) {
+    var pct = (db + 80) / 92 * 100;
+    return Math.max(0, Math.min(100, pct));
+  }
+
+  function pctToGain(pct) {
+    return Math.round((-80 + pct * 0.92) * 10) / 10;
+  }
+
+  function renderMixer() {
+    var m = state.mixer;
+    if (!m) return;
+    el.master.value = Math.round(gainToPct(m.masterGainDb));
+    el.mute.classList.toggle("active", !!m.muted);
+  }
+
+  function applyLufs(frame) {
+    state.lufs = typeof frame.momentaryLufs === "number" ? frame.momentaryLufs : null;
+    renderLufs();
+  }
+
+  function renderLufs() {
+    var v = state.lufs;
+    if (v == null) {
+      el.lufsValue.textContent = "—";
+      el.lufsValue.classList.remove("hot");
+      el.lufsFill.style.width = "0%";
+      el.lufsFill.classList.remove("hot");
+      return;
+    }
+    var clamped = Math.min(v, 0);
+    var hot = clamped > LUFS_WARN;
+    el.lufsValue.textContent = clamped.toFixed(1);
+    el.lufsValue.classList.toggle("hot", hot);
+    el.lufsFill.classList.toggle("hot", hot);
+    var width = Math.max(0, Math.min(100, (clamped - LUFS_FLOOR) / -LUFS_FLOOR * 100));
+    el.lufsFill.style.width = width + "%";
+  }
+
   function renderQueue() {
     el.queue.textContent = "";
     if (!state.queue.length) {
@@ -196,7 +284,7 @@
       el.queue.appendChild(li);
       return;
     }
-    state.queue.forEach(function (item) {
+    state.queue.forEach((item) => {
       var li = document.createElement("li");
       if (item.color) li.style.borderLeft = "4px solid " + item.color;
       li.textContent = item.displayName;
@@ -208,7 +296,7 @@
   function hideConfirm() { el.panicConfirm.classList.add("hidden"); }
 
   el.panic.addEventListener("click", showConfirm);
-  document.getElementById("panic-yes").addEventListener("click", function () {
+  document.getElementById("panic-yes").addEventListener("click", () => {
     hideConfirm();
     send("panic");
     vibrate();
@@ -219,6 +307,17 @@
     if (navigator.vibrate) navigator.vibrate(80);
   }
 
+  el.master.addEventListener("input", () => {
+    if (state.mixer && state.mixer.muted) send("set_muted", { muted: false });
+    send("set_master_gain", { gain_db: pctToGain(Number(el.master.value)) });
+  });
+
+  el.mute.addEventListener("click", () => {
+    if (!state.mixer) return;
+    send("set_muted", { muted: !state.mixer.muted });
+    vibrate();
+  });
+
   var actions = {
     "btn-play": "play",
     "btn-pause": "pause",
@@ -227,10 +326,10 @@
     "btn-replay": "replay",
   };
 
-  Object.keys(actions).forEach(function (id) {
+  Object.keys(actions).forEach((id) => {
     var button = document.getElementById(id);
     if (!button) return;
-    button.addEventListener("click", function () {
+    button.addEventListener("click", () => {
       send(actions[id]);
       vibrate();
     });
@@ -241,14 +340,14 @@
     try {
       if ("wakeLock" in navigator) {
         wakeLock = await navigator.wakeLock.request("screen");
-        wakeLock.addEventListener("release", function () {
+        wakeLock.addEventListener("release", () => {
           setTimeout(requestWakeLock, 1000);
         });
       }
     } catch (e) { /* denied - fine */ }
   }
 
-  document.addEventListener("visibilitychange", function () {
+  document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") requestWakeLock();
   });
 
@@ -271,14 +370,14 @@
     showLogin("");
   }
 
-  el.loginGo.addEventListener("click", function () {
+  el.loginGo.addEventListener("click", () => {
     var identifier = el.loginId.value.trim();
     var password = el.loginPassword.value;
     if (!identifier || !password) {
       showLogin("заполните оба поля");
       return;
     }
-    authRequest(identifier, password).then(function (token) {
+    authRequest(identifier, password).then((token) => {
       if (!token) {
         showLogin("неверный идентификатор или пароль");
         return;
@@ -300,7 +399,7 @@
     var urlKey = params.get("key");
     if (urlId && urlKey) {
       history.replaceState(null, "", location.pathname);
-      authRequest(urlId, urlKey).then(function (token) {
+      authRequest(urlId, urlKey).then((token) => {
         if (token) {
           sessionToken = token;
           creds = { identifier: urlId, password: urlKey };

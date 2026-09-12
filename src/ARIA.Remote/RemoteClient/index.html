@@ -30,6 +30,17 @@
       <div class="remaining" id="remaining">--:--</div>
     </section>
 
+    <section class="timers">
+      <div class="timer-block">
+        <span class="timer-label">SHOW</span>
+        <span class="show-clock" id="show-clock">--:--</span>
+      </div>
+      <div class="timer-block">
+        <span class="timer-label">TRACK</span>
+        <span class="track-elapsed" id="track-elapsed">0:00</span>
+      </div>
+    </section>
+
     <section class="transport">
       <button id="btn-play" class="pad">▶<span>PLAY</span></button>
       <button id="btn-pause" class="pad">‖<span>PAUSE</span></button>
@@ -39,6 +50,16 @@
     </section>
 
     <button id="btn-panic" class="panic">PANIC</button>
+
+    <section class="mixer">
+      <input id="master" class="master" type="range" min="0" max="100" step="1" value="0">
+      <button id="btn-mute" class="mute">MUTE</button>
+    </section>
+
+    <section class="lufs">
+      <span id="lufs-value" class="lufs-value">—</span>
+      <div class="lufs-bar"><div id="lufs-fill" class="lufs-fill"></div></div>
+    </section>
 
     <section class="queue">
       <h2>ОЧЕРЕДЬ <button id="btn-forget" class="forget">забыть пару</button></h2>

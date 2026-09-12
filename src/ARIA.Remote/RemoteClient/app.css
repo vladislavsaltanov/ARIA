@@ -48,6 +48,12 @@ html, body {
 }
 .remaining.low { color: var(--warn); }
 
+.timers { display: flex; justify-content: center; gap: 32px; margin-bottom: 14px; }
+.timer-block { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.timer-label { font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+.show-clock { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.track-elapsed { font-size: 16px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
 .transport {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -88,6 +94,28 @@ html, body {
 }
 .panic:active { background: var(--danger); color: #fff; }
 .panic[disabled] { border-color: var(--line); color: var(--dim); background: var(--panel); }
+
+.mixer { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.master { flex: 1; min-height: 56px; accent-color: var(--text); }
+.mute {
+  min-width: 104px;
+  min-height: 56px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 2px;
+  border-radius: 8px;
+}
+.mute.active { background: #2a1e08; border-color: var(--warn); color: var(--warn); }
+
+.lufs { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.lufs-value { font-size: 16px; min-width: 64px; text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; }
+.lufs-value.hot { color: var(--danger-text); }
+.lufs-bar { flex: 1; height: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.lufs-fill { height: 100%; width: 0; background: #6ac47a; }
+.lufs-fill.hot { background: var(--danger); }
 
 .queue h2 { font-size: 12px; letter-spacing: 3px; color: var(--dim); margin-bottom: 8px; }
 #queue { list-style: none; }
