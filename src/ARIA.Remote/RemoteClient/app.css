@@ -272,6 +272,102 @@ body {
   font-size: 13px;
 }
 
+.script {
+  margin-top: 24px;
+}
+.script h2 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+.script-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+}
+.script-tab {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.script-tab.active {
+  color: var(--text);
+  border-color: var(--text);
+}
+.script-lines {
+  list-style: none;
+}
+.script-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 6px;
+  font-size: 15px;
+}
+.script-line.follow {
+  border-left-color: #6ac47a;
+  background: #10241a;
+}
+.script-at {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.script-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.script-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  background: #10241a;
+  border: 1px solid #2a4a2e;
+  border-radius: 6px;
+  color: #6ac47a;
+  font-size: 14px;
+}
+.chip.dangling {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--dim);
+}
+
+.mention-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mention-option {
+  min-height: 56px;
+  font-size: 15px;
+}
+
 .overlay {
   position: fixed;
   inset: 0;

@@ -31,6 +31,11 @@
     lufsValue: document.getElementById("lufs-value"),
     lufsFill: document.getElementById("lufs-fill"),
     playlists: document.getElementById("playlists"),
+    scriptSection: document.getElementById("script-section"),
+    scriptTabs: document.getElementById("script-tabs"),
+    scriptLines: document.getElementById("script-lines"),
+    mentionMenu: document.getElementById("mention-menu"),
+    mentionOptions: document.getElementById("mention-options"),
   };
 
   function savedPairing() {
@@ -45,7 +50,7 @@
         value.password
       )
         return value;
-    } catch (e) {}
+    } catch {}
     return null;
   }
 
@@ -59,13 +64,13 @@
           password: password,
         }),
       );
-    } catch (e) {}
+    } catch {}
   }
 
   function forgetPairing() {
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch (e) {}
+    } catch {}
     closeSocket();
     sessionToken = null;
     creds = null;
@@ -149,7 +154,7 @@
     var frame;
     try {
       frame = JSON.parse(event.data);
-    } catch (e) {
+    } catch {
       return;
     }
     switch (frame.event) {
@@ -195,6 +200,7 @@
     renderMixer();
     renderShowClock();
     renderPlaylists();
+    renderScript();
   }
 
   function applyDelta(frame) {
@@ -205,9 +211,15 @@
       state.queue = frame.state.items || [];
       renderQueue();
     } else if (frame.partition === "show") {
+      var prev = state.show;
       state.show = frame.state;
       renderShowClock();
       renderPlaylists();
+      if (scriptContentChanged(prev, frame.state)) {
+        renderScript();
+      } else {
+        updateScriptFollow();
+      }
     } else if (frame.partition === "mixer") {
       state.mixer = frame.state;
       renderMixer();
@@ -228,7 +240,6 @@
     if (total < 0) total = 0;
     var h = Math.floor(total / 3600);
     var m = Math.floor((total % 3600) / 60);
-    var s = total % 60;
     var text =
       h > 0
         ? h + ":" + pad(m) + ":" + pad(total % 60)
@@ -289,6 +300,163 @@
     var clock = state.show && state.show.clock;
     var total = clock ? parseIsoDuration(clock.elapsed) : null;
     el.showClock.textContent = total == null ? "--:--" : formatSeconds(total);
+  }
+
+  function scriptChanged(a, b) {
+    return JSON.stringify(a) !== JSON.stringify(b);
+  }
+
+  function scriptContentChanged(prev, next) {
+    return (
+      scriptChanged(prev && prev.scripts, next && next.scripts) ||
+      scriptChanged(prev && prev.trackDigest, next && next.trackDigest)
+    );
+  }
+
+  var activeScriptId = null;
+  var scriptLineEls = [];
+  var lastFollowIndex = null;
+
+  function activeScript() {
+    var scripts = (state.show && state.show.scripts) || [];
+    if (!scripts.length) return null;
+    if (!scripts.some((s) => s.id === activeScriptId))
+      activeScriptId = scripts[0].id;
+    return scripts.find((s) => s.id === activeScriptId) || null;
+  }
+
+  function clockSeconds() {
+    var clock = state.show && state.show.clock;
+    return clock ? parseIsoDuration(clock.elapsed) : null;
+  }
+
+  function trackNameMap() {
+    var map = {};
+    var digest = state.show && state.show.trackDigest;
+    ((digest && digest.entries) || []).forEach((entry) => {
+      map[entry.track] = entry.displayName;
+    });
+    return map;
+  }
+
+  function renderScript() {
+    var scripts = (state.show && state.show.scripts) || [];
+    el.scriptTabs.textContent = "";
+    if (!scripts.length) {
+      el.scriptLines.textContent = "";
+      scriptLineEls = [];
+      updateScriptFollow();
+      return;
+    }
+    var script = activeScript();
+    scripts.forEach((s) => {
+      var tab = document.createElement("button");
+      tab.className = "script-tab" + (s.id === activeScriptId ? " active" : "");
+      tab.textContent = s.name || "сценарий";
+      tab.addEventListener("click", () => {
+        if (activeScriptId === s.id) return;
+        activeScriptId = s.id;
+        lastFollowIndex = null;
+        renderScript();
+      });
+      el.scriptTabs.appendChild(tab);
+    });
+    renderScriptLines(script);
+    updateScriptFollow();
+  }
+
+  function renderScriptLines(script) {
+    el.scriptLines.textContent = "";
+    scriptLineEls = [];
+    lastFollowIndex = null;
+    if (!script) return;
+    var names = trackNameMap();
+    (script.lines || []).forEach((line) => {
+      var li = document.createElement("li");
+      li.className = "script-line";
+      var at = document.createElement("span");
+      at.className = "script-at";
+      var atSec = parseIsoDuration(line.atElapsed);
+      at.textContent = atSec == null ? "--:--" : formatSeconds(atSec);
+      var text = document.createElement("span");
+      text.className = "script-text";
+      text.textContent = line.text;
+      li.appendChild(at);
+      li.appendChild(text);
+      var mentions = line.mentions || [];
+      if (mentions.length) {
+        var chips = document.createElement("span");
+        chips.className = "script-chips";
+        mentions.forEach((mention) => {
+          var name = names[mention.track];
+          var chip = document.createElement("span");
+          chip.className = "chip" + (name ? "" : " dangling");
+          chip.textContent = name || "повисшее";
+          chips.appendChild(chip);
+        });
+        li.appendChild(chips);
+      }
+      li.addEventListener("click", () => smartClick(mentions, names));
+      el.scriptLines.appendChild(li);
+      scriptLineEls.push(li);
+    });
+  }
+
+  function smartClick(mentions, names) {
+    if (!mentions.length) return;
+    if (mentions.length === 1) {
+      send("enqueue_track", { track: mentions[0].track });
+      vibrate();
+      return;
+    }
+    openMentionMenu(mentions, names);
+  }
+
+  function openMentionMenu(mentions, names) {
+    el.mentionOptions.textContent = "";
+    mentions.forEach((mention) => {
+      var name = names[mention.track];
+      var button = document.createElement("button");
+      button.className = "pad mention-option";
+      button.textContent = name || "повисшее";
+      button.disabled = !name;
+      button.addEventListener("click", () => {
+        hideMentionMenu();
+        send("enqueue_track", { track: mention.track });
+        vibrate();
+      });
+      el.mentionOptions.appendChild(button);
+    });
+    el.mentionMenu.classList.remove("hidden");
+  }
+
+  function hideMentionMenu() {
+    el.mentionMenu.classList.add("hidden");
+  }
+
+  function updateScriptFollow() {
+    var script = activeScript();
+    var elapsed = clockSeconds();
+    var index = -1;
+    if (script && elapsed != null) {
+      (script.lines || []).forEach((line, i) => {
+        var at = parseIsoDuration(line.atElapsed);
+        if (at != null && at <= elapsed) index = i;
+      });
+    }
+    if (index === lastFollowIndex) return;
+    lastFollowIndex = index;
+    scriptLineEls.forEach((li, i) =>
+      li.classList.toggle("follow", i === index),
+    );
+    if (index >= 0 && scriptSectionVisible()) {
+      scriptLineEls[index].scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  function scriptSectionVisible() {
+    var rect = el.scriptSection.getBoundingClientRect();
+    return rect.top < window.innerHeight && rect.bottom > 0;
   }
 
   function gainToPct(db) {
@@ -763,6 +931,10 @@
     send("set_muted", { muted: !state.mixer.muted });
     vibrate();
   });
+
+  document
+    .getElementById("mention-cancel")
+    .addEventListener("click", hideMentionMenu);
 
   var actions = {
     "btn-play": "play",
