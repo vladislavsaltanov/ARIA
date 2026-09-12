@@ -70,13 +70,27 @@ public partial class ScriptPanel : UserControl
 
     private void OnTabSelection(object? sender, SelectionChangedEventArgs e)
     {
-        if (e.AddedItems.Count == 1
-            && e.AddedItems[0] is ScriptPanelViewModel.ScriptVm script
-            && ViewModel is { } viewModel
-            && viewModel.SelectedScript?.Id != script.Id)
+        if (sender is not ListBox)
         {
-            viewModel.SelectScript(script);
+            return;
         }
+        if (sender is ListBox { Selection.SelectedItem: ScriptPanelViewModel.ScriptVm current })
+        {
+            SelectTab(current);
+        }
+    }
+
+    private void SelectTab(ScriptPanelViewModel.ScriptVm? script)
+    {
+        if (script is null || ViewModel is not { } viewModel)
+        {
+            return;
+        }
+        if (viewModel.SelectedScript?.Id == script.Id)
+        {
+            return;
+        }
+        viewModel.SelectScript(script);
     }
 
     private void OnPanelTapped(object? sender, TappedEventArgs e)
