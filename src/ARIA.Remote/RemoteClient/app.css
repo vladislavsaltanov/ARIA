@@ -79,7 +79,7 @@ body {
   white-space: nowrap;
 }
 .remaining {
-  font-size: 88px;
+  font-size: clamp(56px, 20vw, 88px);
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -466,6 +466,7 @@ body {
 }
 .playlist-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 12px;
@@ -500,6 +501,7 @@ body {
 }
 .entry-line {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-height: 44px;
@@ -557,6 +559,7 @@ body {
 }
 .inline-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 8px 0;
@@ -649,7 +652,7 @@ body {
   padding: 0 10px;
   background: var(--panel);
   border: 1px solid var(--line);
-  color: var(--fg);
+  color: var(--text);
   font-size: 16px;
   border-radius: 6px;
 }
@@ -657,4 +660,8 @@ body {
 .qbtn-remove {
   color: var(--danger-text);
   border-color: var(--danger);
+}
+
+.hidden {
+  display: none;
 }

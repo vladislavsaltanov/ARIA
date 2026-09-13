@@ -368,7 +368,14 @@
   var scriptManage = null;
   var pendingNewScriptIds = null;
 
+  function editingInside(host) {
+    var active = document.activeElement;
+    return !!active && host.contains(active) &&
+      (active.tagName === "INPUT" || active.tagName === "SELECT" || active.tagName === "TEXTAREA");
+  }
+
   function renderScript() {
+    if (editingInside(el.scriptTabs) || editingInside(el.scriptLines)) return;
     var scripts = (state.show && state.show.scripts) || [];
     el.scriptTabs.textContent = "";
     if (pendingNewScriptIds) {
@@ -1171,6 +1178,7 @@
 
   function renderPlaylists() {
     var host = el.playlists;
+    if (editingInside(host)) return;
     host.textContent = "";
     if (!state.show) return;
     var playlists = state.show.playlists || [];
@@ -1206,7 +1214,10 @@
       head.appendChild(
         smallButton("✎", () => {
           row.textContent = "";
-          row.appendChild(renameRow(pl, refresh));
+          var form = renameRow(pl, refresh);
+          row.appendChild(form);
+          var field = form.querySelector("input");
+          if (field) field.focus();
         }),
       );
       head.appendChild(

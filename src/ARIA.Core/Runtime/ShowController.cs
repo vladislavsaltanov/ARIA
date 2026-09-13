@@ -317,7 +317,7 @@ public sealed class ShowController : IShowHandler
         _muted = false;
         _panicFade = restore.PanicFade;
         _clockElapsed = restore.ClockElapsed;
-        _clockRunning = restore.ClockRunning;
+        _clockRunning = false;
         _scripts = restore.Scripts.IsDefault ? [] : restore.Scripts;
         _engine.SetMasterGain(restore.MasterGainDb);
         _current = null;

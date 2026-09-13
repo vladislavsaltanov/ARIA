@@ -95,15 +95,21 @@ public sealed class ShowClockTests
     }
 
     [Fact]
-    public void RestoreShow_RestoresClock_AndTicksContinue()
+    public void RestoreShow_ArrivesStopped_UntilExplicitStart()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
 
         h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(90), true));
-        h.Submit(new TickShowClock());
+        Assert.False(h.Snapshot.Show.Clock.Running);
+        Assert.Equal(TimeSpan.FromSeconds(90), h.Snapshot.Show.Clock.Elapsed);
 
+        h.Submit(new TickShowClock());
+        Assert.Equal(TimeSpan.FromSeconds(90), h.Snapshot.Show.Clock.Elapsed);
+
+        h.Submit(new StartShowClock());
+        h.Submit(new TickShowClock());
         Assert.Equal(TimeSpan.FromSeconds(91), h.Snapshot.Show.Clock.Elapsed);
         Assert.True(h.Snapshot.Show.Clock.Running);
     }

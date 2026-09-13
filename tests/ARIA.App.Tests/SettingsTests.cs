@@ -131,6 +131,7 @@ public sealed class SettingsTests : IDisposable
         bus.Submit(new ClientId("setup"), 9, new RestoreShow(
             [track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(100),
             TimeSpan.FromSeconds(90), true, []));
+        bus.Submit(new ClientId("setup"), 10, new StartShowClock());
         Assert.True(bus.Snapshot().Show.Clock.Running);
 
         viewModel.ResetClockCommand.Execute(null);

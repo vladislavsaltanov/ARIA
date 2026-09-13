@@ -48,4 +48,14 @@ public sealed class TrackImporter
         var peaks = _scanner.Scan(filePath, track.Id, pointsPerSecond);
         return new ImportedTrack(track, peaks);
     }
+
+    public Track RefreshDisplayName(Track track)
+    {
+        if (track.DefaultName != Path.GetFileNameWithoutExtension(track.FilePath))
+        {
+            return track;
+        }
+        var name = TrackMetadata.ReadDisplayName(track.FilePath);
+        return name is not null && name != track.DefaultName ? track with { DefaultName = name } : track;
+    }
 }

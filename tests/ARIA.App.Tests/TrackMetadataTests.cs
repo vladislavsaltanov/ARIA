@@ -113,6 +113,35 @@ public sealed class TrackMetadataTests : IDisposable
         Assert.Equal("demo-track", imported.Track.DefaultName);
     }
 
+    [Fact]
+    public void RefreshDisplayName_RepairsStaleFileName()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = WriteTaggedWav("stale-name.wav", "Song", "Band");
+        var factory = new MiniaudioSourceFactory(8000, 1);
+        var importer = new TrackImporter(factory, new WaveformScanner(factory));
+        var stale = imported_Stale(path);
+
+        var repaired = importer.RefreshDisplayName(stale);
+
+        Assert.Equal("Band – Song", repaired.DefaultName);
+    }
+
+    [Fact]
+    public void RefreshDisplayName_KeepsName_WhenNoTags()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = TestWav.Write(_directory, "plain.wav");
+        var factory = new MiniaudioSourceFactory(8000, 1);
+        var importer = new TrackImporter(factory, new WaveformScanner(factory));
+        var track = new Aria.Core.Model.Track(Aria.Core.Model.TrackId.New(), path, "plain", TimeSpan.FromSeconds(1), new Aria.Core.Model.TrackDefaults());
+
+        Assert.Equal(track, importer.RefreshDisplayName(track));
+    }
+
+    private static Aria.Core.Model.Track imported_Stale(string path) =>
+        new(Aria.Core.Model.TrackId.New(), path, Path.GetFileNameWithoutExtension(path), TimeSpan.FromSeconds(1), new Aria.Core.Model.TrackDefaults());
+
     private static void WriteMp3(string path, string title, string artist)
     {
         using var stream = File.Create(path);

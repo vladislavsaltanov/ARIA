@@ -181,6 +181,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ResetClock() => Submit(new ResetShowClock());
 
+    [RelayCommand]
     public void ToggleLock() => Submit(new SetLocked(!Locked));
 
     public void RefreshWallClock()

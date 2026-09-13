@@ -41,6 +41,9 @@
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#1F1F1F"/>
     </Style>
+    <Style Selector="Thumb#PaneResizer:pointerover">
+      <Setter Property="Background" Value="#2C2C2C"/>
+    </Style>
   </Window.Styles>
   <Grid RowDefinitions="Auto,*,Auto" Margin="24">
     <views:PlaybackHeader x:Name="PlaybackHeader" Grid.Row="0" Margin="0,0,0,12" />
@@ -48,9 +51,11 @@
                OpenPaneLength="340" IsPaneOpen="False">
       <SplitView.Pane>
         <Border Background="#161616" BorderBrush="#2C2C2C" BorderThickness="1,0,0,0">
-          <Grid ColumnDefinitions="8,*">
-            <Thumb Grid.Column="0" x:Name="PaneResizer" Width="8" Background="Transparent"
-                   VerticalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
+          <Grid ColumnDefinitions="12,*">
+            <Border Grid.Column="0" x:Name="PaneGrip" Width="3" CornerRadius="2" Background="#2C2C2C"
+                    HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,12" IsHitTestVisible="False"/>
+            <Thumb Grid.Column="0" x:Name="PaneResizer" Background="Transparent"
+                   VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
                    ToolTip.Tip="Ширина панели"/>
             <views:ScriptPanel Grid.Column="1" x:Name="ScriptPanel" Margin="10,14,12,10"/>
           </Grid>

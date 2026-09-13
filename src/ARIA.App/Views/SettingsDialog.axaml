@@ -5,9 +5,9 @@
         x:Class="Aria.App.Views.SettingsDialog"
         x:DataType="vm:SettingsViewModel"
         Title="Настройки"
-        Width="620" Height="760"
+        Width="620" Height="760" MinWidth="480" MinHeight="500"
         Background="#0F0F0F" Foreground="#ECECEC"
-        CanResize="False">
+        CanResize="True">
   <Window.Styles>
     <Style Selector="Border.section">
       <Setter Property="Background" Value="#161616"/>

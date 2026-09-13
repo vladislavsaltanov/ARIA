@@ -187,6 +187,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         _bus.Submit(new ClientId("clock"), 60, new RestoreShow(
             [FirstTrack, SecondTrack], [], null, [], 0, TimeSpan.FromMilliseconds(100),
             TimeSpan.FromSeconds(150), true, _bus.Snapshot().Show.Scripts));
+        _bus.Submit(new ClientId("clock"), 61, new StartShowClock());
 
         var tip = _viewModel.Lines[0].WallTimeTip;
         var projected = DateTime.ParseExact(tip, "HH:mm:ss", null).TimeOfDay;
