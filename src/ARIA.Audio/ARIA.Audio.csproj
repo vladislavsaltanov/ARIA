@@ -5,7 +5,10 @@
   <ItemGroup>
     <ProjectReference Include="..\ARIA.Core\ARIA.Core.csproj" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <None Include="..\..\runtimes\$(RuntimeIdentifier)\native\*" CopyToOutputDirectory="PreserveNewest" Link="runtimes\$(RuntimeIdentifier)\native\%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
     <None Include="..\..\runtimes\**\native\*" CopyToOutputDirectory="PreserveNewest" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
 </Project>
