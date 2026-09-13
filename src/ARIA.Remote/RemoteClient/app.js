@@ -363,16 +363,39 @@
     return map;
   }
 
+  var editingScriptLineId = null;
+  var addingScriptLine = false;
+  var scriptManage = null;
+  var pendingNewScriptIds = null;
+
   function renderScript() {
     var scripts = (state.show && state.show.scripts) || [];
     el.scriptTabs.textContent = "";
+    if (pendingNewScriptIds) {
+      var known = pendingNewScriptIds;
+      pendingNewScriptIds = null;
+      var fresh = scripts.filter((s) => known.indexOf(s.id) < 0);
+      if (fresh.length) activeScriptId = fresh[0].id;
+    }
     if (!scripts.length) {
       el.scriptLines.textContent = "";
       scriptLineEls = [];
+      el.scriptTabs.appendChild(
+        smallButton("+ сценарий", () => {
+          scriptManage = scriptManage === "create" ? null : "create";
+          renderScript();
+        }),
+      );
+      if (scriptManage === "create") el.scriptTabs.appendChild(scriptCreateForm());
       updateScriptFollow();
       return;
     }
     var script = activeScript();
+    if (
+      editingScriptLineId &&
+      script.lines.every((line) => line.id !== editingScriptLineId)
+    )
+      editingScriptLineId = null;
     scripts.forEach((s) => {
       var tab = document.createElement("button");
       tab.className = "script-tab" + (s.id === activeScriptId ? " active" : "");
@@ -381,12 +404,246 @@
         if (activeScriptId === s.id) return;
         activeScriptId = s.id;
         lastFollowIndex = null;
+        editingScriptLineId = null;
+        addingScriptLine = false;
+        scriptManage = null;
         renderScript();
       });
       el.scriptTabs.appendChild(tab);
     });
+    el.scriptTabs.appendChild(scriptManageRow());
+    if (scriptManage === "create")
+      el.scriptTabs.appendChild(scriptCreateForm());
+    if (scriptManage === "rename")
+      el.scriptTabs.appendChild(scriptRenameForm(script));
+    if (scriptManage === "delete")
+      el.scriptTabs.appendChild(scriptDeleteForm(script));
     renderScriptLines(script);
     updateScriptFollow();
+  }
+
+  function scriptManageRow() {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    wrap.appendChild(
+      smallButton("+ строка", () => {
+        addingScriptLine = true;
+        editingScriptLineId = null;
+        renderScript();
+      }),
+    );
+    wrap.appendChild(
+      smallButton("✎", () => {
+        scriptManage = scriptManage === "rename" ? null : "rename";
+        renderScript();
+      }),
+    );
+    wrap.appendChild(
+      smallButton(
+        "✕",
+        () => {
+          scriptManage = scriptManage === "delete" ? null : "delete";
+          renderScript();
+        },
+        "danger",
+      ),
+    );
+    return wrap;
+  }
+
+  function scriptCreateForm() {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var input = textInput("имя сценария", "");
+    var ok = document.createElement("button");
+    ok.className = "mini ok";
+    ok.textContent = "ОК";
+    ok.addEventListener("click", () => {
+      var name = input.value.trim();
+      if (!name) return;
+      pendingNewScriptIds = (state.show.scripts || []).map((s) => s.id);
+      send("create_script", { name: name });
+      scriptManage = null;
+      renderScript();
+    });
+    var cancel = document.createElement("button");
+    cancel.className = "mini";
+    cancel.textContent = "Отмена";
+    cancel.addEventListener("click", () => {
+      scriptManage = null;
+      renderScript();
+    });
+    wrap.appendChild(input);
+    wrap.appendChild(ok);
+    wrap.appendChild(cancel);
+    return wrap;
+  }
+
+  function scriptRenameForm(script) {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var input = textInput("имя сценария", script.name);
+    var ok = document.createElement("button");
+    ok.className = "mini ok";
+    ok.textContent = "ОК";
+    ok.addEventListener("click", () => {
+      var name = input.value.trim();
+      if (name && name !== script.name)
+        send("rename_script", { id: script.id, name: name });
+      scriptManage = null;
+      renderScript();
+    });
+    var cancel = document.createElement("button");
+    cancel.className = "mini";
+    cancel.textContent = "Отмена";
+    cancel.addEventListener("click", () => {
+      scriptManage = null;
+      renderScript();
+    });
+    wrap.appendChild(input);
+    wrap.appendChild(ok);
+    wrap.appendChild(cancel);
+    return wrap;
+  }
+
+  function scriptDeleteForm(script) {
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var label = document.createElement("span");
+    label.textContent = "Удалить «" + script.name + "»?";
+    var yes = document.createElement("button");
+    yes.className = "mini danger";
+    yes.textContent = "Удалить";
+    yes.addEventListener("click", () => {
+      send("delete_script", { id: script.id });
+      activeScriptId = null;
+      editingScriptLineId = null;
+      addingScriptLine = false;
+      scriptManage = null;
+      renderScript();
+    });
+    var no = document.createElement("button");
+    no.className = "mini";
+    no.textContent = "Отмена";
+    no.addEventListener("click", () => {
+      scriptManage = null;
+      renderScript();
+    });
+    wrap.appendChild(label);
+    wrap.appendChild(yes);
+    wrap.appendChild(no);
+    return wrap;
+  }
+
+  function parseClockInput(text) {
+    var parts = (text || "").trim().split(":");
+    if (!parts.length || parts.length > 3) return null;
+    var nums = parts.map((p) => parseInt(p, 10));
+    if (nums.some((n) => isNaN(n) || n < 0)) return null;
+    if (parts.length > 1 && (nums[parts.length - 1] > 59 || nums[parts.length - 2] > 59))
+      return null;
+    var total = 0;
+    for (var i = 0; i < nums.length; i++)
+      total = total * 60 + nums[i];
+    return total;
+  }
+
+  function scriptTrackSelect(selected) {
+    var select = document.createElement("select");
+    select.className = "inline-input";
+    var none = document.createElement("option");
+    none.value = "";
+    none.textContent = "— без трека —";
+    select.appendChild(none);
+    var entries =
+      (state.show &&
+        state.show.trackDigest &&
+        state.show.trackDigest.entries) ||
+      [];
+    entries.forEach((entry) => {
+      var option = document.createElement("option");
+      option.value = entry.track;
+      option.textContent = entry.displayName;
+      if (entry.track === selected) option.selected = true;
+      select.appendChild(option);
+    });
+    return select;
+  }
+
+  function scriptLineEditor(script, line) {
+    var li = document.createElement("li");
+    li.className = "script-line";
+    var wrap = document.createElement("div");
+    wrap.className = "inline-row";
+    var atSec =
+      line == null ? null : parseIsoDuration(line.atElapsed);
+    var time = textInput(
+      "м:сс",
+      line == null || atSec == null ? "" : formatSeconds(atSec),
+    );
+    time.style.maxWidth = "90px";
+    var text = textInput("текст строки", line == null ? "" : line.text);
+    var mentions = (line && line.mentions) || [];
+    var select = scriptTrackSelect(
+      mentions.length ? mentions[0].track : "",
+    );
+    var ok = document.createElement("button");
+    ok.className = "mini ok";
+    ok.textContent = "ОК";
+    ok.addEventListener("click", () => {
+      var at = parseClockInput(time.value);
+      if (at == null) return;
+      var track = select.value;
+      if (line == null) {
+        send("add_script_line", {
+          script: script.id,
+          at_ms: at * 1000,
+          text: text.value,
+          mentions: track ? [track] : [],
+        });
+        addingScriptLine = false;
+      } else {
+        send("update_script_line", {
+          script: script.id,
+          line: line.id,
+          at_ms: at * 1000,
+          text: text.value,
+          mentions: track ? [track] : [],
+        });
+        editingScriptLineId = null;
+      }
+      renderScript();
+    });
+    wrap.appendChild(time);
+    wrap.appendChild(text);
+    wrap.appendChild(select);
+    wrap.appendChild(ok);
+    if (line != null) {
+      var del = document.createElement("button");
+      del.className = "mini danger";
+      del.textContent = "✕";
+      del.addEventListener("click", () => {
+        if (del.textContent === "✕") {
+          del.textContent = "?";
+          return;
+        }
+        send("remove_script_line", { script: script.id, line: line.id });
+        editingScriptLineId = null;
+        renderScript();
+      });
+      wrap.appendChild(del);
+    }
+    var cancel = document.createElement("button");
+    cancel.className = "mini";
+    cancel.textContent = "Отмена";
+    cancel.addEventListener("click", () => {
+      editingScriptLineId = null;
+      addingScriptLine = false;
+      renderScript();
+    });
+    wrap.appendChild(cancel);
+    li.appendChild(wrap);
+    return li;
   }
 
   function renderScriptLines(script) {
@@ -396,6 +653,12 @@
     if (!script) return;
     var names = trackNameMap();
     (script.lines || []).forEach((line) => {
+      if (editingScriptLineId === line.id) {
+        var editor = scriptLineEditor(script, line);
+        el.scriptLines.appendChild(editor);
+        scriptLineEls.push(editor);
+        return;
+      }
       var li = document.createElement("li");
       li.className = "script-line";
       var at = document.createElement("span");
@@ -421,9 +684,21 @@
         li.appendChild(chips);
       }
       li.addEventListener("click", () => smartClick(mentions, names));
+      li.appendChild(
+        smallButton("✎", () => {
+          editingScriptLineId = line.id;
+          addingScriptLine = false;
+          renderScript();
+        }),
+      );
       el.scriptLines.appendChild(li);
       scriptLineEls.push(li);
     });
+    if (addingScriptLine) {
+      var adder = scriptLineEditor(script, null);
+      el.scriptLines.appendChild(adder);
+      scriptLineEls.push(adder);
+    }
   }
 
   function smartClick(mentions, names) {
@@ -780,6 +1055,11 @@
       label.textContent += " → " + entry.overrides.name;
     }
     line.appendChild(label);
+    line.appendChild(
+      smallButton("▶", () => {
+        send("jump_to", { entry: entry.id });
+      }),
+    );
     if (index > 0) {
       line.appendChild(
         smallButton("↑", () => {
