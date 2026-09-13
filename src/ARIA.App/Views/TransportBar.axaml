@@ -49,7 +49,7 @@
     </Style>
   </UserControl.Styles>
   <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0">
-    <Grid RowDefinitions="3,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
       <ProgressBar Grid.Row="0" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
                    Height="3" Background="Transparent" Foreground="{StaticResource BrushFg}" Opacity="0.85"
                    BorderThickness="0" CornerRadius="0" Margin="0,10,0,8"/>
