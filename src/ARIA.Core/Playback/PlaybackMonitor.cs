@@ -29,6 +29,7 @@ public sealed class PlaybackMonitor
     private StreamHandle? _latestHandle;
     private volatile PositionSnapshot? _latest;
 
+    // Latest-value only: position stays out of versioned state.
     public PositionSnapshot? Latest => _latest;
 
     public event Action<PositionSnapshot>? Changed;

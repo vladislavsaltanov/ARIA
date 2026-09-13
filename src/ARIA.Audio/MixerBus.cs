@@ -158,6 +158,7 @@ public sealed class MixerBus : IDisposable
             Peak = 0f;
             return 0;
         }
+        // Drain control queue first: audio thread never blocks on producers.
         DrainCommands();
         output.Clear();
         var processed = 0;

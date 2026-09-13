@@ -36,6 +36,7 @@ public sealed class JsonSnapshotStore : ISnapshotStore
     {
         var dto = ToDto(document);
         var json = JsonSerializer.Serialize(dto, Options);
+        // tmp+move: crash never leaves half-written snapshot.
         var tempPath = _path + ".tmp";
         File.WriteAllText(tempPath, json);
         File.Move(tempPath, _path, overwrite: true);

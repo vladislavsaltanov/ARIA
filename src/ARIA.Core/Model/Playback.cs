@@ -23,6 +23,7 @@ public sealed record Fade(TimeSpan Duration, FadeCurve Curve)
 
 public sealed record Smoothing(bool Enabled, TimeSpan ManualCrossfade, TimeSpan AutoCrossfade, TimeSpan StartFade, TimeSpan StopFade, TimeSpan SeekFade)
 {
+    // Off by default: fades stay opt-in, existing behavior unchanged.
     public static Smoothing Default { get; } = new(
         false,
         TimeSpan.FromMilliseconds(350),

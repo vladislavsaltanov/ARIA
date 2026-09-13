@@ -6,6 +6,7 @@ using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.State;
 
+// Owns PlayerState: mutate only here, on control thread.
 public sealed class ShowController : IShowHandler
 {
     private const double MasterGainMinDb = -80.0;
@@ -598,6 +599,7 @@ public sealed class ShowController : IShowHandler
 
     private void SeekWithCrossfade(DeckInstance deck, TimeSpan filePosition)
     {
+        // New stream, not in-place seek: overlap fades, no click.
         var settings = deck.Settings;
         var old = deck.Handle!.Value;
         _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
