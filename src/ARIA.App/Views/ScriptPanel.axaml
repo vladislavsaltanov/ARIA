@@ -111,7 +111,7 @@
                                     PointerEntered="OnChipEnter" PointerExited="OnChipLeave"
                                     ToolTip.Tip="{Binding Tooltip}">
                               <Border Classes="mention" Classes.dangling="{Binding IsDangling}">
-                                <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12" MaxWidth="240" TextTrimming="CharacterEllipsis"/>
                               </Border>
                             </Button>
                           </DataTemplate>
@@ -129,7 +129,7 @@
                             <Button Tag="ScriptCandidate" Classes="ghost" Margin="0,0,6,0" Click="OnCandidateClick"
                                     ToolTip.Tip="{Binding Tooltip}">
                               <Border Classes="mention">
-                                <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12" MaxWidth="240" TextTrimming="CharacterEllipsis"/>
                               </Border>
                             </Button>
                           </DataTemplate>
@@ -162,7 +162,7 @@
                           <Button Tag="ScriptStaged" Classes="ghost" Margin="0,0,6,4" Click="OnStagedClick"
                                   ToolTip.Tip="Убрать упоминание">
                             <Border Classes="mention" Classes.dangling="{Binding IsDangling}">
-                              <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                              <TextBlock Text="{Binding DisplayName}" FontSize="12" MaxWidth="240" TextTrimming="CharacterEllipsis"/>
                             </Border>
                           </Button>
                         </DataTemplate>

@@ -28,6 +28,8 @@ public sealed record EnqueueEntry(EntryId Entry) : Command;
 
 public sealed record EnqueueTrack(TrackId Track) : Command;
 
+public sealed record PlayTrack(TrackId Track) : Command;
+
 public sealed record RemoveFromQueue(int Index) : Command;
 
 public sealed record ClearQueue : Command;

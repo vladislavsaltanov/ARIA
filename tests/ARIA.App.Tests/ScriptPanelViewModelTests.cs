@@ -120,7 +120,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
-    public void ExecuteLine_SingleMention_EnqueuesTrack()
+    public void ExecuteLine_SingleMention_PlaysTrackNow()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("1:00", "соло", [FirstTrack.Id]);
@@ -128,11 +128,13 @@ public sealed class ScriptPanelViewModelTests : IDisposable
 
         _viewModel.ExecuteLine(line);
 
-        Assert.Equal(FirstTrack.Id, Assert.Single(_bus.Snapshot().Queue.Items).TrackId);
+        Assert.Equal(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Equal(FirstTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
+        Assert.Empty(_bus.Snapshot().Queue.Items);
     }
 
     [Fact]
-    public void ExecuteLine_SeveralMentions_ShowsCandidates_ThenEnqueuesChoice()
+    public void ExecuteLine_SeveralMentions_ShowsCandidates_ThenPlaysChoice()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("1:00", "дуэт", [FirstTrack.Id, SecondTrack.Id]);
@@ -146,7 +148,9 @@ public sealed class ScriptPanelViewModelTests : IDisposable
 
         _viewModel.ChooseCandidate(line, line.Candidates[1]);
 
-        Assert.Equal(SecondTrack.Id, Assert.Single(_bus.Snapshot().Queue.Items).TrackId);
+        Assert.Equal(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Equal(SecondTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
+        Assert.Empty(_bus.Snapshot().Queue.Items);
         Assert.False(line.CandidatesVisible);
     }
 
@@ -336,7 +340,8 @@ public sealed class ScriptPanelViewModelTests : IDisposable
 
         Assert.False(draft.IsEditing);
         Assert.Equal("заметка", draft.Text);
-        Assert.Equal(FirstTrack.Id, Assert.Single(_bus.Snapshot().Queue.Items).TrackId);
+        Assert.Equal(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Equal(FirstTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
     }
 
     [Fact]

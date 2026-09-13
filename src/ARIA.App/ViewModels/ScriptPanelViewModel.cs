@@ -367,7 +367,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             case 1 when line.Mentions[0].IsDangling || !IsKnownTrack(line.Mentions[0].Track):
                 break;
             case 1:
-                Submit(new EnqueueTrack(line.Mentions[0].Track));
+                Submit(new PlayTrack(line.Mentions[0].Track));
                 break;
             default:
                 line.CandidatesVisible = !line.CandidatesVisible;
@@ -383,7 +383,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             line.CandidatesVisible = false;
             return;
         }
-        Submit(new EnqueueTrack(mention.Track));
+        Submit(new PlayTrack(mention.Track));
         line.CandidatesVisible = false;
     }
 
@@ -394,7 +394,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             return;
         }
         CommitOpenEdit();
-        Submit(new EnqueueTrack(mention.Track));
+        Submit(new PlayTrack(mention.Track));
     }
 
     private bool IsKnownTrack(TrackId track) =>

@@ -20,6 +20,9 @@ public partial class MainWindow : Window
     private PlaylistsViewModel? _playlists;
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
+    private bool _paneResizing;
+    private double _paneResizeStartX;
+    private double _paneResizeStartWidth;
 
     public MainWindow() : this(null)
     {
@@ -81,10 +84,59 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnPaneResize(object? sender, VectorEventArgs e) =>
-        ScriptDrawer.OpenPaneLength = Math.Clamp(ScriptDrawer.OpenPaneLength - e.Vector.X, 240, 600);
+    private void OnPaneResize(object? sender, VectorEventArgs e)
+    {
+        if (_paneResizing)
+        {
+            return;
+        }
+        SetPaneWidth(ScriptDrawer.OpenPaneLength - e.Vector.X);
+    }
 
-    private void OnPaneResizeStarted(object? sender, VectorEventArgs e)
+    private void OnPaneResizeStarted(object? sender, VectorEventArgs e) => SuspendPaneTransitions();
+
+    private void OnPaneResizeCompleted(object? sender, VectorEventArgs e) => RestorePaneTransitions();
+
+    private void OnPaneResizePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(PaneResizer).Properties.PointerUpdateKind is not PointerUpdateKind.LeftButtonPressed)
+        {
+            return;
+        }
+        BeginPaneResize(e.GetPosition(this).X, ScriptDrawer.OpenPaneLength);
+        e.Pointer.Capture(PaneResizer);
+    }
+
+    private void OnPaneResizeMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_paneResizing || e.Pointer.Captured != PaneResizer)
+        {
+            return;
+        }
+        UpdatePaneResize(e.GetPosition(this).X);
+    }
+
+    private void OnPaneResizeReleased(object? sender, PointerReleasedEventArgs e) => EndPaneResize();
+
+    internal void BeginPaneResize(double startX, double startWidth)
+    {
+        _paneResizeStartX = startX;
+        _paneResizeStartWidth = startWidth;
+        _paneResizing = true;
+        SuspendPaneTransitions();
+    }
+
+    internal void UpdatePaneResize(double currentX) => SetPaneWidth(_paneResizeStartWidth - (currentX - _paneResizeStartX));
+
+    internal void EndPaneResize()
+    {
+        _paneResizing = false;
+        RestorePaneTransitions();
+    }
+
+    private void SetPaneWidth(double width) => ScriptDrawer.OpenPaneLength = Math.Clamp(width, 240, 600);
+
+    private void SuspendPaneTransitions()
     {
         if (PaneRoot() is { } pane)
         {
@@ -92,8 +144,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnPaneResizeCompleted(object? sender, VectorEventArgs e) =>
-        PaneRoot()?.ClearValue(Animatable.TransitionsProperty);
+    private void RestorePaneTransitions() => PaneRoot()?.ClearValue(Animatable.TransitionsProperty);
 
     private Panel? PaneRoot() =>
         ScriptDrawer.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Name == "PART_PaneRoot");

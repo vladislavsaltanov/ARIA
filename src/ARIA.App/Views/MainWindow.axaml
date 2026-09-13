@@ -57,6 +57,7 @@
             <Thumb Grid.Column="0" x:Name="PaneResizer" Background="Transparent" MinWidth="16"
                    VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
                    DragStarted="OnPaneResizeStarted" DragCompleted="OnPaneResizeCompleted"
+                   PointerPressed="OnPaneResizePressed" PointerMoved="OnPaneResizeMoved" PointerReleased="OnPaneResizeReleased"
                    ToolTip.Tip="Ширина панели"/>
             <views:ScriptPanel Grid.Column="1" x:Name="ScriptPanel" Margin="10,14,12,10"/>
           </Grid>

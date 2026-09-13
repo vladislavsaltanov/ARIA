@@ -120,6 +120,9 @@ public sealed class ShowController : IShowHandler
             case EnqueueTrack enqueueTrack:
                 OnEnqueueTrack(client, seq, enqueueTrack);
                 break;
+            case PlayTrack playTrack:
+                OnPlayTrack(client, seq, playTrack);
+                break;
             case RemoveFromQueue removeFromQueue:
                 OnRemoveFromQueue(client, seq, removeFromQueue);
                 break;
@@ -653,6 +656,30 @@ public sealed class ShowController : IShowHandler
         EmitQueue();
         EmitTransport();
         SyncDigest();
+    }
+
+    private void OnPlayTrack(ClientId client, long seq, PlayTrack command)
+    {
+        if (_panicked)
+        {
+            Reject(client, seq, "panicked");
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var track))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var settings = EffectiveSettings.ForTrack(track);
+        _queue.Insert(0, new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
+        var wasPlaying = _status == TransportStatus.Playing;
+        var old = _current;
+        if (!StartFromOrder())
+        {
+            Reject(client, seq, "nothing-to-play");
+            return;
+        }
+        ReleaseOld(old, wasPlaying, manual: true);
     }
 
     private void OnRemoveFromQueue(ClientId client, long seq, RemoveFromQueue command)

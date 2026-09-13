@@ -15,7 +15,7 @@ using CommunityToolkit.Mvvm.Input;
 public sealed partial class TransportViewModel : ObservableObject, IDisposable
 {
     private const double VolumeMinDb = -80.0;
-    private const double VolumeMaxDb = 0.0;
+    private const double VolumeMaxDb = 12.0;
     private const double LufsRedThresholdDb = -14.0;
 
     private static readonly SolidColorBrush BrushFg = new(Color.Parse("#ECECEC"));
@@ -258,10 +258,10 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             TransportStatus.Panicked => "PANIC",
             _ => "STOP",
         };
-        DisplayName = state.Current is null ? "—" : TrackDisplay(state.Current);
+        DisplayName = state.Current is null ? "—" : Truncate(TrackDisplay(state.Current));
         CurrentTrackId = state.Current?.TrackId;
         NextName = state.Next is null ? "—" : TrackDisplay(state.Next);
-        NextLine = state.Next is null ? "—" : $"Далее: {TrackDisplay(state.Next)}";
+        NextLine = state.Next is null ? "—" : Truncate($"Далее: {TrackDisplay(state.Next)}");
         Panicked = state.Status == TransportStatus.Panicked;
         _playing = state.Status == TransportStatus.Playing;
         IsPlaying = _playing;
@@ -329,12 +329,12 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private static double PercentToDb(double percent)
     {
-        var fraction = Math.Clamp(percent, 0.0, 100.0) / 100.0;
+        var fraction = Math.Clamp(percent, 0.0, 125.0) / 100.0;
         if (fraction <= 0.0)
         {
             return VolumeMinDb;
         }
-        return Math.Clamp(VolumeMaxDb + 40.0 * Math.Log10(fraction), VolumeMinDb, VolumeMaxDb);
+        return Math.Clamp(40.0 * Math.Log10(fraction), VolumeMinDb, VolumeMaxDb);
     }
 
     private static double DbToPercent(double gainDb)
@@ -343,7 +343,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         {
             return 0.0;
         }
-        return Math.Clamp(Math.Pow(10.0, (gainDb - VolumeMaxDb) / 40.0) * 100.0, 0.0, 100.0);
+        return Math.Clamp(Math.Pow(10.0, gainDb / 40.0) * 100.0, 0.0, 125.0);
     }
 
     private sealed class MonitorSubscription : IDisposable
@@ -369,6 +369,11 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             _monitor.Cleared -= _cleared;
         }
     }
+
+    private const int MaxNameLength = 100;
+
+    private static string Truncate(string value) =>
+        value.Length <= MaxNameLength ? value : value[..MaxNameLength] + "…";
 
     private string TrackDisplay(DeckContent deck)
     {

@@ -87,7 +87,7 @@
               <PathIcon Data="{StaticResource icon_volume_off}" Width="17" Height="17" IsVisible="{Binding Muted}"/>
             </Panel>
           </Button>
-          <Slider Width="120" Minimum="0" Maximum="100" Value="{Binding VolumePercent, Mode=TwoWay}"
+          <Slider Width="120" Minimum="0" Maximum="125" Value="{Binding VolumePercent, Mode=TwoWay}"
                   ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center"/>
           <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
                      Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>

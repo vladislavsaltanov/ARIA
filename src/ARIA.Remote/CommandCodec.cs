@@ -57,6 +57,7 @@ internal static class CommandCodec
                 "jump_to" => new JumpTo(new EntryId(GuidOf(commandElement, "entry"))),
                 "enqueue_entry" => new EnqueueEntry(new EntryId(GuidOf(commandElement, "entry"))),
                 "enqueue_track" => new EnqueueTrack(new TrackId(GuidOf(commandElement, "track"))),
+                "play_track" => new PlayTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "remove_from_queue" => new RemoveFromQueue(IntOf(commandElement, "index")),
                 "create_playlist" => new CreatePlaylist(StringOf(commandElement, "name")),
                 "rename_playlist" => new RenamePlaylist(new PlaylistId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),

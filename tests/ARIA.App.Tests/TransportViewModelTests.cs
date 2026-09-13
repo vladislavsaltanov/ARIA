@@ -274,6 +274,9 @@ public sealed class TransportViewModelTests
         vm.VolumePercent = 100;
         Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -0.1, 0.1);
 
+        vm.VolumePercent = 125;
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, 3.7, 4.0);
+
         vm.VolumePercent = 0;
         Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -80.1, -79.9);
     }
@@ -287,6 +290,39 @@ public sealed class TransportViewModelTests
         vm.VolumePercent = 25;
 
         Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -25.0, -23.0);
+    }
+
+    [Fact]
+    public void DisplayName_TruncatesLongNames_ToHundredChars()
+    {
+        var longName = new string('н', 140);
+        var longTrack = new Track(TrackId.New(), "/audio/long.flac", longName, TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), longTrack.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([longTrack], [playlist], playlist.Id));
+        using var vm = new TransportViewModel(bus);
+
+        vm.PlayCommand.Execute(null);
+
+        Assert.Equal(101, vm.DisplayName.Length);
+        Assert.Equal(longName[..100] + "…", vm.DisplayName);
+    }
+
+    [Fact]
+    public void NextLine_TruncatesLongNames_ToHundredChars()
+    {
+        var longName = new string('т', 140);
+        var first = new Track(TrackId.New(), "/audio/one.flac", "one", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var second = new Track(TrackId.New(), "/audio/two.flac", longName, TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), first.Id), new PlaylistEntry(EntryId.New(), second.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([first, second], [playlist], playlist.Id));
+        using var vm = new TransportViewModel(bus);
+
+        vm.PlayCommand.Execute(null);
+
+        Assert.Equal(101, vm.NextLine.Length);
+        Assert.EndsWith("…", vm.NextLine);
     }
 
     [Fact]
