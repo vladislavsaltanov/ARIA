@@ -445,7 +445,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             }
             fresh.Add(vm);
         }
-        if (!SameOrder(fresh, Lines))
+        if (!SameOrder(fresh, Lines) && Lines.All(l => !l.IsEditing))
         {
             Lines.Clear();
             foreach (var vm in fresh)
@@ -471,7 +471,10 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         var current = script is null ? null : ScriptFollow.CurrentLine(script, _elapsed);
         foreach (var line in Lines)
         {
-            line.IsCurrent = current is not null && line.Id == current.Id;
+            if (!line.IsEditing)
+            {
+                line.IsCurrent = current is not null && line.Id == current.Id;
+            }
             line.WallTimeTip = WallTimeTip(line.AtElapsed);
         }
     }

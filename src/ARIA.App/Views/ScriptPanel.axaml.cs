@@ -125,6 +125,20 @@ public partial class ScriptPanel : UserControl
         }
     }
 
+    private static bool IsInside<T>(object? source) where T : Visual
+    {
+        var current = source as Visual;
+        while (current is not null)
+        {
+            if (current is T)
+            {
+                return true;
+            }
+            current = current.GetVisualParent();
+        }
+        return false;
+    }
+
     private static Control? FindDescendant(Control root, string tag)
     {
         if (root.Tag as string == tag)
@@ -147,7 +161,7 @@ public partial class ScriptPanel : UserControl
             _suppressTap = false;
             return;
         }
-        if (e.Source is Button)
+        if (IsInside<Button>(e.Source) || IsInside<TextBox>(e.Source))
         {
             return;
         }
@@ -156,13 +170,8 @@ public partial class ScriptPanel : UserControl
         {
             return;
         }
-        if (e.Source is TextBox)
-        {
-            return;
-        }
         if (line.IsEditing)
         {
-            viewModel.CommitEdit(line);
             return;
         }
         if ((e.Source as Control)?.Tag as string == "ScriptText")
@@ -420,14 +429,14 @@ public partial class ScriptPanel : UserControl
 
     private static ScriptPanelViewModel.ScriptLineVm? LineOf(object? source)
     {
-        var current = source as Control;
+        var current = source as Visual;
         while (current is not null)
         {
-            if (current.DataContext is ScriptPanelViewModel.ScriptLineVm line)
+            if (current is Control { DataContext: ScriptPanelViewModel.ScriptLineVm line })
             {
                 return line;
             }
-            current = current.Parent as Control;
+            current = current.GetVisualParent();
         }
         return null;
     }

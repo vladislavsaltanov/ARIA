@@ -153,11 +153,12 @@ public partial class MainWindow : Window
 
     private void OnQueueJumpClick(object? sender, RoutedEventArgs e)
     {
-        if (!QueueColumn.IsVisible)
+        if (QueueColumn.IsVisible)
         {
-            SetQueueOpen(true);
+            SetQueueOpen(false);
             return;
         }
+        SetQueueOpen(true);
         _queue?.FocusPlaying();
         QueueColumn.ScrollToSelected();
     }
