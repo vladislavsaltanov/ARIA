@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 
 public partial class PlaylistCenter : UserControl
 {
@@ -169,6 +170,37 @@ public partial class PlaylistCenter : UserControl
             && DataContext is PlaylistsViewModel viewModel)
         {
             viewModel.RemoveEntryAt(entry);
+        }
+    }
+
+    private void OnFilesDragOver(object? sender, DragEventArgs e) => e.DragEffects = DragDropEffects.Copy;
+
+    private async void OnFilesDropped(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not PlaylistsViewModel viewModel)
+        {
+            return;
+        }
+        if (viewModel.AudioImport is null && App.Host is { } host)
+        {
+            viewModel.AudioImport = host.ImportTracksAsync;
+        }
+        var files = e.DataTransfer.TryGetFiles();
+        if (files is null)
+        {
+            return;
+        }
+        var paths = new List<string>();
+        foreach (var file in files)
+        {
+            if (file.TryGetLocalPath() is { } path)
+            {
+                paths.Add(path);
+            }
+        }
+        if (paths.Count > 0)
+        {
+            await viewModel.ImportAudioFilesAsync(paths);
         }
     }
 }

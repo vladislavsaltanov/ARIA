@@ -397,18 +397,37 @@ public static class TrackMetadata
         var encoding = buffer[offset];
         var start = offset + 1;
         var count = length - 1;
+        if (encoding is 1 or 2)
+        {
+            var bigEndian = encoding == 2;
+            var end16 = start + count;
+            while (count >= 2)
+            {
+                var hi = bigEndian ? buffer[end16 - 2] : buffer[end16 - 1];
+                var lo = bigEndian ? buffer[end16 - 1] : buffer[end16 - 2];
+                if (((hi << 8) | lo) is not (0x0000 or 0x0020))
+                {
+                    break;
+                }
+                count -= 2;
+                end16 -= 2;
+            }
+            if (!bigEndian && count >= 2 && buffer[start] == 0xFF && buffer[start + 1] == 0xFE)
+            {
+                start += 2;
+                count -= 2;
+            }
+            return (bigEndian ? Encoding.BigEndianUnicode : Encoding.Unicode).GetString(buffer, start, count & ~1);
+        }
         var end = start + count;
         while (count > 0 && (buffer[end - 1] == 0 || buffer[end - 1] == 0x20))
         {
             count--;
             end--;
         }
-        return encoding switch
-        {
-            1 or 2 => Encoding.Unicode.GetString(buffer, start, count & ~1),
-            3 => Encoding.UTF8.GetString(buffer, start, count),
-            _ => Encoding.Latin1.GetString(buffer, start, count),
-        };
+        return encoding == 3
+            ? Encoding.UTF8.GetString(buffer, start, count)
+            : Encoding.Latin1.GetString(buffer, start, count);
     }
 
     private static string CleanLatin1(byte[] buffer, int offset, int length)

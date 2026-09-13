@@ -89,6 +89,8 @@
           </Button>
           <Slider Width="120" Minimum="0" Maximum="100" Value="{Binding VolumePercent, Mode=TwoWay}"
                   ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
+                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>
         </StackPanel>
         <StackPanel Grid.Column="7" VerticalAlignment="Center" Margin="0,0,14,0" MinWidth="86">
           <TextBlock Text="{Binding ShowClockText}" FontFamily="{StaticResource MonoFont}" FontSize="14"

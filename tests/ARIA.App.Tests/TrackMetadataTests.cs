@@ -28,6 +28,17 @@ public sealed class TrackMetadataTests : IDisposable
     }
 
     [Fact]
+    public void Mp3_Id3V2_Utf16_KeepsTrailingParen()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "utf16.mp3");
+        WriteMp3Utf16(path, "Song (Remix)", "Band");
+        File.WriteAllBytes(path, [.. File.ReadAllBytes(path), .. new byte[1024]]);
+
+        Assert.Equal("Band – Song (Remix)", TrackMetadata.ReadDisplayName(path));
+    }
+
+    [Fact]
     public void Mp3_Id3V1_FallsBack_WhenNoV2()
     {
         Directory.CreateDirectory(_directory);
@@ -162,6 +173,31 @@ public sealed class TrackMetadataTests : IDisposable
         var size = payload.Length + 1;
         output.AddRange([(byte)(size >> 24), (byte)(size >> 16), (byte)(size >> 8), (byte)size]);
         output.AddRange([(byte)0, (byte)0, (byte)3]);
+        output.AddRange(payload);
+    }
+
+    private static void WriteMp3Utf16(string path, string title, string artist)
+    {
+        using var stream = File.Create(path);
+        var frames = new List<byte>();
+        WriteTextFrame16(frames, "TIT2", title);
+        WriteTextFrame16(frames, "TPE1", artist);
+        stream.Write("ID3"u8);
+        stream.Write([(byte)3, (byte)0, (byte)0]);
+        var size = frames.Count;
+        stream.Write([(byte)((size >> 21) & 0x7F), (byte)((size >> 14) & 0x7F), (byte)((size >> 7) & 0x7F), (byte)(size & 0x7F)]);
+        stream.Write(frames.ToArray());
+    }
+
+    private static void WriteTextFrame16(List<byte> output, string id, string text)
+    {
+        var payload = new List<byte> { 1, 0xFF, 0xFE };
+        payload.AddRange(Encoding.Unicode.GetBytes(text));
+        payload.AddRange([(byte)0, (byte)0]);
+        output.AddRange(Encoding.Latin1.GetBytes(id));
+        var size = payload.Count;
+        output.AddRange([(byte)(size >> 24), (byte)(size >> 16), (byte)(size >> 8), (byte)size]);
+        output.AddRange([(byte)0, (byte)0]);
         output.AddRange(payload);
     }
 

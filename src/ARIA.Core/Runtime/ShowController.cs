@@ -316,7 +316,7 @@ public sealed class ShowController : IShowHandler
         _masterGainDb = restore.MasterGainDb;
         _muted = false;
         _panicFade = restore.PanicFade;
-        _clockElapsed = restore.ClockElapsed;
+        _clockElapsed = TimeSpan.Zero;
         _clockRunning = false;
         _scripts = restore.Scripts.IsDefault ? [] : restore.Scripts;
         _engine.SetMasterGain(restore.MasterGainDb);
@@ -442,7 +442,6 @@ public sealed class ShowController : IShowHandler
             {
                 RestartCurrent();
             }
-            StartClockIfNeeded();
             return;
         }
 
@@ -477,7 +476,6 @@ public sealed class ShowController : IShowHandler
                 }
                 break;
         }
-        StartClockIfNeeded();
     }
 
     private void OnPause(ClientId client, long seq)
@@ -1092,16 +1090,6 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
-    private void StartClockIfNeeded()
-    {
-        if (_clockRunning)
-        {
-            return;
-        }
-        _clockRunning = true;
-        EmitShow();
-    }
-
     private void OnSetPanicFade(ClientId client, long seq, SetPanicFade command)
     {
         if (command.Duration < TimeSpan.Zero || command.Duration > PanicFadeMax)
@@ -1170,8 +1158,17 @@ public sealed class ShowController : IShowHandler
             case StreamEndReason.Completed:
             case StreamEndReason.CueOutReached:
             case StreamEndReason.StoppedByMarker:
-                DisposeCurrentHandle();
-                ApplyEndAction();
+                if (_current!.Settings.EndAction == EndAction.Advance
+                    && _smoothing.Enabled
+                    && _smoothing.AutoCrossfade > TimeSpan.Zero)
+                {
+                    AdvanceWithCrossfade();
+                }
+                else
+                {
+                    DisposeCurrentHandle();
+                    ApplyEndAction();
+                }
                 break;
         }
     }
@@ -1208,6 +1205,20 @@ public sealed class ShowController : IShowHandler
             _current = null;
             EmitTransport();
             SyncDigest();
+        }
+    }
+
+    private void AdvanceWithCrossfade()
+    {
+        var old = _current!;
+        var handle = old.Handle;
+        old.Handle = null;
+        AdvanceFromBoundary();
+        if (handle is { } faded)
+        {
+            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(_smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+            _retired.Add(faded);
+            _monitor?.Unbind(faded);
         }
     }
 

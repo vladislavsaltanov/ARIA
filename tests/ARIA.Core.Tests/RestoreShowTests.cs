@@ -181,7 +181,7 @@ public sealed class RestoreShowTests : IDisposable
     }
 
     [Fact]
-    public void Restore_RunningClock_ArrivesStopped_ElapsedKept()
+    public void Restore_RunningClock_ArrivesStopped_ElapsedReset()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
@@ -191,6 +191,6 @@ public sealed class RestoreShowTests : IDisposable
 
         Assert.Null(h.RejectionOf(seq));
         Assert.False(h.Snapshot.Show.Clock.Running);
-        Assert.Equal(TimeSpan.FromMinutes(12), h.Snapshot.Show.Clock.Elapsed);
+        Assert.Equal(TimeSpan.Zero, h.Snapshot.Show.Clock.Elapsed);
     }
 }

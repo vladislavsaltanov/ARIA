@@ -331,7 +331,9 @@ public sealed class MixerBus : IDisposable
         var rampFrames = fade.Duration <= TimeSpan.Zero
             ? 0
             : Math.Max(1, (int)Math.Round(fade.Duration.TotalSeconds * _sampleRate));
-        voice.Fader = new FaderNode(rampFrames, fade.Curve, 1.0, Math.Pow(10.0, fade.TargetDb / 20.0), fade.StopWhenDone);
+        var target = Math.Pow(10.0, fade.TargetDb / 20.0);
+        var from = fade.StopWhenDone ? 1.0 : 0.0;
+        voice.Fader = new FaderNode(rampFrames, fade.Curve, from, target, fade.StopWhenDone);
         if (rampFrames == 0 && fade.StopWhenDone)
         {
             EndVoice(voice, StreamEndReason.FadeCompleted);

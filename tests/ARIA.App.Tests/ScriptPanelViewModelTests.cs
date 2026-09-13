@@ -171,7 +171,12 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         AddCommittedLine("3:20", "c", []);
         _bus.Submit(new ClientId("clock"), 50, new RestoreShow(
             [FirstTrack, SecondTrack], [], null, [], 0, TimeSpan.FromMilliseconds(100),
-            TimeSpan.FromSeconds(150), true, _bus.Snapshot().Show.Scripts));
+            TimeSpan.Zero, false, _bus.Snapshot().Show.Scripts));
+        _bus.Submit(new ClientId("clock"), 51, new StartShowClock());
+        for (var i = 0; i < 150; i++)
+        {
+            _bus.Submit(new ClientId("clock"), 52 + i, new TickShowClock());
+        }
 
         Assert.False(_viewModel.Lines[0].IsCurrent);
         Assert.True(_viewModel.Lines[1].IsCurrent);
@@ -186,12 +191,16 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         Assert.Equal("часы не запущены", _viewModel.Lines[0].WallTimeTip);
         _bus.Submit(new ClientId("clock"), 60, new RestoreShow(
             [FirstTrack, SecondTrack], [], null, [], 0, TimeSpan.FromMilliseconds(100),
-            TimeSpan.FromSeconds(150), true, _bus.Snapshot().Show.Scripts));
+            TimeSpan.Zero, false, _bus.Snapshot().Show.Scripts));
         _bus.Submit(new ClientId("clock"), 61, new StartShowClock());
+        for (var i = 0; i < 5; i++)
+        {
+            _bus.Submit(new ClientId("clock"), 62 + i, new TickShowClock());
+        }
 
         var tip = _viewModel.Lines[0].WallTimeTip;
         var projected = DateTime.ParseExact(tip, "HH:mm:ss", null).TimeOfDay;
-        var expected = (DateTime.Now - TimeSpan.FromSeconds(150) + TimeSpan.FromSeconds(100)).TimeOfDay;
+        var expected = (DateTime.Now - TimeSpan.FromSeconds(5) + TimeSpan.FromSeconds(100)).TimeOfDay;
         Assert.InRange((projected - expected).Duration(), TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 

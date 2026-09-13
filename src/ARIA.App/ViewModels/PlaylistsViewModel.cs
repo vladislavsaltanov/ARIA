@@ -22,6 +22,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<TopLevel?>? _topLevel;
+    private Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? _audioImport;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private string? _awaitedPlaylistName;
@@ -54,11 +55,17 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public event Action<string, string>? ExportSucceeded;
 
+    public Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? AudioImport
+    {
+        get => _audioImport;
+        set => _audioImport = value;
+    }
+
     public ObservableCollection<PlaylistVm> Playlists { get; } = [];
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null)
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -66,6 +73,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         _rowSettings = rowSettings ?? AppSettings.Default;
         _sync = sync;
         _topLevel = topLevel;
+        _audioImport = audioImport;
         _subscription = bus.Subscribe(Apply);
         Rebuild(bus.Snapshot().Show, _trackSource?.Invoke() ?? []);
     }
@@ -196,6 +204,84 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             LastImportError = string.Empty;
             PlaylistIoStatus = Describe(report);
         }
+    }
+
+    [RelayCommand]
+    private async Task ImportAudio()
+    {
+        var topLevel = _topLevel?.Invoke();
+        if (topLevel is null)
+        {
+            PlaylistIoStatus = "импорт недоступен";
+            return;
+        }
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Импорт аудио в плейлист",
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Аудио") { Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"] },
+            ],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+        await ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath));
+    }
+
+    public async Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths)
+    {
+        var inputs = paths.ToArray();
+        if (inputs.Length == 0)
+        {
+            return [];
+        }
+        if (SelectedPlaylist is null)
+        {
+            PlaylistIoStatus = "нет плейлиста для импорта";
+            return [];
+        }
+        if (_audioImport is null)
+        {
+            PlaylistIoStatus = "импорт недоступен";
+            return [];
+        }
+        var progress = new Progress<string>(name => PlaylistIoStatus = $"импорт: {name}");
+        await _audioImport(inputs, progress);
+        var tracks = _trackSource?.Invoke() ?? [];
+        var ordered = new List<TrackId>();
+        foreach (var input in inputs)
+        {
+            foreach (var track in tracks
+                .Where(t => MatchesInput(input, t.FilePath))
+                .OrderBy(t => t.FilePath, StringComparer.Ordinal))
+            {
+                if (!ordered.Contains(track.Id))
+                {
+                    ordered.Add(track.Id);
+                }
+            }
+        }
+        foreach (var trackId in ordered)
+        {
+            Submit(new AddEntry(SelectedPlaylist.Id, trackId, null));
+        }
+        PlaylistIoStatus = ordered.Count > 0
+            ? $"в плейлист добавлено: {ordered.Count}"
+            : "файлы не распознаны";
+        return ordered;
+    }
+
+    private static bool MatchesInput(string input, string trackPath)
+    {
+        if (trackPath.Equals(input, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        var root = input.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return trackPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 
     public string ExportSelectedDocument()

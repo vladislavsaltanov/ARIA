@@ -138,8 +138,13 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         get => _volumePercent;
         set
         {
+            if (Math.Abs(value - 100.0) <= 2.0)
+            {
+                value = 100.0;
+            }
             if (SetProperty(ref _volumePercent, value))
             {
+                OnPropertyChanged(nameof(VolumePercentText));
                 Submit(new SetMasterGain(PercentToDb(value)));
             }
         }
@@ -147,6 +152,8 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     public string VolumeDbText =>
         string.Create(CultureInfo.InvariantCulture, $"Громкость — {_masterGainDb:F1} дБ");
+
+    public string VolumePercentText => $"{_volumePercent:F0}%";
 
     [RelayCommand]
     private void Play() => Submit(new Play());
@@ -275,6 +282,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         _volumePercent = DbToPercent(state.MasterGainDb);
         OnPropertyChanged(nameof(VolumePercent));
         OnPropertyChanged(nameof(VolumeDbText));
+        OnPropertyChanged(nameof(VolumePercentText));
         Muted = state.Muted;
     }
 

@@ -101,6 +101,27 @@ public sealed class SmoothingTests
     }
 
     [Fact]
+    public void AutoAdvance_WithSmoothing_OldVoiceFadesOutWithAutoCrossfade()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        var old = h.Engine.Created[0];
+        var fade = Assert.Single(old.Mixes, m => m.Fade is not null);
+        Assert.Equal(TimeSpan.FromMilliseconds(900), fade.Fade!.Duration);
+        Assert.True(fade.Fade!.StopWhenDone);
+        Assert.DoesNotContain(old.Handle, h.Engine.Disposed);
+        Assert.Equal(2, h.Engine.Created.Count);
+    }
+
+    [Fact]
     public void Disabled_UsesTrackFades()
     {
         using var h = new Harness();

@@ -51,10 +51,10 @@
                OpenPaneLength="340" IsPaneOpen="False">
       <SplitView.Pane>
         <Border Background="#161616" BorderBrush="#2C2C2C" BorderThickness="1,0,0,0">
-          <Grid ColumnDefinitions="12,*">
+          <Grid ColumnDefinitions="16,*">
             <Border Grid.Column="0" x:Name="PaneGrip" Width="3" CornerRadius="2" Background="#2C2C2C"
                     HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,12" IsHitTestVisible="False"/>
-            <Thumb Grid.Column="0" x:Name="PaneResizer" Background="Transparent"
+            <Thumb Grid.Column="0" x:Name="PaneResizer" Background="Transparent" MinWidth="16"
                    VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
                    ToolTip.Tip="Ширина панели"/>
             <views:ScriptPanel Grid.Column="1" x:Name="ScriptPanel" Margin="10,14,12,10"/>

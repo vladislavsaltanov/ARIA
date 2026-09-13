@@ -56,7 +56,7 @@ public sealed class AppHostTests : IDisposable
         Assert.Equal(-3, snapshot.Mixer.MasterGainDb);
         Assert.Equal(TimeSpan.FromMilliseconds(90), snapshot.Mixer.PanicFade);
         Assert.False(snapshot.Show.Clock.Running);
-        Assert.True(snapshot.Show.Clock.Elapsed >= TimeSpan.FromMinutes(2));
+        Assert.Equal(TimeSpan.Zero, snapshot.Show.Clock.Elapsed);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public sealed class AppHostTests : IDisposable
         await host.StartAsync();
         host.Submit(new StartShowClock());
 
-        await PollAsync(() => host.Bus.Snapshot().Show.Clock.Elapsed > TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(1));
+        await PollAsync(() => host.Bus.Snapshot().Show.Clock.Elapsed >= TimeSpan.FromSeconds(2));
     }
 
     [Fact]

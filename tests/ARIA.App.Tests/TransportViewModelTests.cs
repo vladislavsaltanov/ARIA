@@ -174,7 +174,8 @@ public sealed class TransportViewModelTests
 
         Assert.Equal("00:00:00", vm.ShowClockText);
 
-        bus.Submit(new ClientId("setup"), 3, new TickShowClock());
+        bus.Submit(new ClientId("setup"), 3, new StartShowClock());
+        bus.Submit(new ClientId("setup"), 4, new TickShowClock());
 
         Assert.Equal("00:00:01", vm.ShowClockText);
     }
@@ -238,6 +239,19 @@ public sealed class TransportViewModelTests
         vm.PlayCommand.Execute(null);
 
         Assert.Equal("Далее: two", vm.NextLine);
+    }
+
+    [Fact]
+    public void VolumePercent_SnapsNearHundred_AndShowsPercentLabel()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+
+        vm.VolumePercent = 98.7;
+
+        Assert.Equal(100, vm.VolumePercent);
+        Assert.Equal("100%", vm.VolumePercentText);
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, 11.9, 12.1);
     }
 
     [Fact]
