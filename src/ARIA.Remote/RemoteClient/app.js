@@ -370,8 +370,13 @@
 
   function editingInside(host) {
     var active = document.activeElement;
-    return !!active && host.contains(active) &&
-      (active.tagName === "INPUT" || active.tagName === "SELECT" || active.tagName === "TEXTAREA");
+    return (
+      !!active &&
+      host.contains(active) &&
+      (active.tagName === "INPUT" ||
+        active.tagName === "SELECT" ||
+        active.tagName === "TEXTAREA")
+    );
   }
 
   function renderScript() {
