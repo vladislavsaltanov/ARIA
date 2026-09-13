@@ -310,14 +310,6 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    public void CommitEditAndNewLine(ScriptLineVm line)
-    {
-        if (CommitEdit(line))
-        {
-            AddLine();
-        }
-    }
-
     public void CancelEdit(ScriptLineVm line) => line.CancelEdit();
 
     public void CommitOpenEdit()

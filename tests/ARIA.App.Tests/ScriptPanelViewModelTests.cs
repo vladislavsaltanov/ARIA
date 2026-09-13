@@ -309,7 +309,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
-    public void CommitEditAndNewLine_CommitsAndOpensEmptyLine()
+    public void CommitEdit_SavesAndExitsWithoutNewLine()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("1:00", "первая", []);
@@ -317,12 +317,11 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         first.StartEdit();
         first.EditText = "первая правка";
 
-        _viewModel.CommitEditAndNewLine(first);
+        _viewModel.CommitEdit(first);
 
-        Assert.Equal(2, _viewModel.Lines.Count);
+        Assert.Single(_viewModel.Lines);
         Assert.False(_viewModel.Lines[0].IsEditing);
         Assert.Equal("первая правка", _viewModel.Lines[0].Text);
-        Assert.True(_viewModel.Lines[1].IsEditing);
     }
 
     [Fact]

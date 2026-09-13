@@ -305,7 +305,7 @@ public partial class ScriptPanel : UserControl
         }
         if (e.Key == Key.Enter)
         {
-            viewModel.CommitEditAndNewLine(line);
+            viewModel.CommitEdit(line);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
