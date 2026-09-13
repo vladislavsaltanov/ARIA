@@ -223,6 +223,18 @@
             <TextBlock Text="Удалить" FontSize="13" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
+        <Button x:Name="ImportScriptButton" Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
+                Command="{Binding ImportScriptCommand}" ToolTip.Tip="Импорт сценария из .aria-script.json">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <TextBlock Text="Импорт" FontSize="13" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="ExportScriptButton" Classes="ghost" MinHeight="30" Padding="12,0" FontSize="13"
+                Command="{Binding ExportScriptCommand}" ToolTip.Tip="Экспорт сценария в .aria-script.json">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <TextBlock Text="Экспорт" FontSize="13" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
       </StackPanel>
     </StackPanel>
   </Grid>

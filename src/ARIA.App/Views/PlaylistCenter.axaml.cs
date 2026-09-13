@@ -2,6 +2,7 @@ namespace Aria.App.Views;
 
 using Aria.App.Services;
 using Aria.App.ViewModels;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -11,6 +12,49 @@ public partial class PlaylistCenter : UserControl
     public PlaylistCenter()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private PlaylistsViewModel? _bound;
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (_bound is not null)
+        {
+            _bound.ImportFailed -= OnImportFailed;
+        }
+        _bound = DataContext as PlaylistsViewModel;
+        if (_bound is not null)
+        {
+            _bound.ImportFailed += OnImportFailed;
+        }
+    }
+
+    private async void OnImportFailed(string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        var dialog = new Window
+        {
+            Title = "Импорт плейлиста не удался",
+            Width = 420,
+            Height = 160,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
+                },
+            },
+        };
+        ((Button)((StackPanel)dialog.Content!).Children[1]).Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(owner);
     }
 
     public event EventHandler? ScenarioToggleRequested;

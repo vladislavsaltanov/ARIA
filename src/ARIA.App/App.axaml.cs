@@ -71,7 +71,7 @@ public partial class App : Application
         var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs, sync);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
-        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync);
+        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow);
         MainWindow? window = null;
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),

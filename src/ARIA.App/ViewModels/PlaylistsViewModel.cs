@@ -47,6 +47,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string playlistIoStatus = string.Empty;
 
+    [ObservableProperty]
+    private string lastImportError = string.Empty;
+
+    public event Action<string>? ImportFailed;
+
     public ObservableCollection<PlaylistVm> Playlists { get; } = [];
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
@@ -177,7 +182,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         await using var stream = await files[0].OpenReadAsync();
         using var reader = new StreamReader(stream);
         var report = await ImportDocumentAsync(await reader.ReadToEndAsync());
-        PlaylistIoStatus = Describe(report);
+        if (report.Error is null)
+        {
+            LastImportError = string.Empty;
+            PlaylistIoStatus = Describe(report);
+        }
     }
 
     public string ExportSelectedDocument()
@@ -202,6 +211,9 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         catch (PlaylistFormatException e)
         {
+            LastImportError = e.Message;
+            PlaylistIoStatus = "импорт не удался";
+            ImportFailed?.Invoke(e.Message);
             return Task.FromResult(new PlaylistImportReport(string.Empty, 0, [], 0, e.Message));
         }
         var tracks = _trackSource?.Invoke() ?? [];
@@ -238,7 +250,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     {
         if (report.Error is not null)
         {
-            return $"импорт не удался: {report.Error}";
+            return "импорт не удался";
         }
         var text = $"импортировано: {report.PlaylistName} ({report.Added})";
         if (report.MissingFiles.Length > 0)
