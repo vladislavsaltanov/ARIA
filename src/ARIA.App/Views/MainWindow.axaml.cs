@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private double _paneResizeStartX;
     private double _paneResizeStartWidth;
     private const double PaneEdgeGrab = 8.0;
+    private const double PaneKeyboardStep = 20.0;
 
     public MainWindow() : this(null)
     {
@@ -122,7 +123,14 @@ public partial class MainWindow : Window
         UpdatePaneResize(e.GetPosition(this).X);
     }
 
-    private void OnPaneResizeReleased(object? sender, PointerReleasedEventArgs e) => EndPaneResize();
+    private void OnPaneResizeReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_paneResizing)
+        {
+            return;
+        }
+        EndPaneResize();
+    }
 
     internal void BeginPaneResize(double startX, double startWidth)
     {
@@ -168,10 +176,32 @@ public partial class MainWindow : Window
     private void OnResizeTunnelPressed(object? sender, PointerPressedEventArgs e)
     {
         var point = e.GetCurrentPoint(this);
-        if (TryBeginPaneEdgeResize(e.GetPosition(this).X, point.Properties.PointerUpdateKind is PointerUpdateKind.LeftButtonPressed))
+        var x = e.GetPosition(this).X;
+        var left = point.Properties.PointerUpdateKind is PointerUpdateKind.LeftButtonPressed;
+        if (left && IsGripSource(e.Source))
+        {
+            BeginPaneResize(x, ScriptDrawer.OpenPaneLength);
+            e.Pointer.Capture(this);
+            return;
+        }
+        if (TryBeginPaneEdgeResize(x, left))
         {
             e.Pointer.Capture(this);
         }
+    }
+
+    private static bool IsGripSource(object? source)
+    {
+        var current = source as Control;
+        while (current is not null)
+        {
+            if (current.Name is "PaneResizer" or "PaneGrip")
+            {
+                return true;
+            }
+            current = current.Parent as Control;
+        }
+        return false;
     }
 
     private void OnResizeTunnelMoved(object? sender, PointerEventArgs e)
@@ -303,6 +333,13 @@ public partial class MainWindow : Window
                 transport.TogglePlayPauseCommand.Execute(null);
                 e.Handled = true;
             }
+            return;
+        }
+        if (e.Key is Key.Left or Key.Right && e.KeyModifiers == KeyModifiers.Control
+            && ScriptDrawer.IsPaneOpen && !IsTextInput(e.Source))
+        {
+            SetPaneWidth(ScriptDrawer.OpenPaneLength + (e.Key == Key.Left ? PaneKeyboardStep : -PaneKeyboardStep));
+            e.Handled = true;
             return;
         }
         if (_hotkeys is null)

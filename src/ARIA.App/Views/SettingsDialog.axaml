@@ -109,6 +109,22 @@
 
       <Border Classes="section">
         <StackPanel>
+          <TextBlock Text="Воспроизведение" Classes="sectionTitle"/>
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="после конца трека" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" x:Name="EndActionBox" SelectedIndex="{Binding DefaultEndActionIndex, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0,0,0" MinWidth="160">
+              <ComboBoxItem>Пауза</ComboBoxItem>
+              <ComboBoxItem>Стоп</ComboBoxItem>
+              <ComboBoxItem>Повтор</ComboBoxItem>
+              <ComboBoxItem>Далее</ComboBoxItem>
+            </ComboBox>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="section">
+        <StackPanel>
           <TextBlock Text="Движок" Classes="sectionTitle"/>
           <Grid ColumnDefinitions="Auto,*,Auto">
             <TextBlock Text="фейд PANIC" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>

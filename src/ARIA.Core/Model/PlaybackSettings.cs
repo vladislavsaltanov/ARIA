@@ -15,7 +15,7 @@ public sealed record PlaybackSettings(
 
 public static class EffectiveSettings
 {
-    public static PlaybackSettings Resolve(PlaylistEntry entry, Track track)
+    public static PlaybackSettings Resolve(PlaylistEntry entry, Track track, EndAction defaultEndAction = EndAction.Advance)
     {
         var o = entry.Overrides;
         var d = track.Defaults;
@@ -23,7 +23,7 @@ public static class EffectiveSettings
             DisplayName: o?.Name ?? track.DefaultName,
             Color: o?.Color,
             GainDb: o?.GainDb ?? d.GainDb,
-            EndAction: o?.EndAction ?? d.EndAction,
+            EndAction: o?.EndAction ?? (d.EndAction != EndAction.Advance ? d.EndAction : defaultEndAction),
             In: o?.In ?? d.In ?? Fade.None,
             Out: o?.Out ?? d.Out ?? Fade.None,
             CueIn: o?.CueIn ?? TimeSpan.Zero,
@@ -31,14 +31,14 @@ public static class EffectiveSettings
             Markers: d.Markers ?? ImmutableArray<Marker>.Empty);
     }
 
-    public static PlaybackSettings ForTrack(Track track)
+    public static PlaybackSettings ForTrack(Track track, EndAction defaultEndAction = EndAction.Advance)
     {
         var d = track.Defaults;
         return new PlaybackSettings(
             DisplayName: track.DefaultName,
             Color: null,
             GainDb: d.GainDb,
-            EndAction: d.EndAction,
+            EndAction: d.EndAction != EndAction.Advance ? d.EndAction : defaultEndAction,
             In: d.In ?? Fade.None,
             Out: d.Out ?? Fade.None,
             CueIn: TimeSpan.Zero,

@@ -3,7 +3,7 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.TransportBar"
              x:DataType="vm:TransportViewModel"
-             Height="100">
+             Height="120">
   <UserControl.Styles>
     <Style Selector="Button.bar">
       <Setter Property="Background" Value="Transparent"/>
@@ -52,12 +52,12 @@
     <Grid RowDefinitions="3,Auto,*">
       <ProgressBar Grid.Row="0" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
                    Height="3" Background="Transparent" Foreground="{StaticResource BrushFg}" Opacity="0.85"
-                   BorderThickness="0" CornerRadius="0"/>
-      <StackPanel Grid.Row="1" Margin="14,0,10,2">
+                   BorderThickness="0" CornerRadius="0" Margin="0,10,0,8"/>
+      <StackPanel Grid.Row="1" Margin="14,0,10,4">
         <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
         <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
       </StackPanel>
-      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,0">
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,10">
         <Button Grid.Column="0" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
                 Command="{Binding TogglePlayPauseCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
           <Panel>

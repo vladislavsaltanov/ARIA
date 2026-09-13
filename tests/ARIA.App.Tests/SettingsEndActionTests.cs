@@ -1,0 +1,69 @@
+namespace Aria.App.Tests;
+
+using Aria.App.Services;
+using Aria.App.ViewModels;
+using Aria.Core.Model;
+using Aria.Core.Runtime;
+
+public sealed class SettingsEndActionTests : IDisposable
+{
+    private readonly string _path = Path.Combine(Path.GetTempPath(), $"aria-endaction-{Guid.NewGuid():N}.json");
+
+    public void Dispose()
+    {
+        if (File.Exists(_path))
+        {
+            File.Delete(_path);
+        }
+    }
+
+    [Fact]
+    public void DefaultEndActionIndex_DefaultsToAdvance()
+    {
+        using var bus = NewBus();
+        using var viewModel = NewSettings(bus);
+
+        Assert.Equal(3, viewModel.DefaultEndActionIndex);
+    }
+
+    [Fact]
+    public void DefaultEndActionIndex_Change_SubmitsAndPersists()
+    {
+        using var bus = NewBus();
+        using var viewModel = NewSettings(bus);
+
+        viewModel.DefaultEndActionIndex = 0;
+
+        Assert.Equal(0, viewModel.DefaultEndActionIndex);
+        Assert.Equal(EndAction.Pause, new AppSettingsStore(_path).Load().DefaultEndAction);
+    }
+
+    [Fact]
+    public void DefaultEndActionIndex_ReloadsStoredValue()
+    {
+        new AppSettingsStore(_path).Save(new AppSettings(false, "{name}", Smoothing.Default, EndAction.Replay));
+        using var bus = NewBus();
+        using var viewModel = NewSettings(bus);
+
+        Assert.Equal(2, viewModel.DefaultEndActionIndex);
+    }
+
+    [Fact]
+    public void DefaultEndActionIndex_LegacyFileWithoutField_FallsBackToAdvance()
+    {
+        File.WriteAllText(_path, """{"useFileName":false,"rowFormat":"{name}","smoothing":null}""");
+        using var bus = NewBus();
+        using var viewModel = NewSettings(bus);
+
+        Assert.Equal(3, viewModel.DefaultEndActionIndex);
+        Assert.Equal(EndAction.Advance, new AppSettingsStore(_path).Load().DefaultEndAction);
+    }
+
+    private static CommandBus NewBus() => new(new ShowController(new StubEngine()), BusMode.Inline);
+
+    private SettingsViewModel NewSettings(CommandBus bus) => new(
+        bus,
+        new HotkeyService(HotkeyConfig.Default, _ => { }),
+        Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
+        new AppSettingsStore(_path));
+}

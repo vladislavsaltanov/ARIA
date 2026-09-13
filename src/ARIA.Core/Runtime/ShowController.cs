@@ -42,6 +42,7 @@ public sealed class ShowController : IShowHandler
     private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
     private Smoothing _smoothing = Smoothing.Default;
+    private EndAction _defaultEndAction = EndAction.Advance;
     private bool _preRolled;
     private ImmutableArray<Script> _scripts = [];
     private TrackDigest _emittedDigest = TrackDigest.Empty;
@@ -206,6 +207,9 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetSmoothing setSmoothing:
                 OnSetSmoothing(client, seq, setSmoothing);
+                break;
+            case SetDefaultEndAction setDefaultEndAction:
+                OnSetDefaultEndAction(client, seq, setDefaultEndAction);
                 break;
             default:
                 Reject(client, seq, "unknown-command");
@@ -637,7 +641,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
         _queue.Add(new QueueItem(entry.Id, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
@@ -651,7 +655,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var settings = EffectiveSettings.ForTrack(track);
+        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
         _queue.Add(new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
@@ -670,7 +674,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var settings = EffectiveSettings.ForTrack(track);
+        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
         _queue.Insert(0, new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
         var wasPlaying = _status == TransportStatus.Playing;
         var old = _current;
@@ -1152,6 +1156,16 @@ public sealed class ShowController : IShowHandler
         EmitMixer();
     }
 
+    private void OnSetDefaultEndAction(ClientId client, long seq, SetDefaultEndAction command)
+    {
+        if (!Enum.IsDefined(command.Action))
+        {
+            Reject(client, seq, "default-end-action-unknown");
+            return;
+        }
+        _defaultEndAction = command.Action;
+    }
+
     private void OnMonitorPosition(PositionSnapshot snapshot)
     {
         if (_marshal is { } marshal)
@@ -1318,8 +1332,8 @@ public sealed class ShowController : IShowHandler
             _queue.RemoveAt(0);
             var track = _trackMap[item.TrackId];
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track)
-                : EffectiveSettings.ForTrack(track);
+                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track, _defaultEndAction)
+                : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
             StartStreamFor(_current, auto: true);
             _status = TransportStatus.Playing;
@@ -1347,7 +1361,7 @@ public sealed class ShowController : IShowHandler
     {
         var entry = playlist.Entries[index];
         var track = _trackMap[entry.TrackId];
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
         _activePlaylistId = playlist.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
@@ -1469,8 +1483,8 @@ public sealed class ShowController : IShowHandler
             var item = _queue[0];
             var track = _trackMap[item.TrackId];
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track)
-                : EffectiveSettings.ForTrack(track);
+                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track, _defaultEndAction)
+                : EffectiveSettings.ForTrack(track, _defaultEndAction);
             return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
         }
 
@@ -1481,7 +1495,7 @@ public sealed class ShowController : IShowHandler
             {
                 var entry = playlist.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
-                var settings = EffectiveSettings.Resolve(entry, track);
+                var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
                 return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
             }
         }
@@ -1499,7 +1513,7 @@ public sealed class ShowController : IShowHandler
         {
             if (!names.ContainsKey(id) && _trackMap.TryGetValue(id, out var track))
             {
-                names.Add(id, EffectiveSettings.ForTrack(track).DisplayName);
+                names.Add(id, EffectiveSettings.ForTrack(track, _defaultEndAction).DisplayName);
             }
         }
         foreach (var playlist in _playlists)

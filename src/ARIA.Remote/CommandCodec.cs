@@ -71,6 +71,7 @@ internal static class CommandCodec
                 "set_master_gain" => new SetMasterGain(DoubleOf(commandElement, "gain_db")),
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
+                "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
                 "create_script" => new CreateScript(StringOf(commandElement, "name")),
                 "rename_script" => new RenameScript(new ScriptId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),
                 "delete_script" => new DeleteScript(new ScriptId(GuidOf(commandElement, "id"))),
@@ -148,6 +149,16 @@ internal static class CommandCodec
 
     private static Guid GuidOf(JsonElement element, string name) =>
         Guid.Parse(element.GetProperty(name).GetString()!);
+
+    private static EndAction EndActionOf(JsonElement element, string name)
+    {
+        var text = element.GetProperty(name).GetString();
+        if (Enum.TryParse<EndAction>(text, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+        {
+            return parsed;
+        }
+        throw new FormatException($"Unknown end_action: {text}");
+    }
 
     private static string StringOf(JsonElement element, string name) =>
         element.GetProperty(name).GetString()!;
