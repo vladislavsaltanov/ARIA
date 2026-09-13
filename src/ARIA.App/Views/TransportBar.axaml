@@ -3,7 +3,7 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.TransportBar"
              x:DataType="vm:TransportViewModel"
-             Height="120">
+             Height="124">
   <UserControl.Styles>
     <Style Selector="Button.bar">
       <Setter Property="Background" Value="Transparent"/>
