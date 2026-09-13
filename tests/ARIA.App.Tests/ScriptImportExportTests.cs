@@ -80,6 +80,46 @@ public sealed class ScriptImportExportTests : IDisposable
     }
 
     [Fact]
+    public void Mention_Roundtrip_PreservesTrack()
+    {
+        var track = new Track(TrackId.New(), "/audio/rain.flac", "Осенний дождь", TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [], null));
+        using var vm = new ScriptPanelViewModel(bus, () => [track]);
+        vm.CreateScriptCommand.Execute(null);
+        var script = Assert.Single(vm.Scripts);
+        bus.Submit(new ClientId("setup"), 2, new AddScriptLine(script.Id, TimeSpan.FromMinutes(1), "интро", [track.Id]));
+        Assert.False(Assert.Single(Assert.Single(vm.Lines).Mentions).IsDangling);
+
+        var exported = vm.ExportSelectedDocument();
+        Assert.Contains("/audio/rain.flac", exported, StringComparison.Ordinal);
+
+        var second = vm.ImportDocument(exported);
+        Assert.Null(second.Error);
+        Assert.Equal(2, vm.Scripts.Count);
+        var imported = Assert.Single(vm.Lines);
+        Assert.Equal("интро", imported.Text);
+        var mention = Assert.Single(imported.Mentions);
+        Assert.False(mention.IsDangling);
+        Assert.Equal(track.Id, mention.Track);
+    }
+
+    [Fact]
+    public void UnknownTrackRef_ImportsAsDangling_WithoutError()
+    {
+        var track = new Track(TrackId.New(), "/audio/rain.flac", "Осенний дождь", TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [], null));
+        using var vm = new ScriptPanelViewModel(bus, () => [track]);
+
+        var report = vm.ImportDocument(
+            """{"format":"aria-script","version":1,"name":"Чужой","lines":[{"at":"0:30","text":"кусок","tracks":["/audio/missing.flac"]}]}""");
+
+        Assert.Null(report.Error);
+        Assert.True(Assert.Single(Assert.Single(vm.Lines).Mentions).IsDangling);
+    }
+
+    [Fact]
     public async Task BadPlaylistJson_KeepsPlaylists_AndHidesTechnicalError()
     {
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);

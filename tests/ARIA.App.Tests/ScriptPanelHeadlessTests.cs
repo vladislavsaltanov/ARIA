@@ -299,6 +299,33 @@ public sealed class ScriptPanelHeadlessTests : IDisposable
         return mapped.Value;
     }
 
+    [Fact]
+    public async Task PaneResizer_Drag_ChangesOpenPaneLength()
+    {
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            var thumb = window.FindControl<Avalonia.Controls.Primitives.Thumb>("PaneResizer");
+            Assert.NotNull(thumb);
+            var before = drawer.OpenPaneLength;
+
+            thumb.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragDeltaEvent, Vector = new Vector(40, 0) });
+            Assert.Equal(Math.Clamp(before - 40, 240, 600), drawer.OpenPaneLength);
+
+            thumb.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragDeltaEvent, Vector = new Vector(-1000, 0) });
+            Assert.Equal(600, drawer.OpenPaneLength);
+
+            thumb.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragDeltaEvent, Vector = new Vector(1000, 0) });
+            Assert.Equal(240, drawer.OpenPaneLength);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static Control? FindByTag(Control root, string tag)
     {
         if (root.Tag as string == tag)
