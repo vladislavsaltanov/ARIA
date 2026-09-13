@@ -120,7 +120,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
-    public void ExecuteLine_SingleMention_EnqueuesTrack()
+    public void ExecuteLine_SingleMention_PlaysTrackNow()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("1:00", "соло", [FirstTrack.Id]);
@@ -128,11 +128,13 @@ public sealed class ScriptPanelViewModelTests : IDisposable
 
         _viewModel.ExecuteLine(line);
 
-        Assert.Equal(FirstTrack.Id, Assert.Single(_bus.Snapshot().Queue.Items).TrackId);
+        Assert.Equal(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Equal(FirstTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
+        Assert.Empty(_bus.Snapshot().Queue.Items);
     }
 
     [Fact]
-    public void ExecuteLine_SeveralMentions_ShowsCandidates_ThenEnqueuesChoice()
+    public void ExecuteLine_SeveralMentions_ShowsCandidates_ThenPlaysChoice()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("1:00", "дуэт", [FirstTrack.Id, SecondTrack.Id]);
@@ -146,7 +148,9 @@ public sealed class ScriptPanelViewModelTests : IDisposable
 
         _viewModel.ChooseCandidate(line, line.Candidates[1]);
 
-        Assert.Equal(SecondTrack.Id, Assert.Single(_bus.Snapshot().Queue.Items).TrackId);
+        Assert.Equal(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Equal(SecondTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
+        Assert.Empty(_bus.Snapshot().Queue.Items);
         Assert.False(line.CandidatesVisible);
     }
 
@@ -171,7 +175,12 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         AddCommittedLine("3:20", "c", []);
         _bus.Submit(new ClientId("clock"), 50, new RestoreShow(
             [FirstTrack, SecondTrack], [], null, [], 0, TimeSpan.FromMilliseconds(100),
-            TimeSpan.FromSeconds(150), true, _bus.Snapshot().Show.Scripts));
+            TimeSpan.Zero, false, _bus.Snapshot().Show.Scripts));
+        _bus.Submit(new ClientId("clock"), 51, new StartShowClock());
+        for (var i = 0; i < 150; i++)
+        {
+            _bus.Submit(new ClientId("clock"), 52 + i, new TickShowClock());
+        }
 
         Assert.False(_viewModel.Lines[0].IsCurrent);
         Assert.True(_viewModel.Lines[1].IsCurrent);
@@ -186,11 +195,16 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         Assert.Equal("часы не запущены", _viewModel.Lines[0].WallTimeTip);
         _bus.Submit(new ClientId("clock"), 60, new RestoreShow(
             [FirstTrack, SecondTrack], [], null, [], 0, TimeSpan.FromMilliseconds(100),
-            TimeSpan.FromSeconds(150), true, _bus.Snapshot().Show.Scripts));
+            TimeSpan.Zero, false, _bus.Snapshot().Show.Scripts));
+        _bus.Submit(new ClientId("clock"), 61, new StartShowClock());
+        for (var i = 0; i < 5; i++)
+        {
+            _bus.Submit(new ClientId("clock"), 62 + i, new TickShowClock());
+        }
 
         var tip = _viewModel.Lines[0].WallTimeTip;
         var projected = DateTime.ParseExact(tip, "HH:mm:ss", null).TimeOfDay;
-        var expected = (DateTime.Now - TimeSpan.FromSeconds(150) + TimeSpan.FromSeconds(100)).TimeOfDay;
+        var expected = (DateTime.Now - TimeSpan.FromSeconds(5) + TimeSpan.FromSeconds(100)).TimeOfDay;
         Assert.InRange((projected - expected).Duration(), TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 
@@ -295,7 +309,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
-    public void CommitEditAndNewLine_CommitsAndOpensEmptyLine()
+    public void CommitEdit_SavesAndExitsWithoutNewLine()
     {
         _viewModel.CreateScriptCommand.Execute(null);
         AddCommittedLine("1:00", "первая", []);
@@ -303,12 +317,11 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         first.StartEdit();
         first.EditText = "первая правка";
 
-        _viewModel.CommitEditAndNewLine(first);
+        _viewModel.CommitEdit(first);
 
-        Assert.Equal(2, _viewModel.Lines.Count);
+        Assert.Single(_viewModel.Lines);
         Assert.False(_viewModel.Lines[0].IsEditing);
         Assert.Equal("первая правка", _viewModel.Lines[0].Text);
-        Assert.True(_viewModel.Lines[1].IsEditing);
     }
 
     [Fact]
@@ -326,7 +339,8 @@ public sealed class ScriptPanelViewModelTests : IDisposable
 
         Assert.False(draft.IsEditing);
         Assert.Equal("заметка", draft.Text);
-        Assert.Equal(FirstTrack.Id, Assert.Single(_bus.Snapshot().Queue.Items).TrackId);
+        Assert.Equal(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Equal(FirstTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
     }
 
     [Fact]

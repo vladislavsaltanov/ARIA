@@ -57,6 +57,7 @@ internal static class CommandCodec
                 "jump_to" => new JumpTo(new EntryId(GuidOf(commandElement, "entry"))),
                 "enqueue_entry" => new EnqueueEntry(new EntryId(GuidOf(commandElement, "entry"))),
                 "enqueue_track" => new EnqueueTrack(new TrackId(GuidOf(commandElement, "track"))),
+                "play_track" => new PlayTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "remove_from_queue" => new RemoveFromQueue(IntOf(commandElement, "index")),
                 "create_playlist" => new CreatePlaylist(StringOf(commandElement, "name")),
                 "rename_playlist" => new RenamePlaylist(new PlaylistId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),
@@ -69,7 +70,9 @@ internal static class CommandCodec
                 "move_queue_item" => new MoveQueueItem(IntOf(commandElement, "from"), IntOf(commandElement, "to")),
                 "set_master_gain" => new SetMasterGain(DoubleOf(commandElement, "gain_db")),
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
+                "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
+                "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
                 "create_script" => new CreateScript(StringOf(commandElement, "name")),
                 "rename_script" => new RenameScript(new ScriptId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),
                 "delete_script" => new DeleteScript(new ScriptId(GuidOf(commandElement, "id"))),
@@ -147,6 +150,16 @@ internal static class CommandCodec
 
     private static Guid GuidOf(JsonElement element, string name) =>
         Guid.Parse(element.GetProperty(name).GetString()!);
+
+    private static EndAction EndActionOf(JsonElement element, string name)
+    {
+        var text = element.GetProperty(name).GetString();
+        if (Enum.TryParse<EndAction>(text, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+        {
+            return parsed;
+        }
+        throw new FormatException($"Unknown end_action: {text}");
+    }
 
     private static string StringOf(JsonElement element, string name) =>
         element.GetProperty(name).GetString()!;

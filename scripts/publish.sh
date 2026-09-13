@@ -8,17 +8,23 @@ sh native/aria-shim/build.sh "$RID"
 dotnet publish src/ARIA.App -c Release -r "$RID" --self-contained \
   -o "publish/$RID/stage" /p:PublishTrimmed=false
 
-xattr -cr "publish/$RID/stage"
-find "publish/$RID/stage" -name "*.dylib" -exec codesign -f -s - {} \;
-codesign -f -s - "publish/$RID/stage/ARIA.App"
+for r in publish/$RID/stage/runtimes/*/; do
+  if [ "$r" != "publish/$RID/stage/runtimes/$RID/" ]; then
+    rm -rf "$r"
+  fi
+done
 
-APP="publish/$RID/ARIA.app"
-rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp -R "publish/$RID/stage/" "$APP/Contents/MacOS/"
-mv "$APP/Contents/MacOS/ARIA.App" "$APP/Contents/MacOS/ARIA"
-
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+case "$RID" in
+osx-*)
+  xattr -cr "publish/$RID/stage"
+  find "publish/$RID/stage" -name "*.dylib" -exec codesign -f -s - {} \;
+  codesign -f -s - "publish/$RID/stage/ARIA.App"
+  APP="publish/$RID/ARIA.app"
+  rm -rf "$APP"
+  mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+  cp -R "publish/$RID/stage/" "$APP/Contents/MacOS/"
+  mv "$APP/Contents/MacOS/ARIA.App" "$APP/Contents/MacOS/ARIA"
+  cat >"$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -31,8 +37,31 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
-
-rm -rf "publish/$RID/stage"
-
-echo "publish complete: $APP"
-echo "run: $APP/Contents/MacOS/ARIA --selftest"
+  rm -rf "publish/$RID/stage"
+  echo "publish complete: $APP"
+  echo "run: $APP/Contents/MacOS/ARIA --selftest"
+  ;;
+linux-*)
+  mv "publish/$RID/stage/ARIA.App" "publish/$RID/stage/aria"
+  rm -rf "publish/$RID/ARIA"
+  mkdir -p "publish/$RID/ARIA"
+  cp -R "publish/$RID/stage/" "publish/$RID/ARIA/"
+  rm -rf "publish/$RID/stage"
+  tar -czf "publish/$RID/aria-$RID.tar.gz" -C "publish/$RID" ARIA
+  echo "publish complete: publish/$RID/ARIA/ + publish/$RID/aria-$RID.tar.gz"
+  echo "run: publish/$RID/ARIA/aria --selftest"
+  ;;
+win-*)
+  rm -rf "publish/$RID/ARIA"
+  mkdir -p "publish/$RID/ARIA"
+  cp -R "publish/$RID/stage/" "publish/$RID/ARIA/"
+  rm -rf "publish/$RID/stage"
+  (cd "publish/$RID" && ditto -c -k --sequesterRsrc ARIA "aria-$RID.zip")
+  echo "publish complete: publish/$RID/ARIA/ + publish/$RID/aria-$RID.zip"
+  printf 'run: publish\\%s\\ARIA\\ARIA.App.exe --selftest\n' "$RID"
+  ;;
+*)
+  echo "unknown RID: $RID" >&2
+  exit 1
+  ;;
+esac

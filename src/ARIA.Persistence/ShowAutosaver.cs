@@ -56,8 +56,19 @@ public sealed class ShowAutosaver : IDisposable
             }
             else
             {
-                _timer = new System.Threading.Timer(_ => FlushNow(), null, _debounce, Timeout.InfiniteTimeSpan);
+                _timer = new System.Threading.Timer(_ => BackgroundFlush(), null, _debounce, Timeout.InfiniteTimeSpan);
             }
+        }
+    }
+
+    private void BackgroundFlush()
+    {
+        try
+        {
+            FlushNow();
+        }
+        catch (IOException)
+        {
         }
     }
 

@@ -250,7 +250,7 @@ public sealed class MixerBus : IDisposable
             if (fadeDuration > TimeSpan.Zero)
             {
                 var rampFrames = Math.Max(1, (int)Math.Round(fadeDuration.TotalSeconds * _sampleRate));
-                voice.Fader = new FaderNode(rampFrames, FadeCurve.Linear, 1.0, 0.0, stopWhenDone: true);
+                voice.Fader = new FaderNode(rampFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: true);
             }
             else
             {
@@ -293,7 +293,7 @@ public sealed class MixerBus : IDisposable
                 var pauseFrames = Volatile.Read(ref _pauseFadeFrames);
                 if (Volatile.Read(ref _smoothingEnabled) == 1 && pauseFrames > 0)
                 {
-                    voice.Fader = new FaderNode(pauseFrames, FadeCurve.Linear, 1.0, 0.0, stopWhenDone: false);
+                    voice.Fader = new FaderNode(pauseFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: false);
                     voice.PauseWhenFaded = true;
                 }
                 else
@@ -331,7 +331,9 @@ public sealed class MixerBus : IDisposable
         var rampFrames = fade.Duration <= TimeSpan.Zero
             ? 0
             : Math.Max(1, (int)Math.Round(fade.Duration.TotalSeconds * _sampleRate));
-        voice.Fader = new FaderNode(rampFrames, fade.Curve, 1.0, Math.Pow(10.0, fade.TargetDb / 20.0), fade.StopWhenDone);
+        var target = Math.Pow(10.0, fade.TargetDb / 20.0);
+        var from = fade.StopWhenDone ? voice.Fader.Level : 0.0;
+        voice.Fader = new FaderNode(rampFrames, fade.Curve, from, target, fade.StopWhenDone);
         if (rampFrames == 0 && fade.StopWhenDone)
         {
             EndVoice(voice, StreamEndReason.FadeCompleted);

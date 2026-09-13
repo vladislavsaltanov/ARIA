@@ -179,4 +179,18 @@ public sealed class RestoreShowTests : IDisposable
         Assert.Equal(t3.Id, h.Transport.Current!.TrackId);
         Assert.Equal(t1.Id, h.Transport.Next!.TrackId);
     }
+
+    [Fact]
+    public void Restore_RunningClock_ArrivesStopped_ElapsedReset()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+
+        var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.FromMinutes(12), true));
+
+        Assert.Null(h.RejectionOf(seq));
+        Assert.False(h.Snapshot.Show.Clock.Running);
+        Assert.Equal(TimeSpan.Zero, h.Snapshot.Show.Clock.Elapsed);
+    }
 }

@@ -1,6 +1,7 @@
 namespace Aria.Core.Tests;
 
 using Aria.Core.Commands;
+using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
 
@@ -11,12 +12,14 @@ public sealed class Harness : IDisposable
     public FakeEngine Engine { get; } = new();
     public CommandBus Bus { get; }
     public List<StateEvent> Events { get; } = [];
+    public PlaybackMonitor? Monitor { get; }
 
     private long _seq;
 
-    public Harness()
+    public Harness(PlaybackMonitor? monitor = null)
     {
-        Bus = new CommandBus(new ShowController(Engine), BusMode.Inline);
+        Monitor = monitor;
+        Bus = new CommandBus(new ShowController(Engine, Monitor), BusMode.Inline);
         Bus.Subscribe(Events.Add);
     }
 

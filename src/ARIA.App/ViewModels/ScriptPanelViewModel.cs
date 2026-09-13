@@ -46,7 +46,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private bool _clockRunning;
     private int _newScriptCounter;
     private long _seq;
-    private List<(TimeSpan AtElapsed, string Text)>? _pendingImportLines;
+    private List<(TimeSpan AtElapsed, string Text, ImmutableArray<TrackId> Mentions)>? _pendingImportLines;
     private string? _awaitedScriptName;
 
     [ObservableProperty]
@@ -208,11 +208,12 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             throw new InvalidOperationException("Нет выбранного сценария");
         }
+        var tracks = _trackSource?.Invoke() ?? [];
         var document = new ScriptFileDocument(
             ScriptFormatId,
             ScriptFormatVersion,
             script.Name,
-            script.Lines.Select(l => new ScriptFileLine(FormatLineTime(l.AtElapsed), l.Text)).ToArray());
+            script.Lines.Select(l => new ScriptFileLine(FormatLineTime(l.AtElapsed), l.Text, TrackPaths(l.Mentions, tracks))).ToArray());
         return JsonSerializer.Serialize(document, ScriptJsonOptions);
     }
 
@@ -247,14 +248,15 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             return FailScriptImport("bad-lines: нет строк");
         }
-        var lines = new List<(TimeSpan AtElapsed, string Text)>(document.Lines.Length);
+        var tracks = _trackSource?.Invoke() ?? [];
+        var lines = new List<(TimeSpan AtElapsed, string Text, ImmutableArray<TrackId> Mentions)>(document.Lines.Length);
         foreach (var line in document.Lines)
         {
             if (!TryParseLineTime(line.At, out var atElapsed))
             {
                 return FailScriptImport($"bad-line: неверное время: {line.At}");
             }
-            lines.Add((atElapsed, line.Text ?? string.Empty));
+            lines.Add((atElapsed, line.Text ?? string.Empty, ResolveFileRefs(line.Tracks, tracks)));
         }
         var name = UniqueScriptName(document.Name.Trim());
         _pendingImportLines = lines;
@@ -308,14 +310,6 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    public void CommitEditAndNewLine(ScriptLineVm line)
-    {
-        if (CommitEdit(line))
-        {
-            AddLine();
-        }
-    }
-
     public void CancelEdit(ScriptLineVm line) => line.CancelEdit();
 
     public void CommitOpenEdit()
@@ -365,7 +359,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             case 1 when line.Mentions[0].IsDangling || !IsKnownTrack(line.Mentions[0].Track):
                 break;
             case 1:
-                Submit(new EnqueueTrack(line.Mentions[0].Track));
+                Submit(new PlayTrack(line.Mentions[0].Track));
                 break;
             default:
                 line.CandidatesVisible = !line.CandidatesVisible;
@@ -381,7 +375,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             line.CandidatesVisible = false;
             return;
         }
-        Submit(new EnqueueTrack(mention.Track));
+        Submit(new PlayTrack(mention.Track));
         line.CandidatesVisible = false;
     }
 
@@ -392,7 +386,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             return;
         }
         CommitOpenEdit();
-        Submit(new EnqueueTrack(mention.Track));
+        Submit(new PlayTrack(mention.Track));
     }
 
     private bool IsKnownTrack(TrackId track) =>
@@ -706,9 +700,9 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         }
         _pendingImportLines = null;
         _awaitedScriptName = null;
-        foreach (var (atElapsed, text) in pending)
+        foreach (var (atElapsed, text, mentions) in pending)
         {
-            Submit(new AddScriptLine(target.Id, atElapsed, text, []));
+            Submit(new AddScriptLine(target.Id, atElapsed, text, mentions));
         }
         SelectedScript = Scripts.FirstOrDefault(s => s.Name == awaited) ?? SelectedScript;
     }
@@ -737,7 +731,47 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     private sealed record ScriptFileLine(
         [property: JsonPropertyName("at")] string At,
-        [property: JsonPropertyName("text")] string? Text);
+        [property: JsonPropertyName("text")] string? Text,
+        [property: JsonPropertyName("tracks")] string[]? Tracks = null);
+
+    private static string[]? TrackPaths(ImmutableArray<Mention> mentions, ImmutableArray<Track> tracks)
+    {
+        if (mentions.IsDefaultOrEmpty)
+        {
+            return null;
+        }
+        var paths = mentions
+            .Select(m => tracks.FirstOrDefault(t => t.Id == m.Track)?.FilePath)
+            .Where(p => p is not null)
+            .Select(p => p!)
+            .ToArray();
+        return paths.Length == 0 ? null : paths;
+    }
+
+    private static ImmutableArray<TrackId> ResolveFileRefs(string[]? refs, ImmutableArray<Track> tracks)
+    {
+        if (refs is null || refs.Length == 0)
+        {
+            return [];
+        }
+        var byPath = tracks.ToDictionary(t => t.FilePath, t => t.Id, StringComparer.OrdinalIgnoreCase);
+        var byName = tracks
+            .GroupBy(t => Path.GetFileName(t.FilePath), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+        var result = new List<TrackId>(refs.Length);
+        foreach (var file in refs)
+        {
+            if (byPath.TryGetValue(file, out var id) || byName.TryGetValue(Path.GetFileName(file), out id))
+            {
+                result.Add(id);
+            }
+            else
+            {
+                result.Add(TrackId.New());
+            }
+        }
+        return [.. result];
+    }
 
     private sealed record ScriptFileDocument(
         [property: JsonPropertyName("format")] string Format,

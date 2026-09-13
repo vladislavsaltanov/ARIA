@@ -14,7 +14,7 @@ public sealed class ShowClockTests
     }
 
     [Fact]
-    public void FirstPlay_StartsClock()
+    public void Play_LeavesClockStopped_UntilManualStart()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
@@ -23,7 +23,7 @@ public sealed class ShowClockTests
 
         h.Submit(new Play());
 
-        Assert.True(h.Snapshot.Show.Clock.Running);
+        Assert.False(h.Snapshot.Show.Clock.Running);
         Assert.Equal(TimeSpan.Zero, h.Snapshot.Show.Clock.Elapsed);
     }
 
@@ -35,6 +35,7 @@ public sealed class ShowClockTests
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
+        h.Submit(new StartShowClock());
 
         for (var i = 0; i < 5; i++)
         {
@@ -52,6 +53,7 @@ public sealed class ShowClockTests
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
+        h.Submit(new StartShowClock());
         h.Submit(new TickShowClock());
         h.Submit(new Pause());
         h.Submit(new TickShowClock());
@@ -68,6 +70,7 @@ public sealed class ShowClockTests
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
+        h.Submit(new StartShowClock());
         h.Submit(new TickShowClock());
 
         h.Submit(new ResetShowClock());
@@ -85,6 +88,7 @@ public sealed class ShowClockTests
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
+        h.Submit(new StartShowClock());
         h.Submit(new TickShowClock());
         h.Submit(new Stop());
 
@@ -95,16 +99,22 @@ public sealed class ShowClockTests
     }
 
     [Fact]
-    public void RestoreShow_RestoresClock_AndTicksContinue()
+    public void RestoreShow_ArrivesStopped_UntilExplicitStart()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
 
         h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(90), true));
-        h.Submit(new TickShowClock());
+        Assert.False(h.Snapshot.Show.Clock.Running);
+        Assert.Equal(TimeSpan.Zero, h.Snapshot.Show.Clock.Elapsed);
 
-        Assert.Equal(TimeSpan.FromSeconds(91), h.Snapshot.Show.Clock.Elapsed);
+        h.Submit(new TickShowClock());
+        Assert.Equal(TimeSpan.Zero, h.Snapshot.Show.Clock.Elapsed);
+
+        h.Submit(new StartShowClock());
+        h.Submit(new TickShowClock());
+        Assert.Equal(TimeSpan.FromSeconds(1), h.Snapshot.Show.Clock.Elapsed);
         Assert.True(h.Snapshot.Show.Clock.Running);
     }
 
@@ -128,6 +138,7 @@ public sealed class ShowClockTests
         var p = TestShow.Playlist("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
+        h.Submit(new StartShowClock());
         h.Submit(new SetLocked(true));
 
         var seq = h.Submit(new TickShowClock());

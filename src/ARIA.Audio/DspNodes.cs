@@ -45,6 +45,7 @@ public sealed class FaderNode : IDspNode
         _curve = curve;
         _from = fromLinear;
         _to = toLinear;
+        Level = fromLinear;
         if (rampFrames == 0)
         {
             _step = 1.0;
@@ -63,12 +64,15 @@ public sealed class FaderNode : IDspNode
 
     public bool HasCompleted { get; private set; }
 
+    public double Level { get; private set; }
+
     public void Process(Span<float> samples, int channels)
     {
         var frames = samples.Length / channels;
         for (var frame = 0; frame < frames; frame++)
         {
             var gain = (float)(_from + (_to - _from) * FadeCurves.Evaluate(_curve, _t));
+            Level = gain;
             for (var channel = 0; channel < channels; channel++)
             {
                 samples[frame * channels + channel] *= gain;
@@ -80,6 +84,7 @@ public sealed class FaderNode : IDspNode
                 {
                     _t = 1.0;
                     HasCompleted = true;
+                    Level = _to;
                 }
             }
         }

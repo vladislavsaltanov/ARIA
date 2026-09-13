@@ -109,12 +109,12 @@ public sealed class TransportViewModelTests
 
         bus.Submit(new ClientId("setup"), 1, new SetMasterGain(-6));
 
-        Assert.Equal(80.43, vm.VolumePercent, 2);
+        Assert.Equal(70.79, vm.VolumePercent, 2);
         Assert.Equal("Громкость — -6.0 дБ", vm.VolumeDbText);
 
         vm.VolumePercent = 50;
 
-        Assert.Equal(-34.0, bus.Snapshot().Mixer.MasterGainDb, 6);
+        Assert.Equal(-12.04, bus.Snapshot().Mixer.MasterGainDb, 2);
     }
 
     [Fact]
@@ -174,7 +174,8 @@ public sealed class TransportViewModelTests
 
         Assert.Equal("00:00:00", vm.ShowClockText);
 
-        bus.Submit(new ClientId("setup"), 3, new TickShowClock());
+        bus.Submit(new ClientId("setup"), 3, new StartShowClock());
+        bus.Submit(new ClientId("setup"), 4, new TickShowClock());
 
         Assert.Equal("00:00:01", vm.ShowClockText);
     }
@@ -238,6 +239,90 @@ public sealed class TransportViewModelTests
         vm.PlayCommand.Execute(null);
 
         Assert.Equal("Далее: two", vm.NextLine);
+    }
+
+    [Fact]
+    public void VolumePercent_SnapsNearHundred_AndShowsPercentLabel()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+
+        vm.VolumePercent = 98.7;
+
+        Assert.Equal(100, vm.VolumePercent);
+        Assert.Equal("100%", vm.VolumePercentText);
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -0.1, 0.1);
+    }
+
+    [Fact]
+    public void VolumePercent_HalfGivesAudibleLevel()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+
+        vm.VolumePercent = 50;
+
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -13.0, -11.0);
+    }
+
+    [Fact]
+    public void VolumePercent_EndpointsMapToFloorAndCeiling()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+
+        vm.VolumePercent = 100;
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -0.1, 0.1);
+
+        vm.VolumePercent = 125;
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, 3.7, 4.0);
+
+        vm.VolumePercent = 0;
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -80.1, -79.9);
+    }
+
+    [Fact]
+    public void VolumePercent_LowerQuarterStaysAudible()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var vm = new TransportViewModel(bus);
+
+        vm.VolumePercent = 25;
+
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -25.0, -23.0);
+    }
+
+    [Fact]
+    public void DisplayName_TruncatesLongNames_ToHundredChars()
+    {
+        var longName = new string('н', 140);
+        var longTrack = new Track(TrackId.New(), "/audio/long.flac", longName, TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), longTrack.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([longTrack], [playlist], playlist.Id));
+        using var vm = new TransportViewModel(bus);
+
+        vm.PlayCommand.Execute(null);
+
+        Assert.Equal(101, vm.DisplayName.Length);
+        Assert.Equal(longName[..100] + "…", vm.DisplayName);
+    }
+
+    [Fact]
+    public void NextLine_TruncatesLongNames_ToHundredChars()
+    {
+        var longName = new string('т', 140);
+        var first = new Track(TrackId.New(), "/audio/one.flac", "one", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var second = new Track(TrackId.New(), "/audio/two.flac", longName, TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), first.Id), new PlaylistEntry(EntryId.New(), second.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([first, second], [playlist], playlist.Id));
+        using var vm = new TransportViewModel(bus);
+
+        vm.PlayCommand.Execute(null);
+
+        Assert.Equal(101, vm.NextLine.Length);
+        Assert.EndsWith("…", vm.NextLine);
     }
 
     [Fact]

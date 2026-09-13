@@ -28,6 +28,8 @@ public sealed record EnqueueEntry(EntryId Entry) : Command;
 
 public sealed record EnqueueTrack(TrackId Track) : Command;
 
+public sealed record PlayTrack(TrackId Track) : Command;
+
 public sealed record RemoveFromQueue(int Index) : Command;
 
 public sealed record ClearQueue : Command;
@@ -85,6 +87,8 @@ public sealed record ResetShowClock : Command;
 public sealed record SetPanicFade(TimeSpan Duration) : Command;
 
 public sealed record SetSmoothing(Smoothing Value) : Command;
+
+public sealed record SetDefaultEndAction(EndAction Action) : Command;
 
 public sealed record LoadShow(
     ImmutableArray<Track> Tracks,

@@ -48,8 +48,12 @@ public partial class ScriptPanel : UserControl
         var dialog = new Window
         {
             Title = "Импорт сценария не удался",
-            Width = 420,
-            Height = 160,
+            Width = 460,
+            MinWidth = 380,
+            MinHeight = 140,
+            MaxWidth = 640,
+            SizeToContent = SizeToContent.Height,
+            CanResize = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Content = new StackPanel
             {
@@ -57,7 +61,12 @@ public partial class ScriptPanel : UserControl
                 Margin = new Thickness(16),
                 Children =
                 {
-                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new ScrollViewer
+                    {
+                        MaxHeight = 320,
+                        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                        Content = new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    },
                     new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
                 },
             },
@@ -296,7 +305,7 @@ public partial class ScriptPanel : UserControl
         }
         if (e.Key == Key.Enter)
         {
-            viewModel.CommitEditAndNewLine(line);
+            viewModel.CommitEdit(line);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)

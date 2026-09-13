@@ -26,11 +26,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
     private double _panicFadeMs = 100;
+    private EndAction _defaultEndAction = EndAction.Advance;
     private bool _smoothingEnabled;
     private double _manualCrossfadeMs;
     private double _autoCrossfadeMs;
     private double _startFadeMs;
     private double _stopFadeMs;
+    private double _seekFadeMs;
     private long _seq;
 
     [ObservableProperty]
@@ -71,6 +73,34 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         if (bus.Snapshot().Mixer.Smoothing != settings.Smoothing)
         {
             Submit(new SetSmoothing(settings.Smoothing));
+        }
+        _defaultEndAction = settings.DefaultEndAction;
+        OnPropertyChanged(nameof(DefaultEndActionIndex));
+        Submit(new SetDefaultEndAction(settings.DefaultEndAction));
+    }
+
+    public int DefaultEndActionIndex
+    {
+        get => _defaultEndAction switch
+        {
+            EndAction.Pause => 0,
+            EndAction.Stop => 1,
+            EndAction.Replay => 2,
+            _ => 3,
+        };
+        set
+        {
+            var action = value switch
+            {
+                0 => EndAction.Pause,
+                1 => EndAction.Stop,
+                2 => EndAction.Replay,
+                _ => EndAction.Advance,
+            };
+            if (SetProperty(ref _defaultEndAction, action))
+            {
+                SubmitEndAction();
+            }
         }
     }
 
@@ -146,6 +176,18 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    public double SeekFadeMs
+    {
+        get => _seekFadeMs;
+        set
+        {
+            if (SetProperty(ref _seekFadeMs, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
     [RelayCommand]
     private void ResetClock() => Submit(new ResetShowClock());
 
@@ -159,7 +201,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SaveRowSettings()
     {
-        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, CurrentSmoothing());
+        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, CurrentSmoothing(), _defaultEndAction);
         RowFormat = settings.RowFormat;
         _settingsStore.Save(settings);
         _rowSettingsApplied?.Invoke(settings);
@@ -229,13 +271,20 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         TimeSpan.FromMilliseconds(_manualCrossfadeMs),
         TimeSpan.FromMilliseconds(_autoCrossfadeMs),
         TimeSpan.FromMilliseconds(_startFadeMs),
-        TimeSpan.FromMilliseconds(_stopFadeMs));
+        TimeSpan.FromMilliseconds(_stopFadeMs),
+        TimeSpan.FromMilliseconds(_seekFadeMs));
 
     private void SubmitSmoothing()
     {
         var smoothing = CurrentSmoothing();
-        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, smoothing));
+        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, smoothing, _defaultEndAction));
         Submit(new SetSmoothing(smoothing));
+    }
+
+    private void SubmitEndAction()
+    {
+        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, CurrentSmoothing(), _defaultEndAction));
+        Submit(new SetDefaultEndAction(_defaultEndAction));
     }
 
     private void ApplySmoothing(Smoothing smoothing)
@@ -245,11 +294,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _autoCrossfadeMs = smoothing.AutoCrossfade.TotalMilliseconds;
         _startFadeMs = smoothing.StartFade.TotalMilliseconds;
         _stopFadeMs = smoothing.StopFade.TotalMilliseconds;
+        _seekFadeMs = smoothing.SeekFade.TotalMilliseconds;
         OnPropertyChanged(nameof(SmoothingEnabled));
         OnPropertyChanged(nameof(ManualCrossfadeMs));
         OnPropertyChanged(nameof(AutoCrossfadeMs));
         OnPropertyChanged(nameof(StartFadeMs));
         OnPropertyChanged(nameof(StopFadeMs));
+        OnPropertyChanged(nameof(SeekFadeMs));
     }
 
     private void SaveBindings(HotkeyConfig config)

@@ -175,7 +175,7 @@ public partial class PlaybackHeader : UserControl
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
-            context.BeginFigure(new Point(0, center), false);
+            context.BeginFigure(new Point(0, center), true);
             for (var index = 0; index < points.Length; index++)
             {
                 var peak = useMax ? points[index].Max : points[index].Min;

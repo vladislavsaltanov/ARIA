@@ -299,6 +299,44 @@ public sealed class ScriptPanelHeadlessTests : IDisposable
         return mapped.Value;
     }
 
+    [Fact]
+    public async Task PaneResizer_Drag_ChangesOpenPaneLength()
+    {
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            drawer.IsPaneOpen = true;
+            var grip = window.FindControl<Border>("PaneResizer");
+            Assert.NotNull(grip);
+            var before = drawer.OpenPaneLength;
+
+            grip.RaiseEvent(new PointerPressedEventArgs(
+                grip,
+                new Pointer(1, PointerType.Mouse, true),
+                window,
+                new Point(1400, 450),
+                0UL,
+                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
+                KeyModifiers.None,
+                1));
+            window.UpdatePaneResize(1360);
+            Assert.Equal(Math.Clamp(before + 40, 240, 600), drawer.OpenPaneLength);
+
+            window.UpdatePaneResize(2400);
+            Assert.Equal(240, drawer.OpenPaneLength);
+
+            window.UpdatePaneResize(400);
+            Assert.Equal(600, drawer.OpenPaneLength);
+            window.EndPaneResize();
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static Control? FindByTag(Control root, string tag)
     {
         if (root.Tag as string == tag)

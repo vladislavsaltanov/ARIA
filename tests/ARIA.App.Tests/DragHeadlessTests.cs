@@ -27,100 +27,100 @@ public sealed class DragHeadlessTests : IDisposable
     }
 
     [Fact]
-    public async Task DragTrack_FromLibrary_ToPlaylistCenter_AddsEntry()
+    public async Task ReorderWithinPlaylist_ShowsInsertionLine_AndMovesEntry()
     {
-        await using var host = await SetupHostAsync();
-        var window = await SetupWindowAsync(host);
-
-        await PerformDragAsync(window);
-
-        Assert.Single(await EntriesEventuallyAsync(host, 1));
-        await CloseAsync(window);
-    }
-
-    [Fact]
-    public async Task DragTrack_DropTwice_AddsTwoEntriesNotMore()
-    {
-        await using var host = await SetupHostAsync();
-        var window = await SetupWindowAsync(host);
-
-        await PerformDragAsync(window);
-        Assert.Single(await EntriesEventuallyAsync(host, 1));
-
-        await Task.Delay(700);
-        await PerformDragAsync(window);
-        Assert.Equal(2, (await EntriesEventuallyAsync(host, 2)).Length);
-
-        await CloseAsync(window);
-    }
-
-    private async Task<AppHost> SetupHostAsync()
-    {
-        var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
+        var wav1 = TestWav.Write(_directory, "reorder-a.wav");
+        var wav2 = TestWav.Write(_directory, "reorder-b.wav");
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
         await host.StartAsync();
-        var wav = TestWav.Write(_directory, "drag-track.wav");
-        var imported = await host.ImportTracksAsync([wav]);
-        Assert.Equal(1, imported.Added);
-        host.Submit(new CreatePlaylist("DragTarget"));
-
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (DateTime.UtcNow < deadline && host.Bus.Snapshot().Show.Playlists.Length == 0)
-        {
-            await Task.Delay(25);
-        }
-        return host;
-    }
-
-    private async Task<Window> SetupWindowAsync(AppHost host)
-    {
+        Assert.Equal(2, (await host.ImportTracksAsync([wav1, wav2])).Added);
+        host.Submit(new CreatePlaylist("ReorderTarget"));
+        var tracks = await TracksEventuallyAsync(host, 2);
+        var playlistId = await PlaylistEventuallyAsync(host);
+        host.Submit(new AddEntry(playlistId, tracks[0].Id, 0));
+        Assert.Single(await EntriesEventuallyAsync(host, 1));
+        host.Submit(new AddEntry(playlistId, tracks[1].Id, 1));
+        var initial = await EntriesEventuallyAsync(host, 2);
+        Assert.Equal(2, initial.Length);
+        Assert.Equal(tracks[0].Id, initial[0].TrackId);
+        Assert.Equal(tracks[1].Id, initial[1].TrackId);
         Window? window = null;
         await _session.Dispatch(() =>
         {
             var sync = SynchronizationContext.Current;
-            var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, sync: sync);
             var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, sync: sync);
             var queue = new QueueViewModel(host.Bus, sync);
-            window = new Views.MainWindow(null, library, playlists, queue);
+            window = new Views.MainWindow(null, playlistsViewModel: playlists, queueViewModel: queue);
             window.Show();
             window.UpdateLayout();
-
-            var trackList = window.FindControl<Views.LibrarySection>("LibrarySection")?.TrackListBox;
-            var entryList = window.FindControl<Views.PlaylistCenter>("PlaylistCenter")?.EntryListBox;
-            Assert.NotNull(trackList);
-            Assert.NotNull(trackList.ItemsPanelRoot);
-            Assert.NotNull(entryList);
-            Assert.Single(trackList.Items);
             return 0;
         }, CancellationToken.None);
-        return window!;
-    }
 
-    private async Task PerformDragAsync(Window window)
-    {
         await _session.Dispatch(() =>
         {
-            window.UpdateLayout();
-            var trackList = window.FindControl<Views.LibrarySection>("LibrarySection")!.TrackListBox;
+            window!.UpdateLayout();
             var entryList = window.FindControl<Views.PlaylistCenter>("PlaylistCenter")!.EntryListBox;
-
-            var row = Assert.IsType<ListBoxItem>(trackList.ItemsPanelRoot!.Children[0]);
-            var from = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window);
-            var target = entryList.TranslatePoint(new Point(entryList.Bounds.Width / 2, Math.Max(10, entryList.Bounds.Height / 2)), window);
+            var first = Assert.IsType<ListBoxItem>(entryList.ItemsPanelRoot!.Children[0]);
+            var second = Assert.IsType<ListBoxItem>(entryList.ItemsPanelRoot!.Children[1]);
+            var from = first.TranslatePoint(new Point(first.Bounds.Width / 2, first.Bounds.Height / 2), window);
+            var bottom = second.TranslatePoint(new Point(second.Bounds.Width / 2, second.Bounds.Height - 4), window);
+            var top = second.TranslatePoint(new Point(second.Bounds.Width / 2, 4), window);
             Assert.NotNull(from);
-            Assert.NotNull(target);
-
+            Assert.NotNull(bottom);
+            Assert.NotNull(top);
             window.MouseDown(from.Value, MouseButton.Left);
-            var current = from.Value;
-            for (var step = 1; step <= 10; step++)
-            {
-                current = new Point(
-                    from.Value.X + (target.Value.X - from.Value.X) * step / 10,
-                    from.Value.Y + (target.Value.Y - from.Value.Y) * step / 10);
-                window.MouseMove(current);
-            }
-            window.MouseUp(current, MouseButton.Left);
+            window.MouseMove(bottom.Value);
+            Assert.Contains("dropAfter", second.Classes);
+            window.MouseMove(top.Value);
+            Assert.Contains("dropBefore", second.Classes);
+            Assert.DoesNotContain("dropAfter", second.Classes);
+            window.MouseMove(bottom.Value);
+            window.MouseUp(bottom.Value, MouseButton.Left);
+            Assert.DoesNotContain("dropBefore", second.Classes);
+            Assert.DoesNotContain("dropAfter", second.Classes);
             return 0;
         }, CancellationToken.None);
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        ImmutableArray<PlaylistEntry> entries = default;
+        while (DateTime.UtcNow < deadline)
+        {
+            entries = host.Bus.Snapshot().Show.Playlists[0].Entries;
+            if (entries.Length == 2 && entries[0].TrackId == tracks[1].Id)
+            {
+                break;
+            }
+            await Task.Delay(25);
+        }
+        Assert.Equal(tracks[1].Id, entries[0].TrackId);
+        Assert.Equal(tracks[0].Id, entries[1].TrackId);
+        await CloseAsync(window!);
+    }
+
+    private static async Task<ImmutableArray<Track>> TracksEventuallyAsync(AppHost host, int count)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        var tracks = host.Library!.Load().Tracks;
+        while (DateTime.UtcNow < deadline && tracks.Length < count)
+        {
+            await Task.Delay(25);
+            tracks = host.Library!.Load().Tracks;
+        }
+        return tracks;
+    }
+
+    private static async Task<PlaylistId> PlaylistEventuallyAsync(AppHost host)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (host.Bus.Snapshot().Show.Playlists.Length > 0)
+            {
+                return host.Bus.Snapshot().Show.Playlists[0].Id;
+            }
+            await Task.Delay(25);
+        }
+        throw new TimeoutException("playlist never appeared");
     }
 
     private static async Task<ImmutableArray<PlaylistEntry>> EntriesEventuallyAsync(AppHost host, int count)

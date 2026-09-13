@@ -17,6 +17,7 @@ public sealed class ShowController : IShowHandler
 
     private readonly IAudioEngine _engine;
     private readonly PlaybackMonitor? _monitor;
+    private readonly Action<Action>? _marshal;
 
     private ImmutableArray<Track> _tracks = [];
     private ImmutableArray<Playlist> _playlists = [];
@@ -41,6 +42,8 @@ public sealed class ShowController : IShowHandler
     private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
     private Smoothing _smoothing = Smoothing.Default;
+    private EndAction _defaultEndAction = EndAction.Advance;
+    private bool _preRolled;
     private ImmutableArray<Script> _scripts = [];
     private TrackDigest _emittedDigest = TrackDigest.Empty;
 
@@ -55,6 +58,7 @@ public sealed class ShowController : IShowHandler
     {
         _engine = engine;
         _monitor = monitor;
+        _marshal = marshalEngineEvents;
         if (marshalEngineEvents is { } marshal)
         {
             _engine.Events += e => marshal(() => OnStreamEvent(e));
@@ -62,6 +66,10 @@ public sealed class ShowController : IShowHandler
         else
         {
             _engine.Events += OnStreamEvent;
+        }
+        if (monitor is not null)
+        {
+            monitor.Changed += OnMonitorPosition;
         }
     }
 
@@ -112,6 +120,9 @@ public sealed class ShowController : IShowHandler
                 break;
             case EnqueueTrack enqueueTrack:
                 OnEnqueueTrack(client, seq, enqueueTrack);
+                break;
+            case PlayTrack playTrack:
+                OnPlayTrack(client, seq, playTrack);
                 break;
             case RemoveFromQueue removeFromQueue:
                 OnRemoveFromQueue(client, seq, removeFromQueue);
@@ -196,6 +207,9 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetSmoothing setSmoothing:
                 OnSetSmoothing(client, seq, setSmoothing);
+                break;
+            case SetDefaultEndAction setDefaultEndAction:
+                OnSetDefaultEndAction(client, seq, setDefaultEndAction);
                 break;
             default:
                 Reject(client, seq, "unknown-command");
@@ -316,8 +330,8 @@ public sealed class ShowController : IShowHandler
         _masterGainDb = restore.MasterGainDb;
         _muted = false;
         _panicFade = restore.PanicFade;
-        _clockElapsed = restore.ClockElapsed;
-        _clockRunning = restore.ClockRunning;
+        _clockElapsed = TimeSpan.Zero;
+        _clockRunning = false;
         _scripts = restore.Scripts.IsDefault ? [] : restore.Scripts;
         _engine.SetMasterGain(restore.MasterGainDb);
         _current = null;
@@ -442,7 +456,6 @@ public sealed class ShowController : IShowHandler
             {
                 RestartCurrent();
             }
-            StartClockIfNeeded();
             return;
         }
 
@@ -477,7 +490,6 @@ public sealed class ShowController : IShowHandler
                 }
                 break;
         }
-        StartClockIfNeeded();
     }
 
     private void OnPause(ClientId client, long seq)
@@ -575,7 +587,32 @@ public sealed class ShowController : IShowHandler
         {
             filePosition = end;
         }
+        if (_status == TransportStatus.Playing && _smoothing.Enabled && _smoothing.SeekFade > TimeSpan.Zero)
+        {
+            SeekWithCrossfade(deck, filePosition);
+            return;
+        }
         _engine.Seek(handle, filePosition - settings.CueIn);
+        _preRolled = false;
+    }
+
+    private void SeekWithCrossfade(DeckInstance deck, TimeSpan filePosition)
+    {
+        var settings = deck.Settings;
+        var old = deck.Handle!.Value;
+        _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+        _retired.Add(old);
+        _monitor?.Unbind(old);
+        var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut);
+        var options = new StreamOptions(
+            StreamBus.Main,
+            settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
+        var handle = _engine.StartStream(source, options);
+        deck.Handle = handle;
+        _monitor?.Bind(handle, Content(deck) with { CueIn = filePosition });
+        _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
+        _engine.Transport(handle, TransportCommand.Play);
+        _preRolled = false;
     }
 
     private void OnPanic()
@@ -628,7 +665,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
         _queue.Add(new QueueItem(entry.Id, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
@@ -642,11 +679,35 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var settings = EffectiveSettings.ForTrack(track);
+        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
         _queue.Add(new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
         SyncDigest();
+    }
+
+    private void OnPlayTrack(ClientId client, long seq, PlayTrack command)
+    {
+        if (_panicked)
+        {
+            Reject(client, seq, "panicked");
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var track))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
+        _queue.Insert(0, new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
+        var wasPlaying = _status == TransportStatus.Playing;
+        var old = _current;
+        if (!StartFromOrder())
+        {
+            Reject(client, seq, "nothing-to-play");
+            return;
+        }
+        ReleaseOld(old, wasPlaying, manual: true);
     }
 
     private void OnRemoveFromQueue(ClientId client, long seq, RemoveFromQueue command)
@@ -1092,16 +1153,6 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
-    private void StartClockIfNeeded()
-    {
-        if (_clockRunning)
-        {
-            return;
-        }
-        _clockRunning = true;
-        EmitShow();
-    }
-
     private void OnSetPanicFade(ClientId client, long seq, SetPanicFade command)
     {
         if (command.Duration < TimeSpan.Zero || command.Duration > PanicFadeMax)
@@ -1119,7 +1170,8 @@ public sealed class ShowController : IShowHandler
         if (value.ManualCrossfade < TimeSpan.Zero || value.ManualCrossfade > SmoothingMax
             || value.AutoCrossfade < TimeSpan.Zero || value.AutoCrossfade > SmoothingMax
             || value.StartFade < TimeSpan.Zero || value.StartFade > SmoothingMax
-            || value.StopFade < TimeSpan.Zero || value.StopFade > SmoothingMax)
+            || value.StopFade < TimeSpan.Zero || value.StopFade > SmoothingMax
+            || value.SeekFade < TimeSpan.Zero || value.SeekFade > SmoothingMax)
         {
             Reject(client, seq, "smoothing-out-of-range");
             return;
@@ -1127,6 +1179,69 @@ public sealed class ShowController : IShowHandler
         _smoothing = value;
         _engine.SetSmoothing(value);
         EmitMixer();
+    }
+
+    private void OnSetDefaultEndAction(ClientId client, long seq, SetDefaultEndAction command)
+    {
+        if (!Enum.IsDefined(command.Action))
+        {
+            Reject(client, seq, "default-end-action-unknown");
+            return;
+        }
+        _defaultEndAction = command.Action;
+    }
+
+    private void OnMonitorPosition(PositionSnapshot snapshot)
+    {
+        if (_marshal is { } marshal)
+        {
+            marshal(() => CheckPreRoll(snapshot));
+            return;
+        }
+        CheckPreRoll(snapshot);
+    }
+
+    private void CheckPreRoll(PositionSnapshot snapshot)
+    {
+        if (_preRolled || _status != TransportStatus.Playing || _current is not { Handle: { } } current)
+        {
+            return;
+        }
+        if (!Content(current).Equals(snapshot.Deck))
+        {
+            return;
+        }
+        if (!_smoothing.Enabled || _smoothing.AutoCrossfade <= TimeSpan.Zero)
+        {
+            return;
+        }
+        if (current.Settings.EndAction != EndAction.Advance)
+        {
+            return;
+        }
+        if (snapshot.Remaining > _smoothing.AutoCrossfade || !HasNext())
+        {
+            return;
+        }
+        _preRolled = true;
+        AdvanceWithCrossfade();
+    }
+
+    private bool HasNext()
+    {
+        if (_queue.Count > 0)
+        {
+            return true;
+        }
+        if (_activePlaylistId is { } playlistId)
+        {
+            var playlist = _playlists.FirstOrDefault(p => p.Id == playlistId);
+            if (playlist is not null && _cursor < playlist.Entries.Length)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void OnStreamEvent(StreamEvent e)
@@ -1170,8 +1285,17 @@ public sealed class ShowController : IShowHandler
             case StreamEndReason.Completed:
             case StreamEndReason.CueOutReached:
             case StreamEndReason.StoppedByMarker:
-                DisposeCurrentHandle();
-                ApplyEndAction();
+                if (_current!.Settings.EndAction == EndAction.Advance
+                    && _smoothing.Enabled
+                    && _smoothing.AutoCrossfade > TimeSpan.Zero)
+                {
+                    AdvanceWithCrossfade();
+                }
+                else
+                {
+                    DisposeCurrentHandle();
+                    ApplyEndAction();
+                }
                 break;
         }
     }
@@ -1211,6 +1335,20 @@ public sealed class ShowController : IShowHandler
         }
     }
 
+    private void AdvanceWithCrossfade()
+    {
+        var old = _current!;
+        var handle = old.Handle;
+        old.Handle = null;
+        AdvanceFromBoundary();
+        if (handle is { } faded)
+        {
+            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(_smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+            _retired.Add(faded);
+            _monitor?.Unbind(faded);
+        }
+    }
+
     private bool StartFromOrder()
     {
         if (_queue.Count > 0)
@@ -1219,8 +1357,8 @@ public sealed class ShowController : IShowHandler
             _queue.RemoveAt(0);
             var track = _trackMap[item.TrackId];
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track)
-                : EffectiveSettings.ForTrack(track);
+                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track, _defaultEndAction)
+                : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
             StartStreamFor(_current, auto: true);
             _status = TransportStatus.Playing;
@@ -1248,7 +1386,7 @@ public sealed class ShowController : IShowHandler
     {
         var entry = playlist.Entries[index];
         var track = _trackMap[entry.TrackId];
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
         _activePlaylistId = playlist.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
@@ -1262,6 +1400,7 @@ public sealed class ShowController : IShowHandler
 
     private void StartStreamFor(DeckInstance deck, bool auto)
     {
+        _preRolled = false;
         if (deck.Handle is { } previous)
         {
             _monitor?.Unbind(previous);
@@ -1369,8 +1508,8 @@ public sealed class ShowController : IShowHandler
             var item = _queue[0];
             var track = _trackMap[item.TrackId];
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track)
-                : EffectiveSettings.ForTrack(track);
+                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track, _defaultEndAction)
+                : EffectiveSettings.ForTrack(track, _defaultEndAction);
             return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
         }
 
@@ -1381,7 +1520,7 @@ public sealed class ShowController : IShowHandler
             {
                 var entry = playlist.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
-                var settings = EffectiveSettings.Resolve(entry, track);
+                var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
                 return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
             }
         }
@@ -1399,7 +1538,7 @@ public sealed class ShowController : IShowHandler
         {
             if (!names.ContainsKey(id) && _trackMap.TryGetValue(id, out var track))
             {
-                names.Add(id, EffectiveSettings.ForTrack(track).DisplayName);
+                names.Add(id, EffectiveSettings.ForTrack(track, _defaultEndAction).DisplayName);
             }
         }
         foreach (var playlist in _playlists)

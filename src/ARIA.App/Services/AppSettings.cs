@@ -3,9 +3,9 @@ namespace Aria.App.Services;
 using System.Text.Json;
 using Aria.Core.Model;
 
-public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing)
+public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance)
 {
-    public static AppSettings Default { get; } = new(false, "{name}", Smoothing.Default);
+    public static AppSettings Default { get; } = new(false, "{name}", Smoothing.Default, EndAction.Advance);
 }
 
 public sealed class AppSettingsStore(string path)
@@ -33,7 +33,8 @@ public sealed class AppSettingsStore(string path)
             return new AppSettings(
                 dto.UseFileName,
                 string.IsNullOrWhiteSpace(dto.RowFormat) ? AppSettings.Default.RowFormat : dto.RowFormat,
-                dto.Smoothing?.ToModel() ?? Smoothing.Default);
+                dto.Smoothing?.ToModel() ?? Smoothing.Default,
+                dto.DefaultEndAction ?? EndAction.Advance);
         }
         catch (Exception e) when (e is JsonException or IOException)
         {
@@ -54,12 +55,14 @@ public sealed class AppSettingsStore(string path)
     private sealed record AppSettingsDto(
         bool UseFileName,
         string RowFormat,
-        SmoothingDto? Smoothing)
+        SmoothingDto? Smoothing,
+        EndAction? DefaultEndAction)
     {
         public static AppSettingsDto FromModel(AppSettings settings) => new(
             settings.UseFileName,
             settings.RowFormat,
-            SmoothingDto.FromModel(settings.Smoothing));
+            SmoothingDto.FromModel(settings.Smoothing),
+            settings.DefaultEndAction);
 
         public Smoothing ToModel()
         {
@@ -76,14 +79,16 @@ public sealed class AppSettingsStore(string path)
         long ManualCrossfadeMs,
         long AutoCrossfadeMs,
         long StartFadeMs,
-        long StopFadeMs)
+        long StopFadeMs,
+        long? SeekFadeMs)
     {
         public static SmoothingDto FromModel(Smoothing smoothing) => new(
             smoothing.Enabled,
             (long)smoothing.ManualCrossfade.TotalMilliseconds,
             (long)smoothing.AutoCrossfade.TotalMilliseconds,
             (long)smoothing.StartFade.TotalMilliseconds,
-            (long)smoothing.StopFade.TotalMilliseconds);
+            (long)smoothing.StopFade.TotalMilliseconds,
+            (long)smoothing.SeekFade.TotalMilliseconds);
 
         public Smoothing ToModel()
         {
@@ -93,7 +98,8 @@ public sealed class AppSettingsStore(string path)
                 Clamp(ManualCrossfadeMs, fallback.ManualCrossfade),
                 Clamp(AutoCrossfadeMs, fallback.AutoCrossfade),
                 Clamp(StartFadeMs, fallback.StartFade),
-                Clamp(StopFadeMs, fallback.StopFade));
+                Clamp(StopFadeMs, fallback.StopFade),
+                SeekFadeMs is { } seekMs ? Clamp(seekMs, fallback.SeekFade) : fallback.SeekFade);
         }
 
         private static TimeSpan Clamp(long ms, TimeSpan fallback) =>

@@ -109,6 +109,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
         }
+        RepairTrackNames();
 
         if (_remoteOptions is { } options)
         {
@@ -173,6 +174,27 @@ public sealed class AppHost : IAsyncDisposable
             SyncShowState(current);
         }
         return new ImportReport(added, skipped, failed.ToImmutable());
+    }
+
+    private void RepairTrackNames()
+    {
+        if (_library is null || _importer is null)
+        {
+            return;
+        }
+        var marker = Path.Combine(DataDirectory, "metadata-backfill.done");
+        if (File.Exists(marker))
+        {
+            return;
+        }
+        var (tracks, playlists) = _library.Load();
+        var repaired = tracks.Select(t => _importer.RefreshDisplayName(t)).ToImmutableArray();
+        if (!repaired.SequenceEqual(tracks))
+        {
+            _library.Upsert(repaired, playlists);
+            SyncShowState(repaired);
+        }
+        File.WriteAllText(marker, DateTimeOffset.UtcNow.ToString("o"));
     }
 
     private static bool IsPortBusy(Exception exception)

@@ -5,9 +5,9 @@
         x:Class="Aria.App.Views.SettingsDialog"
         x:DataType="vm:SettingsViewModel"
         Title="Настройки"
-        Width="620" Height="760"
+        Width="620" Height="760" MinWidth="480" MinHeight="500"
         Background="#0F0F0F" Foreground="#ECECEC"
-        CanResize="False">
+        CanResize="True">
   <Window.Styles>
     <Style Selector="Border.section">
       <Setter Property="Background" Value="#161616"/>
@@ -109,6 +109,22 @@
 
       <Border Classes="section">
         <StackPanel>
+          <TextBlock Text="Воспроизведение" Classes="sectionTitle"/>
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="после конца трека" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" x:Name="EndActionBox" SelectedIndex="{Binding DefaultEndActionIndex, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0,0,0" MinWidth="160">
+              <ComboBoxItem>Пауза</ComboBoxItem>
+              <ComboBoxItem>Стоп</ComboBoxItem>
+              <ComboBoxItem>Повтор</ComboBoxItem>
+              <ComboBoxItem>Далее</ComboBoxItem>
+            </ComboBox>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="section">
+        <StackPanel>
           <TextBlock Text="Движок" Classes="sectionTitle"/>
           <Grid ColumnDefinitions="Auto,*,Auto">
             <TextBlock Text="фейд PANIC" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
@@ -145,6 +161,13 @@
             <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding StopFadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding StopFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
+            <TextBlock Text="кроссфейд перемотки" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding SeekFadeMs, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding SeekFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
                        FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
           </Grid>
         </StackPanel>

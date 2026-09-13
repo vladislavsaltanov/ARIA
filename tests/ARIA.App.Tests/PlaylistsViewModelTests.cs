@@ -279,6 +279,24 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public async Task FinishExportAsync_RaisesSuccess_AndClearsStickyStatus()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var events = new List<(string File, string Message)>();
+        vm.ExportSucceeded += (file, message) => events.Add((file, message));
+        using var sink = new MemoryStream();
+
+        await vm.FinishExportAsync(() => Task.FromResult<Stream>(sink), "Main.aria-playlist.json");
+
+        var raised = Assert.Single(events);
+        Assert.Equal("Main.aria-playlist.json", raised.File);
+        Assert.Contains("2", raised.Message);
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+        Assert.Contains("Main", System.Text.Encoding.UTF8.GetString(sink.ToArray()));
+    }
+
+    [Fact]
     public async Task ImportDocumentAsync_BadJson_ReportsError()
     {
         var (bus, _, _) = Setup();
@@ -289,5 +307,25 @@ public sealed class PlaylistsViewModelTests
         Assert.NotNull(report.Error);
         Assert.Equal(0, report.Added);
         Assert.DoesNotContain(vm.Playlists, p => p.Name == string.Empty);
+    }
+
+    [Fact]
+    public async Task ImportAudioFilesAsync_RevealsAddedEntry()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(
+            bus,
+            () => [TestTrack],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(0, 0, [])));
+        PlaylistsViewModel.EntryVm? revealed = null;
+        vm.RevealRequested += row => revealed = row;
+
+        var added = await vm.ImportAudioFilesAsync([TestTrack.FilePath]);
+
+        Assert.Single(added);
+        Assert.NotNull(revealed);
+        Assert.Equal(TestTrack.Id, revealed.TrackId);
+        Assert.Equal(revealed.Id, vm.SelectedEntry?.Id);
+        Assert.Contains(revealed, vm.VisibleEntries);
     }
 }

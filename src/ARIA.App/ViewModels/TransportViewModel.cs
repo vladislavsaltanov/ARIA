@@ -138,8 +138,13 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         get => _volumePercent;
         set
         {
+            if (Math.Abs(value - 100.0) <= 2.0)
+            {
+                value = 100.0;
+            }
             if (SetProperty(ref _volumePercent, value))
             {
+                OnPropertyChanged(nameof(VolumePercentText));
                 Submit(new SetMasterGain(PercentToDb(value)));
             }
         }
@@ -147,6 +152,8 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     public string VolumeDbText =>
         string.Create(CultureInfo.InvariantCulture, $"Громкость — {_masterGainDb:F1} дБ");
+
+    public string VolumePercentText => $"{_volumePercent:F0}%";
 
     [RelayCommand]
     private void Play() => Submit(new Play());
@@ -181,6 +188,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ResetClock() => Submit(new ResetShowClock());
 
+    [RelayCommand]
     public void ToggleLock() => Submit(new SetLocked(!Locked));
 
     public void RefreshWallClock()
@@ -250,10 +258,10 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             TransportStatus.Panicked => "PANIC",
             _ => "STOP",
         };
-        DisplayName = state.Current is null ? "—" : TrackDisplay(state.Current);
+        DisplayName = state.Current is null ? "—" : Truncate(TrackDisplay(state.Current));
         CurrentTrackId = state.Current?.TrackId;
         NextName = state.Next is null ? "—" : TrackDisplay(state.Next);
-        NextLine = state.Next is null ? "—" : $"Далее: {TrackDisplay(state.Next)}";
+        NextLine = state.Next is null ? "—" : Truncate($"Далее: {TrackDisplay(state.Next)}");
         Panicked = state.Status == TransportStatus.Panicked;
         _playing = state.Status == TransportStatus.Playing;
         IsPlaying = _playing;
@@ -274,6 +282,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         _volumePercent = DbToPercent(state.MasterGainDb);
         OnPropertyChanged(nameof(VolumePercent));
         OnPropertyChanged(nameof(VolumeDbText));
+        OnPropertyChanged(nameof(VolumePercentText));
         Muted = state.Muted;
     }
 
@@ -318,11 +327,24 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private void RefreshTimerSubText() => TimerSubText = $"{_timeOfDayText} · {_trackElapsedText}";
 
-    private static double PercentToDb(double percent) =>
-        VolumeMinDb + Math.Clamp(percent, 0.0, 100.0) / 100.0 * (VolumeMaxDb - VolumeMinDb);
+    private static double PercentToDb(double percent)
+    {
+        var fraction = Math.Clamp(percent, 0.0, 125.0) / 100.0;
+        if (fraction <= 0.0)
+        {
+            return VolumeMinDb;
+        }
+        return Math.Clamp(40.0 * Math.Log10(fraction), VolumeMinDb, VolumeMaxDb);
+    }
 
-    private static double DbToPercent(double gainDb) =>
-        Math.Clamp((gainDb - VolumeMinDb) / (VolumeMaxDb - VolumeMinDb) * 100.0, 0.0, 100.0);
+    private static double DbToPercent(double gainDb)
+    {
+        if (gainDb <= VolumeMinDb)
+        {
+            return 0.0;
+        }
+        return Math.Clamp(Math.Pow(10.0, gainDb / 40.0) * 100.0, 0.0, 125.0);
+    }
 
     private sealed class MonitorSubscription : IDisposable
     {
@@ -347,6 +369,11 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             _monitor.Cleared -= _cleared;
         }
     }
+
+    private const int MaxNameLength = 100;
+
+    private static string Truncate(string value) =>
+        value.Length <= MaxNameLength ? value : value[..MaxNameLength] + "…";
 
     private string TrackDisplay(DeckContent deck)
     {

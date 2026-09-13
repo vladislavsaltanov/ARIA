@@ -41,6 +41,9 @@
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#1F1F1F"/>
     </Style>
+    <Style Selector="Border#PaneResizer:pointerover">
+      <Setter Property="Background" Value="#2C2C2C"/>
+    </Style>
   </Window.Styles>
   <Grid RowDefinitions="Auto,*,Auto" Margin="24">
     <views:PlaybackHeader x:Name="PlaybackHeader" Grid.Row="0" Margin="0,0,0,12" />
@@ -48,29 +51,23 @@
                OpenPaneLength="340" IsPaneOpen="False">
       <SplitView.Pane>
         <Border Background="#161616" BorderBrush="#2C2C2C" BorderThickness="1,0,0,0">
-          <Grid ColumnDefinitions="8,*">
-            <Thumb Grid.Column="0" x:Name="PaneResizer" Width="8" Background="Transparent"
-                   VerticalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
-                   ToolTip.Tip="Ширина панели"/>
+          <Grid ColumnDefinitions="20,*">
+            <Border Grid.Column="0" x:Name="PaneGrip" Width="3" CornerRadius="2" Background="#2C2C2C"
+                    HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,12" IsHitTestVisible="False"/>
+            <Border Grid.Column="0" x:Name="PaneResizer" Background="Transparent"
+                    Cursor="SizeWestEast" ToolTip.Tip="Ширина панели — Alt+←/→"/>
             <views:ScriptPanel Grid.Column="1" x:Name="ScriptPanel" Margin="10,14,12,10"/>
           </Grid>
         </Border>
       </SplitView.Pane>
       <Grid x:Name="ContentGrid" ColumnDefinitions="260,*,300">
       <Border Grid.Column="0" BorderBrush="#2C2C2C" BorderThickness="0,0,1,0">
-        <Grid RowDefinitions="3*,2*,Auto,Auto">
-          <views:LibrarySection Grid.Row="0" x:Name="LibrarySection" />
-          <views:RailPlaylists Grid.Row="1" x:Name="RailPlaylists" />
-          <Button Grid.Row="2" x:Name="QueueButton" Classes="railAction" Margin="8,4,8,0" Click="OnQueueJumpClick">
+        <Grid RowDefinitions="*,Auto">
+          <views:RailPlaylists Grid.Row="0" x:Name="RailPlaylists" />
+          <Button Grid.Row="1" x:Name="QueueButton" Classes="railAction" Margin="8,6,8,10" Click="OnQueueJumpClick">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" VerticalAlignment="Center"/>
               <TextBlock Text="Очередь" FontSize="13" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
-          <Button Grid.Row="3" x:Name="ImportButton" Classes="railAction" Margin="8,6,8,10">
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <PathIcon Data="{StaticResource icon_plus}" Width="15" Height="15" VerticalAlignment="Center"/>
-              <TextBlock Text="Import" FontSize="13" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
         </Grid>
@@ -79,7 +76,7 @@
       <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
       </Grid>
     </SplitView>
-    <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="76" Margin="-24,12,-24,-24" />
+    <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="124" Margin="-24,12,-24,-24" />
     <Border x:Name="FocusSink" Grid.RowSpan="3" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
     <Border x:Name="HelpOverlay" Grid.RowSpan="3" IsVisible="False" Background="#D90F0F0F"
             PointerPressed="OnHelpOverlayClick">

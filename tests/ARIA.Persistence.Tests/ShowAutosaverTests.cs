@@ -112,6 +112,36 @@ public sealed class ShowAutosaverTests : IDisposable
         Assert.Null(store.LoadLatest());
     }
 
+    [Fact]
+    public void BackgroundFlush_MissingDirectory_DoesNotCrash_AndRecovers()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"aria-autosave-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using var store = new JsonSnapshotStore(Path.Combine(dir, "show.json"));
+            using var bus = NewBus();
+            using var autosaver = new ShowAutosaver(bus, store, TimeSpan.FromMilliseconds(50));
+
+            bus.Submit(Client, 1, new CreatePlaylist("Main"));
+            Directory.Delete(dir, recursive: true);
+            Thread.Sleep(400);
+            Directory.CreateDirectory(dir);
+            bus.Submit(Client, 2, new CreatePlaylist("Spare"));
+
+            var document = WaitForDocument(store, TimeSpan.FromSeconds(5));
+            Assert.NotNull(document);
+            Assert.Equal(2, document.Playlists.Length);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
     private static CommandBus NewBus() => new(new ShowController(new StubEngine()));
 
     private static ShowDocument? WaitForDocument(JsonSnapshotStore store, TimeSpan timeout)

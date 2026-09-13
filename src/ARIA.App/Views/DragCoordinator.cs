@@ -10,26 +10,22 @@ using Avalonia.VisualTree;
 
 internal sealed class DragCoordinator
 {
-    private readonly ListBox _library;
     private readonly ListBox _playlist;
     private readonly ListBox _queue;
     private ListBox? _source;
     private Point _pressPos;
     private bool _dragging;
-    private List<LibraryViewModel.TrackVm>? _tracks;
     private PlaylistsViewModel.EntryVm? _entry;
     private QueueViewModel.QueueItemVm? _queueItem;
     private Border? _rowHighlight;
     private ListBox? _listHighlight;
+    private ListBoxItem? _dropContainer;
+    private bool _dropAfter;
 
-    public DragCoordinator(ListBox library, ListBox playlist, ListBox queue)
+    public DragCoordinator(ListBox playlist, ListBox queue)
     {
-        _library = library;
         _playlist = playlist;
         _queue = queue;
-        library.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
-        library.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
-        library.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
         playlist.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
         playlist.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
         playlist.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
@@ -50,12 +46,7 @@ internal sealed class DragCoordinator
         {
             return;
         }
-        if (ReferenceEquals(list, _library) && row is LibraryViewModel.TrackVm track)
-        {
-            var selected = list.SelectedItems?.OfType<LibraryViewModel.TrackVm>().ToList() ?? [];
-            _tracks = selected.Contains(track) && selected.Count > 0 ? selected : [track];
-        }
-        else if (ReferenceEquals(list, _playlist) && row is PlaylistsViewModel.EntryVm entry)
+        if (ReferenceEquals(list, _playlist) && row is PlaylistsViewModel.EntryVm entry)
         {
             _entry = entry;
         }
@@ -88,19 +79,9 @@ internal sealed class DragCoordinator
             return;
         }
         ClearHighlight();
-        if (_tracks is not null)
+        if (_entry is not null)
         {
-            var playlistPos = e.GetPosition(_playlist);
-            if (IsInside(_playlist, playlistPos))
-            {
-                HighlightAt(_playlist, playlistPos);
-                return;
-            }
-            HighlightAt(_queue, e.GetPosition(_queue));
-        }
-        else if (_entry is not null)
-        {
-            HighlightAt(_playlist, e.GetPosition(_playlist));
+            ShowInsertion(_playlist, e.GetPosition(_playlist));
         }
         else if (_queueItem is not null)
         {
@@ -111,7 +92,6 @@ internal sealed class DragCoordinator
     private void OnRelease(object? sender, PointerReleasedEventArgs e)
     {
         var source = _source;
-        var tracks = _tracks;
         var entry = _entry;
         var queueItem = _queueItem;
         var moved = _dragging;
@@ -154,25 +134,6 @@ internal sealed class DragCoordinator
                 }
             }
         }
-        else if (tracks is not null && tracks.Count > 0)
-        {
-            if (IsInside(_playlist, e.GetPosition(_playlist))
-                && _playlist.DataContext is PlaylistsViewModel target)
-            {
-                var index = DropIndex(_playlist, e.GetPosition(_playlist), target.VisibleEntries.Count);
-                var at = index;
-                foreach (var track in tracks)
-                {
-                    target.AddEntryAt(track.Id, at);
-                    at++;
-                }
-            }
-            else if (IsInside(_queue, e.GetPosition(_queue))
-                && source.DataContext is LibraryViewModel library)
-            {
-                library.EnqueueTracks(tracks);
-            }
-        }
         e.Handled = true;
     }
 
@@ -180,7 +141,6 @@ internal sealed class DragCoordinator
     {
         _source = null;
         _dragging = false;
-        _tracks = null;
         _entry = null;
         _queueItem = null;
         ClearHighlight();
@@ -188,6 +148,12 @@ internal sealed class DragCoordinator
 
     private void ClearHighlight()
     {
+        if (_dropContainer is not null)
+        {
+            _dropContainer.Classes.Remove("dropBefore");
+            _dropContainer.Classes.Remove("dropAfter");
+            _dropContainer = null;
+        }
         if (_rowHighlight is not null)
         {
             _rowHighlight.Background = Brushes.Transparent;
@@ -198,6 +164,50 @@ internal sealed class DragCoordinator
             _listHighlight.Background = Brushes.Transparent;
             _listHighlight = null;
         }
+    }
+
+    private void ShowInsertion(ListBox list, Point pos)
+    {
+        if (!IsInside(list, pos))
+        {
+            return;
+        }
+        var count = list.Items.Count;
+        var index = DropIndex(list, pos, count);
+        ListBoxItem? container = null;
+        var after = false;
+        if (count > 0 && list.ItemsPanelRoot is Panel panel)
+        {
+            var items = panel.Children.OfType<ListBoxItem>().ToList();
+            if (index >= count && items.Count > 0)
+            {
+                container = items[^1];
+                after = true;
+            }
+            else if (index < items.Count)
+            {
+                container = items[index];
+            }
+        }
+        if (container is null)
+        {
+            if (_listHighlight == list)
+            {
+                return;
+            }
+            ClearHighlight();
+            list.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
+            _listHighlight = list;
+            return;
+        }
+        if (_dropContainer == container && _dropAfter == after)
+        {
+            return;
+        }
+        ClearHighlight();
+        container.Classes.Add(after ? "dropAfter" : "dropBefore");
+        _dropContainer = container;
+        _dropAfter = after;
     }
 
     private void HighlightAt(ListBox list, Point pos)
@@ -229,7 +239,7 @@ internal sealed class DragCoordinator
     {
         var container = ContainerAt(list, e.GetPosition(list));
         if (container?.DataContext is { } item
-            && (item is LibraryViewModel.TrackVm || item is PlaylistsViewModel.EntryVm || item is QueueViewModel.QueueItemVm))
+            && (item is PlaylistsViewModel.EntryVm || item is QueueViewModel.QueueItemVm))
         {
             return item;
         }

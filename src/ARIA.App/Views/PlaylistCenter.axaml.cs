@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 
 public partial class PlaylistCenter : UserControl
 {
@@ -22,12 +23,22 @@ public partial class PlaylistCenter : UserControl
         if (_bound is not null)
         {
             _bound.ImportFailed -= OnImportFailed;
+            _bound.ExportSucceeded -= OnExportSucceeded;
+            _bound.RevealRequested -= OnRevealRequested;
         }
         _bound = DataContext as PlaylistsViewModel;
         if (_bound is not null)
         {
             _bound.ImportFailed += OnImportFailed;
+            _bound.ExportSucceeded += OnExportSucceeded;
+            _bound.RevealRequested += OnRevealRequested;
         }
+    }
+
+    private void OnRevealRequested(PlaylistsViewModel.EntryVm row)
+    {
+        EntryList.UpdateLayout();
+        EntryList.ScrollIntoView(row);
     }
 
     private async void OnImportFailed(string message)
@@ -39,8 +50,12 @@ public partial class PlaylistCenter : UserControl
         var dialog = new Window
         {
             Title = "Импорт плейлиста не удался",
-            Width = 420,
-            Height = 160,
+            Width = 460,
+            MinWidth = 380,
+            MinHeight = 140,
+            MaxWidth = 640,
+            SizeToContent = SizeToContent.Height,
+            CanResize = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Content = new StackPanel
             {
@@ -48,7 +63,48 @@ public partial class PlaylistCenter : UserControl
                 Margin = new Thickness(16),
                 Children =
                 {
-                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new ScrollViewer
+                    {
+                        MaxHeight = 320,
+                        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                        Content = new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    },
+                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
+                },
+            },
+        };
+        ((Button)((StackPanel)dialog.Content!).Children[1]).Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(owner);
+    }
+
+    private async void OnExportSucceeded(string fileName, string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        var dialog = new Window
+        {
+            Title = "Плейлист экспортирован",
+            Width = 460,
+            MinWidth = 380,
+            MinHeight = 140,
+            MaxWidth = 640,
+            SizeToContent = SizeToContent.Height,
+            CanResize = true,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new ScrollViewer
+                    {
+                        MaxHeight = 320,
+                        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                        Content = new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    },
                     new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
                 },
             },
@@ -140,6 +196,37 @@ public partial class PlaylistCenter : UserControl
             && DataContext is PlaylistsViewModel viewModel)
         {
             viewModel.RemoveEntryAt(entry);
+        }
+    }
+
+    private void OnFilesDragOver(object? sender, DragEventArgs e) => e.DragEffects = DragDropEffects.Copy;
+
+    private async void OnFilesDropped(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not PlaylistsViewModel viewModel)
+        {
+            return;
+        }
+        if (viewModel.AudioImport is null && App.Host is { } host)
+        {
+            viewModel.AudioImport = host.ImportTracksAsync;
+        }
+        var files = e.DataTransfer.TryGetFiles();
+        if (files is null)
+        {
+            return;
+        }
+        var paths = new List<string>();
+        foreach (var file in files)
+        {
+            if (file.TryGetLocalPath() is { } path)
+            {
+                paths.Add(path);
+            }
+        }
+        if (paths.Count > 0)
+        {
+            await viewModel.ImportAudioFilesAsync(paths);
         }
     }
 }

@@ -68,7 +68,6 @@ public partial class App : Application
         var rowSettings = settingsStore.Load();
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
         var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow);
-        var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs, sync);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
         var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow);
@@ -93,7 +92,7 @@ public partial class App : Application
                 transport.UpdateRowSettings(updated);
             },
             sync);
-        window = new MainWindow(hotkeys, library, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
+        window = new MainWindow(hotkeys, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
 
