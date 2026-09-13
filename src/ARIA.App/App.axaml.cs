@@ -64,9 +64,10 @@ public partial class App : Application
     {
         var sync = SynchronizationContext.Current;
         var thumbs = new WaveformThumbs(host.Waveforms!);
-        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
         var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load(), sync, topLevel: () => desktop.MainWindow);
+        var rowSettings = settingsStore.Load();
+        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
+        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow);
         var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs, sync);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
@@ -86,7 +87,11 @@ public partial class App : Application
             hotkeys,
             Path.Combine(dataDirectory, "hotkeys.json"),
             settingsStore,
-            updated => playlists.UpdateRowSettings(updated),
+            updated =>
+            {
+                playlists.UpdateRowSettings(updated);
+                transport.UpdateRowSettings(updated);
+            },
             sync);
         window = new MainWindow(hotkeys, library, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;

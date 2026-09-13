@@ -42,7 +42,7 @@ public sealed class TrackImporter
         var track = new Track(
             TrackId.New(),
             filePath,
-            Path.GetFileNameWithoutExtension(filePath),
+            TrackMetadata.ReadDisplayName(filePath) ?? Path.GetFileNameWithoutExtension(filePath),
             duration,
             new TrackDefaults());
         var peaks = _scanner.Scan(filePath, track.Id, pointsPerSecond);

@@ -85,7 +85,20 @@ public partial class PlaybackHeader : UserControl
         if (e.PropertyName == nameof(TransportViewModel.CurrentTrackId)
             && sender is TransportViewModel viewModel)
         {
-            UpdateForTrack(viewModel.CurrentTrackId);
+            if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            {
+                UpdateForTrack(viewModel.CurrentTrackId);
+            }
+            else
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (ReferenceEquals(_viewModel, viewModel))
+                    {
+                        UpdateForTrack(viewModel.CurrentTrackId);
+                    }
+                });
+            }
         }
     }
 

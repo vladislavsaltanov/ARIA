@@ -1,5 +1,6 @@
 namespace Aria.App.Tests;
 
+using Aria.App.Services;
 using Aria.App.ViewModels;
 using Aria.Core.Commands;
 using Aria.Core.Model;
@@ -237,5 +238,27 @@ public sealed class TransportViewModelTests
         vm.PlayCommand.Execute(null);
 
         Assert.Equal("Далее: two", vm.NextLine);
+    }
+
+    [Fact]
+    public void RowSettings_UseFileName_SwitchesHeaderDisplay()
+    {
+        var tagged = new Track(TrackId.New(), "/audio/rain.flac", "Осенний дождь", TimeSpan.FromMinutes(3), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), tagged.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([tagged], [playlist], playlist.Id));
+        using var vm = new TransportViewModel(bus, trackSource: () => [tagged]);
+
+        vm.PlayCommand.Execute(null);
+
+        Assert.Equal("Осенний дождь", vm.DisplayName);
+
+        vm.UpdateRowSettings(new AppSettings(true, "{name}", Smoothing.Default));
+
+        Assert.Equal("rain.flac", vm.DisplayName);
+
+        vm.UpdateRowSettings(AppSettings.Default);
+
+        Assert.Equal("Осенний дождь", vm.DisplayName);
     }
 }

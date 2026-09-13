@@ -1,6 +1,8 @@
 namespace Aria.App.ViewModels;
 
+using System.Collections.Immutable;
 using System.Globalization;
+using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Playback;
@@ -22,6 +24,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private readonly ICommandBus _bus;
     private readonly ClientId _client = new("desktop-transport");
+    private readonly Func<ImmutableArray<Track>>? _trackSource;
+    private AppSettings _rowSettings = AppSettings.Default;
+    private TransportState? _lastTransport;
     private readonly SynchronizationContext? _sync;
     private readonly IDisposable _subscription;
     private readonly IDisposable? _monitorSubscription;
@@ -95,9 +100,13 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         ICommandBus bus,
         PlaybackMonitor? monitor = null,
         SynchronizationContext? sync = null,
-        MeterMonitor? meters = null)
+        MeterMonitor? meters = null,
+        Func<ImmutableArray<Track>>? trackSource = null,
+        AppSettings? rowSettings = null)
     {
         _bus = bus;
+        _trackSource = trackSource;
+        _rowSettings = rowSettings ?? AppSettings.Default;
         _sync = sync;
         _subscription = bus.Subscribe(ApplyEvent);
         if (monitor is not null)
@@ -222,8 +231,18 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         }
     }
 
+    public void UpdateRowSettings(AppSettings settings)
+    {
+        _rowSettings = settings;
+        if (_lastTransport is { } state)
+        {
+            Apply(state);
+        }
+    }
+
     private void Apply(TransportState state)
     {
+        _lastTransport = state;
         StatusText = state.Status switch
         {
             TransportStatus.Playing => "PLAY",
@@ -231,11 +250,10 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             TransportStatus.Panicked => "PANIC",
             _ => "STOP",
         };
-        DisplayName = state.Current?.DisplayName ?? "—";
+        DisplayName = state.Current is null ? "—" : TrackDisplay(state.Current);
         CurrentTrackId = state.Current?.TrackId;
-        var next = state.Next?.DisplayName;
-        NextName = string.IsNullOrEmpty(next) ? "—" : next;
-        NextLine = string.IsNullOrEmpty(next) ? "—" : $"Далее: {next}";
+        NextName = state.Next is null ? "—" : TrackDisplay(state.Next);
+        NextLine = state.Next is null ? "—" : $"Далее: {TrackDisplay(state.Next)}";
         Panicked = state.Status == TransportStatus.Panicked;
         _playing = state.Status == TransportStatus.Playing;
         IsPlaying = _playing;
@@ -259,14 +277,14 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         Muted = state.Muted;
     }
 
-    private void OnPosition(PositionSnapshot snapshot)
+    private void OnPosition(PositionSnapshot snapshot) => Post(() =>
     {
         Remaining = Format(snapshot.Remaining);
         _trackElapsedText = Format(snapshot.FilePosition);
         var total = (snapshot.Deck.CueOut ?? snapshot.Deck.Duration).TotalSeconds;
         PositionFraction = total > 0 ? Math.Clamp(snapshot.FilePosition.TotalSeconds / total, 0.0, 1.0) : 0.0;
         RefreshTimerSubText();
-    }
+    });
 
     private void OnLufs(LufsSnapshot snapshot) => Post(() =>
     {
@@ -328,6 +346,23 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             _monitor.Changed -= _handler;
             _monitor.Cleared -= _cleared;
         }
+    }
+
+    private string TrackDisplay(DeckContent deck)
+    {
+        var name = deck.DisplayName;
+        if (_rowSettings.UseFileName && _trackSource?.Invoke() is { } tracks)
+        {
+            foreach (var track in tracks)
+            {
+                if (track.Id == deck.TrackId)
+                {
+                    name = Path.GetFileName(track.FilePath);
+                    break;
+                }
+            }
+        }
+        return string.IsNullOrEmpty(name) ? "—" : name;
     }
 
     private static string Format(TimeSpan value)
