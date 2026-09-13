@@ -24,13 +24,21 @@ public partial class PlaylistCenter : UserControl
         {
             _bound.ImportFailed -= OnImportFailed;
             _bound.ExportSucceeded -= OnExportSucceeded;
+            _bound.RevealRequested -= OnRevealRequested;
         }
         _bound = DataContext as PlaylistsViewModel;
         if (_bound is not null)
         {
             _bound.ImportFailed += OnImportFailed;
             _bound.ExportSucceeded += OnExportSucceeded;
+            _bound.RevealRequested += OnRevealRequested;
         }
+    }
+
+    private void OnRevealRequested(PlaylistsViewModel.EntryVm row)
+    {
+        EntryList.UpdateLayout();
+        EntryList.ScrollIntoView(row);
     }
 
     private async void OnImportFailed(string message)

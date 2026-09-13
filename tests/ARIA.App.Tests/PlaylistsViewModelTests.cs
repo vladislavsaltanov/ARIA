@@ -308,4 +308,24 @@ public sealed class PlaylistsViewModelTests
         Assert.Equal(0, report.Added);
         Assert.DoesNotContain(vm.Playlists, p => p.Name == string.Empty);
     }
+
+    [Fact]
+    public async Task ImportAudioFilesAsync_RevealsAddedEntry()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(
+            bus,
+            () => [TestTrack],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(0, 0, [])));
+        PlaylistsViewModel.EntryVm? revealed = null;
+        vm.RevealRequested += row => revealed = row;
+
+        var added = await vm.ImportAudioFilesAsync([TestTrack.FilePath]);
+
+        Assert.Single(added);
+        Assert.NotNull(revealed);
+        Assert.Equal(TestTrack.Id, revealed.TrackId);
+        Assert.Equal(revealed.Id, vm.SelectedEntry?.Id);
+        Assert.Contains(revealed, vm.VisibleEntries);
+    }
 }

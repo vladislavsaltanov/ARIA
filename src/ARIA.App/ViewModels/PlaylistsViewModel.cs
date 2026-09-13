@@ -55,6 +55,12 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public event Action<string, string>? ExportSucceeded;
 
+    public event Action<EntryVm>? RevealRequested;
+
+    private PlaylistId? _revealPlaylist;
+
+    private List<TrackId>? _revealTracks;
+
     public Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? AudioImport
     {
         get => _audioImport;
@@ -264,9 +270,12 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 }
             }
         }
+        var target = SelectedPlaylist;
+        _revealPlaylist = ordered.Count > 0 ? target.Id : null;
+        _revealTracks = ordered.Count > 0 ? ordered : null;
         foreach (var trackId in ordered)
         {
-            Submit(new AddEntry(SelectedPlaylist.Id, trackId, null));
+            Submit(new AddEntry(target.Id, trackId, null));
         }
         PlaylistIoStatus = ordered.Count > 0
             ? $"в плейлист добавлено: {ordered.Count}"
@@ -573,6 +582,25 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         SelectedEntry = SelectedPlaylist?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedPlaylist?.Entries.FirstOrDefault();
         RefreshVisible();
         RefreshCenterHeader();
+        FireReveal();
+    }
+
+    private void FireReveal()
+    {
+        var tracks = _revealTracks;
+        var target = _revealPlaylist;
+        _revealPlaylist = null;
+        _revealTracks = null;
+        if (tracks is not { Count: > 0 } || target is null || SelectedPlaylist?.Id != target)
+        {
+            return;
+        }
+        var row = SelectedPlaylist.Entries.FirstOrDefault(e => tracks.Contains(e.TrackId));
+        if (row is not null)
+        {
+            SelectedEntry = row;
+            RevealRequested?.Invoke(row);
+        }
     }
 
     partial void OnSelectedPlaylistChanged(PlaylistVm? value)
