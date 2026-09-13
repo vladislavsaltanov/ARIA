@@ -15,7 +15,7 @@ using CommunityToolkit.Mvvm.Input;
 public sealed partial class TransportViewModel : ObservableObject, IDisposable
 {
     private const double VolumeMinDb = -80.0;
-    private const double VolumeMaxDb = 12.0;
+    private const double VolumeMaxDb = 0.0;
     private const double LufsRedThresholdDb = -14.0;
 
     private static readonly SolidColorBrush BrushFg = new(Color.Parse("#ECECEC"));

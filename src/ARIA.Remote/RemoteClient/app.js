@@ -771,12 +771,16 @@
   }
 
   function gainToPct(db) {
-    var pct = ((db + 80) / 92) * 100;
-    return Math.max(0, Math.min(100, pct));
+    if (!(db > -80)) return 0;
+    return Math.max(0, Math.min(100, 10 ** (db / 40) * 100));
   }
 
   function pctToGain(pct) {
-    return Math.round((-80 + pct * 0.92) * 10) / 10;
+    if (!(pct > 0)) return -80;
+    return (
+      Math.round(Math.max(-80, Math.min(0, 40 * Math.log10(pct / 100))) * 10) /
+      10
+    );
   }
 
   function renderMixer() {

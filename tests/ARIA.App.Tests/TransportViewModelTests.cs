@@ -109,12 +109,12 @@ public sealed class TransportViewModelTests
 
         bus.Submit(new ClientId("setup"), 1, new SetMasterGain(-6));
 
-        Assert.Equal(35.48, vm.VolumePercent, 2);
+        Assert.Equal(70.79, vm.VolumePercent, 2);
         Assert.Equal("Громкость — -6.0 дБ", vm.VolumeDbText);
 
         vm.VolumePercent = 50;
 
-        Assert.Equal(-0.04, bus.Snapshot().Mixer.MasterGainDb, 2);
+        Assert.Equal(-12.04, bus.Snapshot().Mixer.MasterGainDb, 2);
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public sealed class TransportViewModelTests
 
         Assert.Equal(100, vm.VolumePercent);
         Assert.Equal("100%", vm.VolumePercentText);
-        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, 11.9, 12.1);
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -0.1, 0.1);
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public sealed class TransportViewModelTests
 
         vm.VolumePercent = 50;
 
-        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -3.0, 3.0);
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -13.0, -11.0);
     }
 
     [Fact]
@@ -272,7 +272,7 @@ public sealed class TransportViewModelTests
         using var vm = new TransportViewModel(bus);
 
         vm.VolumePercent = 100;
-        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, 11.9, 12.1);
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -0.1, 0.1);
 
         vm.VolumePercent = 0;
         Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -80.1, -79.9);
@@ -286,7 +286,7 @@ public sealed class TransportViewModelTests
 
         vm.VolumePercent = 25;
 
-        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -15.0, -9.0);
+        Assert.InRange(bus.Snapshot().Mixer.MasterGainDb, -25.0, -23.0);
     }
 
     [Fact]

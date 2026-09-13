@@ -68,6 +68,10 @@ public static class TrackMetadata
         {
             return null;
         }
+        if ((header[5] & 0x80) != 0)
+        {
+            body = RemoveUnsync(body);
+        }
         var syncSafeSizes = header[3] >= 4;
         var offset = 0;
         while (offset + 10 <= body.Length && stream.Position - size + offset < end)
@@ -379,6 +383,20 @@ public static class TrackMetadata
         value = BitConverter.ToInt32(block, offset);
         offset += 4;
         return true;
+    }
+
+    private static byte[] RemoveUnsync(byte[] body)
+    {
+        var output = new List<byte>(body.Length);
+        for (var i = 0; i < body.Length; i++)
+        {
+            output.Add(body[i]);
+            if (body[i] == 0xFF && i + 1 < body.Length && body[i + 1] == 0x00)
+            {
+                i++;
+            }
+        }
+        return [.. output];
     }
 
     private static int SyncSafe(byte[] buffer, int offset) =>

@@ -6,8 +6,10 @@ using Aria.App.Services;
 using Aria.App.ViewModels;
 using Aria.Core.Playback;
 using Aria.Persistence;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 
@@ -81,6 +83,20 @@ public partial class MainWindow : Window
 
     private void OnPaneResize(object? sender, VectorEventArgs e) =>
         ScriptDrawer.OpenPaneLength = Math.Clamp(ScriptDrawer.OpenPaneLength - e.Vector.X, 240, 600);
+
+    private void OnPaneResizeStarted(object? sender, VectorEventArgs e)
+    {
+        if (PaneRoot() is { } pane)
+        {
+            pane.SetValue(Animatable.TransitionsProperty, new Transitions());
+        }
+    }
+
+    private void OnPaneResizeCompleted(object? sender, VectorEventArgs e) =>
+        PaneRoot()?.ClearValue(Animatable.TransitionsProperty);
+
+    private Panel? PaneRoot() =>
+        ScriptDrawer.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Name == "PART_PaneRoot");
 
     private void OnScriptPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
