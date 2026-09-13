@@ -45,6 +45,25 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
         RemoveItem(item);
     }
 
+    public void PlayItem(QueueItemVm item)
+    {
+        if (item.EntryId is { } entry)
+        {
+            Submit(new JumpTo(entry));
+            return;
+        }
+        var index = Items.IndexOf(item);
+        if (index < 0)
+        {
+            return;
+        }
+        if (index > 0)
+        {
+            Submit(new MoveQueueItem(index, 0));
+        }
+        Submit(new Next());
+    }
+
     public void RemoveItem(QueueItemVm item)
     {
         var index = Items.IndexOf(item);
@@ -117,7 +136,8 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
                 item.EntryId?.Value ?? item.TrackId.Value,
                 item.DisplayName,
                 item.Color,
-                isCurrent));
+                isCurrent,
+                item.EntryId));
         }
         Selected = Items.FirstOrDefault(i => i.Id == selectedId);
     }
@@ -132,15 +152,18 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
 
     public sealed class QueueItemVm
     {
-        public QueueItemVm(Guid id, string displayName, string? color, bool isCurrent)
+        public QueueItemVm(Guid id, string displayName, string? color, bool isCurrent, EntryId? entryId = null)
         {
             Id = id;
             DisplayName = displayName;
             Color = color;
             IsCurrent = isCurrent;
+            EntryId = entryId;
         }
 
         public Guid Id { get; }
+
+        public EntryId? EntryId { get; }
 
         public string DisplayName { get; }
 

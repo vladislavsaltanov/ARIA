@@ -15,7 +15,6 @@ public partial class MainWindow : Window
 {
     private readonly HotkeyService? _hotkeys;
     private readonly Func<Window>? _settingsDialogFactory;
-    private LibraryViewModel? _library;
     private PlaylistsViewModel? _playlists;
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
@@ -26,7 +25,6 @@ public partial class MainWindow : Window
 
     public MainWindow(
         HotkeyService? hotkeys,
-        LibraryViewModel? libraryViewModel = null,
         PlaylistsViewModel? playlistsViewModel = null,
         QueueViewModel? queueViewModel = null,
         Func<Window>? settingsDialogFactory = null,
@@ -35,12 +33,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         _hotkeys = hotkeys;
         _settingsDialogFactory = settingsDialogFactory;
-        if (libraryViewModel is not null)
-        {
-            _library = libraryViewModel;
-            LibrarySection.DataContext = libraryViewModel;
-            ImportButton.Command = libraryViewModel.ImportCommand;
-        }
         if (playlistsViewModel is not null)
         {
             _playlists = playlistsViewModel;
@@ -95,7 +87,6 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(ScriptPanelViewModel.HighlightedTrack)
             && sender is ScriptPanelViewModel viewModel)
         {
-            _library?.SetLinkedTrack(viewModel.HighlightedTrack);
             _playlists?.SetLinkedTrack(viewModel.HighlightedTrack);
         }
     }
@@ -133,7 +124,6 @@ public partial class MainWindow : Window
             BuildHotkeyTable();
         }
         _drag = new DragCoordinator(
-            LibrarySection.TrackListBox,
             PlaylistCenter.EntryListBox,
             QueueColumn.QueueListBox);
     }

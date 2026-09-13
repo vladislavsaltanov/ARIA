@@ -29,6 +29,7 @@
         </Button>
       </Grid>
       <ListBox Grid.Row="1" x:Name="QueueList" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+               DoubleTapped="OnItemDoubleTapped"
                Background="Transparent" BorderThickness="0" Margin="6,0,6,10">
         <ListBox.ItemContainerTheme>
           <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
@@ -42,6 +43,7 @@
             <Border Classes="qRow" Height="36" CornerRadius="6" Padding="10,0" Background="Transparent">
               <Border.ContextMenu>
                 <ContextMenu>
+                  <MenuItem Header="Играть сейчас" Click="OnPlayNowClick"/>
                   <MenuItem Header="Убрать из очереди" Click="OnRemoveClick"/>
                 </ContextMenu>
               </Border.ContextMenu>

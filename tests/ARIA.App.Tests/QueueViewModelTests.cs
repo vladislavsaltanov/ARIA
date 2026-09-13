@@ -101,6 +101,43 @@ public sealed class QueueViewModelTests
     }
 
     [Fact]
+    public void PlayItem_WithEntry_JumpsToIt()
+    {
+        var track = TestTrack;
+        var entry = new PlaylistEntry(EntryId.New(), track.Id);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 2, new EnqueueEntry(entry.Id));
+        using var vm = new QueueViewModel(bus);
+
+        vm.PlayItem(vm.Items[0]);
+
+        var current = bus.Snapshot().Transport.Current;
+        Assert.NotNull(current);
+        Assert.Equal(entry.Id, current.EntryId);
+    }
+
+    [Fact]
+    public void PlayItem_BareTrack_MovesToFrontAndPlays()
+    {
+        var first = new Track(TrackId.New(), "/audio/a.flac", "a", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var second = new Track(TrackId.New(), "/audio/b.flac", "b", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([first, second], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 2, new EnqueueTrack(first.Id));
+        bus.Submit(new ClientId("setup"), 3, new EnqueueTrack(second.Id));
+        using var vm = new QueueViewModel(bus);
+
+        vm.PlayItem(vm.Items[1]);
+
+        var current = bus.Snapshot().Transport.Current;
+        Assert.NotNull(current);
+        Assert.Equal(second.Id, current.TrackId);
+    }
+
+    [Fact]
     public void FocusPlaying_SelectsCurrent()
     {
         var track = TestTrack;
