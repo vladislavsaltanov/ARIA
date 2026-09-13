@@ -13,7 +13,7 @@ public sealed class MixerSmoothingTests
     public void Pause_WithSmoothing_FadesOutThenSilences()
     {
         using var bus = new MixerBus(1, 48000, 512);
-        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(50), true);
+        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(50), TimeSpan.Zero, true);
         var output = new float[512];
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5)));
 
@@ -40,7 +40,7 @@ public sealed class MixerSmoothingTests
     public void Resume_WithSmoothing_FadesIn()
     {
         using var bus = new MixerBus(1, 48000, 512);
-        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), true);
+        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), TimeSpan.Zero, true);
         var output = new float[512];
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5)));
         bus.Render(output);
@@ -87,12 +87,12 @@ public sealed class MixerSmoothingTests
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5)));
         bus.Render(output);
 
-        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), false);
+        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false);
         bus.Transport(handle, TransportCommand.Pause);
         bus.Render(output);
         Assert.Equal(0f, bus.Peak);
 
-        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(480), true);
+        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(480), TimeSpan.Zero, true);
         bus.Transport(handle, TransportCommand.Play);
         bus.Render(output);
         Assert.InRange(bus.Peak, 0f, 0.2f);
@@ -242,10 +242,77 @@ public sealed class MixerSmoothingTests
     }
 
     [Fact]
+    public void Seek_WithSmoothing_DipsToSilenceThenFadesBack()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        bus.SetSmoothing(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.FromMilliseconds(100), true);
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 440, 0.5)));
+        bus.Render(output);
+        Assert.InRange(bus.Peak, 0.45, 0.55);
+
+        bus.Seek(handle, 24000);
+        bus.Render(output);
+        var dipping = bus.Peak;
+        Assert.InRange(dipping, 0f, 0.5f);
+
+        for (var block = 0; block < 12; block++)
+        {
+            bus.Render(output);
+        }
+        Assert.InRange(bus.Peak, 0.45, 0.55);
+        Assert.True(bus.TryGetPosition(handle, out var position));
+        Assert.True(position >= TimeSpan.FromSeconds(0.5));
+    }
+
+    [Fact]
+    public void Seek_WithSmoothing_Seamless_NoSampleJump()
+    {
+        const int rate = 48000;
+        const int block = 512;
+        using var bus = new MixerBus(1, rate, block);
+        bus.SetSmoothing(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.FromMilliseconds(20), true);
+        var handle = bus.AddVoice(Config(new SineSource(1, rate, 440, 0.5)));
+        var output = new float[block];
+        bus.Render(output);
+
+        bus.Seek(handle, rate * 10);
+        var tail = output[^1];
+        var worst = 0f;
+        for (var i = 0; i < 40; i++)
+        {
+            bus.Render(output);
+            worst = Math.Max(worst, Math.Abs(output[0] - tail));
+            for (var s = 1; s < output.Length; s++)
+            {
+                worst = Math.Max(worst, Math.Abs(output[s] - output[s - 1]));
+            }
+            tail = output[^1];
+        }
+        Assert.InRange(worst, 0f, 0.05f);
+    }
+
+    [Fact]
+    public void Seek_Disabled_JumpsInstantly()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        bus.SetSmoothing(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.FromMilliseconds(100), false);
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 440, 0.5)));
+        bus.Render(output);
+
+        bus.Seek(handle, 24000);
+        bus.Render(output);
+
+        Assert.True(bus.TryGetPosition(handle, out var position));
+        Assert.Equal(TimeSpan.FromSeconds(0.5 + 512.0 / 48000), position);
+    }
+
+    [Fact]
     public void PauseFade_NoAllocations_InSteadyState()
     {
         using var bus = new MixerBus(1, 48000, 256);
-        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), true);
+        bus.SetSmoothing(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), TimeSpan.Zero, true);
         bus.AddVoice(Config(new SineSource(1, 48000, 440, 0.5)));
         var output = new float[256];
 

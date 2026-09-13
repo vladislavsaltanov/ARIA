@@ -50,6 +50,8 @@ public sealed class MixerBus : IDisposable
 
         public long StartFrame;
 
+        public long? PendingSeekFrame;
+
         public bool Active { get; set; }
 
         public bool PauseWhenFaded { get; set; }
@@ -67,6 +69,7 @@ public sealed class MixerBus : IDisposable
     private long _handleCounter;
     private int _pauseFadeFrames;
     private int _resumeFadeFrames;
+    private int _seekFadeFrames;
     private int _smoothingEnabled;
 
     public MixerBus(int channels, int sampleRate, int blockSizeFrames)
@@ -133,7 +136,7 @@ public sealed class MixerBus : IDisposable
     public void Seek(StreamHandle handle, long frameIndex)
         => _commands.Enqueue(new Command(CommandKind.Seek, null, handle, default, null, default, frameIndex));
 
-    public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, bool enabled)
+    public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, TimeSpan seekFade, bool enabled)
     {
         var pauseFrames = enabled && pauseFade > TimeSpan.Zero
             ? Math.Max(1, (int)Math.Round(pauseFade.TotalSeconds * _sampleRate))
@@ -141,8 +144,12 @@ public sealed class MixerBus : IDisposable
         var resumeFrames = enabled && resumeFade > TimeSpan.Zero
             ? Math.Max(1, (int)Math.Round(resumeFade.TotalSeconds * _sampleRate))
             : 0;
+        var seekFrames = enabled && seekFade > TimeSpan.Zero
+            ? Math.Max(2, (int)Math.Round(seekFade.TotalSeconds * _sampleRate))
+            : 0;
         Volatile.Write(ref _pauseFadeFrames, pauseFrames);
         Volatile.Write(ref _resumeFadeFrames, resumeFrames);
+        Volatile.Write(ref _seekFadeFrames, seekFrames);
         Volatile.Write(ref _smoothingEnabled, enabled ? 1 : 0);
     }
 
@@ -308,15 +315,25 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private static void ApplySeek(Voice? voice, long frameIndex)
+    private void ApplySeek(Voice? voice, long frameIndex)
     {
         if (voice is null || voice.RemoveRequested || voice.Dead)
         {
             return;
         }
+        var seekFrames = Volatile.Read(ref _seekFadeFrames);
+        if (Volatile.Read(ref _smoothingEnabled) == 1 && seekFrames > 0 && voice.Active && !voice.PauseWhenFaded)
+        {
+            voice.PendingSeekFrame = frameIndex;
+            voice.Fader = new FaderNode(SeekHalfFrames(seekFrames), FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: false);
+            return;
+        }
+        voice.PendingSeekFrame = null;
         voice.Source.Seek(frameIndex);
         voice.StartFrame = frameIndex;
     }
+
+    private static int SeekHalfFrames(int seekFrames) => Math.Max(1, seekFrames / 2);
 
     private void ApplyMix(Voice? voice, MixParameters mix)
     {
@@ -348,6 +365,13 @@ public sealed class MixerBus : IDisposable
             if (voice.RemoveRequested || voice.Dead || !voice.Active)
             {
                 continue;
+            }
+            if (voice.PendingSeekFrame is { } target && voice.Fader.HasCompleted)
+            {
+                voice.PendingSeekFrame = null;
+                voice.Source.Seek(target);
+                voice.StartFrame = target;
+                voice.Fader = new FaderNode(SeekHalfFrames(Volatile.Read(ref _seekFadeFrames)), FadeCurve.Linear, 0.0, 1.0, stopWhenDone: false);
             }
             var scratch = voice.Scratch.AsSpan(0, frames * _channels);
             var read = voice.Source.ReadFrames(scratch);

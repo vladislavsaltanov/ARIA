@@ -14,7 +14,10 @@
     status: document.getElementById("status"),
     title: document.getElementById("title"),
     next: document.getElementById("next"),
-    remaining: document.getElementById("remaining"),
+    elapsed: document.getElementById("elapsed"),
+    trackRemain: document.getElementById("track-remain"),
+    seek: document.getElementById("seek"),
+    seekFill: document.getElementById("seek-fill"),
     queue: document.getElementById("queue"),
     panicConfirm: document.getElementById("panic-confirm"),
     queueClear: document.getElementById("btn-queue-clear"),
@@ -27,7 +30,6 @@
     loginGo: document.getElementById("login-go"),
     forget: document.getElementById("btn-forget"),
     showClock: document.getElementById("show-clock"),
-    trackElapsed: document.getElementById("track-elapsed"),
     master: document.getElementById("master"),
     mute: document.getElementById("btn-mute"),
     lufsValue: document.getElementById("lufs-value"),
@@ -192,6 +194,7 @@
     mixer: null,
     queue: [],
     lufs: null,
+    lastFileMs: null,
   };
 
   var LUFS_FLOOR = -60;
@@ -250,26 +253,54 @@
     }
   }
 
+  var trackWindowMs = null;
+
+  function marquee(node, text) {
+    node.textContent = text;
+    node.classList.remove("scroll");
+    requestAnimationFrame(() => {
+      if (node.scrollWidth > node.clientWidth + 4) {
+        var first = document.createElement("span");
+        first.className = "mq";
+        first.textContent = text;
+        var second = document.createElement("span");
+        second.className = "mq";
+        second.textContent = text;
+        node.textContent = "";
+        node.appendChild(first);
+        node.appendChild(second);
+        node.classList.add("scroll");
+      }
+    });
+  }
+
   function applyPosition(frame) {
+    state.lastFileMs = frame.filePositionMs;
     var fileMs = frame.filePositionMs;
-    el.trackElapsed.textContent =
+    el.elapsed.textContent =
       fileMs == null ? "0:00" : formatSeconds(Math.floor(fileMs / 1000));
     var ms = frame.remainingMs;
     if (ms == null) {
-      el.remaining.textContent = "--:--";
-      el.remaining.classList.remove("low");
+      el.trackRemain.textContent = "--:--";
+      el.elapsed.classList.remove("low");
+      renderSeek(fileMs);
       return;
     }
     var total = Math.ceil(ms / 1000);
     if (total < 0) total = 0;
-    var h = Math.floor(total / 3600);
-    var m = Math.floor((total % 3600) / 60);
-    var text =
-      h > 0
-        ? h + ":" + pad(m) + ":" + pad(total % 60)
-        : pad(Math.floor(total / 60)) + ":" + pad(total % 60);
-    el.remaining.textContent = text;
-    el.remaining.classList.toggle("low", total <= 10 && total > 0);
+    el.trackRemain.textContent = "-" + formatSeconds(total);
+    el.elapsed.classList.toggle("low", total <= 10 && total > 0);
+    renderSeek(fileMs);
+  }
+
+  function renderSeek(fileMs) {
+    if (!el.seekFill) return;
+    if (fileMs == null || !trackWindowMs || trackWindowMs <= 0) {
+      el.seekFill.style.width = "0%";
+      return;
+    }
+    var ratio = Math.min(1, Math.max(0, fileMs / trackWindowMs));
+    el.seekFill.style.width = (ratio * 100).toFixed(1) + "%";
   }
 
   function pad(n) {
@@ -280,9 +311,22 @@
     var t = state.transport;
     if (!t) return;
     el.status.textContent = (t.status || "STOP").toUpperCase();
-    el.title.textContent = t.current ? t.current.displayName : "—";
-    el.next.textContent = "далее: " + (t.next ? t.next.displayName : "—");
+    marquee(el.title, t.current ? t.current.displayName : "—");
+    marquee(el.next, "далее: " + (t.next ? t.next.displayName : "—"));
     el.panic.disabled = panicked(t.status);
+    trackWindowMs = trackWindow(t.current);
+    renderSeek(state.lastFileMs);
+  }
+
+  function trackWindow(current) {
+    if (!current) return null;
+    var total = parseIsoDuration(current.duration);
+    if (total == null) return null;
+    var cueIn = parseIsoDuration(current.cueIn) || 0;
+    var cueOut = parseIsoDuration(current.cueOut);
+    var end = cueOut != null ? cueOut : total;
+    var window = (end - cueIn) * 1000;
+    return window > 0 ? window : null;
   }
 
   function panicked(status) {
@@ -841,8 +885,8 @@
       if (transportPlaying(item)) li.classList.add("playing");
       var name = document.createElement("span");
       name.className = "queue-name";
-      name.textContent = item.displayName;
       li.appendChild(name);
+      marquee(name, item.displayName);
       var actions = document.createElement("span");
       actions.className = "queue-actions";
       if (index > 0) {
@@ -1066,11 +1110,12 @@
     var name = digestName(entry.trackId);
     var label = document.createElement("span");
     label.className = "entry-name" + (name == null ? " dangling" : "");
-    label.textContent = name == null ? "(повисшее упоминание)" : name;
+    var labelText = name == null ? "(повисшее упоминание)" : name;
     if (entry.overrides && entry.overrides.name) {
-      label.textContent += " → " + entry.overrides.name;
+      labelText += " → " + entry.overrides.name;
     }
     line.appendChild(label);
+    marquee(label, labelText);
     line.appendChild(
       smallButton("▶", () => {
         send("jump_to", { entry: entry.id });
@@ -1205,8 +1250,8 @@
       head.className = "playlist-head";
       var name = document.createElement("span");
       name.className = "playlist-name";
-      name.textContent = pl.name;
       head.appendChild(name);
+      marquee(name, pl.name);
       if (active) {
         var badge = document.createElement("span");
         badge.className = "playlist-badge";
@@ -1319,6 +1364,19 @@
     send("set_muted", { muted: !state.mixer.muted });
     vibrate();
   });
+
+  if (el.seek) {
+    el.seek.addEventListener("click", (event) => {
+      var rect = el.seek.getBoundingClientRect();
+      if (rect.width <= 0 || !trackWindowMs || trackWindowMs <= 0) return;
+      var current = state.transport && state.transport.current;
+      if (!current) return;
+      var cueIn = (parseIsoDuration(current.cueIn) || 0) * 1000;
+      var ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      send("seek_to", { position_ms: Math.round(cueIn + ratio * trackWindowMs) });
+      vibrate();
+    });
+  }
 
   document
     .getElementById("mention-cancel")

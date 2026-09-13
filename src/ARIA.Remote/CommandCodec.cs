@@ -70,6 +70,7 @@ internal static class CommandCodec
                 "move_queue_item" => new MoveQueueItem(IntOf(commandElement, "from"), IntOf(commandElement, "to")),
                 "set_master_gain" => new SetMasterGain(DoubleOf(commandElement, "gain_db")),
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
+                "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
                 "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
                 "create_script" => new CreateScript(StringOf(commandElement, "name")),

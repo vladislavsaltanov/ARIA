@@ -78,14 +78,35 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.remaining {
+.title.scroll,
+.next.scroll,
+.queue-name.scroll,
+.entry-name.scroll,
+.playlist-name.scroll {
+  text-overflow: clip;
+}
+.mq {
+  display: inline-block;
+  white-space: nowrap;
+  padding-right: 3em;
+  animation: mq-scroll 8s linear infinite;
+}
+@keyframes mq-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.elapsed {
   font-size: clamp(56px, 20vw, 88px);
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   margin: 16px 0 8px;
 }
-.remaining.low {
+.elapsed.low {
   color: var(--warn);
 }
 
@@ -111,7 +132,36 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.track-elapsed {
+.seek {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  margin: 4px 0 8px;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.seek::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.seek-fill {
+  position: absolute;
+  height: 8px;
+  max-width: 100%;
+  background: #6ac47a;
+  border-radius: 5px;
+  pointer-events: none;
+}
+.seek {
+  position: relative;
+}
+
+.track-remain {
   font-size: 16px;
   color: var(--dim);
   font-variant-numeric: tabular-nums;
@@ -466,13 +516,14 @@ body {
 }
 .playlist-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   padding: 12px;
 }
 .playlist-name {
   flex: 1;
+  min-width: 0;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -501,13 +552,14 @@ body {
 }
 .entry-line {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
   min-height: 44px;
 }
 .entry-name {
   flex: 1;
+  min-width: 0;
   font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
