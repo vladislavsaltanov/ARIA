@@ -203,6 +203,92 @@ public sealed class ScriptPaneResizeTests : IDisposable
         Assert.Equal(340, after);
     }
 
+    [Fact]
+    public async Task TunnelPress_ZoneBoundaries()
+    {
+        var inside = false;
+        var outside = false;
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            drawer.IsPaneOpen = true;
+            window.Measure(new Size(1440, 900));
+            window.Arrange(new Rect(0, 0, 1440, 900));
+            var edge = window.PaneLeftEdge();
+            Assert.False(double.IsNaN(edge));
+            inside = window.TryBeginPaneEdgeResize(edge + 8, true);
+            window.EndPaneResize();
+            inside = inside && window.TryBeginPaneEdgeResize(edge - 8, true);
+            window.EndPaneResize();
+            outside = window.TryBeginPaneEdgeResize(edge + 9, true)
+                || window.TryBeginPaneEdgeResize(edge - 9, true);
+            window.EndPaneResize();
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+
+        Assert.True(inside);
+        Assert.False(outside);
+    }
+
+    [Fact]
+    public async Task TunnelPress_AtEdge_StartsDrag()
+    {
+        var started = false;
+        var after = 0.0;
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            drawer.IsPaneOpen = true;
+            window.Measure(new Size(1440, 900)); window.Arrange(new Rect(0, 0, 1440, 900));
+            var edge = window.PaneLeftEdge();
+            Assert.False(double.IsNaN(edge));
+            started = window.TryBeginPaneEdgeResize(edge, true);
+            window.UpdatePaneResize(edge - 60);
+            after = drawer.OpenPaneLength;
+            window.EndPaneResize();
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+
+        Assert.True(started);
+        Assert.Equal(400, after);
+    }
+
+    [Fact]
+    public async Task TunnelPress_OutsideZoneOrClosedPane_Ignored()
+    {
+        var started = false;
+        var after = 0.0;
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            drawer.IsPaneOpen = true;
+            window.Measure(new Size(1440, 900)); window.Arrange(new Rect(0, 0, 1440, 900));
+            started = window.TryBeginPaneEdgeResize(0, true)
+                || window.TryBeginPaneEdgeResize(window.PaneLeftEdge(), false);
+            window.UpdatePaneResize(-5000);
+            after = drawer.OpenPaneLength;
+            window.EndPaneResize();
+            drawer.IsPaneOpen = false;
+            started = started || window.TryBeginPaneEdgeResize(window.PaneLeftEdge(), true);
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+
+        Assert.False(started);
+        Assert.Equal(340, after);
+    }
+
     private static System.Collections.Generic.IList<Avalonia.Animation.ITransition> PaneTransitions(SplitView drawer)
     {
         var pane = drawer.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Name == "PART_PaneRoot");

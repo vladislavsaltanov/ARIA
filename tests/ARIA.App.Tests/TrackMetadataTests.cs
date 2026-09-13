@@ -61,6 +61,50 @@ public sealed class TrackMetadataTests : IDisposable
     }
 
     [Fact]
+    public void Mp3_Id3V23_Utf16SingleNul_KeepsTrailingParen()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "singlenul.mp3");
+        WriteMp3Utf16SingleNul(path, "Tear In My Heart (Live in Mexico City)", "Twenty One Pilot");
+        File.WriteAllBytes(path, [.. File.ReadAllBytes(path), .. new byte[1024]]);
+
+        Assert.Equal("Twenty One Pilot – Tear In My Heart (Live in Mexico City)", TrackMetadata.ReadDisplayName(path));
+    }
+
+    [Fact]
+    public void Mp3_Id3V23_Utf16BeSingleNul_KeepsTrailingParen()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "singlenulbe.mp3");
+        WriteMp3Utf16BeSingleNul(path, "Vignette (Live in Mexico City)", "Twenty One Pilot");
+        File.WriteAllBytes(path, [.. File.ReadAllBytes(path), .. new byte[1024]]);
+
+        Assert.Equal("Twenty One Pilot – Vignette (Live in Mexico City)", TrackMetadata.ReadDisplayName(path));
+    }
+
+    [Fact]
+    public void Mp3_Id3V23_Utf16NoBomSingleNul_KeepsTrailingParen()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "singlenulnb.mp3");
+        WriteMp3Utf16NoBomSingleNul(path, "Song (Live)", "Band");
+        File.WriteAllBytes(path, [.. File.ReadAllBytes(path), .. new byte[1024]]);
+
+        Assert.Equal("Band – Song (Live)", TrackMetadata.ReadDisplayName(path));
+    }
+
+    [Fact]
+    public void Mp3_Id3V23_UsltNeighbor_KeepsTrailingParen()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "uslt.mp3");
+        WriteMp3WithUslt(path, "Tear In My Heart (Live in Mexico City)", "Twenty One Pilot");
+        File.WriteAllBytes(path, [.. File.ReadAllBytes(path), .. new byte[1024]]);
+
+        Assert.Equal("Twenty One Pilot – Tear In My Heart (Live in Mexico City)", TrackMetadata.ReadDisplayName(path));
+    }
+
+    [Fact]
     public void Mp3_Id3V1_FallsBack_WhenNoV2()
     {
         Directory.CreateDirectory(_directory);
@@ -216,11 +260,97 @@ public sealed class TrackMetadataTests : IDisposable
         var payload = new List<byte> { 1, 0xFF, 0xFE };
         payload.AddRange(Encoding.Unicode.GetBytes(text));
         payload.AddRange([(byte)0, (byte)0]);
+        WriteRawFrame(output, id, [.. payload]);
+    }
+
+    private static void WriteTextFrame16SingleNul(List<byte> output, string id, string text)
+    {
+        var payload = new List<byte> { 1, 0xFF, 0xFE };
+        payload.AddRange(Encoding.Unicode.GetBytes(text));
+        payload.Add(0);
+        WriteRawFrame(output, id, [.. payload]);
+    }
+
+    private static void WriteTextFrame16BeSingleNul(List<byte> output, string id, string text)
+    {
+        var payload = new List<byte> { 2 };
+        payload.AddRange(Encoding.BigEndianUnicode.GetBytes(text));
+        payload.Add(0);
+        WriteRawFrame(output, id, [.. payload]);
+    }
+
+    private static void WriteTextFrame16NoBomSingleNul(List<byte> output, string id, string text)
+    {
+        var payload = new List<byte> { 1 };
+        payload.AddRange(Encoding.Unicode.GetBytes(text));
+        payload.Add(0);
+        WriteRawFrame(output, id, [.. payload]);
+    }
+
+    private static void WriteRawFrame(List<byte> output, string id, byte[] payload)
+    {
         output.AddRange(Encoding.Latin1.GetBytes(id));
-        var size = payload.Count;
+        var size = payload.Length;
         output.AddRange([(byte)(size >> 24), (byte)(size >> 16), (byte)(size >> 8), (byte)size]);
         output.AddRange([(byte)0, (byte)0]);
         output.AddRange(payload);
+    }
+
+    private static void WriteMp3Utf16SingleNul(string path, string title, string artist)
+    {
+        using var stream = File.Create(path);
+        var frames = new List<byte>();
+        WriteTextFrame16SingleNul(frames, "TIT2", title);
+        WriteTextFrame16SingleNul(frames, "TPE1", artist);
+        stream.Write("ID3"u8);
+        stream.Write([(byte)3, (byte)0, (byte)0]);
+        var size = frames.Count;
+        stream.Write([(byte)((size >> 21) & 0x7F), (byte)((size >> 14) & 0x7F), (byte)((size >> 7) & 0x7F), (byte)(size & 0x7F)]);
+        stream.Write(frames.ToArray());
+    }
+
+    private static void WriteMp3Utf16BeSingleNul(string path, string title, string artist)
+    {
+        using var stream = File.Create(path);
+        var frames = new List<byte>();
+        WriteTextFrame16BeSingleNul(frames, "TIT2", title);
+        WriteTextFrame16BeSingleNul(frames, "TPE1", artist);
+        stream.Write("ID3"u8);
+        stream.Write([(byte)3, (byte)0, (byte)0]);
+        var size = frames.Count;
+        stream.Write([(byte)((size >> 21) & 0x7F), (byte)((size >> 14) & 0x7F), (byte)((size >> 7) & 0x7F), (byte)(size & 0x7F)]);
+        stream.Write(frames.ToArray());
+    }
+
+    private static void WriteMp3Utf16NoBomSingleNul(string path, string title, string artist)
+    {
+        using var stream = File.Create(path);
+        var frames = new List<byte>();
+        WriteTextFrame16NoBomSingleNul(frames, "TIT2", title);
+        WriteTextFrame16NoBomSingleNul(frames, "TPE1", artist);
+        stream.Write("ID3"u8);
+        stream.Write([(byte)3, (byte)0, (byte)0]);
+        var size = frames.Count;
+        stream.Write([(byte)((size >> 21) & 0x7F), (byte)((size >> 14) & 0x7F), (byte)((size >> 7) & 0x7F), (byte)(size & 0x7F)]);
+        stream.Write(frames.ToArray());
+    }
+
+    private static void WriteMp3WithUslt(string path, string title, string artist)
+    {
+        using var stream = File.Create(path);
+        var frames = new List<byte>();
+        var uslt = new List<byte> { 0 };
+        uslt.AddRange("eng"u8);
+        uslt.Add(0);
+        uslt.AddRange(Encoding.Latin1.GetBytes("Some lyrics here"));
+        WriteRawFrame(frames, "USLT", [.. uslt]);
+        WriteTextFrame(frames, "TIT2", title);
+        WriteTextFrame(frames, "TPE1", artist);
+        stream.Write("ID3"u8);
+        stream.Write([(byte)3, (byte)0, (byte)0]);
+        var size = frames.Count;
+        stream.Write([(byte)((size >> 21) & 0x7F), (byte)((size >> 14) & 0x7F), (byte)((size >> 7) & 0x7F), (byte)(size & 0x7F)]);
+        stream.Write(frames.ToArray());
     }
 
     private static void WriteMp3Unsync(string path, string title, string artist)

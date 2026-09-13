@@ -6,6 +6,7 @@ using Aria.App.Services;
 using Aria.App.ViewModels;
 using Aria.Core.Playback;
 using Aria.Persistence;
+using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private bool _paneResizing;
     private double _paneResizeStartX;
     private double _paneResizeStartWidth;
+    private const double PaneEdgeGrab = 8.0;
 
     public MainWindow() : this(null)
     {
@@ -99,6 +101,10 @@ public partial class MainWindow : Window
 
     private void OnPaneResizePressed(object? sender, PointerPressedEventArgs e)
     {
+        if (_paneResizing)
+        {
+            return;
+        }
         if (e.GetCurrentPoint(PaneResizer).Properties.PointerUpdateKind is not PointerUpdateKind.LeftButtonPressed)
         {
             return;
@@ -126,7 +132,14 @@ public partial class MainWindow : Window
         SuspendPaneTransitions();
     }
 
-    internal void UpdatePaneResize(double currentX) => SetPaneWidth(_paneResizeStartWidth - (currentX - _paneResizeStartX));
+    internal void UpdatePaneResize(double currentX)
+    {
+        if (!_paneResizing)
+        {
+            return;
+        }
+        SetPaneWidth(_paneResizeStartWidth - (currentX - _paneResizeStartX));
+    }
 
     internal void EndPaneResize()
     {
@@ -135,6 +148,49 @@ public partial class MainWindow : Window
     }
 
     private void SetPaneWidth(double width) => ScriptDrawer.OpenPaneLength = Math.Clamp(width, 240, 600);
+
+    internal double PaneLeftEdge() =>
+        PaneResizer.TranslatePoint(new Point(0, 0), this)?.X ?? double.NaN;
+
+    internal bool IsPaneEdgePress(double x) =>
+        ScriptDrawer.IsPaneOpen && !double.IsNaN(PaneLeftEdge()) && Math.Abs(x - PaneLeftEdge()) <= PaneEdgeGrab;
+
+    internal bool TryBeginPaneEdgeResize(double x, bool leftButton)
+    {
+        if (!leftButton || !IsPaneEdgePress(x))
+        {
+            return false;
+        }
+        BeginPaneResize(x, ScriptDrawer.OpenPaneLength);
+        return true;
+    }
+
+    private void OnResizeTunnelPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(this);
+        if (TryBeginPaneEdgeResize(e.GetPosition(this).X, point.Properties.PointerUpdateKind is PointerUpdateKind.LeftButtonPressed))
+        {
+            e.Pointer.Capture(this);
+        }
+    }
+
+    private void OnResizeTunnelMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_paneResizing)
+        {
+            return;
+        }
+        UpdatePaneResize(e.GetPosition(this).X);
+    }
+
+    private void OnResizeTunnelReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_paneResizing)
+        {
+            return;
+        }
+        EndPaneResize();
+    }
 
     private void SuspendPaneTransitions()
     {
@@ -184,6 +240,9 @@ public partial class MainWindow : Window
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(InputElement.KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerPressedEvent, OnResizeTunnelPressed, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerMovedEvent, OnResizeTunnelMoved, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerReleasedEvent, OnResizeTunnelReleased, RoutingStrategies.Tunnel);
         if (_hotkeys is not null)
         {
             TransportBar.ApplyGestures(_hotkeys);

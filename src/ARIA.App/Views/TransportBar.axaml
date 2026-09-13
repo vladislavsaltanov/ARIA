@@ -3,7 +3,7 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.TransportBar"
              x:DataType="vm:TransportViewModel"
-             Height="76">
+             Height="100">
   <UserControl.Styles>
     <Style Selector="Button.bar">
       <Setter Property="Background" Value="Transparent"/>
@@ -49,38 +49,38 @@
     </Style>
   </UserControl.Styles>
   <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0">
-    <Grid RowDefinitions="3,*">
+    <Grid RowDefinitions="3,Auto,*">
       <ProgressBar Grid.Row="0" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
                    Height="3" Background="Transparent" Foreground="{StaticResource BrushFg}" Opacity="0.85"
                    BorderThickness="0" CornerRadius="0"/>
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,0">
-        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,18,0" MinWidth="170">
-          <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-          <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-        </StackPanel>
-        <Button Grid.Column="1" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
+      <StackPanel Grid.Row="1" Margin="14,0,10,2">
+        <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+      </StackPanel>
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,0">
+        <Button Grid.Column="0" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
                 Command="{Binding TogglePlayPauseCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
           <Panel>
             <PathIcon Data="{StaticResource icon_play}" Width="20" Height="20" IsVisible="{Binding !IsPlaying}"/>
             <PathIcon Data="{StaticResource icon_pause}" Width="20" Height="20" IsVisible="{Binding IsPlaying}"/>
           </Panel>
         </Button>
-        <Button Grid.Column="2" x:Name="StopButton" Classes="bar" Width="44" Height="44"
+        <Button Grid.Column="1" x:Name="StopButton" Classes="bar" Width="44" Height="44"
                 Command="{Binding StopCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
           <PathIcon Data="{StaticResource icon_stop}" Width="18" Height="18"/>
         </Button>
-        <Button Grid.Column="3" x:Name="NextButton" Classes="bar" Width="44" Height="44"
+        <Button Grid.Column="2" x:Name="NextButton" Classes="bar" Width="44" Height="44"
                 Command="{Binding NextCommand}" VerticalAlignment="Center" Margin="0,0,6,0">
           <PathIcon Data="{StaticResource icon_next}" Width="20" Height="20"/>
         </Button>
-        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
           <TextBlock Text="{Binding LufsText}" FontFamily="{StaticResource MonoFont}" FontSize="13"
                      Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
           <ProgressBar Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Width="44" Height="4"
                        Background="{StaticResource BrushLine}" Foreground="{Binding LufsBarBrush}"
                        VerticalAlignment="Center" BorderThickness="0"/>
         </StackPanel>
-        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
           <Button x:Name="MuteButton" Classes="bar" Width="30" Height="30" Command="{Binding ToggleMuteCommand}">
             <Panel>
               <PathIcon Data="{StaticResource icon_volume}" Width="17" Height="17" IsVisible="{Binding !Muted}"/>
@@ -92,22 +92,22 @@
           <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
                      Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>
         </StackPanel>
-        <StackPanel Grid.Column="7" VerticalAlignment="Center" Margin="0,0,14,0" MinWidth="86">
+        <StackPanel Grid.Column="6" VerticalAlignment="Center" Margin="0,0,14,0" MinWidth="86">
           <TextBlock Text="{Binding ShowClockText}" FontFamily="{StaticResource MonoFont}" FontSize="14"
                      Foreground="{StaticResource BrushFg}"/>
           <TextBlock Text="{Binding TimerSubText}" FontFamily="{StaticResource MonoFont}" FontSize="11"
                      Foreground="{StaticResource BrushDim}"/>
         </StackPanel>
-        <Button Grid.Column="8" x:Name="LockIcon" Classes="bar" Width="44" Height="44"
+        <Button Grid.Column="7" x:Name="LockIcon" Classes="bar" Width="44" Height="44"
                 Command="{Binding ToggleLockCommand}" VerticalAlignment="Center" Margin="0,0,14,0">
           <PathIcon Data="{StaticResource icon_lock}" Width="18" Height="18"
                     Foreground="{Binding LockBrush}"/>
         </Button>
-        <Button Grid.Column="9" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
+        <Button Grid.Column="8" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
                 Click="OnSettingsClick">
           <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
         </Button>
-        <Button Grid.Column="10" x:Name="PanicButton" Classes="panic" Content="PANIC"
+        <Button Grid.Column="9" x:Name="PanicButton" Classes="panic" Content="PANIC"
                 Command="{Binding PanicCommand}" VerticalAlignment="Center" Margin="6,0,0,0"/>
       </Grid>
     </Grid>

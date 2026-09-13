@@ -418,6 +418,10 @@ public static class TrackMetadata
         if (encoding is 1 or 2)
         {
             var bigEndian = encoding == 2;
+            if ((count & 1) == 1)
+            {
+                count--;
+            }
             var end16 = start + count;
             while (count >= 2)
             {
