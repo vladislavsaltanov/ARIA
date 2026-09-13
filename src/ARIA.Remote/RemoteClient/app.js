@@ -324,7 +324,7 @@
     if (total == null) return null;
     var cueIn = parseIsoDuration(current.cueIn) || 0;
     var cueOut = parseIsoDuration(current.cueOut);
-    var end = cueOut != null ? cueOut : total;
+    var end = cueOut == null ? total : cueOut;
     var window = (end - cueIn) * 1000;
     return window > 0 ? window : null;
   }
@@ -1372,8 +1372,13 @@
       var current = state.transport && state.transport.current;
       if (!current) return;
       var cueIn = (parseIsoDuration(current.cueIn) || 0) * 1000;
-      var ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-      send("seek_to", { position_ms: Math.round(cueIn + ratio * trackWindowMs) });
+      var ratio = Math.min(
+        1,
+        Math.max(0, (event.clientX - rect.left) / rect.width),
+      );
+      send("seek_to", {
+        position_ms: Math.round(cueIn + ratio * trackWindowMs),
+      });
       vibrate();
     });
   }
