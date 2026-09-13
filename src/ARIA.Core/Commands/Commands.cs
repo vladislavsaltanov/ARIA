@@ -84,6 +84,8 @@ public sealed record ResetShowClock : Command;
 
 public sealed record SetPanicFade(TimeSpan Duration) : Command;
 
+public sealed record SetSmoothing(Smoothing Value) : Command;
+
 public sealed record LoadShow(
     ImmutableArray<Track> Tracks,
     ImmutableArray<Playlist> Playlists,

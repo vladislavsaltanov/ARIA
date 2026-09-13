@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using Aria.App.Services;
 using Aria.Core.Commands;
+using Aria.Core.Model;
 using Aria.Core.Runtime;
 using Aria.Core.State;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -25,6 +26,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
     private double _panicFadeMs = 100;
+    private bool _smoothingEnabled;
+    private double _manualCrossfadeMs;
+    private double _autoCrossfadeMs;
+    private double _startFadeMs;
+    private double _stopFadeMs;
     private long _seq;
 
     [ObservableProperty]
@@ -61,6 +67,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         RowFormat = settings.RowFormat;
         RefreshGestures();
         ApplyMixer(bus.Snapshot().Mixer);
+        ApplySmoothing(settings.Smoothing);
+        if (bus.Snapshot().Mixer.Smoothing != settings.Smoothing)
+        {
+            Submit(new SetSmoothing(settings.Smoothing));
+        }
     }
 
     public double PanicFadeMs
@@ -71,6 +82,66 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _panicFadeMs, value))
             {
                 Submit(new SetPanicFade(TimeSpan.FromMilliseconds(value)));
+            }
+        }
+    }
+
+    public bool SmoothingEnabled
+    {
+        get => _smoothingEnabled;
+        set
+        {
+            if (SetProperty(ref _smoothingEnabled, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
+    public double ManualCrossfadeMs
+    {
+        get => _manualCrossfadeMs;
+        set
+        {
+            if (SetProperty(ref _manualCrossfadeMs, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
+    public double AutoCrossfadeMs
+    {
+        get => _autoCrossfadeMs;
+        set
+        {
+            if (SetProperty(ref _autoCrossfadeMs, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
+    public double StartFadeMs
+    {
+        get => _startFadeMs;
+        set
+        {
+            if (SetProperty(ref _startFadeMs, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
+    public double StopFadeMs
+    {
+        get => _stopFadeMs;
+        set
+        {
+            if (SetProperty(ref _stopFadeMs, value))
+            {
+                SubmitSmoothing();
             }
         }
     }
@@ -88,7 +159,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SaveRowSettings()
     {
-        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat);
+        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, CurrentSmoothing());
         RowFormat = settings.RowFormat;
         _settingsStore.Save(settings);
         _rowSettingsApplied?.Invoke(settings);
@@ -153,6 +224,34 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
+    private Smoothing CurrentSmoothing() => new(
+        _smoothingEnabled,
+        TimeSpan.FromMilliseconds(_manualCrossfadeMs),
+        TimeSpan.FromMilliseconds(_autoCrossfadeMs),
+        TimeSpan.FromMilliseconds(_startFadeMs),
+        TimeSpan.FromMilliseconds(_stopFadeMs));
+
+    private void SubmitSmoothing()
+    {
+        var smoothing = CurrentSmoothing();
+        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, smoothing));
+        Submit(new SetSmoothing(smoothing));
+    }
+
+    private void ApplySmoothing(Smoothing smoothing)
+    {
+        _smoothingEnabled = smoothing.Enabled;
+        _manualCrossfadeMs = smoothing.ManualCrossfade.TotalMilliseconds;
+        _autoCrossfadeMs = smoothing.AutoCrossfade.TotalMilliseconds;
+        _startFadeMs = smoothing.StartFade.TotalMilliseconds;
+        _stopFadeMs = smoothing.StopFade.TotalMilliseconds;
+        OnPropertyChanged(nameof(SmoothingEnabled));
+        OnPropertyChanged(nameof(ManualCrossfadeMs));
+        OnPropertyChanged(nameof(AutoCrossfadeMs));
+        OnPropertyChanged(nameof(StartFadeMs));
+        OnPropertyChanged(nameof(StopFadeMs));
+    }
+
     private void SaveBindings(HotkeyConfig config)
     {
         config.Save(_hotkeysPath);
@@ -193,6 +292,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     {
         _panicFadeMs = state.PanicFade.TotalMilliseconds;
         OnPropertyChanged(nameof(PanicFadeMs));
+        ApplySmoothing(state.Smoothing);
     }
 
     public sealed class GestureRow(string action, string label, string gesture) : ObservableObject

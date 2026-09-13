@@ -1,6 +1,7 @@
 namespace Aria.Audio;
 
 using System.Collections.Concurrent;
+using Aria.Core.Model;
 using Aria.Core.Playback;
 
 public sealed class AriaAudioEngine : IAudioEngine, IDisposable
@@ -89,6 +90,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     public void SetMasterGain(double gainDb)
         => Volatile.Write(ref _masterGainBits, BitConverter.DoubleToInt64Bits(Math.Pow(10.0, gainDb / 20.0)));
+
+    public void SetSmoothing(Smoothing smoothing)
+    {
+        ArgumentNullException.ThrowIfNull(smoothing);
+        _mixer.SetSmoothing(smoothing.StopFade, smoothing.StartFade, smoothing.Enabled);
+    }
 
     public void Panic(PanicSpec spec)
     {

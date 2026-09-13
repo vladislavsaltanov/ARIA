@@ -21,6 +21,16 @@ public sealed record Fade(TimeSpan Duration, FadeCurve Curve)
     public static Fade None { get; } = new(TimeSpan.Zero, FadeCurve.Linear);
 }
 
+public sealed record Smoothing(bool Enabled, TimeSpan ManualCrossfade, TimeSpan AutoCrossfade, TimeSpan StartFade, TimeSpan StopFade)
+{
+    public static Smoothing Default { get; } = new(
+        false,
+        TimeSpan.FromMilliseconds(350),
+        TimeSpan.FromMilliseconds(800),
+        TimeSpan.FromMilliseconds(250),
+        TimeSpan.FromMilliseconds(250));
+}
+
 public enum MarkerAction
 {
     Stop,

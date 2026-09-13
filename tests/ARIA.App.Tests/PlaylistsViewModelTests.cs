@@ -219,7 +219,7 @@ public sealed class PlaylistsViewModelTests
 
         Assert.Equal("Осенний дождь", vm.Playlists[0].Entries[0].RowText);
 
-        vm.UpdateRowSettings(new AppSettings(true, "{position} {filename}"));
+        vm.UpdateRowSettings(new AppSettings(true, "{position} {filename}", Smoothing.Default));
 
         Assert.Equal("01 rain.flac", vm.Playlists[0].Entries[0].RowText);
         Assert.Equal("Осенний дождь", vm.Playlists[0].Entries[0].DisplayName);

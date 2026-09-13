@@ -1,6 +1,7 @@
 namespace Aria.Persistence.Tests;
 
 using Aria.Core.Commands;
+using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
@@ -150,6 +151,10 @@ public sealed class ShowAutosaverTests : IDisposable
         }
 
         public void SetMasterGain(double gainDb)
+        {
+        }
+
+        public void SetSmoothing(Smoothing smoothing)
         {
         }
 

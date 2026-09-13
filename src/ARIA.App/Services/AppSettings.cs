@@ -1,10 +1,11 @@
 namespace Aria.App.Services;
 
 using System.Text.Json;
+using Aria.Core.Model;
 
-public sealed record AppSettings(bool UseFileName, string RowFormat)
+public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing)
 {
-    public static AppSettings Default { get; } = new(false, "{name}");
+    public static AppSettings Default { get; } = new(false, "{name}", Smoothing.Default);
 }
 
 public sealed class AppSettingsStore(string path)
@@ -29,7 +30,10 @@ public sealed class AppSettingsStore(string path)
             {
                 return AppSettings.Default;
             }
-            return new AppSettings(dto.UseFileName, string.IsNullOrWhiteSpace(dto.RowFormat) ? AppSettings.Default.RowFormat : dto.RowFormat);
+            return new AppSettings(
+                dto.UseFileName,
+                string.IsNullOrWhiteSpace(dto.RowFormat) ? AppSettings.Default.RowFormat : dto.RowFormat,
+                dto.Smoothing?.ToModel() ?? Smoothing.Default);
         }
         catch (Exception e) when (e is JsonException or IOException)
         {
@@ -44,10 +48,57 @@ public sealed class AppSettingsStore(string path)
         {
             Directory.CreateDirectory(directory);
         }
-        File.WriteAllText(path, JsonSerializer.Serialize(new AppSettingsDto(settings.UseFileName, settings.RowFormat), Options));
+        File.WriteAllText(path, JsonSerializer.Serialize(AppSettingsDto.FromModel(settings), Options));
     }
 
-    private sealed record AppSettingsDto(bool UseFileName, string RowFormat);
+    private sealed record AppSettingsDto(
+        bool UseFileName,
+        string RowFormat,
+        SmoothingDto? Smoothing)
+    {
+        public static AppSettingsDto FromModel(AppSettings settings) => new(
+            settings.UseFileName,
+            settings.RowFormat,
+            SmoothingDto.FromModel(settings.Smoothing));
+
+        public Smoothing ToModel()
+        {
+            if (Smoothing is null)
+            {
+                return Aria.Core.Model.Smoothing.Default;
+            }
+            return Smoothing.ToModel();
+        }
+    }
+
+    private sealed record SmoothingDto(
+        bool Enabled,
+        long ManualCrossfadeMs,
+        long AutoCrossfadeMs,
+        long StartFadeMs,
+        long StopFadeMs)
+    {
+        public static SmoothingDto FromModel(Smoothing smoothing) => new(
+            smoothing.Enabled,
+            (long)smoothing.ManualCrossfade.TotalMilliseconds,
+            (long)smoothing.AutoCrossfade.TotalMilliseconds,
+            (long)smoothing.StartFade.TotalMilliseconds,
+            (long)smoothing.StopFade.TotalMilliseconds);
+
+        public Smoothing ToModel()
+        {
+            var fallback = Aria.Core.Model.Smoothing.Default;
+            return new Smoothing(
+                Enabled,
+                Clamp(ManualCrossfadeMs, fallback.ManualCrossfade),
+                Clamp(AutoCrossfadeMs, fallback.AutoCrossfade),
+                Clamp(StartFadeMs, fallback.StartFade),
+                Clamp(StopFadeMs, fallback.StopFade));
+        }
+
+        private static TimeSpan Clamp(long ms, TimeSpan fallback) =>
+            ms < 0 || ms > 5000 ? fallback : TimeSpan.FromMilliseconds(ms);
+    }
 }
 
 public static class RowFormatter

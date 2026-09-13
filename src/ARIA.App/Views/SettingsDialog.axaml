@@ -117,6 +117,36 @@
             <TextBlock Grid.Column="2" Text="{Binding PanicFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
                        FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
           </Grid>
+          <CheckBox Content="сглаживание (как в AIMP)" IsChecked="{Binding SmoothingEnabled}"
+                    FontSize="12" Margin="0,12,0,4"/>
+          <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}">
+            <TextBlock Text="кроссфейд вручную" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding ManualCrossfadeMs, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding ManualCrossfadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
+            <TextBlock Text="кроссфейд по очереди" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="3000" Value="{Binding AutoCrossfadeMs, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding AutoCrossfadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
+            <TextBlock Text="скорость запуска" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding StartFadeMs, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding StartFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
+            <TextBlock Text="скорость затухания" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding StopFadeMs, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding StopFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+          </Grid>
         </StackPanel>
       </Border>
     </StackPanel>

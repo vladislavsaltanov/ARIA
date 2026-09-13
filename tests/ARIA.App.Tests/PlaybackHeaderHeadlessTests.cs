@@ -148,7 +148,7 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
             0,
             new QueueState([]),
             0,
-            new MixerState(0, false, TimeSpan.FromMilliseconds(100)));
+            new MixerState(0, false, TimeSpan.FromMilliseconds(100), Smoothing.Default));
 
         public List<Command> Received { get; } = [];
 

@@ -71,7 +71,7 @@ public sealed class TransportBarHeadlessTests : IDisposable
             0,
             new Core.State.QueueState([]),
             0,
-            new Core.State.MixerState(0, false, TimeSpan.FromMilliseconds(100)));
+            new Core.State.MixerState(0, false, TimeSpan.FromMilliseconds(100), Core.Model.Smoothing.Default));
 
         public Action<Core.State.StateEvent>? Emitted { get; set; }
 

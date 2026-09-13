@@ -62,6 +62,8 @@ public interface IAudioEngine
 
     void SetMasterGain(double gainDb);
 
+    void SetSmoothing(Smoothing smoothing);
+
     void Panic(PanicSpec spec);
 
     void DisposeStream(StreamHandle handle);

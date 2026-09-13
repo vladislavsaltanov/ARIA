@@ -3,6 +3,7 @@ namespace Aria.Remote.Tests;
 using System.Text;
 using System.Text.Json;
 using Aria.Core.Commands;
+using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 
@@ -27,6 +28,10 @@ internal sealed class StubEngine : IAudioEngine
     }
 
     public void SetMasterGain(double gainDb)
+    {
+    }
+
+    public void SetSmoothing(Smoothing smoothing)
     {
     }
 
