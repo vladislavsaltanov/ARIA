@@ -54,7 +54,7 @@ public sealed record ShowState(
     ImmutableArray<Script> Scripts,
     TrackDigest TrackDigest);
 
-public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade);
+public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade, Smoothing Smoothing);
 
 public abstract record StateEvent;
 

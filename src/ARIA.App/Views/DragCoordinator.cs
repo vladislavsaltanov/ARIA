@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 internal sealed class DragCoordinator
@@ -18,22 +19,23 @@ internal sealed class DragCoordinator
     private List<LibraryViewModel.TrackVm>? _tracks;
     private PlaylistsViewModel.EntryVm? _entry;
     private QueueViewModel.QueueItemVm? _queueItem;
-    private Border? _highlight;
+    private Border? _rowHighlight;
+    private ListBox? _listHighlight;
 
     public DragCoordinator(ListBox library, ListBox playlist, ListBox queue)
     {
         _library = library;
         _playlist = playlist;
         _queue = queue;
-        library.PointerPressed += OnPress;
-        library.PointerMoved += OnMove;
-        library.PointerReleased += OnRelease;
-        playlist.PointerPressed += OnPress;
-        playlist.PointerMoved += OnMove;
-        playlist.PointerReleased += OnRelease;
-        queue.PointerPressed += OnPress;
-        queue.PointerMoved += OnMove;
-        queue.PointerReleased += OnRelease;
+        library.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        library.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        library.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
+        playlist.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        playlist.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        playlist.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
+        queue.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        queue.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        queue.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
     private void OnPress(object? sender, PointerPressedEventArgs e)
@@ -166,7 +168,7 @@ internal sealed class DragCoordinator
                 }
             }
             else if (IsInside(_queue, e.GetPosition(_queue))
-                && _queue.DataContext is LibraryViewModel library)
+                && source.DataContext is LibraryViewModel library)
             {
                 library.EnqueueTracks(tracks);
             }
@@ -186,10 +188,15 @@ internal sealed class DragCoordinator
 
     private void ClearHighlight()
     {
-        if (_highlight is not null)
+        if (_rowHighlight is not null)
         {
-            _highlight.Background = Brushes.Transparent;
-            _highlight = null;
+            _rowHighlight.Background = Brushes.Transparent;
+            _rowHighlight = null;
+        }
+        if (_listHighlight is not null)
+        {
+            _listHighlight.Background = Brushes.Transparent;
+            _listHighlight = null;
         }
     }
 
@@ -200,9 +207,22 @@ internal sealed class DragCoordinator
             .FirstOrDefault(b => b.Classes.Contains("plRow") || b.Classes.Contains("qRow"));
         if (border is not null)
         {
+            if (_rowHighlight == border)
+            {
+                return;
+            }
+            ClearHighlight();
             border.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
-            _highlight = border;
+            _rowHighlight = border;
+            return;
         }
+        if (_listHighlight == list)
+        {
+            return;
+        }
+        ClearHighlight();
+        list.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
+        _listHighlight = list;
     }
 
     private static object? RowAt(ListBox list, PointerPressedEventArgs e)

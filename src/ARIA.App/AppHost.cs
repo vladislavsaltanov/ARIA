@@ -1,6 +1,7 @@
 namespace Aria.App;
 
 using System.Collections.Immutable;
+using System.Net.Sockets;
 using Aria.App.Services;
 using Aria.Audio;
 using Aria.Core.Commands;
@@ -112,7 +113,15 @@ public sealed class AppHost : IAsyncDisposable
         if (_remoteOptions is { } options)
         {
             Remote = new RemoteHost(Bus, options, Monitor, Meters);
-            await Remote.StartAsync(cancellationToken);
+            try
+            {
+                await Remote.StartAsync(cancellationToken);
+            }
+            catch (Exception e) when (options.Port != 0 && IsPortBusy(e))
+            {
+                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters);
+                await Remote.StartAsync(cancellationToken);
+            }
         }
 
         _clockTimer = new System.Threading.Timer(
@@ -164,6 +173,18 @@ public sealed class AppHost : IAsyncDisposable
             SyncShowState(current);
         }
         return new ImportReport(added, skipped, failed.ToImmutable());
+    }
+
+    private static bool IsPortBusy(Exception exception)
+    {
+        for (var current = (Exception?)exception; current is not null; current = current.InnerException)
+        {
+            if (current is SocketException socket && socket.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static IEnumerable<string> ExpandAudioFiles(IEnumerable<string> paths)

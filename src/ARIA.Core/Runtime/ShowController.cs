@@ -12,6 +12,7 @@ public sealed class ShowController : IShowHandler
     private const double MasterGainMaxDb = 12.0;
     private const double SilenceDb = -80.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
+    private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
 
     private readonly IAudioEngine _engine;
@@ -39,6 +40,7 @@ public sealed class ShowController : IShowHandler
     private TimeSpan _clockElapsed;
     private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
+    private Smoothing _smoothing = Smoothing.Default;
     private ImmutableArray<Script> _scripts = [];
     private TrackDigest _emittedDigest = TrackDigest.Empty;
 
@@ -132,6 +134,9 @@ public sealed class ShowController : IShowHandler
             case AddEntry addEntry:
                 OnAddEntry(client, seq, addEntry);
                 break;
+            case ImportPlaylist importPlaylist:
+                OnImportPlaylist(client, seq, importPlaylist);
+                break;
             case RemoveEntry removeEntry:
                 OnRemoveEntry(client, seq, removeEntry);
                 break;
@@ -177,11 +182,20 @@ public sealed class ShowController : IShowHandler
             case TickShowClock:
                 OnTickShowClock();
                 break;
+            case StartShowClock:
+                OnStartShowClock();
+                break;
+            case PauseShowClock:
+                OnPauseShowClock();
+                break;
             case ResetShowClock:
                 OnResetShowClock();
                 break;
             case SetPanicFade setPanicFade:
                 OnSetPanicFade(client, seq, setPanicFade);
+                break;
+            case SetSmoothing setSmoothing:
+                OnSetSmoothing(client, seq, setSmoothing);
                 break;
             default:
                 Reject(client, seq, "unknown-command");
@@ -197,7 +211,7 @@ public sealed class ShowController : IShowHandler
         _queueVersion,
         new QueueState([.. _queue]),
         _mixerVersion,
-        new MixerState(_masterGainDb, _muted, _panicFade));
+        new MixerState(_masterGainDb, _muted, _panicFade, _smoothing));
 
     private void OnLoadShow(ClientId client, long seq, LoadShow load)
     {
@@ -491,11 +505,21 @@ public sealed class ShowController : IShowHandler
         }
         if (_current is { Handle: { } handle })
         {
-            _engine.Transport(handle, TransportCommand.Stop);
-            _engine.DisposeStream(handle);
-            _retired.Remove(handle);
-            _monitor?.Unbind(handle);
-            _current.Handle = null;
+            if (_smoothing.Enabled && _smoothing.StopFade > TimeSpan.Zero)
+            {
+                _engine.SetMix(handle, new MixParameters(_current.Settings.GainDb, new FadeSpec(_smoothing.StopFade, FadeCurve.Linear, SilenceDb, StopWhenDone: true)));
+                _retired.Add(handle);
+                _monitor?.Unbind(handle);
+                _current.Handle = null;
+            }
+            else
+            {
+                _engine.Transport(handle, TransportCommand.Stop);
+                _engine.DisposeStream(handle);
+                _retired.Remove(handle);
+                _monitor?.Unbind(handle);
+                _current.Handle = null;
+            }
         }
         _status = TransportStatus.Stopped;
         _atEndBoundary = false;
@@ -516,7 +540,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "nothing-to-play");
             return;
         }
-        ReleaseOld(old, wasPlaying);
+        ReleaseOld(old, wasPlaying, manual: true);
     }
 
     private void OnReplay(ClientId client, long seq)
@@ -587,8 +611,8 @@ public sealed class ShowController : IShowHandler
         }
         var wasPlaying = _status == TransportStatus.Playing;
         var old = _current;
-        StartPlaylistEntry(location.Playlist, location.Index);
-        ReleaseOld(old, wasPlaying);
+        StartPlaylistEntry(location.Playlist, location.Index, auto: false);
+        ReleaseOld(old, wasPlaying, manual: true);
     }
 
     private void OnEnqueueEntry(ClientId client, long seq, EnqueueEntry command)
@@ -741,6 +765,34 @@ public sealed class ShowController : IShowHandler
         var entry = new PlaylistEntry(EntryId.New(), command.Track);
         var entries = command.Index is { } at ? playlist.Entries.Insert(at, entry) : playlist.Entries.Add(entry);
         _playlists = _playlists.SetItem(index, playlist with { Entries = entries });
+        RebuildEntryMap();
+        EmitShow();
+        EmitTransport();
+    }
+
+    private void OnImportPlaylist(ClientId client, long seq, ImportPlaylist command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name))
+        {
+            Reject(client, seq, "bad-name");
+            return;
+        }
+        if (command.Entries.IsDefaultOrEmpty)
+        {
+            Reject(client, seq, "empty-playlist");
+            return;
+        }
+        foreach (var entry in command.Entries)
+        {
+            if (!_trackMap.ContainsKey(entry.Track))
+            {
+                Reject(client, seq, "unknown-track");
+                return;
+            }
+        }
+        var entries = command.Entries.Select(imported =>
+            new PlaylistEntry(EntryId.New(), imported.Track, imported.Overrides));
+        _playlists = _playlists.Add(new Playlist(PlaylistId.New(), command.Name, [.. entries]));
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
@@ -1013,6 +1065,26 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
+    private void OnStartShowClock()
+    {
+        if (_clockRunning)
+        {
+            return;
+        }
+        _clockRunning = true;
+        EmitShow();
+    }
+
+    private void OnPauseShowClock()
+    {
+        if (!_clockRunning)
+        {
+            return;
+        }
+        _clockRunning = false;
+        EmitShow();
+    }
+
     private void OnResetShowClock()
     {
         _clockElapsed = TimeSpan.Zero;
@@ -1038,6 +1110,22 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _panicFade = command.Duration;
+        EmitMixer();
+    }
+
+    private void OnSetSmoothing(ClientId client, long seq, SetSmoothing command)
+    {
+        var value = command.Value;
+        if (value.ManualCrossfade < TimeSpan.Zero || value.ManualCrossfade > SmoothingMax
+            || value.AutoCrossfade < TimeSpan.Zero || value.AutoCrossfade > SmoothingMax
+            || value.StartFade < TimeSpan.Zero || value.StartFade > SmoothingMax
+            || value.StopFade < TimeSpan.Zero || value.StopFade > SmoothingMax)
+        {
+            Reject(client, seq, "smoothing-out-of-range");
+            return;
+        }
+        _smoothing = value;
+        _engine.SetSmoothing(value);
         EmitMixer();
     }
 
@@ -1134,7 +1222,7 @@ public sealed class ShowController : IShowHandler
                 ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track)
                 : EffectiveSettings.ForTrack(track);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
-            StartStreamFor(_current);
+            StartStreamFor(_current, auto: true);
             _status = TransportStatus.Playing;
             _atEndBoundary = false;
             _panicked = false;
@@ -1149,14 +1237,14 @@ public sealed class ShowController : IShowHandler
             var playlist = _playlists.First(p => p.Id == playlistId);
             if (_cursor < playlist.Entries.Length)
             {
-                StartPlaylistEntry(playlist, _cursor);
+                StartPlaylistEntry(playlist, _cursor, auto: true);
                 return true;
             }
         }
         return false;
     }
 
-    private void StartPlaylistEntry(Playlist playlist, int index)
+    private void StartPlaylistEntry(Playlist playlist, int index, bool auto)
     {
         var entry = playlist.Entries[index];
         var track = _trackMap[entry.TrackId];
@@ -1164,7 +1252,7 @@ public sealed class ShowController : IShowHandler
         _activePlaylistId = playlist.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
-        StartStreamFor(_current);
+        StartStreamFor(_current, auto);
         _status = TransportStatus.Playing;
         _atEndBoundary = false;
         _panicked = false;
@@ -1172,7 +1260,7 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private void StartStreamFor(DeckInstance deck)
+    private void StartStreamFor(DeckInstance deck, bool auto)
     {
         if (deck.Handle is { } previous)
         {
@@ -1188,7 +1276,7 @@ public sealed class ShowController : IShowHandler
         deck.Handle = handle;
         _monitor?.Bind(handle, Content(deck));
 
-        var fadeIn = settings.In;
+        var fadeIn = ResolveFadeIn(settings.In, auto);
         var mix = fadeIn.Duration > TimeSpan.Zero
             ? new MixParameters(settings.GainDb, new FadeSpec(fadeIn.Duration, fadeIn.Curve, settings.GainDb, StopWhenDone: false))
             : new MixParameters(settings.GainDb, null);
@@ -1206,20 +1294,34 @@ public sealed class ShowController : IShowHandler
             _retired.Remove(handle);
             _monitor?.Unbind(handle);
         }
-        StartStreamFor(deck);
+        StartStreamFor(deck, auto: false);
         _status = TransportStatus.Playing;
         _atEndBoundary = false;
         _panicked = false;
         EmitTransport();
     }
 
-    private void ReleaseOld(DeckInstance? old, bool wasPlaying)
+    private Fade ResolveFadeIn(Fade trackFade, bool auto)
+    {
+        if (!_smoothing.Enabled)
+        {
+            return trackFade;
+        }
+        var duration = auto ? _smoothing.AutoCrossfade : _smoothing.StartFade;
+        return duration > TimeSpan.Zero ? new Fade(duration, trackFade.Curve) : Fade.None;
+    }
+
+    private void ReleaseOld(DeckInstance? old, bool wasPlaying, bool manual)
     {
         if (old?.Handle is not { } handle)
         {
             return;
         }
         var fadeOut = wasPlaying ? old.Settings.Out : null;
+        if (_smoothing.Enabled && manual && wasPlaying && _smoothing.ManualCrossfade > TimeSpan.Zero)
+        {
+            fadeOut = new Fade(_smoothing.ManualCrossfade, old.Settings.Out.Curve);
+        }
         if (fadeOut is { } fade && fade.Duration > TimeSpan.Zero)
         {
             _engine.SetMix(handle, new MixParameters(old.Settings.GainDb, new FadeSpec(fade.Duration, fade.Curve, SilenceDb, StopWhenDone: true)));
@@ -1365,7 +1467,7 @@ public sealed class ShowController : IShowHandler
 
     private void EmitQueue() => Emit(new QueueDelta(++_queueVersion, new QueueState([.. _queue])));
 
-    private void EmitMixer() => Emit(new MixerDelta(++_mixerVersion, new MixerState(_masterGainDb, _muted, _panicFade)));
+    private void EmitMixer() => Emit(new MixerDelta(++_mixerVersion, new MixerState(_masterGainDb, _muted, _panicFade, _smoothing)));
 
     private sealed class DeckInstance
     {

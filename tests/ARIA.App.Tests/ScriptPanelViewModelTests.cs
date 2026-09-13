@@ -376,4 +376,53 @@ public sealed class ScriptPanelViewModelTests : IDisposable
         }
         _viewModel.CommitEdit(line);
     }
+
+    [Fact]
+    public void UnrelatedShowDelta_KeepsEditingLine_WithoutCollectionReset()
+    {
+        _viewModel.CreateScriptCommand.Execute(null);
+        _viewModel.AddLineCommand.Execute(null);
+        var line = Assert.Single(_viewModel.Lines);
+        Assert.True(line.IsEditing);
+        line.EditText = "черновик";
+        var lineEvents = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        _viewModel.Lines.CollectionChanged += (_, e) => lineEvents.Add(e.Action);
+        var scriptEvents = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        _viewModel.Scripts.CollectionChanged += (_, e) => scriptEvents.Add(e.Action);
+
+        _bus.Submit(new ClientId("tick"), 1, new ResetShowClock());
+
+        Assert.True(line.IsEditing);
+        Assert.Same(line, Assert.Single(_viewModel.Lines));
+        Assert.Equal("черновик", line.EditText);
+        Assert.Empty(lineEvents);
+        Assert.Empty(scriptEvents);
+    }
+
+    [Fact]
+    public void ReorderWhileEditing_DefersCollectionReset_UntilCommit()
+    {
+        _viewModel.CreateScriptCommand.Execute(null);
+        AddCommittedLine("0:00", "a", []);
+        AddCommittedLine("1:00", "b", []);
+        var first = _viewModel.Lines[0];
+        var second = _viewModel.Lines[1];
+        _viewModel.BeginEdit(second);
+        second.EditText = "черновик";
+        Assert.NotNull(_viewModel.SelectedScript);
+        var script = _viewModel.SelectedScript!;
+
+        _bus.Submit(new ClientId("ext"), 1, new MoveScriptLine(script.Id, first.Id, 1));
+
+        Assert.Same(first, _viewModel.Lines[0]);
+        Assert.Same(second, _viewModel.Lines[1]);
+        Assert.True(second.IsEditing);
+        Assert.Equal("черновик", second.EditText);
+
+        _viewModel.CommitEdit(second);
+
+        Assert.False(second.IsEditing);
+        Assert.Equal("черновик", _viewModel.Lines[0].Text);
+        Assert.Equal("a", _viewModel.Lines[1].Text);
+    }
 }

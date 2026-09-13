@@ -10,21 +10,61 @@
     <Style Selector="Border.headerWave:pointerover">
       <Setter Property="Cursor" Value="Hand"/>
     </Style>
+    <Style Selector="Button.clockBtn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="10,0"/>
+      <Setter Property="MinHeight" Value="28"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Foreground" Value="#8A8A8A"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.clockBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1F1F1F"/>
+    </Style>
+    <Style Selector="Button.clockBtn:disabled">
+      <Setter Property="Opacity" Value="0.35"/>
+    </Style>
   </UserControl.Styles>
   <Border x:Name="WaveformBorder" Classes="headerWave">
-    <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,8">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,8">
       <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
                  FontFamily="{StaticResource MonoFont}" FontSize="36" FontWeight="SemiBold"
                  Foreground="#ECECEC" HorizontalAlignment="Center"/>
       <TextBlock Grid.Row="1" x:Name="TimerSubBig" Text="{Binding TimerSubText}"
                  FontFamily="{StaticResource MonoFont}" FontSize="14"
                  Foreground="#8A8A8A" HorizontalAlignment="Center" Margin="0,4,0,8"/>
-      <Border Grid.Row="2" x:Name="WaveformStrip" Height="56" Background="Transparent"
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4" Margin="0,0,0,8">
+        <Button x:Name="StartClockButton" Classes="clockBtn" Command="{Binding StartClockCommand}"
+                IsEnabled="{Binding !ClockRunning}" ToolTip.Tip="Запустить часы шоу">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_play}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Старт" FontSize="12" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="PauseClockButton" Classes="clockBtn" Command="{Binding PauseClockCommand}"
+                IsEnabled="{Binding ClockRunning}" ToolTip.Tip="Остановить часы шоу">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_pause}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Пауза" FontSize="12" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="ResetClockButton" Classes="clockBtn" Command="{Binding ResetClockCommand}"
+                ToolTip.Tip="Сбросить часы шоу">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_stop}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Сброс" FontSize="12" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      <Border Grid.Row="3" x:Name="WaveformStrip" Height="56" Background="Transparent"
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <Grid>
-          <Canvas x:Name="WaveformCanvas" Background="Transparent"/>
-          <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="#ECECEC"
-                     HorizontalAlignment="Left" IsVisible="False"/>
+          <Canvas x:Name="WaveformCanvas" Background="Transparent">
+            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="#ECECEC"
+                       IsVisible="False"/>
+          </Canvas>
         </Grid>
       </Border>
     </Grid>

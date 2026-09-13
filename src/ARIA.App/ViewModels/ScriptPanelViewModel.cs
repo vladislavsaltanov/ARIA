@@ -2,29 +2,52 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Runtime;
 using Aria.Core.State;
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 {
+    public const string ScriptFileExtension = ".aria-script.json";
+
     private const int SuggestLimit = 5;
+    private const string ScriptFormatId = "aria-script";
+    private const int ScriptFormatVersion = 1;
+
+    private static readonly JsonSerializerOptions ScriptJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     private readonly ICommandBus _bus;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-scripts");
     private readonly Func<ImmutableArray<Track>>? _trackSource;
+    private readonly Func<TopLevel?>? _topLevel;
     private readonly IDisposable _subscription;
+    private readonly SynchronizationContext? _sync;
     private readonly HashSet<ScriptId> _knownScripts = [];
     private readonly HashSet<ScriptLineId> _knownLines = [];
+    private string? _lastScriptKey;
     private bool _editNextArrival;
     private bool _addLinePending;
     private TimeSpan _elapsed;
     private bool _clockRunning;
     private int _newScriptCounter;
     private long _seq;
+    private List<(TimeSpan AtElapsed, string Text)>? _pendingImportLines;
+    private string? _awaitedScriptName;
 
     [ObservableProperty]
     private ScriptVm? selectedScript;
@@ -32,16 +55,26 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private TrackId? highlightedTrack;
 
+    [ObservableProperty]
+    private string scriptIoStatus = string.Empty;
+
+    [ObservableProperty]
+    private string lastScriptError = string.Empty;
+
+    public event Action<string>? ScriptImportFailed;
+
     public ObservableCollection<ScriptVm> Scripts { get; } = [];
 
     public ObservableCollection<ScriptLineVm> Lines { get; } = [];
 
     partial void OnSelectedScriptChanged(ScriptVm? value) => OnPropertyChanged(nameof(ShowEmptyScript));
 
-    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null)
+    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null)
     {
         _bus = bus;
         _trackSource = trackSource;
+        _sync = sync;
+        _topLevel = topLevel;
         _subscription = bus.Subscribe(Apply);
         Scripts.CollectionChanged += (_, _) =>
         {
@@ -94,6 +127,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         Submit(new RenameScript(script.Id, name));
     }
 
+    [RelayCommand]
     public void DeleteSelected()
     {
         CommitOpenEdit();
@@ -102,6 +136,133 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             return;
         }
         Submit(new DeleteScript(script.Id));
+    }
+
+    [RelayCommand]
+    private async Task ExportScriptAsync()
+    {
+        var topLevel = _topLevel?.Invoke();
+        if (topLevel is null)
+        {
+            ScriptIoStatus = "экспорт недоступен";
+            return;
+        }
+        if (SelectedScript is null)
+        {
+            ScriptIoStatus = "нет сценария для экспорта";
+            return;
+        }
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Экспорт сценария",
+            SuggestedFileName = SelectedScript.Name + ScriptFileExtension,
+            FileTypeChoices =
+            [
+                new FilePickerFileType("ARIA-сценарий") { Patterns = [$"*{ScriptFileExtension}"] },
+            ],
+        });
+        if (file is null)
+        {
+            return;
+        }
+        await using var stream = await file.OpenWriteAsync();
+        await using var writer = new StreamWriter(stream);
+        await writer.WriteAsync(ExportSelectedDocument());
+        ScriptIoStatus = $"экспортировано: {SelectedScript.Name}";
+    }
+
+    [RelayCommand]
+    private async Task ImportScriptAsync()
+    {
+        var topLevel = _topLevel?.Invoke();
+        if (topLevel is null)
+        {
+            ScriptIoStatus = "импорт недоступен";
+            return;
+        }
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Импорт сценария",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("ARIA-сценарий") { Patterns = [$"*{ScriptFileExtension}", "*.json"] },
+            ],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+        await using var stream = await files[0].OpenReadAsync();
+        using var reader = new StreamReader(stream);
+        ImportDocument(await reader.ReadToEndAsync());
+    }
+
+    public string ExportSelectedDocument()
+    {
+        var state = _bus.Snapshot().Show;
+        var script = SelectedScript is null
+            ? null
+            : state.Scripts.FirstOrDefault(s => s.Id == SelectedScript.Id);
+        if (script is null)
+        {
+            throw new InvalidOperationException("Нет выбранного сценария");
+        }
+        var document = new ScriptFileDocument(
+            ScriptFormatId,
+            ScriptFormatVersion,
+            script.Name,
+            script.Lines.Select(l => new ScriptFileLine(FormatLineTime(l.AtElapsed), l.Text)).ToArray());
+        return JsonSerializer.Serialize(document, ScriptJsonOptions);
+    }
+
+    public ScriptImportReport ImportDocument(string json)
+    {
+        ScriptFileDocument? document;
+        try
+        {
+            document = JsonSerializer.Deserialize<ScriptFileDocument>(json, ScriptJsonOptions);
+        }
+        catch (JsonException e)
+        {
+            return FailScriptImport($"bad-json: {e.Message}");
+        }
+        if (document is null)
+        {
+            return FailScriptImport("bad-json: пустой документ");
+        }
+        if (!string.Equals(document.Format, ScriptFormatId, StringComparison.Ordinal))
+        {
+            return FailScriptImport($"bad-format: {document.Format}");
+        }
+        if (document.Version != ScriptFormatVersion)
+        {
+            return FailScriptImport($"bad-version: {document.Version}");
+        }
+        if (string.IsNullOrWhiteSpace(document.Name))
+        {
+            return FailScriptImport("bad-name: пустое имя сценария");
+        }
+        if (document.Lines is null)
+        {
+            return FailScriptImport("bad-lines: нет строк");
+        }
+        var lines = new List<(TimeSpan AtElapsed, string Text)>(document.Lines.Length);
+        foreach (var line in document.Lines)
+        {
+            if (!TryParseLineTime(line.At, out var atElapsed))
+            {
+                return FailScriptImport($"bad-line: неверное время: {line.At}");
+            }
+            lines.Add((atElapsed, line.Text ?? string.Empty));
+        }
+        var name = UniqueScriptName(document.Name.Trim());
+        _pendingImportLines = lines;
+        _awaitedScriptName = name;
+        Submit(new CreateScript(name));
+        LastScriptError = string.Empty;
+        ScriptIoStatus = $"импортировано: {name} ({lines.Count})";
+        return new ScriptImportReport(name, lines.Count, null);
     }
 
     [RelayCommand]
@@ -318,7 +479,19 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     {
         if (e is ShowDelta)
         {
-            Rebuild(_bus.Snapshot().Show);
+            Post(() => Rebuild(_bus.Snapshot().Show));
+        }
+    }
+
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
         }
     }
 
@@ -330,6 +503,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         SyncScripts(state);
         SyncLines(state, tracks);
         RefreshFollow(state);
+        FlushPendingImport(state);
         if (_addLinePending)
         {
             _addLinePending = false;
@@ -349,6 +523,12 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private void SyncScripts(ShowState state)
     {
         var selectedId = SelectedScript?.Id;
+        var key = BuildScriptKey(state, selectedId);
+        if (key == _lastScriptKey && SelectedScript is not null)
+        {
+            return;
+        }
+        _lastScriptKey = key;
         Scripts.Clear();
         foreach (var script in state.Scripts)
         {
@@ -365,6 +545,33 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             _knownScripts.Add(script.Id);
         }
         SelectedScript = Scripts.FirstOrDefault(s => s.Id == selectedId) ?? Scripts.FirstOrDefault();
+    }
+
+    private static bool SameOrder(List<ScriptLineVm> fresh, ObservableCollection<ScriptLineVm> current)
+    {
+        if (fresh.Count != current.Count)
+        {
+            return false;
+        }
+        for (var index = 0; index < fresh.Count; index++)
+        {
+            if (!ReferenceEquals(fresh[index], current[index]))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static string BuildScriptKey(ShowState state, ScriptId? selectedId)
+    {
+        var sb = new StringBuilder();
+        sb.Append(selectedId);
+        foreach (var script in state.Scripts)
+        {
+            sb.Append('|').Append(script.Id).Append(':').Append(script.Name);
+        }
+        return sb.ToString();
     }
 
     private void SyncLines(ShowState state, ImmutableArray<Track> tracks)
@@ -395,10 +602,13 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             }
             fresh.Add(vm);
         }
-        Lines.Clear();
-        foreach (var vm in fresh)
+        if (!SameOrder(fresh, Lines) && Lines.All(l => !l.IsEditing))
         {
-            Lines.Add(vm);
+            Lines.Clear();
+            foreach (var vm in fresh)
+            {
+                Lines.Add(vm);
+            }
         }
         if (_editNextArrival)
         {
@@ -418,7 +628,10 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         var current = script is null ? null : ScriptFollow.CurrentLine(script, _elapsed);
         foreach (var line in Lines)
         {
-            line.IsCurrent = current is not null && line.Id == current.Id;
+            if (!line.IsEditing)
+            {
+                line.IsCurrent = current is not null && line.Id == current.Id;
+            }
             line.WallTimeTip = WallTimeTip(line.AtElapsed);
         }
     }
@@ -431,6 +644,10 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private string UniqueScriptName()
     {
         var taken = new HashSet<string>(Scripts.Select(s => s.Name), StringComparer.Ordinal);
+        if (_awaitedScriptName is not null)
+        {
+            taken.Add(_awaitedScriptName);
+        }
         if (taken.Add("Новый сценарий"))
         {
             return "Новый сценарий";
@@ -444,6 +661,56 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
                 return candidate;
             }
         }
+    }
+
+    private string UniqueScriptName(string baseName)
+    {
+        var taken = new HashSet<string>(Scripts.Select(s => s.Name), StringComparer.Ordinal);
+        if (_awaitedScriptName is not null)
+        {
+            taken.Add(_awaitedScriptName);
+        }
+        if (taken.Add(baseName))
+        {
+            return baseName;
+        }
+        var counter = 2;
+        while (true)
+        {
+            var candidate = $"{baseName} {counter++}";
+            if (taken.Add(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
+    private ScriptImportReport FailScriptImport(string error)
+    {
+        LastScriptError = error;
+        ScriptIoStatus = "импорт не удался";
+        ScriptImportFailed?.Invoke(error);
+        return new ScriptImportReport(string.Empty, 0, error);
+    }
+
+    private void FlushPendingImport(ShowState state)
+    {
+        if (_pendingImportLines is not { } pending || _awaitedScriptName is not { } awaited)
+        {
+            return;
+        }
+        var target = state.Scripts.FirstOrDefault(s => s.Name == awaited);
+        if (target is null)
+        {
+            return;
+        }
+        _pendingImportLines = null;
+        _awaitedScriptName = null;
+        foreach (var (atElapsed, text) in pending)
+        {
+            Submit(new AddScriptLine(target.Id, atElapsed, text, []));
+        }
+        SelectedScript = Scripts.FirstOrDefault(s => s.Name == awaited) ?? SelectedScript;
     }
 
     private MentionVm ResolveMention(TrackId track) => ResolveMentions([new Mention(track)], _trackSource?.Invoke() ?? [])[0];
@@ -465,6 +732,18 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             ? new MentionVm(track, "—", true, "--:--")
             : new MentionVm(track, known.DefaultName, false, known.Duration.ToString(@"mm\:ss"));
     }
+
+    public sealed record ScriptImportReport(string ScriptName, int Added, string? Error = null);
+
+    private sealed record ScriptFileLine(
+        [property: JsonPropertyName("at")] string At,
+        [property: JsonPropertyName("text")] string? Text);
+
+    private sealed record ScriptFileDocument(
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("version")] int Version,
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("lines")] ScriptFileLine[]? Lines);
 
     public sealed class ScriptVm(ScriptId id, string name)
     {

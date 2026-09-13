@@ -182,6 +182,52 @@ public sealed class RemoteHostTests : IAsyncLifetime
         Assert.Equal("Вечер", show.GetProperty("scripts")[0].GetProperty("name").GetString());
         Assert.Equal(JsonValueKind.Array, show.GetProperty("trackDigest").GetProperty("entries").ValueKind);
     }
+
+    [Fact]
+    public async Task ScriptCommands_CreateEditDeleteLine_RoundTrip()
+    {
+        using var client = Connected();
+        var seq = 0;
+        Task SendAsync(string command) => client.SendAsync($"{{\"client\":\"pult-1\",\"seq\":{++seq},\"command\":{command}}}");
+        async Task AckAsync() => await client.WaitForAsync(e => e.GetProperty("event").GetString() == "ack", TimeSpan.FromSeconds(5));
+        async Task PollAsync(Func<bool> ready)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+            while (!ready() && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(20);
+            }
+            Assert.True(ready());
+        }
+
+        await SendAsync("""{"type":"create_script","name":"Вечер"}""");
+        await AckAsync();
+        await PollAsync(() => _bus.Snapshot().Show.Scripts.Length == 1);
+        var scriptId = _bus.Snapshot().Show.Scripts[0].Id.Value.ToString("N");
+
+        await SendAsync($$"""{"type":"add_script_line","script":"{{scriptId}}","at_ms":10000,"text":"вступление","mentions":[]}""");
+        await AckAsync();
+        await PollAsync(() => _bus.Snapshot().Show.Scripts[0].Lines.Length == 1);
+        var lineId = _bus.Snapshot().Show.Scripts[0].Lines[0].Id.Value.ToString("N");
+        Assert.Equal("вступление", _bus.Snapshot().Show.Scripts[0].Lines[0].Text);
+
+        await SendAsync($$"""{"type":"update_script_line","script":"{{scriptId}}","line":"{{lineId}}","at_ms":20000,"text":"финал","mentions":[]}""");
+        await AckAsync();
+        await PollAsync(() => _bus.Snapshot().Show.Scripts[0].Lines[0].Text == "финал");
+        Assert.Equal(TimeSpan.FromSeconds(20), _bus.Snapshot().Show.Scripts[0].Lines[0].AtElapsed);
+
+        await SendAsync($$"""{"type":"rename_script","id":"{{scriptId}}","name":"Ночь"}""");
+        await AckAsync();
+        await PollAsync(() => _bus.Snapshot().Show.Scripts[0].Name == "Ночь");
+
+        await SendAsync($$"""{"type":"remove_script_line","script":"{{scriptId}}","line":"{{lineId}}" }""");
+        await AckAsync();
+        await PollAsync(() => _bus.Snapshot().Show.Scripts[0].Lines.Length == 0);
+
+        await SendAsync($$"""{"type":"delete_script","id":"{{scriptId}}"}""");
+        await AckAsync();
+        await PollAsync(() => _bus.Snapshot().Show.Scripts.Length == 0);
+    }
 }
 
 public sealed class RemoteHostAuthTests : IAsyncLifetime

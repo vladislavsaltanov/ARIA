@@ -14,14 +14,18 @@
   <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}"
           BorderThickness="1" CornerRadius="8" Margin="14,10,14,10">
     <Grid RowDefinitions="Auto,*">
-      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,10,10,6">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="12,10,6,6">
         <TextBlock Text="Очередь" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-        <Button Grid.Column="1" Classes="ghost" Height="26" Padding="8,0" ToolTip.Tip="Очистить очередь"
-                Command="{Binding ClearQueueCommand}">
+        <Button Grid.Column="1" Classes="ghost" MinHeight="26" Padding="8,0" ToolTip.Tip="Очистить очередь"
+                Command="{Binding ClearQueueCommand}" Margin="0,0,2,0">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
-            <TextBlock Text="Очистить" FontSize="11" Margin="0,2,0,0"/>
+            <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11" VerticalAlignment="Center"/>
+            <TextBlock Text="Очистить" FontSize="11" VerticalAlignment="Center"/>
           </StackPanel>
+        </Button>
+        <Button Grid.Column="2" x:Name="QueueCloseButton" Classes="ghost" Width="26" Height="26"
+                Click="OnCloseClick" ToolTip.Tip="Закрыть очередь">
+          <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
         </Button>
       </Grid>
       <ListBox Grid.Row="1" x:Name="QueueList" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"

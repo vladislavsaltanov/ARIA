@@ -42,6 +42,9 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
             Assert.NotNull(header.FindControl<Border>("WaveformStrip"));
             Assert.NotNull(header.FindControl<Canvas>("WaveformCanvas"));
             Assert.NotNull(header.FindControl<Rectangle>("WaveCursor"));
+            Assert.NotNull(header.FindControl<Button>("StartClockButton"));
+            Assert.NotNull(header.FindControl<Button>("PauseClockButton"));
+            Assert.NotNull(header.FindControl<Button>("ResetClockButton"));
             window.Close();
 
             var controller = new RecordingController();
@@ -71,6 +74,14 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
             var cursor = dragHeader.FindControl<Rectangle>("WaveCursor");
             Assert.NotNull(cursor);
             Assert.True(cursor.IsVisible);
+            var canvas = dragHeader.FindControl<Canvas>("WaveformCanvas");
+            Assert.NotNull(canvas);
+            Assert.True(canvas.Children.Count > 0);
+            Assert.Equal(canvas.Bounds.Width / 3, Canvas.GetLeft(cursor), 1);
+            Assert.Same(canvas, cursor.Parent);
+            var cursorAt = cursor.TranslatePoint(new Point(0, 0), canvas);
+            Assert.NotNull(cursorAt);
+            Assert.Equal(canvas.Bounds.Width / 3, cursorAt.Value.X, 0);
 
             var width = strip.Bounds.Width;
             var at = strip.TranslatePoint(new Point(width * 0.25, 28), dragWindow);
@@ -86,17 +97,58 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task Waveform_Draws_FromViewModelCurrentTrack_WhenTransportStopped()
+    {
+        await _session.Dispatch(() =>
+        {
+            var controller = new RecordingController();
+            using var bus = new CommandBus(controller, BusMode.Inline);
+            using var viewModel = new TransportViewModel(bus);
+            var header = new Views.PlaybackHeader { DataContext = viewModel };
+            var window = new Window { Width = 700, Height = 300, Content = header };
+            window.Show();
+
+            var store = new MemoryWaveformStore();
+            var points = ImmutableArray.CreateBuilder<PeakPoint>();
+            for (var index = 0; index < 100; index++)
+            {
+                points.Add(new PeakPoint(-0.5f, 0.5f));
+            }
+            store.Save(new WaveformPeaks(TestTrack.Id, 25, 48000, points.ToImmutable()));
+            var monitor = new PlaybackMonitor();
+            header.Attach(monitor, store);
+
+            window.UpdateLayout();
+            var canvas = header.FindControl<Canvas>("WaveformCanvas");
+            Assert.NotNull(canvas);
+            Assert.True(canvas.Children.Count > 0);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private sealed class RecordingController : IShowHandler
     {
+        private static readonly DeckContent TestDeck = new(
+            null,
+            TestTrack.Id,
+            "test",
+            null,
+            EndAction.Pause,
+            TimeSpan.FromSeconds(90),
+            TimeSpan.Zero);
+
         private readonly ShowSnapshot _snapshot = new(
             0,
             new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty),
             0,
-            new TransportState(TransportStatus.Stopped, null, null, []),
+            new TransportState(TransportStatus.Stopped, TestDeck, null, []),
             0,
             new QueueState([]),
             0,
-            new MixerState(0, false, TimeSpan.FromMilliseconds(100)));
+            new MixerState(0, false, TimeSpan.FromMilliseconds(100), Smoothing.Default));
 
         public List<Command> Received { get; } = [];
 

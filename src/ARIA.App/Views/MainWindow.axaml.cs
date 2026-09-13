@@ -60,6 +60,7 @@ public partial class MainWindow : Window
         }
         PlaylistCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
         PlaylistCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
+        QueueColumn.CloseRequested += (_, _) => SetQueueOpen(false);
         TransportBar.SettingsRequested += OnSettingsRequested;
         Opened += OnOpened;
     }
@@ -144,8 +145,20 @@ public partial class MainWindow : Window
         }
     }
 
+    public void SetQueueOpen(bool open)
+    {
+        QueueColumn.IsVisible = open;
+        ContentGrid.ColumnDefinitions = new ColumnDefinitions(open ? "260,*,300" : "260,*,0");
+    }
+
     private void OnQueueJumpClick(object? sender, RoutedEventArgs e)
     {
+        if (QueueColumn.IsVisible)
+        {
+            SetQueueOpen(false);
+            return;
+        }
+        SetQueueOpen(true);
         _queue?.FocusPlaying();
         QueueColumn.ScrollToSelected();
     }

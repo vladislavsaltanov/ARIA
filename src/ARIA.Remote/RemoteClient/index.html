@@ -25,9 +25,21 @@
   <main id="app">
     <section class="now">
       <div class="status" id="status">STOP</div>
+      <span id="lock" class="lock hidden">LOCKED</span>
       <div class="title" id="title">—</div>
       <div class="next" id="next">далее: —</div>
       <div class="remaining" id="remaining">--:--</div>
+    </section>
+
+    <section class="timers">
+      <div class="timer-block">
+        <span class="timer-label">SHOW</span>
+        <span class="show-clock" id="show-clock">--:--</span>
+      </div>
+      <div class="timer-block">
+        <span class="timer-label">TRACK</span>
+        <span class="track-elapsed" id="track-elapsed">0:00</span>
+      </div>
     </section>
 
     <section class="transport">
@@ -40,11 +52,42 @@
 
     <button id="btn-panic" class="panic">PANIC</button>
 
+    <section class="mixer">
+      <input id="master" class="master" type="range" min="0" max="100" step="1" value="0">
+      <button id="btn-mute" class="mute">MUTE</button>
+    </section>
+
+    <section class="lufs">
+      <span id="lufs-value" class="lufs-value">—</span>
+      <div class="lufs-bar"><div id="lufs-fill" class="lufs-fill"></div></div>
+    </section>
+
     <section class="queue">
-      <h2>ОЧЕРЕДЬ <button id="btn-forget" class="forget">забыть пару</button></h2>
+      <h2>ОЧЕРЕДЬ <button id="btn-queue-clear" class="forget">ОЧИСТИТЬ</button> <button id="btn-forget" class="forget">забыть пару</button></h2>
       <ol id="queue"></ol>
     </section>
+
+    <section class="playlists">
+      <h2>ПЛЕЙЛИСТЫ</h2>
+      <div id="playlists"></div>
+    </section>
+
+    <section class="script" id="script-section">
+      <h2>СЦЕНАРИЙ</h2>
+      <div id="script-tabs" class="script-tabs"></div>
+      <ol id="script-lines" class="script-lines"></ol>
+    </section>
   </main>
+
+  <div id="mention-menu" class="overlay hidden">
+    <div class="dialog">
+      <p>Выбрать трек</p>
+      <div id="mention-options" class="mention-options"></div>
+      <div class="dialog-buttons">
+        <button id="mention-cancel" class="pad">ОТМЕНА</button>
+      </div>
+    </div>
+  </div>
 
   <div id="panic-confirm" class="overlay hidden">
     <div class="dialog">
@@ -55,6 +98,18 @@
       </div>
     </div>
   </div>
+
+  <div id="clear-confirm" class="overlay hidden">
+    <div class="dialog">
+      <p>Очистить очередь?</p>
+      <div class="dialog-buttons">
+        <button id="clear-yes" class="pad danger">ДА, ОЧИСТИТЬ</button>
+        <button id="clear-no" class="pad">ОТМЕНА</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
 
   <script src="/app.js"></script>
 </body>

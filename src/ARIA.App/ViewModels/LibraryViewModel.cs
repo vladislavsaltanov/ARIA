@@ -2,6 +2,7 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Threading;
 using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
@@ -16,18 +17,14 @@ using CommunityToolkit.Mvvm.Input;
 
 public sealed partial class LibraryViewModel : ObservableObject, IDisposable
 {
-    private static readonly FilePickerFileType AudioFilter = new("Аудио")
-    {
-        Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"],
-    };
-
     private readonly ICommandBus _bus;
     private readonly ILibraryStore _library;
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>> _import;
     private readonly Func<TopLevel?>? _topLevel;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-library");
     private readonly IDisposable _subscription;
+    private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private long _seq;
     private string _searchText = string.Empty;
@@ -51,13 +48,15 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         ILibraryStore library,
         Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>> import,
         Func<TopLevel?>? topLevel = null,
-        WaveformThumbs? thumbs = null)
+        WaveformThumbs? thumbs = null,
+        SynchronizationContext? sync = null)
     {
         _bus = bus;
         _library = library;
         _import = import;
         _topLevel = topLevel;
         _thumbs = thumbs;
+        _sync = sync;
         _subscription = bus.Subscribe(Apply);
         Reload();
     }
@@ -80,20 +79,19 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
         {
-            StatusText = "выбор файлов недоступен";
+            StatusText = "выбор папки недоступен";
             return;
         }
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Импорт треков",
+            Title = "Импорт папки с треками",
             AllowMultiple = true,
-            FileTypeFilter = [AudioFilter],
         });
-        if (files.Count == 0)
+        if (folders.Count == 0)
         {
             return;
         }
-        await ImportAsync(files.Select(file => file.Path.LocalPath));
+        await ImportAsync(folders.Select(folder => folder.Path.LocalPath));
     }
 
     public async Task ImportAsync(IEnumerable<string> paths)
@@ -126,6 +124,8 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
     }
 
     public void EnqueueTrack(TrackVm track) => Submit(new EnqueueTrack(track.Id));
+
+    public void Play() => Submit(new Play());
 
     public void SetLinkedTrack(TrackId? track)
     {
@@ -204,14 +204,31 @@ public sealed partial class LibraryViewModel : ObservableObject, IDisposable
             return;
         }
         var incoming = new HashSet<TrackId>(delta.State.Faulted);
-        if (!incoming.SetEquals(_faulted))
+        if (incoming.SetEquals(_faulted))
         {
+            return;
+        }
+        Post(() =>
+        {
+            var latest = incoming;
             _faulted.Clear();
-            foreach (var id in incoming)
+            foreach (var id in latest)
             {
                 _faulted.Add(id);
             }
             Reload();
+        });
+    }
+
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
         }
     }
 

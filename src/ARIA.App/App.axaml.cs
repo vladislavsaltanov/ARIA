@@ -13,6 +13,8 @@ using Aria.Remote;
 
 public partial class App : Application
 {
+    public const int RemoteDefaultPort = 48713;
+
     public static AppHost? Host { get; private set; }
 
     private static RemoteAnnouncer? _announcer;
@@ -28,7 +30,8 @@ public partial class App : Application
             var remoteOptions = new RemoteOptions(
                 credentials.Password,
                 BindAddress: IPAddress.Any,
-                Credentials: _credentials);
+                Credentials: _credentials,
+                Port: RemoteDefaultPort);
             var host = new AppHost(dataDirectory, remoteOptions);
             Host = host;
 
@@ -61,13 +64,14 @@ public partial class App : Application
     {
         var sync = SynchronizationContext.Current;
         var thumbs = new WaveformThumbs(host.Waveforms!);
-        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters);
         var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, settingsStore.Load());
-        var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs);
-        var queue = new QueueViewModel(host.Bus);
+        var rowSettings = settingsStore.Load();
+        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
+        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow);
+        var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, () => desktop.MainWindow, thumbs, sync);
+        var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
-        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks);
+        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow);
         MainWindow? window = null;
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),
@@ -83,7 +87,12 @@ public partial class App : Application
             hotkeys,
             Path.Combine(dataDirectory, "hotkeys.json"),
             settingsStore,
-            updated => playlists.UpdateRowSettings(updated));
+            updated =>
+            {
+                playlists.UpdateRowSettings(updated);
+                transport.UpdateRowSettings(updated);
+            },
+            sync);
         window = new MainWindow(hotkeys, library, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
@@ -121,7 +130,7 @@ public partial class App : Application
             case "panic": Run(viewModel.PanicCommand); break;
             case "lock": viewModel.ToggleLock(); break;
             case "toggle-script": window.ToggleScriptPane(); break;
-            case "reset-clock": viewModel.ResetClock(); break;
+            case "reset-clock": Run(viewModel.ResetClockCommand); break;
         }
     }
 

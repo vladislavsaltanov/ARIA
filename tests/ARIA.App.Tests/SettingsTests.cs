@@ -31,7 +31,7 @@ public sealed class SettingsTests : IDisposable
     public void Roundtrip_PreservesSettings()
     {
         var store = new AppSettingsStore(_path);
-        store.Save(new AppSettings(true, "{position} {filename}"));
+        store.Save(new AppSettings(true, "{position} {filename}", Smoothing.Default));
 
         var loaded = store.Load();
 
@@ -50,7 +50,7 @@ public sealed class SettingsTests : IDisposable
     [Fact]
     public void Load_BlankFormat_FallsBackToDefault()
     {
-        new AppSettingsStore(_path).Save(new AppSettings(false, "  "));
+        new AppSettingsStore(_path).Save(new AppSettings(false, "  ", Smoothing.Default));
 
         Assert.Equal("{name}", new AppSettingsStore(_path).Load().RowFormat);
     }
@@ -70,7 +70,7 @@ public sealed class SettingsTests : IDisposable
     [Fact]
     public void DisplayName_UseFileName_SwitchesSource()
     {
-        Assert.Equal("rain.flac", RowFormatter.DisplayName(new AppSettings(true, "{name}"), "Осенний дождь", "rain.flac"));
+        Assert.Equal("rain.flac", RowFormatter.DisplayName(new AppSettings(true, "{name}", Smoothing.Default), "Осенний дождь", "rain.flac"));
         Assert.Equal("Осенний дождь", RowFormatter.DisplayName(AppSettings.Default, "Осенний дождь", "rain.flac"));
     }
 
@@ -167,13 +167,50 @@ public sealed class SettingsTests : IDisposable
 
             viewModel.SaveRowSettingsCommand.Execute(null);
 
-            Assert.Equal(new AppSettings(true, "{filename}"), new AppSettingsStore(path).Load());
+            Assert.Equal(new AppSettings(true, "{filename}", Smoothing.Default), new AppSettingsStore(path).Load());
         }
         finally
         {
             File.Delete(path);
         }
-        Assert.Equal(new AppSettings(true, "{filename}"), applied);
+        Assert.Equal(new AppSettings(true, "{filename}", Smoothing.Default), applied);
+    }
+
+    [Fact]
+    public void Smoothing_Settings_SubmitAndPersist()
+    {
+        using var bus = NewBus();
+        var path = Path.Combine(Path.GetTempPath(), $"aria-smooth-{Guid.NewGuid():N}.json");
+        try
+        {
+            using var viewModel = new SettingsViewModel(
+                bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
+                new AppSettingsStore(path));
+
+            viewModel.SmoothingEnabled = true;
+            viewModel.ManualCrossfadeMs = 400;
+            viewModel.AutoCrossfadeMs = 900;
+            viewModel.StartFadeMs = 250;
+            viewModel.StopFadeMs = 300;
+
+            var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300));
+            Assert.Equal(expected, bus.Snapshot().Mixer.Smoothing);
+            Assert.Equal(expected, new AppSettingsStore(path).Load().Smoothing);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Smoothing_Roundtrip_PreservesValues()
+    {
+        var store = new AppSettingsStore(_path);
+        var smoothing = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300));
+        store.Save(new AppSettings(false, "{name}", smoothing));
+
+        Assert.Equal(smoothing, store.Load().Smoothing);
     }
 
     private static CommandBus NewBus() => new(new ShowController(new StubEngine()), BusMode.Inline);

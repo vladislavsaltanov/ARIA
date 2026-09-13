@@ -23,6 +23,7 @@ public partial class LibrarySection : UserControl
             if (rows.Count > 0)
             {
                 viewModel.EnqueueTracks(rows);
+                viewModel.Play();
             }
         }
     }

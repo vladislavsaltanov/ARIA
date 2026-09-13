@@ -1,5 +1,6 @@
 namespace Aria.Remote;
 
+using System.Collections.Immutable;
 using System.Text.Json;
 using Aria.Core.Commands;
 using Aria.Core.Model;
@@ -69,6 +70,23 @@ internal static class CommandCodec
                 "set_master_gain" => new SetMasterGain(DoubleOf(commandElement, "gain_db")),
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
+                "create_script" => new CreateScript(StringOf(commandElement, "name")),
+                "rename_script" => new RenameScript(new ScriptId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),
+                "delete_script" => new DeleteScript(new ScriptId(GuidOf(commandElement, "id"))),
+                "add_script_line" => new AddScriptLine(
+                    new ScriptId(GuidOf(commandElement, "script")),
+                    TimeSpan.FromMilliseconds(LongOf(commandElement, "at_ms")),
+                    TextOf(commandElement),
+                    MentionsOf(commandElement)),
+                "update_script_line" => new UpdateScriptLine(
+                    new ScriptId(GuidOf(commandElement, "script")),
+                    new ScriptLineId(GuidOf(commandElement, "line")),
+                    TimeSpan.FromMilliseconds(LongOf(commandElement, "at_ms")),
+                    TextOf(commandElement),
+                    MentionsOf(commandElement)),
+                "remove_script_line" => new RemoveScriptLine(
+                    new ScriptId(GuidOf(commandElement, "script")),
+                    new ScriptLineId(GuidOf(commandElement, "line"))),
                 _ => null,
             };
             return true;
@@ -135,6 +153,31 @@ internal static class CommandCodec
 
     private static int IntOf(JsonElement element, string name) =>
         element.GetProperty(name).GetInt32();
+
+    private static long LongOf(JsonElement element, string name) =>
+        element.GetProperty(name).GetInt64();
+
+    private static string TextOf(JsonElement element) =>
+        element.TryGetProperty("text", out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : string.Empty;
+
+    private static ImmutableArray<TrackId> MentionsOf(JsonElement element)
+    {
+        if (!element.TryGetProperty("mentions", out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+        var builder = ImmutableArray.CreateBuilder<TrackId>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String && Guid.TryParse(item.GetString(), out var id))
+            {
+                builder.Add(new TrackId(id));
+            }
+        }
+        return builder.ToImmutable();
+    }
 
     private static bool BoolOf(JsonElement element, string name) =>
         element.GetProperty(name).GetBoolean();

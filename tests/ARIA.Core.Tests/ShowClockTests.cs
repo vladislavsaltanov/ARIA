@@ -1,8 +1,6 @@
 namespace Aria.Core.Tests;
 
 using Aria.Core.Commands;
-using Aria.Core.Model;
-using Aria.Core.State;
 
 public sealed class ShowClockTests
 {
@@ -136,5 +134,71 @@ public sealed class ShowClockTests
 
         Assert.Null(h.RejectionOf(seq));
         Assert.Equal(TimeSpan.FromSeconds(1), h.Snapshot.Show.Clock.Elapsed);
+    }
+
+    [Fact]
+    public void StartShowClock_StartsStoppedClock()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+
+        h.Submit(new StartShowClock());
+        h.Submit(new TickShowClock());
+
+        Assert.True(h.Snapshot.Show.Clock.Running);
+        Assert.Equal(TimeSpan.FromSeconds(1), h.Snapshot.Show.Clock.Elapsed);
+    }
+
+    [Fact]
+    public void PauseShowClock_HaltsTicks_AndKeepsElapsed()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new StartShowClock());
+        h.Submit(new TickShowClock());
+
+        h.Submit(new PauseShowClock());
+        h.Submit(new TickShowClock());
+
+        Assert.False(h.Snapshot.Show.Clock.Running);
+        Assert.Equal(TimeSpan.FromSeconds(1), h.Snapshot.Show.Clock.Elapsed);
+    }
+
+    [Fact]
+    public void StartPause_WhenAlreadyThere_EmitNoDelta()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new StartShowClock());
+        var version = h.Snapshot.ShowVersion;
+
+        h.Submit(new StartShowClock());
+        Assert.Equal(version, h.Snapshot.ShowVersion);
+
+        h.Submit(new PauseShowClock());
+        version = h.Snapshot.ShowVersion;
+        h.Submit(new PauseShowClock());
+        Assert.Equal(version, h.Snapshot.ShowVersion);
+    }
+
+    [Fact]
+    public void StartShowClock_WhileLocked_IsRejected()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new SetLocked(true));
+
+        var seq = h.Submit(new StartShowClock());
+
+        Assert.Equal("locked", h.RejectionOf(seq)?.Reason);
+        Assert.False(h.Snapshot.Show.Clock.Running);
     }
 }

@@ -18,9 +18,52 @@ public partial class ScriptPanel : UserControl
     public ScriptPanel()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
         LinesControl.PointerPressed += OnLinesPointerPressed;
         LinesControl.PointerMoved += OnLinesPointerMoved;
         LinesControl.PointerReleased += OnLinesPointerReleased;
+    }
+
+    private ScriptPanelViewModel? _bound;
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (_bound is not null)
+        {
+            _bound.ScriptImportFailed -= OnScriptImportFailed;
+        }
+        _bound = DataContext as ScriptPanelViewModel;
+        if (_bound is not null)
+        {
+            _bound.ScriptImportFailed += OnScriptImportFailed;
+        }
+    }
+
+    private async void OnScriptImportFailed(string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        var dialog = new Window
+        {
+            Title = "Импорт сценария не удался",
+            Width = 420,
+            Height = 160,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
+                },
+            },
+        };
+        ((Button)((StackPanel)dialog.Content!).Children[1]).Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(owner);
     }
 
     public event EventHandler? CloseRequested;
@@ -70,13 +113,27 @@ public partial class ScriptPanel : UserControl
 
     private void OnTabSelection(object? sender, SelectionChangedEventArgs e)
     {
-        if (e.AddedItems.Count == 1
-            && e.AddedItems[0] is ScriptPanelViewModel.ScriptVm script
-            && ViewModel is { } viewModel
-            && viewModel.SelectedScript?.Id != script.Id)
+        if (sender is not ListBox)
         {
-            viewModel.SelectScript(script);
+            return;
         }
+        if (sender is ListBox { Selection.SelectedItem: ScriptPanelViewModel.ScriptVm current })
+        {
+            SelectTab(current);
+        }
+    }
+
+    private void SelectTab(ScriptPanelViewModel.ScriptVm? script)
+    {
+        if (script is null || ViewModel is not { } viewModel)
+        {
+            return;
+        }
+        if (viewModel.SelectedScript?.Id == script.Id)
+        {
+            return;
+        }
+        viewModel.SelectScript(script);
     }
 
     private void OnPanelTapped(object? sender, TappedEventArgs e)
@@ -111,6 +168,20 @@ public partial class ScriptPanel : UserControl
         }
     }
 
+    private static bool IsInside<T>(object? source) where T : Visual
+    {
+        var current = source as Visual;
+        while (current is not null)
+        {
+            if (current is T)
+            {
+                return true;
+            }
+            current = current.GetVisualParent();
+        }
+        return false;
+    }
+
     private static Control? FindDescendant(Control root, string tag)
     {
         if (root.Tag as string == tag)
@@ -133,7 +204,7 @@ public partial class ScriptPanel : UserControl
             _suppressTap = false;
             return;
         }
-        if (e.Source is Button)
+        if (IsInside<Button>(e.Source) || IsInside<TextBox>(e.Source))
         {
             return;
         }
@@ -142,13 +213,8 @@ public partial class ScriptPanel : UserControl
         {
             return;
         }
-        if (e.Source is TextBox)
-        {
-            return;
-        }
         if (line.IsEditing)
         {
-            viewModel.CommitEdit(line);
             return;
         }
         if ((e.Source as Control)?.Tag as string == "ScriptText")
@@ -406,14 +472,14 @@ public partial class ScriptPanel : UserControl
 
     private static ScriptPanelViewModel.ScriptLineVm? LineOf(object? source)
     {
-        var current = source as Control;
+        var current = source as Visual;
         while (current is not null)
         {
-            if (current.DataContext is ScriptPanelViewModel.ScriptLineVm line)
+            if (current is Control { DataContext: ScriptPanelViewModel.ScriptLineVm line })
             {
                 return line;
             }
-            current = current.Parent as Control;
+            current = current.GetVisualParent();
         }
         return null;
     }

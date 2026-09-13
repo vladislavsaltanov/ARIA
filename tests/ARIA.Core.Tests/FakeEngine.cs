@@ -22,6 +22,7 @@ public sealed class FakeEngine : IAudioEngine
     public List<StreamHandle> Disposed { get; } = [];
     public List<double> MasterGains { get; } = [];
     public List<PanicSpec> Panics { get; } = [];
+    public List<Smoothing> Smoothings { get; } = [];
 
     public event Action<StreamEvent>? Events;
 
@@ -59,6 +60,8 @@ public sealed class FakeEngine : IAudioEngine
     }
 
     public void SetMasterGain(double gainDb) => MasterGains.Add(gainDb);
+
+    public void SetSmoothing(Smoothing smoothing) => Smoothings.Add(smoothing);
 
     public void Panic(PanicSpec spec) => Panics.Add(spec);
 

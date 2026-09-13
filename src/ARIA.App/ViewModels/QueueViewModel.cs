@@ -2,6 +2,7 @@ namespace Aria.App.ViewModels;
 
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Threading;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Runtime;
@@ -12,8 +13,9 @@ using CommunityToolkit.Mvvm.Input;
 public sealed partial class QueueViewModel : ObservableObject, IDisposable
 {
     private readonly ICommandBus _bus;
-    private readonly ClientId _client = new("desktop");
+    private readonly ClientId _client = new("desktop-queue");
     private readonly IDisposable _subscription;
+    private readonly SynchronizationContext? _sync;
     private long _seq;
 
     [ObservableProperty]
@@ -21,9 +23,10 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<QueueItemVm> Items { get; } = [];
 
-    public QueueViewModel(ICommandBus bus)
+    public QueueViewModel(ICommandBus bus, SynchronizationContext? sync = null)
     {
         _bus = bus;
+        _sync = sync;
         _subscription = bus.Subscribe(Apply);
         var snapshot = bus.Snapshot();
         Rebuild(snapshot.Queue.Items, snapshot.Transport.Current);
@@ -71,9 +74,26 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
 
     public void Dispose() => _subscription.Dispose();
 
+    private void Post(Action work)
+    {
+        if (_sync is { } sync)
+        {
+            sync.Post(_ => work(), null);
+        }
+        else
+        {
+            work();
+        }
+    }
+
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
     private void Apply(StateEvent e)
+    {
+        Post(() => ApplyOnUi(e));
+    }
+
+    private void ApplyOnUi(StateEvent e)
     {
         switch (e)
         {

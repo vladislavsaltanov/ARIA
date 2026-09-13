@@ -8,6 +8,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 [Collection("headless")]
@@ -59,6 +60,73 @@ public sealed class ScriptPanelHeadlessTests : IDisposable
 
             window.ToggleScriptPane();
             Assert.False(drawer.IsPaneOpen);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task QueueColumn_TogglesOpen_FromRailButtonAndClose()
+    {
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var queue = window.FindControl<QueueColumn>("QueueColumn");
+            Assert.NotNull(queue);
+            var railButton = window.FindControl<Button>("QueueButton");
+            Assert.NotNull(railButton);
+            var closeButton = queue.FindControl<Button>("QueueCloseButton");
+            Assert.NotNull(closeButton);
+            Assert.True(queue.IsVisible);
+
+            closeButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.False(queue.IsVisible);
+
+            railButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.True(queue.IsVisible);
+
+            railButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.False(queue.IsVisible);
+
+            railButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.True(queue.IsVisible);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ScriptPanel_ManagementFooter_SitsBelowSeparator()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var bus = NewBus();
+            using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
+            var window = new Window { Width = 500, Height = 700, Content = new ScriptPanel { DataContext = viewModel } };
+            window.Show();
+
+            var panel = (ScriptPanel)window.Content!;
+            viewModel.CreateScriptCommand.Execute(null);
+
+            var separator = panel.FindControl<Separator>("ScriptFooterSeparator");
+            Assert.NotNull(separator);
+            Assert.True(separator.IsVisible);
+            var create = panel.FindControl<Button>("NewScriptButton");
+            var delete = panel.FindControl<Button>("DeleteScriptButton");
+            Assert.NotNull(create);
+            Assert.NotNull(delete);
+            Assert.Same(viewModel.CreateScriptCommand, create.Command);
+            Assert.Same(viewModel.DeleteSelectedCommand, delete.Command);
+            var close = panel.FindControl<Button>("PaneCloseButton");
+            Assert.NotNull(close);
+            Assert.Null(close.Command);
 
             window.Close();
             return 0;
@@ -166,6 +234,40 @@ public sealed class ScriptPanelHeadlessTests : IDisposable
 
             Assert.False(drawer.IsPaneOpen);
             Assert.True(sink.IsFocused);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ClickInsideEditBox_KeepsEditing()
+    {
+        await _session.Dispatch(async () =>
+        {
+            using var bus = NewBus();
+            using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
+            var window = new Window { Width = 500, Height = 700, Content = new ScriptPanel { DataContext = viewModel } };
+            window.Show();
+            viewModel.CreateScriptCommand.Execute(null);
+            viewModel.AddLineCommand.Execute(null);
+            var line = Assert.Single(viewModel.Lines);
+            Assert.True(line.IsEditing);
+            line.EditText = "черновик";
+
+            var panel = (ScriptPanel)window.Content!;
+            var row = RowAtPanel(panel, window);
+            var box = row.GetVisualDescendants().OfType<TextBox>()
+                .FirstOrDefault(b => b.Text == "черновик");
+            Assert.NotNull(box);
+            var center = box.TranslatePoint(new Point(box.Bounds.Width / 2, box.Bounds.Height / 2), window);
+            Assert.NotNull(center);
+            window.MouseDown(center.Value, MouseButton.Left);
+            window.MouseUp(center.Value, MouseButton.Left);
+            await Task.Delay(100);
+
+            Assert.True(line.IsEditing);
+            Assert.Equal("черновик", line.EditText);
 
             window.Close();
             return 0;

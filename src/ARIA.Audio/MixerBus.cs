@@ -52,6 +52,8 @@ public sealed class MixerBus : IDisposable
 
         public bool Active { get; set; }
 
+        public bool PauseWhenFaded { get; set; }
+
         public bool Dead { get; set; }
 
         public bool RemoveRequested { get; set; }
@@ -63,6 +65,9 @@ public sealed class MixerBus : IDisposable
     private readonly ConcurrentQueue<Command> _commands = new();
     private readonly List<Voice> _voices = [];
     private long _handleCounter;
+    private int _pauseFadeFrames;
+    private int _resumeFadeFrames;
+    private int _smoothingEnabled;
 
     public MixerBus(int channels, int sampleRate, int blockSizeFrames)
     {
@@ -127,6 +132,19 @@ public sealed class MixerBus : IDisposable
 
     public void Seek(StreamHandle handle, long frameIndex)
         => _commands.Enqueue(new Command(CommandKind.Seek, null, handle, default, null, default, frameIndex));
+
+    public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, bool enabled)
+    {
+        var pauseFrames = enabled && pauseFade > TimeSpan.Zero
+            ? Math.Max(1, (int)Math.Round(pauseFade.TotalSeconds * _sampleRate))
+            : 0;
+        var resumeFrames = enabled && resumeFade > TimeSpan.Zero
+            ? Math.Max(1, (int)Math.Round(resumeFade.TotalSeconds * _sampleRate))
+            : 0;
+        Volatile.Write(ref _pauseFadeFrames, pauseFrames);
+        Volatile.Write(ref _resumeFadeFrames, resumeFrames);
+        Volatile.Write(ref _smoothingEnabled, enabled ? 1 : 0);
+    }
 
     public int Render(Span<float> output)
     {
@@ -250,15 +268,41 @@ public sealed class MixerBus : IDisposable
         switch (command)
         {
             case TransportCommand.Play:
-                voice.Active = true;
+                if (!voice.Active || voice.PauseWhenFaded)
+                {
+                    voice.PauseWhenFaded = false;
+                    var resumeFrames = Volatile.Read(ref _resumeFadeFrames);
+                    if (Volatile.Read(ref _smoothingEnabled) == 1 && resumeFrames > 0)
+                    {
+                        voice.Fader = new FaderNode(resumeFrames, FadeCurve.Linear, 0.0, 1.0, stopWhenDone: false);
+                    }
+                    voice.Active = true;
+                }
                 break;
             case TransportCommand.Pause:
-                if (!voice.Dead)
+                if (voice.Dead)
+                {
+                    break;
+                }
+                if (!voice.Active || voice.PauseWhenFaded)
+                {
+                    voice.Active = false;
+                    voice.PauseWhenFaded = false;
+                    break;
+                }
+                var pauseFrames = Volatile.Read(ref _pauseFadeFrames);
+                if (Volatile.Read(ref _smoothingEnabled) == 1 && pauseFrames > 0)
+                {
+                    voice.Fader = new FaderNode(pauseFrames, FadeCurve.Linear, 1.0, 0.0, stopWhenDone: false);
+                    voice.PauseWhenFaded = true;
+                }
+                else
                 {
                     voice.Active = false;
                 }
                 break;
             case TransportCommand.Stop:
+                voice.PauseWhenFaded = false;
                 EndVoice(voice, StreamEndReason.StoppedByCommand);
                 break;
         }
@@ -332,6 +376,11 @@ public sealed class MixerBus : IDisposable
                 {
                     reason = StreamEndReason.Completed;
                 }
+            }
+            if (!reason.HasValue && voice.PauseWhenFaded && fader.HasCompleted)
+            {
+                voice.Active = false;
+                voice.PauseWhenFaded = false;
             }
             if (reason.HasValue)
             {
