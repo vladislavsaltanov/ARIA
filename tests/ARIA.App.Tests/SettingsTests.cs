@@ -193,8 +193,9 @@ public sealed class SettingsTests : IDisposable
             viewModel.AutoCrossfadeMs = 900;
             viewModel.StartFadeMs = 250;
             viewModel.StopFadeMs = 300;
+            viewModel.SeekFadeMs = 350;
 
-            var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300));
+            var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350));
             Assert.Equal(expected, bus.Snapshot().Mixer.Smoothing);
             Assert.Equal(expected, new AppSettingsStore(path).Load().Smoothing);
         }
@@ -208,7 +209,7 @@ public sealed class SettingsTests : IDisposable
     public void Smoothing_Roundtrip_PreservesValues()
     {
         var store = new AppSettingsStore(_path);
-        var smoothing = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300));
+        var smoothing = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350));
         store.Save(new AppSettings(false, "{name}", smoothing));
 
         Assert.Equal(smoothing, store.Load().Smoothing);

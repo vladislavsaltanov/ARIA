@@ -32,6 +32,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private double _autoCrossfadeMs;
     private double _startFadeMs;
     private double _stopFadeMs;
+    private double _seekFadeMs;
     private long _seq;
 
     [ObservableProperty]
@@ -175,6 +176,18 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    public double SeekFadeMs
+    {
+        get => _seekFadeMs;
+        set
+        {
+            if (SetProperty(ref _seekFadeMs, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
     [RelayCommand]
     private void ResetClock() => Submit(new ResetShowClock());
 
@@ -258,7 +271,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         TimeSpan.FromMilliseconds(_manualCrossfadeMs),
         TimeSpan.FromMilliseconds(_autoCrossfadeMs),
         TimeSpan.FromMilliseconds(_startFadeMs),
-        TimeSpan.FromMilliseconds(_stopFadeMs));
+        TimeSpan.FromMilliseconds(_stopFadeMs),
+        TimeSpan.FromMilliseconds(_seekFadeMs));
 
     private void SubmitSmoothing()
     {
@@ -280,11 +294,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _autoCrossfadeMs = smoothing.AutoCrossfade.TotalMilliseconds;
         _startFadeMs = smoothing.StartFade.TotalMilliseconds;
         _stopFadeMs = smoothing.StopFade.TotalMilliseconds;
+        _seekFadeMs = smoothing.SeekFade.TotalMilliseconds;
         OnPropertyChanged(nameof(SmoothingEnabled));
         OnPropertyChanged(nameof(ManualCrossfadeMs));
         OnPropertyChanged(nameof(AutoCrossfadeMs));
         OnPropertyChanged(nameof(StartFadeMs));
         OnPropertyChanged(nameof(StopFadeMs));
+        OnPropertyChanged(nameof(SeekFadeMs));
     }
 
     private void SaveBindings(HotkeyConfig config)

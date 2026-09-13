@@ -11,12 +11,14 @@ public sealed class SmoothingTests
         int manualMs = 400,
         int autoMs = 900,
         int startMs = 250,
-        int stopMs = 300) => new(
+        int stopMs = 300,
+        int seekMs = 350) => new(
             true,
             TimeSpan.FromMilliseconds(manualMs),
             TimeSpan.FromMilliseconds(autoMs),
             TimeSpan.FromMilliseconds(startMs),
-            TimeSpan.FromMilliseconds(stopMs));
+            TimeSpan.FromMilliseconds(stopMs),
+            TimeSpan.FromMilliseconds(seekMs));
 
     [Fact]
     public void FreshBoot_SmoothingIsDefault()
@@ -41,11 +43,13 @@ public sealed class SmoothingTests
     }
 
     [Theory]
-    [InlineData(-1, 900, 250, 300)]
-    [InlineData(400, 6001, 250, 300)]
-    [InlineData(400, 900, -5, 300)]
-    [InlineData(400, 900, 250, 10000)]
-    public void SetSmoothing_OutOfRange_IsRejected(int manualMs, int autoMs, int startMs, int stopMs)
+    [InlineData(-1, 900, 250, 300, 350)]
+    [InlineData(400, 6001, 250, 300, 350)]
+    [InlineData(400, 900, -5, 300, 350)]
+    [InlineData(400, 900, 250, 10000, 350)]
+    [InlineData(400, 900, 250, 300, -1)]
+    [InlineData(400, 900, 250, 300, 6000)]
+    public void SetSmoothing_OutOfRange_IsRejected(int manualMs, int autoMs, int startMs, int stopMs, int seekMs)
     {
         using var h = new Harness();
         var smoothing = new Smoothing(
@@ -53,7 +57,8 @@ public sealed class SmoothingTests
             TimeSpan.FromMilliseconds(manualMs),
             TimeSpan.FromMilliseconds(autoMs),
             TimeSpan.FromMilliseconds(startMs),
-            TimeSpan.FromMilliseconds(stopMs));
+            TimeSpan.FromMilliseconds(stopMs),
+            TimeSpan.FromMilliseconds(seekMs));
 
         var seq = h.Submit(new SetSmoothing(smoothing));
 
@@ -82,6 +87,86 @@ public sealed class SmoothingTests
         var fresh = h.Engine.Last!;
         Assert.Equal(TimeSpan.FromMilliseconds(250), fresh.Mixes[0].Fade!.Duration);
         Assert.False(fresh.Mixes[0].Fade!.StopWhenDone);
+    }
+
+    [Fact]
+    public void SeekTo_WhilePlaying_WithSeekFade_CrossfadesOverlap()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(seekMs: 350)));
+        var old = h.Engine.Last!;
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        var fadeOut = Assert.Single(old.Mixes, m => m.Fade is not null);
+        Assert.Equal(TimeSpan.FromMilliseconds(350), fadeOut.Fade!.Duration);
+        Assert.True(fadeOut.Fade!.StopWhenDone);
+        var fresh = h.Engine.Last!;
+        Assert.NotEqual(old.Handle, fresh.Handle);
+        Assert.Equal(TimeSpan.FromSeconds(30), fresh.Source.CueIn);
+        var fadeIn = Assert.Single(fresh.Mixes, m => m.Fade is not null);
+        Assert.Equal(TimeSpan.FromMilliseconds(350), fadeIn.Fade!.Duration);
+        Assert.False(fadeIn.Fade!.StopWhenDone);
+        Assert.Contains(TransportCommand.Play, fresh.Transports);
+        Assert.DoesNotContain(old.Handle, h.Engine.Disposed);
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+    }
+
+    [Fact]
+    public void SeekTo_WhilePlaying_WithSeekFade_RebindsMonitorAtTarget()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(seekMs: 350)));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+
+        monitor.Publish(h.Engine.Last!.Handle, TimeSpan.Zero);
+        Assert.Equal(TimeSpan.FromSeconds(30), monitor.Latest!.FilePosition);
+    }
+
+    [Fact]
+    public void SeekTo_WhilePlaying_SeekFadeZero_InstantSeek()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(seekMs: 0)));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        Assert.Single(h.Engine.Created);
+        Assert.Equal(TimeSpan.FromSeconds(30), Assert.Single(h.Engine.Last!.Seeks));
+    }
+
+    [Fact]
+    public void SeekTo_WhilePaused_WithSeekFade_InstantSeek()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new Pause());
+        h.Submit(new SetSmoothing(Enabled(seekMs: 350)));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        Assert.Single(h.Engine.Created);
+        Assert.Equal(TimeSpan.FromSeconds(30), Assert.Single(h.Engine.Last!.Seeks));
     }
 
     [Fact]
@@ -278,7 +363,7 @@ public sealed class SmoothingTests
         var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
         h.Submit(new LoadShow([t1, t2, t3], [p], p.Id));
         h.Submit(new Play());
-        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900, seekMs: 0)));
 
         monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(500));
         Assert.Equal(2, h.Engine.Created.Count);

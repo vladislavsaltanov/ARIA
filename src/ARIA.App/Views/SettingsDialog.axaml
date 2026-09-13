@@ -163,6 +163,13 @@
             <TextBlock Grid.Column="2" Text="{Binding StopFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
                        FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
           </Grid>
+          <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
+            <TextBlock Text="кроссфейд перемотки" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding SeekFadeMs, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding SeekFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+          </Grid>
         </StackPanel>
       </Border>
     </StackPanel>

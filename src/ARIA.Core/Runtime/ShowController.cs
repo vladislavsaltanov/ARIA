@@ -587,7 +587,31 @@ public sealed class ShowController : IShowHandler
         {
             filePosition = end;
         }
+        if (_status == TransportStatus.Playing && _smoothing.Enabled && _smoothing.SeekFade > TimeSpan.Zero)
+        {
+            SeekWithCrossfade(deck, filePosition);
+            return;
+        }
         _engine.Seek(handle, filePosition - settings.CueIn);
+        _preRolled = false;
+    }
+
+    private void SeekWithCrossfade(DeckInstance deck, TimeSpan filePosition)
+    {
+        var settings = deck.Settings;
+        var old = deck.Handle!.Value;
+        _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+        _retired.Add(old);
+        _monitor?.Unbind(old);
+        var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut);
+        var options = new StreamOptions(
+            StreamBus.Main,
+            settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
+        var handle = _engine.StartStream(source, options);
+        deck.Handle = handle;
+        _monitor?.Bind(handle, Content(deck) with { CueIn = filePosition });
+        _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
+        _engine.Transport(handle, TransportCommand.Play);
         _preRolled = false;
     }
 
@@ -1146,7 +1170,8 @@ public sealed class ShowController : IShowHandler
         if (value.ManualCrossfade < TimeSpan.Zero || value.ManualCrossfade > SmoothingMax
             || value.AutoCrossfade < TimeSpan.Zero || value.AutoCrossfade > SmoothingMax
             || value.StartFade < TimeSpan.Zero || value.StartFade > SmoothingMax
-            || value.StopFade < TimeSpan.Zero || value.StopFade > SmoothingMax)
+            || value.StopFade < TimeSpan.Zero || value.StopFade > SmoothingMax
+            || value.SeekFade < TimeSpan.Zero || value.SeekFade > SmoothingMax)
         {
             Reject(client, seq, "smoothing-out-of-range");
             return;

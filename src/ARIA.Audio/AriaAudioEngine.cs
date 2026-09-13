@@ -94,7 +94,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public void SetSmoothing(Smoothing smoothing)
     {
         ArgumentNullException.ThrowIfNull(smoothing);
-        _mixer.SetSmoothing(smoothing.StopFade, smoothing.StartFade, smoothing.ManualCrossfade, smoothing.Enabled);
+        _mixer.SetSmoothing(smoothing.StopFade, smoothing.StartFade, smoothing.Enabled);
     }
 
     public void Panic(PanicSpec spec)
