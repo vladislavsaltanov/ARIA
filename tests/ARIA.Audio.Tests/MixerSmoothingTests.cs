@@ -154,6 +154,94 @@ public sealed class MixerSmoothingTests
     }
 
     [Fact]
+    public void PrerollOverlap_MidTransition_ContainsBothVoices()
+    {
+        const int rate = 48000;
+        const int block = 512;
+        var fade = TimeSpan.FromMilliseconds(100);
+        var leadBlocks = 4;
+
+        var combined = RenderOverlap(rate, block, fade, leadBlocks, out var combinedMid);
+        var oldSolo = RenderSolo(rate, block, fade, leadBlocks, 440, true);
+        var newSolo = RenderSolo(rate, block, fade, leadBlocks, 880, false);
+
+        Assert.True(combined, "old voice died before overlap could render");
+        Assert.True(combinedMid > oldSolo * 1.25f);
+        Assert.True(combinedMid > newSolo * 1.25f);
+    }
+
+    [Fact]
+    public void FadeOut_MidFadeIn_StartsFromCurrentLevel_NoJump()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 440, 0.5)));
+        bus.SetMix(handle, new MixParameters(0.0, new FadeSpec(TimeSpan.FromMilliseconds(100), FadeCurve.Linear, 0.0, false)));
+        for (var block = 0; block < 2; block++)
+        {
+            bus.Render(output);
+        }
+        var partial = bus.Peak;
+
+        bus.SetMix(handle, new MixParameters(0.0, new FadeSpec(TimeSpan.FromMilliseconds(100), FadeCurve.Linear, -80.0, true)));
+        bus.Render(output);
+
+        Assert.InRange(bus.Peak, 0f, partial * 1.1f);
+    }
+
+    private static bool RenderOverlap(int rate, int block, TimeSpan fade, int leadBlocks, out float midRms)
+    {
+        using var bus = new MixerBus(1, rate, block);
+        var events = new List<StreamEvent>();
+        bus.Events += events.Add;
+        var output = new float[block];
+        var old = bus.AddVoice(Config(new SineSource(1, rate, 440, 0.5)));
+        bus.Render(output);
+        bus.SetMix(old, new MixParameters(0.0, new FadeSpec(fade, FadeCurve.Linear, -80.0, true)));
+        var fresh = bus.AddVoice(Config(new SineSource(1, rate, 880, 0.5)));
+        bus.SetMix(fresh, new MixParameters(0.0, new FadeSpec(fade, FadeCurve.Linear, 0.0, false)));
+        for (var blockIndex = 0; blockIndex < leadBlocks; blockIndex++)
+        {
+            bus.Render(output);
+        }
+        bus.Render(output);
+        midRms = Rms(output);
+        return events.Count == 0
+            && bus.TryGetPosition(old, out _)
+            && bus.TryGetPosition(fresh, out _);
+    }
+
+    private static float RenderSolo(int rate, int block, TimeSpan fade, int leadBlocks, double frequency, bool fadeOut)
+    {
+        using var bus = new MixerBus(1, rate, block);
+        var output = new float[block];
+        var handle = bus.AddVoice(Config(new SineSource(1, rate, frequency, 0.5)));
+        if (fadeOut)
+        {
+            bus.Render(output);
+        }
+        bus.SetMix(handle, fadeOut
+            ? new MixParameters(0.0, new FadeSpec(fade, FadeCurve.Linear, -80.0, true))
+            : new MixParameters(0.0, new FadeSpec(fade, FadeCurve.Linear, 0.0, false)));
+        for (var blockIndex = 0; blockIndex < leadBlocks; blockIndex++)
+        {
+            bus.Render(output);
+        }
+        bus.Render(output);
+        return Rms(output);
+    }
+
+    private static float Rms(float[] output)
+    {
+        double sum = 0;
+        for (var index = 0; index < output.Length; index++)
+        {
+            sum += output[index] * output[index];
+        }
+        return (float)Math.Sqrt(sum / output.Length);
+    }
+
+    [Fact]
     public void PauseFade_NoAllocations_InSteadyState()
     {
         using var bus = new MixerBus(1, 48000, 256);

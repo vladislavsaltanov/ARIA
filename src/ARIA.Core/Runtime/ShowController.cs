@@ -17,6 +17,7 @@ public sealed class ShowController : IShowHandler
 
     private readonly IAudioEngine _engine;
     private readonly PlaybackMonitor? _monitor;
+    private readonly Action<Action>? _marshal;
 
     private ImmutableArray<Track> _tracks = [];
     private ImmutableArray<Playlist> _playlists = [];
@@ -41,6 +42,7 @@ public sealed class ShowController : IShowHandler
     private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
     private Smoothing _smoothing = Smoothing.Default;
+    private bool _preRolled;
     private ImmutableArray<Script> _scripts = [];
     private TrackDigest _emittedDigest = TrackDigest.Empty;
 
@@ -55,6 +57,7 @@ public sealed class ShowController : IShowHandler
     {
         _engine = engine;
         _monitor = monitor;
+        _marshal = marshalEngineEvents;
         if (marshalEngineEvents is { } marshal)
         {
             _engine.Events += e => marshal(() => OnStreamEvent(e));
@@ -62,6 +65,10 @@ public sealed class ShowController : IShowHandler
         else
         {
             _engine.Events += OnStreamEvent;
+        }
+        if (monitor is not null)
+        {
+            monitor.Changed += OnMonitorPosition;
         }
     }
 
@@ -574,6 +581,7 @@ public sealed class ShowController : IShowHandler
             filePosition = end;
         }
         _engine.Seek(handle, filePosition - settings.CueIn);
+        _preRolled = false;
     }
 
     private void OnPanic()
@@ -1117,6 +1125,59 @@ public sealed class ShowController : IShowHandler
         EmitMixer();
     }
 
+    private void OnMonitorPosition(PositionSnapshot snapshot)
+    {
+        if (_marshal is { } marshal)
+        {
+            marshal(() => CheckPreRoll(snapshot));
+            return;
+        }
+        CheckPreRoll(snapshot);
+    }
+
+    private void CheckPreRoll(PositionSnapshot snapshot)
+    {
+        if (_preRolled || _status != TransportStatus.Playing || _current is not { Handle: { } } current)
+        {
+            return;
+        }
+        if (!Content(current).Equals(snapshot.Deck))
+        {
+            return;
+        }
+        if (!_smoothing.Enabled || _smoothing.AutoCrossfade <= TimeSpan.Zero)
+        {
+            return;
+        }
+        if (current.Settings.EndAction != EndAction.Advance)
+        {
+            return;
+        }
+        if (snapshot.Remaining > _smoothing.AutoCrossfade || !HasNext())
+        {
+            return;
+        }
+        _preRolled = true;
+        AdvanceWithCrossfade();
+    }
+
+    private bool HasNext()
+    {
+        if (_queue.Count > 0)
+        {
+            return true;
+        }
+        if (_activePlaylistId is { } playlistId)
+        {
+            var playlist = _playlists.FirstOrDefault(p => p.Id == playlistId);
+            if (playlist is not null && _cursor < playlist.Entries.Length)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void OnStreamEvent(StreamEvent e)
     {
         if (_current is { Handle: { } currentHandle } && currentHandle == e.Handle)
@@ -1273,6 +1334,7 @@ public sealed class ShowController : IShowHandler
 
     private void StartStreamFor(DeckInstance deck, bool auto)
     {
+        _preRolled = false;
         if (deck.Handle is { } previous)
         {
             _monitor?.Unbind(previous);
