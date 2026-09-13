@@ -3,7 +3,6 @@ namespace Aria.App.Tests;
 using Aria.App.Views;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -16,7 +15,7 @@ public sealed class ScriptPaneResizeTests : IDisposable
     public void Dispose() => _session.Dispose();
 
     [Fact]
-    public async Task GripDragDelta_UpdatesPaneWidth()
+    public async Task GripPointerPress_StartsDrag()
     {
         var after = 0.0;
         await _session.Dispatch(() =>
@@ -26,14 +25,20 @@ public sealed class ScriptPaneResizeTests : IDisposable
             var drawer = window.FindControl<SplitView>("ScriptDrawer");
             Assert.NotNull(drawer);
             drawer.IsPaneOpen = true;
-            var thumb = window.FindControl<Thumb>("PaneResizer");
-            Assert.NotNull(thumb);
-            thumb.RaiseEvent(new VectorEventArgs
-            {
-                RoutedEvent = Thumb.DragDeltaEvent,
-                Vector = new Vector(-60, 0),
-            });
+            var grip = window.FindControl<Border>("PaneResizer");
+            Assert.NotNull(grip);
+            grip.RaiseEvent(new PointerPressedEventArgs(
+                grip,
+                new Pointer(1, PointerType.Mouse, true),
+                window,
+                new Point(1400, 450),
+                0UL,
+                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
+                KeyModifiers.None,
+                1));
+            window.UpdatePaneResize(1340);
             after = drawer.OpenPaneLength;
+            window.EndPaneResize();
             window.Close();
             return 0;
         }, CancellationToken.None);
@@ -42,7 +47,7 @@ public sealed class ScriptPaneResizeTests : IDisposable
     }
 
     [Fact]
-    public async Task GripDragDelta_ClampsPaneWidth()
+    public async Task GripPointerPress_ClosedPane_Ignored()
     {
         var after = 0.0;
         await _session.Dispatch(() =>
@@ -51,54 +56,26 @@ public sealed class ScriptPaneResizeTests : IDisposable
             window.Show();
             var drawer = window.FindControl<SplitView>("ScriptDrawer");
             Assert.NotNull(drawer);
-            drawer.IsPaneOpen = true;
-            var thumb = window.FindControl<Thumb>("PaneResizer");
-            Assert.NotNull(thumb);
-            thumb.RaiseEvent(new VectorEventArgs
-            {
-                RoutedEvent = Thumb.DragDeltaEvent,
-                Vector = new Vector(2000, 0),
-            });
+            drawer.IsPaneOpen = false;
+            var grip = window.FindControl<Border>("PaneResizer");
+            Assert.NotNull(grip);
+            grip.RaiseEvent(new PointerPressedEventArgs(
+                grip,
+                new Pointer(1, PointerType.Mouse, true),
+                window,
+                new Point(1400, 450),
+                0UL,
+                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
+                KeyModifiers.None,
+                1));
+            window.UpdatePaneResize(1340);
             after = drawer.OpenPaneLength;
+            window.EndPaneResize();
             window.Close();
             return 0;
         }, CancellationToken.None);
 
-        Assert.Equal(240, after);
-    }
-
-    [Fact]
-    public async Task GripDrag_SuspendsPaneTransitions()
-    {
-        var during = -1;
-        var restored = -1;
-        await _session.Dispatch(() =>
-        {
-            var window = new MainWindow(null);
-            window.Show();
-            var drawer = window.FindControl<SplitView>("ScriptDrawer");
-            Assert.NotNull(drawer);
-            drawer.IsPaneOpen = true;
-            var thumb = window.FindControl<Thumb>("PaneResizer");
-            Assert.NotNull(thumb);
-            thumb.RaiseEvent(new VectorEventArgs
-            {
-                RoutedEvent = Thumb.DragStartedEvent,
-                Vector = new Vector(0, 0),
-            });
-            during = PaneTransitions(drawer).Count;
-            thumb.RaiseEvent(new VectorEventArgs
-            {
-                RoutedEvent = Thumb.DragCompletedEvent,
-                Vector = new Vector(0, 0),
-            });
-            restored = PaneTransitions(drawer).Count;
-            window.Close();
-            return 0;
-        }, CancellationToken.None);
-
-        Assert.Equal(0, during);
-        Assert.Equal(1, restored);
+        Assert.Equal(340, after);
     }
 
     [Fact]
@@ -175,7 +152,37 @@ public sealed class ScriptPaneResizeTests : IDisposable
     }
 
     [Fact]
-    public async Task ManualDrag_SuppressesDragDeltaFallback()
+    public async Task KeyboardAltLeft_WidensPane()
+    {
+        var after = 0.0;
+        var handled = false;
+        await _session.Dispatch(() =>
+        {
+            var window = new MainWindow(null);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            drawer.IsPaneOpen = true;
+            var args = new KeyEventArgs
+            {
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.Left,
+                KeyModifiers = KeyModifiers.Alt,
+                Source = window,
+            };
+            window.RaiseEvent(args);
+            handled = args.Handled;
+            after = drawer.OpenPaneLength;
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+
+        Assert.True(handled);
+        Assert.Equal(360, after);
+    }
+
+    [Fact]
+    public async Task KeyboardAltRight_NarrowsPane()
     {
         var after = 0.0;
         await _session.Dispatch(() =>
@@ -185,108 +192,19 @@ public sealed class ScriptPaneResizeTests : IDisposable
             var drawer = window.FindControl<SplitView>("ScriptDrawer");
             Assert.NotNull(drawer);
             drawer.IsPaneOpen = true;
-            var thumb = window.FindControl<Thumb>("PaneResizer");
-            Assert.NotNull(thumb);
-            var start = drawer.OpenPaneLength;
-            window.BeginPaneResize(1000, start);
-            thumb.RaiseEvent(new VectorEventArgs
+            window.RaiseEvent(new KeyEventArgs
             {
-                RoutedEvent = Thumb.DragDeltaEvent,
-                Vector = new Vector(-60, 0),
+                RoutedEvent = InputElement.KeyDownEvent,
+                Key = Key.Right,
+                KeyModifiers = KeyModifiers.Alt,
+                Source = window,
             });
             after = drawer.OpenPaneLength;
-            window.EndPaneResize();
             window.Close();
             return 0;
         }, CancellationToken.None);
 
-        Assert.Equal(340, after);
-    }
-
-    [Fact]
-    public async Task TunnelPress_ZoneBoundaries()
-    {
-        var inside = false;
-        var outside = false;
-        await _session.Dispatch(() =>
-        {
-            var window = new MainWindow(null);
-            window.Show();
-            var drawer = window.FindControl<SplitView>("ScriptDrawer");
-            Assert.NotNull(drawer);
-            drawer.IsPaneOpen = true;
-            window.Measure(new Size(1440, 900));
-            window.Arrange(new Rect(0, 0, 1440, 900));
-            var edge = window.PaneLeftEdge();
-            Assert.False(double.IsNaN(edge));
-            inside = window.TryBeginPaneEdgeResize(edge + 8, true);
-            window.EndPaneResize();
-            inside = inside && window.TryBeginPaneEdgeResize(edge - 8, true);
-            window.EndPaneResize();
-            outside = window.TryBeginPaneEdgeResize(edge + 9, true)
-                || window.TryBeginPaneEdgeResize(edge - 9, true);
-            window.EndPaneResize();
-            window.Close();
-            return 0;
-        }, CancellationToken.None);
-
-        Assert.True(inside);
-        Assert.False(outside);
-    }
-
-    [Fact]
-    public async Task TunnelPress_AtEdge_StartsDrag()
-    {
-        var started = false;
-        var after = 0.0;
-        await _session.Dispatch(() =>
-        {
-            var window = new MainWindow(null);
-            window.Show();
-            var drawer = window.FindControl<SplitView>("ScriptDrawer");
-            Assert.NotNull(drawer);
-            drawer.IsPaneOpen = true;
-            window.Measure(new Size(1440, 900)); window.Arrange(new Rect(0, 0, 1440, 900));
-            var edge = window.PaneLeftEdge();
-            Assert.False(double.IsNaN(edge));
-            started = window.TryBeginPaneEdgeResize(edge, true);
-            window.UpdatePaneResize(edge - 60);
-            after = drawer.OpenPaneLength;
-            window.EndPaneResize();
-            window.Close();
-            return 0;
-        }, CancellationToken.None);
-
-        Assert.True(started);
-        Assert.Equal(400, after);
-    }
-
-    [Fact]
-    public async Task TunnelPress_OutsideZoneOrClosedPane_Ignored()
-    {
-        var started = false;
-        var after = 0.0;
-        await _session.Dispatch(() =>
-        {
-            var window = new MainWindow(null);
-            window.Show();
-            var drawer = window.FindControl<SplitView>("ScriptDrawer");
-            Assert.NotNull(drawer);
-            drawer.IsPaneOpen = true;
-            window.Measure(new Size(1440, 900)); window.Arrange(new Rect(0, 0, 1440, 900));
-            started = window.TryBeginPaneEdgeResize(0, true)
-                || window.TryBeginPaneEdgeResize(window.PaneLeftEdge(), false);
-            window.UpdatePaneResize(-5000);
-            after = drawer.OpenPaneLength;
-            window.EndPaneResize();
-            drawer.IsPaneOpen = false;
-            started = started || window.TryBeginPaneEdgeResize(window.PaneLeftEdge(), true);
-            window.Close();
-            return 0;
-        }, CancellationToken.None);
-
-        Assert.False(started);
-        Assert.Equal(340, after);
+        Assert.Equal(320, after);
     }
 
     [Fact]

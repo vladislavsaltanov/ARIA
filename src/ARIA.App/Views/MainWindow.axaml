@@ -41,7 +41,7 @@
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#1F1F1F"/>
     </Style>
-    <Style Selector="Thumb#PaneResizer:pointerover">
+    <Style Selector="Border#PaneResizer:pointerover">
       <Setter Property="Background" Value="#2C2C2C"/>
     </Style>
   </Window.Styles>
@@ -51,14 +51,11 @@
                OpenPaneLength="340" IsPaneOpen="False">
       <SplitView.Pane>
         <Border Background="#161616" BorderBrush="#2C2C2C" BorderThickness="1,0,0,0">
-          <Grid ColumnDefinitions="16,*">
+          <Grid ColumnDefinitions="20,*">
             <Border Grid.Column="0" x:Name="PaneGrip" Width="3" CornerRadius="2" Background="#2C2C2C"
                     HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,12" IsHitTestVisible="False"/>
-            <Thumb Grid.Column="0" x:Name="PaneResizer" Background="Transparent" MinWidth="16"
-                   VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Cursor="SizeWestEast" DragDelta="OnPaneResize"
-                   DragStarted="OnPaneResizeStarted" DragCompleted="OnPaneResizeCompleted"
-                   PointerPressed="OnPaneResizePressed" PointerMoved="OnPaneResizeMoved" PointerReleased="OnPaneResizeReleased"
-                   ToolTip.Tip="Ширина панели — Ctrl+←/→"/>
+            <Border Grid.Column="0" x:Name="PaneResizer" Background="Transparent"
+                    Cursor="SizeWestEast" ToolTip.Tip="Ширина панели — Alt+←/→"/>
             <views:ScriptPanel Grid.Column="1" x:Name="ScriptPanel" Margin="10,14,12,10"/>
           </Grid>
         </Border>

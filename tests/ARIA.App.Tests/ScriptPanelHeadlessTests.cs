@@ -308,18 +308,29 @@ public sealed class ScriptPanelHeadlessTests : IDisposable
             window.Show();
             var drawer = window.FindControl<SplitView>("ScriptDrawer");
             Assert.NotNull(drawer);
-            var thumb = window.FindControl<Avalonia.Controls.Primitives.Thumb>("PaneResizer");
-            Assert.NotNull(thumb);
+            drawer.IsPaneOpen = true;
+            var grip = window.FindControl<Border>("PaneResizer");
+            Assert.NotNull(grip);
             var before = drawer.OpenPaneLength;
 
-            thumb.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragDeltaEvent, Vector = new Vector(40, 0) });
-            Assert.Equal(Math.Clamp(before - 40, 240, 600), drawer.OpenPaneLength);
+            grip.RaiseEvent(new PointerPressedEventArgs(
+                grip,
+                new Pointer(1, PointerType.Mouse, true),
+                window,
+                new Point(1400, 450),
+                0UL,
+                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
+                KeyModifiers.None,
+                1));
+            window.UpdatePaneResize(1360);
+            Assert.Equal(Math.Clamp(before + 40, 240, 600), drawer.OpenPaneLength);
 
-            thumb.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragDeltaEvent, Vector = new Vector(-1000, 0) });
-            Assert.Equal(600, drawer.OpenPaneLength);
-
-            thumb.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragDeltaEvent, Vector = new Vector(1000, 0) });
+            window.UpdatePaneResize(2400);
             Assert.Equal(240, drawer.OpenPaneLength);
+
+            window.UpdatePaneResize(400);
+            Assert.Equal(600, drawer.OpenPaneLength);
+            window.EndPaneResize();
 
             window.Close();
             return 0;

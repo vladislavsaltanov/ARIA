@@ -24,7 +24,6 @@ public partial class MainWindow : Window
     private bool _paneResizing;
     private double _paneResizeStartX;
     private double _paneResizeStartWidth;
-    private const double PaneEdgeGrab = 8.0;
     private const double PaneKeyboardStep = 20.0;
 
     public MainWindow() : this(null)
@@ -87,49 +86,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnPaneResize(object? sender, VectorEventArgs e)
+    private void OnGripPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_paneResizing)
-        {
-            return;
-        }
-        SetPaneWidth(ScriptDrawer.OpenPaneLength - e.Vector.X);
-    }
-
-    private void OnPaneResizeStarted(object? sender, VectorEventArgs e) => SuspendPaneTransitions();
-
-    private void OnPaneResizeCompleted(object? sender, VectorEventArgs e) => RestorePaneTransitions();
-
-    private void OnPaneResizePressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (_paneResizing)
-        {
-            return;
-        }
-        if (e.GetCurrentPoint(PaneResizer).Properties.PointerUpdateKind is not PointerUpdateKind.LeftButtonPressed)
+        if (!ScriptDrawer.IsPaneOpen
+            || e.GetCurrentPoint(PaneResizer).Properties.PointerUpdateKind is not PointerUpdateKind.LeftButtonPressed)
         {
             return;
         }
         BeginPaneResize(e.GetPosition(this).X, ScriptDrawer.OpenPaneLength);
         e.Pointer.Capture(PaneResizer);
-    }
-
-    private void OnPaneResizeMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_paneResizing || e.Pointer.Captured != PaneResizer)
-        {
-            return;
-        }
-        UpdatePaneResize(e.GetPosition(this).X);
-    }
-
-    private void OnPaneResizeReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (!_paneResizing)
-        {
-            return;
-        }
-        EndPaneResize();
+        e.Handled = true;
     }
 
     internal void BeginPaneResize(double startX, double startWidth)
@@ -157,35 +123,13 @@ public partial class MainWindow : Window
 
     private void SetPaneWidth(double width) => ScriptDrawer.OpenPaneLength = Math.Clamp(width, 240, 600);
 
-    internal double PaneLeftEdge() =>
-        PaneResizer.TranslatePoint(new Point(0, 0), this)?.X ?? double.NaN;
-
-    internal bool IsPaneEdgePress(double x) =>
-        ScriptDrawer.IsPaneOpen && !double.IsNaN(PaneLeftEdge()) && Math.Abs(x - PaneLeftEdge()) <= PaneEdgeGrab;
-
-    internal bool TryBeginPaneEdgeResize(double x, bool leftButton)
-    {
-        if (!leftButton || !IsPaneEdgePress(x))
-        {
-            return false;
-        }
-        BeginPaneResize(x, ScriptDrawer.OpenPaneLength);
-        return true;
-    }
-
     private void OnResizeTunnelPressed(object? sender, PointerPressedEventArgs e)
     {
         var point = e.GetCurrentPoint(this);
-        var x = e.GetPosition(this).X;
-        var left = point.Properties.PointerUpdateKind is PointerUpdateKind.LeftButtonPressed;
-        if (left && IsGripSource(e.Source))
+        if (point.Properties.PointerUpdateKind is PointerUpdateKind.LeftButtonPressed
+            && ScriptDrawer.IsPaneOpen && IsGripSource(e.Source))
         {
-            BeginPaneResize(x, ScriptDrawer.OpenPaneLength);
-            e.Pointer.Capture(this);
-            return;
-        }
-        if (TryBeginPaneEdgeResize(x, left))
-        {
+            BeginPaneResize(e.GetPosition(this).X, ScriptDrawer.OpenPaneLength);
             e.Pointer.Capture(this);
         }
     }
@@ -270,6 +214,7 @@ public partial class MainWindow : Window
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(InputElement.KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
+        PaneResizer.AddHandler(InputElement.PointerPressedEvent, OnGripPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(InputElement.PointerPressedEvent, OnResizeTunnelPressed, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerMovedEvent, OnResizeTunnelMoved, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerReleasedEvent, OnResizeTunnelReleased, RoutingStrategies.Tunnel);
@@ -335,7 +280,8 @@ public partial class MainWindow : Window
             }
             return;
         }
-        if (e.Key is Key.Left or Key.Right && e.KeyModifiers == KeyModifiers.Control
+        if (e.Key is Key.Left or Key.Right
+            && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Alt))
             && ScriptDrawer.IsPaneOpen && !IsTextInput(e.Source))
         {
             SetPaneWidth(ScriptDrawer.OpenPaneLength + (e.Key == Key.Left ? PaneKeyboardStep : -PaneKeyboardStep));
