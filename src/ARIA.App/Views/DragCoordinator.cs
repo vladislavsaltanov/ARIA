@@ -21,6 +21,8 @@ internal sealed class DragCoordinator
     private QueueViewModel.QueueItemVm? _queueItem;
     private Border? _rowHighlight;
     private ListBox? _listHighlight;
+    private ListBoxItem? _dropContainer;
+    private bool _dropAfter;
 
     public DragCoordinator(ListBox library, ListBox playlist, ListBox queue)
     {
@@ -93,14 +95,14 @@ internal sealed class DragCoordinator
             var playlistPos = e.GetPosition(_playlist);
             if (IsInside(_playlist, playlistPos))
             {
-                HighlightAt(_playlist, playlistPos);
+                ShowInsertion(_playlist, playlistPos);
                 return;
             }
             HighlightAt(_queue, e.GetPosition(_queue));
         }
         else if (_entry is not null)
         {
-            HighlightAt(_playlist, e.GetPosition(_playlist));
+            ShowInsertion(_playlist, e.GetPosition(_playlist));
         }
         else if (_queueItem is not null)
         {
@@ -188,6 +190,12 @@ internal sealed class DragCoordinator
 
     private void ClearHighlight()
     {
+        if (_dropContainer is not null)
+        {
+            _dropContainer.Classes.Remove("dropBefore");
+            _dropContainer.Classes.Remove("dropAfter");
+            _dropContainer = null;
+        }
         if (_rowHighlight is not null)
         {
             _rowHighlight.Background = Brushes.Transparent;
@@ -198,6 +206,50 @@ internal sealed class DragCoordinator
             _listHighlight.Background = Brushes.Transparent;
             _listHighlight = null;
         }
+    }
+
+    private void ShowInsertion(ListBox list, Point pos)
+    {
+        if (!IsInside(list, pos))
+        {
+            return;
+        }
+        var count = list.Items.Count;
+        var index = DropIndex(list, pos, count);
+        ListBoxItem? container = null;
+        var after = false;
+        if (count > 0 && list.ItemsPanelRoot is Panel panel)
+        {
+            var items = panel.Children.OfType<ListBoxItem>().ToList();
+            if (index >= count && items.Count > 0)
+            {
+                container = items[^1];
+                after = true;
+            }
+            else if (index < items.Count)
+            {
+                container = items[index];
+            }
+        }
+        if (container is null)
+        {
+            if (_listHighlight == list)
+            {
+                return;
+            }
+            ClearHighlight();
+            list.Background = new SolidColorBrush(Color.Parse("#2A2A2A"));
+            _listHighlight = list;
+            return;
+        }
+        if (_dropContainer == container && _dropAfter == after)
+        {
+            return;
+        }
+        ClearHighlight();
+        container.Classes.Add(after ? "dropAfter" : "dropBefore");
+        _dropContainer = container;
+        _dropAfter = after;
     }
 
     private void HighlightAt(ListBox list, Point pos)

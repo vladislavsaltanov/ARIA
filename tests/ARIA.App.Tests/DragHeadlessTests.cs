@@ -54,6 +54,78 @@ public sealed class DragHeadlessTests : IDisposable
         await CloseAsync(window);
     }
 
+    [Fact]
+    public async Task ReorderWithinPlaylist_ShowsInsertionLine_AndMovesEntry()
+    {
+        var wav1 = TestWav.Write(_directory, "reorder-a.wav");
+        var wav2 = TestWav.Write(_directory, "reorder-b.wav");
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
+        await host.StartAsync();
+        Assert.Equal(2, (await host.ImportTracksAsync([wav1, wav2])).Added);
+        host.Submit(new CreatePlaylist("ReorderTarget"));
+        var tracks = await TracksEventuallyAsync(host, 2);
+        var playlistId = await PlaylistEventuallyAsync(host);
+        host.Submit(new AddEntry(playlistId, tracks[0].Id, 0));
+        Assert.Single(await EntriesEventuallyAsync(host, 1));
+        host.Submit(new AddEntry(playlistId, tracks[1].Id, 1));
+        var initial = await EntriesEventuallyAsync(host, 2);
+        Assert.Equal(2, initial.Length);
+        Assert.Equal(tracks[0].Id, initial[0].TrackId);
+        Assert.Equal(tracks[1].Id, initial[1].TrackId);
+        Window? window = null;
+        await _session.Dispatch(() =>
+        {
+            var sync = SynchronizationContext.Current;
+            var library = new LibraryViewModel(host.Bus, host.Library!, host.ImportTracksAsync, sync: sync);
+            var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, sync: sync);
+            var queue = new QueueViewModel(host.Bus, sync);
+            window = new Views.MainWindow(null, library, playlists, queue);
+            window.Show();
+            window.UpdateLayout();
+            return 0;
+        }, CancellationToken.None);
+
+        await _session.Dispatch(() =>
+        {
+            window!.UpdateLayout();
+            var entryList = window.FindControl<Views.PlaylistCenter>("PlaylistCenter")!.EntryListBox;
+            var first = Assert.IsType<ListBoxItem>(entryList.ItemsPanelRoot!.Children[0]);
+            var second = Assert.IsType<ListBoxItem>(entryList.ItemsPanelRoot!.Children[1]);
+            var from = first.TranslatePoint(new Point(first.Bounds.Width / 2, first.Bounds.Height / 2), window);
+            var bottom = second.TranslatePoint(new Point(second.Bounds.Width / 2, second.Bounds.Height - 4), window);
+            var top = second.TranslatePoint(new Point(second.Bounds.Width / 2, 4), window);
+            Assert.NotNull(from);
+            Assert.NotNull(bottom);
+            Assert.NotNull(top);
+            window.MouseDown(from.Value, MouseButton.Left);
+            window.MouseMove(bottom.Value);
+            Assert.Contains("dropAfter", second.Classes);
+            window.MouseMove(top.Value);
+            Assert.Contains("dropBefore", second.Classes);
+            Assert.DoesNotContain("dropAfter", second.Classes);
+            window.MouseMove(bottom.Value);
+            window.MouseUp(bottom.Value, MouseButton.Left);
+            Assert.DoesNotContain("dropBefore", second.Classes);
+            Assert.DoesNotContain("dropAfter", second.Classes);
+            return 0;
+        }, CancellationToken.None);
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        ImmutableArray<PlaylistEntry> entries = default;
+        while (DateTime.UtcNow < deadline)
+        {
+            entries = host.Bus.Snapshot().Show.Playlists[0].Entries;
+            if (entries.Length == 2 && entries[0].TrackId == tracks[1].Id)
+            {
+                break;
+            }
+            await Task.Delay(25);
+        }
+        Assert.Equal(tracks[1].Id, entries[0].TrackId);
+        Assert.Equal(tracks[0].Id, entries[1].TrackId);
+        await CloseAsync(window!);
+    }
+
     private async Task<AppHost> SetupHostAsync()
     {
         var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
@@ -121,6 +193,32 @@ public sealed class DragHeadlessTests : IDisposable
             window.MouseUp(current, MouseButton.Left);
             return 0;
         }, CancellationToken.None);
+    }
+
+    private static async Task<ImmutableArray<Track>> TracksEventuallyAsync(AppHost host, int count)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        var tracks = host.Library!.Load().Tracks;
+        while (DateTime.UtcNow < deadline && tracks.Length < count)
+        {
+            await Task.Delay(25);
+            tracks = host.Library!.Load().Tracks;
+        }
+        return tracks;
+    }
+
+    private static async Task<PlaylistId> PlaylistEventuallyAsync(AppHost host)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (host.Bus.Snapshot().Show.Playlists.Length > 0)
+            {
+                return host.Bus.Snapshot().Show.Playlists[0].Id;
+            }
+            await Task.Delay(25);
+        }
+        throw new TimeoutException("playlist never appeared");
     }
 
     private static async Task<ImmutableArray<PlaylistEntry>> EntriesEventuallyAsync(AppHost host, int count)

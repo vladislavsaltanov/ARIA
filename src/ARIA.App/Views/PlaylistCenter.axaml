@@ -10,6 +10,14 @@
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
+    <Style Selector="ListBoxItem.dropBefore /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="0,3,0,0"/>
+    </Style>
+    <Style Selector="ListBoxItem.dropAfter /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderThickness" Value="0,0,0,3"/>
+    </Style>
     <Style Selector="Border.plRow.linked">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>

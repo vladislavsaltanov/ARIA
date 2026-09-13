@@ -22,11 +22,13 @@ public partial class PlaylistCenter : UserControl
         if (_bound is not null)
         {
             _bound.ImportFailed -= OnImportFailed;
+            _bound.ExportSucceeded -= OnExportSucceeded;
         }
         _bound = DataContext as PlaylistsViewModel;
         if (_bound is not null)
         {
             _bound.ImportFailed += OnImportFailed;
+            _bound.ExportSucceeded += OnExportSucceeded;
         }
     }
 
@@ -41,6 +43,33 @@ public partial class PlaylistCenter : UserControl
             Title = "Импорт плейлиста не удался",
             Width = 420,
             Height = 160,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
+                },
+            },
+        };
+        ((Button)((StackPanel)dialog.Content!).Children[1]).Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(owner);
+    }
+
+    private async void OnExportSucceeded(string fileName, string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        var dialog = new Window
+        {
+            Title = "Плейлист экспортирован",
+            Width = 420,
+            Height = 170,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Content = new StackPanel
             {

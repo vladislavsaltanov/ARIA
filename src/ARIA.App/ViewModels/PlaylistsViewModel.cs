@@ -52,6 +52,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public event Action<string>? ImportFailed;
 
+    public event Action<string, string>? ExportSucceeded;
+
     public ObservableCollection<PlaylistVm> Playlists { get; } = [];
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
@@ -151,10 +153,17 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        await using var stream = await file.OpenWriteAsync();
+        await FinishExportAsync(() => file.OpenWriteAsync(), file.Name);
+    }
+
+    public async Task FinishExportAsync(Func<Task<Stream>> openWrite, string fileName)
+    {
+        await using var stream = await openWrite();
         await using var writer = new StreamWriter(stream);
         await writer.WriteAsync(ExportSelectedDocument());
-        PlaylistIoStatus = $"экспортировано: {SelectedPlaylist.Name}";
+        var count = SelectedPlaylist?.Entries.Count ?? 0;
+        PlaylistIoStatus = string.Empty;
+        ExportSucceeded?.Invoke(fileName, $"Сохранено: {fileName}\nТреков: {count}");
     }
 
     [RelayCommand]

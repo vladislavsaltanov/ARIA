@@ -279,6 +279,24 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public async Task FinishExportAsync_RaisesSuccess_AndClearsStickyStatus()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var events = new List<(string File, string Message)>();
+        vm.ExportSucceeded += (file, message) => events.Add((file, message));
+        using var sink = new MemoryStream();
+
+        await vm.FinishExportAsync(() => Task.FromResult<Stream>(sink), "Main.aria-playlist.json");
+
+        var raised = Assert.Single(events);
+        Assert.Equal("Main.aria-playlist.json", raised.File);
+        Assert.Contains("2", raised.Message);
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+        Assert.Contains("Main", System.Text.Encoding.UTF8.GetString(sink.ToArray()));
+    }
+
+    [Fact]
     public async Task ImportDocumentAsync_BadJson_ReportsError()
     {
         var (bus, _, _) = Setup();
