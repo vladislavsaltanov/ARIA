@@ -386,7 +386,8 @@
           renderScript();
         }),
       );
-      if (scriptManage === "create") el.scriptTabs.appendChild(scriptCreateForm());
+      if (scriptManage === "create")
+        el.scriptTabs.appendChild(scriptCreateForm());
       updateScriptFollow();
       return;
     }
@@ -540,11 +541,13 @@
     if (!parts.length || parts.length > 3) return null;
     var nums = parts.map((p) => parseInt(p, 10));
     if (nums.some((n) => isNaN(n) || n < 0)) return null;
-    if (parts.length > 1 && (nums[parts.length - 1] > 59 || nums[parts.length - 2] > 59))
+    if (
+      parts.length > 1 &&
+      (nums[parts.length - 1] > 59 || nums[parts.length - 2] > 59)
+    )
       return null;
     var total = 0;
-    for (var i = 0; i < nums.length; i++)
-      total = total * 60 + nums[i];
+    for (var i = 0; i < nums.length; i++) total = total * 60 + nums[i];
     return total;
   }
 
@@ -575,8 +578,7 @@
     li.className = "script-line";
     var wrap = document.createElement("div");
     wrap.className = "inline-row";
-    var atSec =
-      line == null ? null : parseIsoDuration(line.atElapsed);
+    var atSec = line == null ? null : parseIsoDuration(line.atElapsed);
     var time = textInput(
       "м:сс",
       line == null || atSec == null ? "" : formatSeconds(atSec),
@@ -584,9 +586,7 @@
     time.style.maxWidth = "90px";
     var text = textInput("текст строки", line == null ? "" : line.text);
     var mentions = (line && line.mentions) || [];
-    var select = scriptTrackSelect(
-      mentions.length ? mentions[0].track : "",
-    );
+    var select = scriptTrackSelect(mentions.length ? mentions[0].track : "");
     var ok = document.createElement("button");
     ok.className = "mini ok";
     ok.textContent = "ОК";
