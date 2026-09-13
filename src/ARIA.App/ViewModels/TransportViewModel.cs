@@ -318,11 +318,24 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private void RefreshTimerSubText() => TimerSubText = $"{_timeOfDayText} · {_trackElapsedText}";
 
-    private static double PercentToDb(double percent) =>
-        VolumeMinDb + Math.Clamp(percent, 0.0, 100.0) / 100.0 * (VolumeMaxDb - VolumeMinDb);
+    private static double PercentToDb(double percent)
+    {
+        var fraction = Math.Clamp(percent, 0.0, 100.0) / 100.0;
+        if (fraction <= 0.0)
+        {
+            return VolumeMinDb;
+        }
+        return Math.Clamp(VolumeMaxDb + 40.0 * Math.Log10(fraction), VolumeMinDb, VolumeMaxDb);
+    }
 
-    private static double DbToPercent(double gainDb) =>
-        Math.Clamp((gainDb - VolumeMinDb) / (VolumeMaxDb - VolumeMinDb) * 100.0, 0.0, 100.0);
+    private static double DbToPercent(double gainDb)
+    {
+        if (gainDb <= VolumeMinDb)
+        {
+            return 0.0;
+        }
+        return Math.Clamp(Math.Pow(10.0, (gainDb - VolumeMaxDb) / 40.0) * 100.0, 0.0, 100.0);
+    }
 
     private sealed class MonitorSubscription : IDisposable
     {

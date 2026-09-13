@@ -124,6 +124,7 @@ public partial class MainWindow : Window
     {
         Opened -= OnOpened;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
         if (_hotkeys is not null)
         {
@@ -177,6 +178,17 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
+        {
+            if (!IsTextInput(e.Source)
+                && TransportBar?.DataContext is TransportViewModel transport
+                && transport.TogglePlayPauseCommand.CanExecute(null))
+            {
+                transport.TogglePlayPauseCommand.Execute(null);
+                e.Handled = true;
+            }
+            return;
+        }
         if (_hotkeys is null)
         {
             return;
@@ -185,6 +197,28 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
         }
+    }
+
+    private void OnKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && !IsTextInput(e.Source))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private static bool IsTextInput(object? source)
+    {
+        var current = source as Control;
+        while (current is not null)
+        {
+            if (current is TextBox)
+            {
+                return true;
+            }
+            current = current.Parent as Control;
+        }
+        return false;
     }
 
     private void OnHelpOverlayClick(object? sender, PointerPressedEventArgs e) => HelpOverlay.IsVisible = false;
