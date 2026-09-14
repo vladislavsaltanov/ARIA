@@ -73,15 +73,15 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
             using var settings = NewSettings(bus);
             var dialog = new SettingsDialog(settings);
             dialog.Show();
-            var row = settings.Gestures.First(g => g.Action == "replay");
+            var row = settings.Hotkeys.Gestures.First(g => g.Action == "replay");
 
-            settings.BeginRecord(row);
+            settings.Hotkeys.BeginRecord(row);
             Assert.True(row.IsRecording);
 
             dialog.KeyPress(Key.F7, RawInputModifiers.Control, PhysicalKey.F7, null);
 
             Assert.False(row.IsRecording);
-            Assert.Equal("Ctrl+f7", settings.Gestures.First(g => g.Action == "replay").Gesture);
+            Assert.Equal("Ctrl+f7", settings.Hotkeys.Gestures.First(g => g.Action == "replay").Gesture);
             Assert.True(File.Exists(_hotkeysPath));
 
             dialog.Close();
@@ -98,13 +98,13 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
             using var settings = NewSettings(bus);
             var dialog = new SettingsDialog(settings);
             dialog.Show();
-            var row = settings.Gestures.First(g => g.Action == "replay");
+            var row = settings.Hotkeys.Gestures.First(g => g.Action == "replay");
 
-            settings.BeginRecord(row);
+            settings.Hotkeys.BeginRecord(row);
             dialog.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
 
             Assert.False(row.IsRecording);
-            Assert.Equal("Ctrl+R", settings.Gestures.First(g => g.Action == "replay").Gesture);
+            Assert.Equal("Ctrl+R", settings.Hotkeys.Gestures.First(g => g.Action == "replay").Gesture);
             dialog.Close();
             return 0;
         }, CancellationToken.None);

@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
              x:Class="Aria.App.Views.SettingsSections.ClockSection"
              x:DataType="vm:SettingsViewModel">
-  <Border Classes="section">
+  <Border Classes="section" x:DataType="vms:ClockSectionVm" DataContext="{Binding Clock}">
     <StackPanel Orientation="Horizontal" Spacing="12">
       <StackPanel VerticalAlignment="Center">
         <TextBlock Text="Часы" Classes="sectionTitle"/>

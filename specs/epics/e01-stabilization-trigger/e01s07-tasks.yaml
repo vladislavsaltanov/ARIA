@@ -8,7 +8,7 @@ tasks:
     description: "Секционные VM, тесты переехали 1:1"
     verify: "dotnet test tests/ARIA.App.Tests --filter Settings"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:
@@ -18,7 +18,7 @@ tasks:
     description: "Слайдеры движка из дескрипторов"
     verify: "dotnet build"
     risk: P2
-    status: failing
+    status: passing
     allure:
       severity: normal
       categories:
@@ -28,7 +28,7 @@ tasks:
     description: "Headless: секция персистит и шлёт"
     verify: "dotnet test tests/ARIA.App.Tests --filter SettingsDialog"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:
@@ -38,7 +38,7 @@ tasks:
     description: "Полный прогон"
     verify: "dotnet test"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:

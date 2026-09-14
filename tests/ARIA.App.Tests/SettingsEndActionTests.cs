@@ -23,7 +23,7 @@ public sealed class SettingsEndActionTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
 
-        Assert.Equal(3, viewModel.DefaultEndActionIndex);
+        Assert.Equal(3, viewModel.Playback.DefaultEndActionIndex);
     }
 
     [Fact]
@@ -32,9 +32,9 @@ public sealed class SettingsEndActionTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
 
-        viewModel.DefaultEndActionIndex = 0;
+        viewModel.Playback.DefaultEndActionIndex = 0;
 
-        Assert.Equal(0, viewModel.DefaultEndActionIndex);
+        Assert.Equal(0, viewModel.Playback.DefaultEndActionIndex);
         Assert.Equal(EndAction.Pause, new AppSettingsStore(_path).Load().DefaultEndAction);
     }
 
@@ -45,7 +45,7 @@ public sealed class SettingsEndActionTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
 
-        Assert.Equal(2, viewModel.DefaultEndActionIndex);
+        Assert.Equal(2, viewModel.Playback.DefaultEndActionIndex);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class SettingsEndActionTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
 
-        Assert.Equal(3, viewModel.DefaultEndActionIndex);
+        Assert.Equal(3, viewModel.Playback.DefaultEndActionIndex);
         Assert.Equal(EndAction.Advance, new AppSettingsStore(_path).Load().DefaultEndAction);
     }
 
