@@ -344,17 +344,74 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
-    public void SetEntryEndAction_Null_ClearsActionKeepsNote()
+    public void DescribeFault_LostFile_NamesMissingPath()
+    {
+        var lost = new Track(TrackId.New(), "/nonexistent/missing.flac", "missing", TimeSpan.FromMinutes(2), new TrackDefaults());
+        var entry = new PlaylistEntry(EntryId.New(), lost.Id);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([lost], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [lost]);
+        var row = vm.Playlists[0].Entries[0];
+
+        Assert.True(vm.IsTrackMissing(row));
+        Assert.Contains("/nonexistent/missing.flac", vm.DescribeFault(row));
+    }
+
+    [Fact]
+    public void DescribeFault_PresentFile_ReportsDecodeFailure()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var broken = new Track(TrackId.New(), path, "broken", TimeSpan.FromMinutes(2), new TrackDefaults());
+            var entry = new PlaylistEntry(EntryId.New(), broken.Id);
+            var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+            using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+            bus.Submit(new ClientId("setup"), 1, new LoadShow([broken], [playlist], playlist.Id));
+            using var vm = new PlaylistsViewModel(bus, () => [broken]);
+            var row = vm.Playlists[0].Entries[0];
+
+            Assert.False(vm.IsTrackMissing(row));
+            Assert.Contains("декодировать", vm.DescribeFault(row));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task RelinkEntryAsync_UsesDelegate()
     {
         var (bus, _, _) = Setup();
         using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
-        var row = vm.Playlists[0].Entries[1];
-        vm.SetEntryEndAction(row, EndAction.Stop);
+        var row = vm.Playlists[0].Entries[0];
+        TrackId? capturedId = null;
+        string? capturedPath = null;
+        vm.TrackRelink = (id, path) =>
+        {
+            capturedId = id;
+            capturedPath = path;
+            return Task.FromResult(true);
+        };
 
-        vm.SetEntryEndAction(vm.Playlists[0].Entries[1], null);
+        var ok = await vm.RelinkEntryAsync(row, "/audio/found.flac");
 
-        var updated = vm.Playlists[0].Entries[1];
-        Assert.Null(updated.Overrides?.EndAction);
-        Assert.Equal("заметка", updated.Note);
+        Assert.True(ok);
+        Assert.Equal(TestTrack.Id, capturedId);
+        Assert.Equal("/audio/found.flac", capturedPath);
+    }
+
+    [Fact]
+    public async Task RelinkEntryAsync_NullDelegate_ReturnsFalse()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var row = vm.Playlists[0].Entries[0];
+
+        var ok = await vm.RelinkEntryAsync(row, "/audio/found.flac");
+
+        Assert.False(ok);
     }
 }

@@ -71,6 +71,48 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         set => _audioImport = value;
     }
 
+    public Func<TrackId, string, Task<bool>>? TrackRelink { get; set; }
+
+    public bool IsTrackMissing(EntryVm entry)
+    {
+        var path = TrackPath(entry.TrackId);
+        return path is null || !File.Exists(path);
+    }
+
+    public string DescribeFault(EntryVm entry)
+    {
+        var path = TrackPath(entry.TrackId);
+        if (path is null || !File.Exists(path))
+        {
+            return path is null
+                ? $"Файл не найден.\nТрек «{entry.DisplayName}» не загрузился — файл переместили, переименовали или удалили."
+                : $"Файл не найден: {path}\nТрек «{entry.DisplayName}» не загрузился — файл переместили, переименовали или удалили.";
+        }
+        return $"Не удалось декодировать «{entry.DisplayName}».\nФайл на месте ({path}), но движок не смог его открыть — возможно, он повреждён или формат не поддерживается.";
+    }
+
+    public Task<bool> RelinkEntryAsync(EntryVm entry, string newPath)
+    {
+        var relink = TrackRelink;
+        if (relink is null)
+        {
+            return Task.FromResult(false);
+        }
+        return relink(entry.TrackId, newPath);
+    }
+
+    private string? TrackPath(TrackId id)
+    {
+        foreach (var track in _trackSource?.Invoke() ?? [])
+        {
+            if (track.Id == id)
+            {
+                return track.FilePath;
+            }
+        }
+        return null;
+    }
+
     public ObservableCollection<PlaylistVm> Playlists { get; } = [];
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];

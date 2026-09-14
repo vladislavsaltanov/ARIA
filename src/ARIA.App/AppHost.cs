@@ -176,6 +176,45 @@ public sealed class AppHost : IAsyncDisposable
         return new ImportReport(added, skipped, failed.ToImmutable());
     }
 
+    public async Task<bool> RelinkTrackAsync(TrackId trackId, string newPath)
+    {
+        if (_library is null || _importer is null || _waveforms is null)
+        {
+            return false;
+        }
+        if (!File.Exists(newPath))
+        {
+            return false;
+        }
+        var imported = await Task.Run(() => _importer.Import(newPath));
+        if (imported is null)
+        {
+            return false;
+        }
+        var (tracks, playlists) = _library.Load();
+        var index = -1;
+        for (var i = 0; i < tracks.Length; i++)
+        {
+            if (tracks[i].Id == trackId)
+            {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0)
+        {
+            return false;
+        }
+        var relinked = imported.Track with { Id = trackId };
+        _library.Upsert(tracks.SetItem(index, relinked), playlists);
+        if (imported.Peaks is { } peaks)
+        {
+            _waveforms.Save(peaks with { TrackId = trackId });
+        }
+        SyncShowState([relinked]);
+        return true;
+    }
+
     private void RepairTrackNames()
     {
         if (_library is null || _importer is null)

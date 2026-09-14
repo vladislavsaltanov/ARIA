@@ -142,6 +142,44 @@ public sealed class AppHostTests : IDisposable
         Assert.Equal(2, host.Library!.Load().Tracks.Length);
     }
 
+    [Fact]
+    public async Task RelinkTrackAsync_SwapsFileKeepingId()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        var wav = TestWav.Write(_directory, "relink.wav");
+        var report = await host.ImportTracksAsync([wav]);
+        Assert.Equal(1, report.Added);
+        var stored = Assert.Single(host.Library!.Load().Tracks);
+        var missing = Path.Combine(_directory, "gone.flac");
+        var lost = stored with { FilePath = missing };
+        var (_, playlists) = host.Library.Load();
+        host.Library.Upsert([lost], playlists);
+
+        var ok = await host.RelinkTrackAsync(stored.Id, wav);
+
+        Assert.True(ok);
+        var relinked = Assert.Single(host.Library.Load().Tracks);
+        Assert.Equal(stored.Id, relinked.Id);
+        Assert.Equal(wav, relinked.FilePath);
+        Assert.NotNull(host.Waveforms!.Load(stored.Id));
+    }
+
+    [Fact]
+    public async Task RelinkTrackAsync_MissingFile_ReturnsFalse()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        var wav = TestWav.Write(_directory, "base.wav");
+        var report = await host.ImportTracksAsync([wav]);
+        Assert.Equal(1, report.Added);
+        var stored = Assert.Single(host.Library!.Load().Tracks);
+
+        Assert.False(await host.RelinkTrackAsync(stored.Id, Path.Combine(_directory, "nope.wav")));
+        Assert.False(await host.RelinkTrackAsync(TrackId.New(), wav));
+        Assert.Equal(wav, Assert.Single(host.Library.Load().Tracks).FilePath);
+    }
+
     private static async Task PollAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);

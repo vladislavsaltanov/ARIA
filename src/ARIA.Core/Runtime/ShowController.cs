@@ -370,6 +370,7 @@ public sealed class ShowController : IShowHandler
                 {
                     _tracks = _tracks.Replace(existing, track);
                     _trackMap[track.Id] = track;
+                    _faulted.Remove(track.Id);
                     added = true;
                 }
                 continue;

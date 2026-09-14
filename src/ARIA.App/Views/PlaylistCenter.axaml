@@ -105,7 +105,8 @@
                     Fill="{StaticResource BrushWave}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
               <PathIcon Grid.Column="4" Data="{StaticResource icon_alert}" Width="13" Height="13"
                         Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right"
-                        Margin="12,0,4,0" IsVisible="{Binding IsFaulted}"/>
+                        Margin="12,0,4,0" IsVisible="{Binding IsFaulted}"
+                        Tapped="OnFaultIconTapped" ToolTip.Tip="Трек не загрузился — показать причину"/>
             </Grid>
           </Border>
         </DataTemplate>

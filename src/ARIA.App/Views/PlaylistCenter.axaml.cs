@@ -123,7 +123,124 @@ public partial class PlaylistCenter : UserControl
             && list.SelectedItem is PlaylistsViewModel.EntryVm entry
             && DataContext is PlaylistsViewModel viewModel)
         {
+            if (entry.IsFaulted)
+            {
+                _ = ShowFaultDialog(entry);
+                return;
+            }
             viewModel.PlayEntry(entry);
+        }
+    }
+
+    private void OnFaultIconTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is PathIcon icon
+            && icon.DataContext is PlaylistsViewModel.EntryVm entry)
+        {
+            e.Handled = true;
+            _ = ShowFaultDialog(entry);
+        }
+    }
+
+    private async Task ShowFaultDialog(PlaylistsViewModel.EntryVm entry)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        if (DataContext is not PlaylistsViewModel viewModel)
+        {
+            return;
+        }
+        var missing = viewModel.IsTrackMissing(entry);
+        var buttons = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Spacing = 8,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+        };
+        var dialog = new Window
+        {
+            Title = entry.DisplayName,
+            Width = 460,
+            MinWidth = 380,
+            MinHeight = 140,
+            MaxWidth = 640,
+            SizeToContent = SizeToContent.Height,
+            CanResize = true,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new ScrollViewer
+                    {
+                        MaxHeight = 320,
+                        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                        Content = new TextBlock { Text = viewModel.DescribeFault(entry), TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    },
+                    buttons,
+                },
+            },
+        };
+        if (missing)
+        {
+            var find = new Button { Content = "Найти…" };
+            var remove = new Button { Content = "Убрать из плейлиста" };
+            var ignore = new Button { Content = "Игнорировать" };
+            find.Click += (_, _) => dialog.Close("find");
+            remove.Click += (_, _) => dialog.Close("remove");
+            ignore.Click += (_, _) => dialog.Close("ignore");
+            buttons.Children.Add(find);
+            buttons.Children.Add(remove);
+            buttons.Children.Add(ignore);
+        }
+        else
+        {
+            var ok = new Button { Content = "OK" };
+            ok.Click += (_, _) => dialog.Close("ignore");
+            buttons.Children.Add(ok);
+        }
+        var choice = await dialog.ShowDialog<string>(owner);
+        if (choice == "remove")
+        {
+            viewModel.RemoveEntryAt(entry);
+        }
+        else if (choice == "find")
+        {
+            await PickRelinkAsync(entry);
+        }
+    }
+
+    private async Task PickRelinkAsync(PlaylistsViewModel.EntryVm entry)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } topLevel)
+        {
+            return;
+        }
+        if (DataContext is not PlaylistsViewModel viewModel)
+        {
+            return;
+        }
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Найти файл трека",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Аудио") { Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"] },
+            ],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+        var ok = await viewModel.RelinkEntryAsync(entry, files[0].Path.LocalPath);
+        if (!ok)
+        {
+            await ShowInfoDialog("Замена трека", "не удалось подменить файл");
         }
     }
 
