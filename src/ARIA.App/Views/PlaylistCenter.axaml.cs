@@ -24,6 +24,7 @@ public partial class PlaylistCenter : UserControl
         if (_bound is not null)
         {
             _bound.ImportFailed -= OnImportFailed;
+            _bound.AudioImportIncomplete -= OnAudioImportIncomplete;
             _bound.ExportSucceeded -= OnExportSucceeded;
             _bound.RevealRequested -= OnRevealRequested;
         }
@@ -31,6 +32,7 @@ public partial class PlaylistCenter : UserControl
         if (_bound is not null)
         {
             _bound.ImportFailed += OnImportFailed;
+            _bound.AudioImportIncomplete += OnAudioImportIncomplete;
             _bound.ExportSucceeded += OnExportSucceeded;
             _bound.RevealRequested += OnRevealRequested;
         }
@@ -45,6 +47,11 @@ public partial class PlaylistCenter : UserControl
     private async void OnImportFailed(string message)
     {
         await ShowInfoDialog("Импорт плейлиста не удался", message);
+    }
+
+    private async void OnAudioImportIncomplete(string message)
+    {
+        await ShowInfoDialog("Импорт аудио", message);
     }
 
     private async void OnExportSucceeded(string fileName, string message)

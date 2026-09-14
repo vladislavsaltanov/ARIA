@@ -32,6 +32,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private AppSettings _rowSettings = AppSettings.Default;
     private long _seq;
     private string? _lastKey;
+    private readonly TimeSpan _transientStatusTtl;
+    private CancellationTokenSource? _statusClear;
 
     [ObservableProperty]
     private PlaylistVm? selectedPlaylist;
@@ -53,6 +55,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public event Action<string>? ImportFailed;
 
+    public event Action<string>? AudioImportIncomplete;
+
     public event Action<string, string>? ExportSucceeded;
 
     public event Action<EntryVm>? RevealRequested;
@@ -71,12 +75,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null)
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null)
     {
         _bus = bus;
         _trackSource = trackSource;
         _thumbs = thumbs;
         _rowSettings = rowSettings ?? AppSettings.Default;
+        _transientStatusTtl = transientStatusTtl ?? TimeSpan.FromSeconds(10);
         _sync = sync;
         _topLevel = topLevel;
         _audioImport = audioImport;
@@ -258,16 +263,23 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         await _audioImport(inputs, progress);
         var tracks = _trackSource?.Invoke() ?? [];
         var ordered = new List<TrackId>();
+        var unmatched = new List<string>();
         foreach (var input in inputs)
         {
+            var matched = false;
             foreach (var track in tracks
                 .Where(t => MatchesInput(input, t.FilePath))
                 .OrderBy(t => t.FilePath, StringComparer.Ordinal))
             {
+                matched = true;
                 if (!ordered.Contains(track.Id))
                 {
                     ordered.Add(track.Id);
                 }
+            }
+            if (!matched)
+            {
+                unmatched.Add(input);
             }
         }
         var target = SelectedPlaylist;
@@ -277,9 +289,17 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         {
             Submit(new AddEntry(target.Id, trackId, null));
         }
-        PlaylistIoStatus = ordered.Count > 0
-            ? $"в плейлист добавлено: {ordered.Count}"
-            : "файлы не распознаны";
+        if (unmatched.Count == 0)
+        {
+            SetTransientStatus($"в плейлист добавлено: {ordered.Count}");
+        }
+        else
+        {
+            SetTransientStatus(ordered.Count > 0
+                ? $"в плейлист добавлено: {ordered.Count}, не распознано: {unmatched.Count}"
+                : "файлы не распознаны");
+            AudioImportIncomplete?.Invoke("Не удалось распознать файлы:\n" + string.Join("\n", unmatched));
+        }
         return ordered;
     }
 
@@ -459,7 +479,35 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    public void Dispose()
+    {
+        _statusClear?.Cancel();
+        _statusClear?.Dispose();
+        _subscription.Dispose();
+    }
+
+    private void SetTransientStatus(string text)
+    {
+        PlaylistIoStatus = text;
+        _statusClear?.Cancel();
+        _statusClear?.Dispose();
+        var cts = new CancellationTokenSource();
+        _statusClear = cts;
+        _ = ClearStatusAfterDelayAsync(cts.Token);
+    }
+
+    private async Task ClearStatusAfterDelayAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(_transientStatusTtl, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        Post(() => PlaylistIoStatus = string.Empty);
+    }
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
