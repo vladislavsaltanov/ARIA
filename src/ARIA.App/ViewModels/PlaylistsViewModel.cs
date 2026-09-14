@@ -135,7 +135,12 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         _topLevel = topLevel;
         _audioImport = audioImport;
         _subscription = bus.Subscribe(Apply);
-        Rebuild(bus.Snapshot().Show, _trackSource?.Invoke() ?? []);
+        var snapshot = bus.Snapshot();
+        foreach (var id in snapshot.Transport.Faulted)
+        {
+            _faulted.Add(id);
+        }
+        Rebuild(snapshot.Show, _trackSource?.Invoke() ?? []);
     }
 
     public void UpdateRowSettings(AppSettings settings)

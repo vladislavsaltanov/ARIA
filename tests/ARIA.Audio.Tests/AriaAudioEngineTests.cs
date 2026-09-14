@@ -35,11 +35,12 @@ public sealed class AriaAudioEngineTests
         stack.Submit(new Play());
 
         await Poll(
-            () => stack.Transport.Current is null && stack.Transport.Status == TransportStatus.Stopped,
-            "controller did not stop on broken track");
+            () => stack.Transport.Faulted.Contains(stack.Tracks[0].Id),
+            "controller did not flag broken track");
 
+        Assert.Null(stack.Transport.Current);
+        Assert.Equal(TransportStatus.Stopped, stack.Transport.Status);
         Assert.Contains(stack.EngineEvents, e => e.Kind == StreamEventKind.Faulted);
-        Assert.Contains(stack.Tracks[0].Id, stack.Transport.Faulted);
     }
 
     [Fact]

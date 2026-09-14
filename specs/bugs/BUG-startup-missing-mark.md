@@ -39,3 +39,10 @@ transport on change; the host scans library file existence once at
 startup after name repair. Existing viewmodel rendering lights the
 badge with zero view changes.
 Tests: Core 178, App 251, Persistence 21, Audio 70, Remote 59.
+
+Follow-up 2026-09-15: badge still appeared only after a play attempt.
+Root cause: the viewmodel is constructed after startup, and its fault
+mirror filled only from live transport deltas, missing the one emitted
+at startup. Fix: seed the mirror from the bus snapshot in the
+constructor. Tests: Core 178, App 252, Persistence 21, Audio 70,
+Remote 59.

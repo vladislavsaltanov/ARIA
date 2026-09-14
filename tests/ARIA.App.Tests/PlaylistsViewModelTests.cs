@@ -434,6 +434,21 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public void Constructor_PicksUpPreexistingFaults()
+    {
+        var engine = new StubEngine();
+        var entry = new PlaylistEntry(EntryId.New(), TestTrack.Id);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 2, new MarkMissing([TestTrack.Id]));
+
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        Assert.True(vm.Playlists[0].Entries[0].IsFaulted);
+    }
+
+    [Fact]
     public async Task ImportDocumentAsync_MissingFiles_RaisesMissingEvent()
     {
         var (bus, _, _) = Setup();
