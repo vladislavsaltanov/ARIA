@@ -49,9 +49,6 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private string remaining = "--:--";
 
     [ObservableProperty]
-    private string nextName = "—";
-
-    [ObservableProperty]
     private string nextLine = "—";
 
     [ObservableProperty]
@@ -260,7 +257,6 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         };
         DisplayName = state.Current is null ? "—" : Truncate(TrackDisplay(state.Current));
         CurrentTrackId = state.Current?.TrackId;
-        NextName = state.Next is null ? "—" : TrackDisplay(state.Next);
         NextLine = state.Next is null ? "—" : Truncate($"Далее: {TrackDisplay(state.Next)}");
         Panicked = state.Status == TransportStatus.Panicked;
         _playing = state.Status == TransportStatus.Playing;

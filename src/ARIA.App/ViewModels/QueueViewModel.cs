@@ -135,7 +135,6 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
             Items.Add(new QueueItemVm(
                 item.EntryId?.Value ?? item.TrackId.Value,
                 item.DisplayName,
-                item.Color,
                 isCurrent,
                 item.EntryId));
         }
@@ -146,17 +145,16 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
     {
         foreach (var item in Items)
         {
-            item.IsCurrent = current is { } deck && deck.EntryId is { } entryId && item.EntryIdValue == entryId.Value;
+            item.IsCurrent = current is { } deck && deck.EntryId is { } entryId && item.RowKey == entryId.Value;
         }
     }
 
     public sealed class QueueItemVm
     {
-        public QueueItemVm(Guid id, string displayName, string? color, bool isCurrent, EntryId? entryId = null)
+        public QueueItemVm(Guid id, string displayName, bool isCurrent, EntryId? entryId = null)
         {
             Id = id;
             DisplayName = displayName;
-            Color = color;
             IsCurrent = isCurrent;
             EntryId = entryId;
         }
@@ -167,10 +165,8 @@ public sealed partial class QueueViewModel : ObservableObject, IDisposable
 
         public string DisplayName { get; }
 
-        public string? Color { get; }
-
         public bool IsCurrent { get; set; }
 
-        public Guid EntryIdValue => Id;
+        public Guid RowKey => Id;
     }
 }

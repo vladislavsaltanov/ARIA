@@ -221,8 +221,11 @@
     state.show = frame.show ? frame.show.state : null;
     state.mixer = frame.mixer ? frame.mixer.state : null;
     state.transport = frame.transport.state;
+    state.queue =
+      frame.queue && frame.queue.state ? frame.queue.state.items || [] : [];
     renderTransport();
     renderMixer();
+    renderQueue();
     renderShowClock();
     renderPlaylists();
     renderScript();
