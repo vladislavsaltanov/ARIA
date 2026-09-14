@@ -108,3 +108,5 @@ public sealed record RestoreShow(
     ImmutableArray<Script> Scripts = default) : Command;
 
 public sealed record MergeTracks(ImmutableArray<Track> Tracks) : Command;
+
+public sealed record MarkMissing(ImmutableArray<TrackId> Tracks) : Command;

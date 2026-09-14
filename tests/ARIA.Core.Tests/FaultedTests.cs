@@ -41,6 +41,20 @@ public sealed class FaultedTests
     }
 
     [Fact]
+    public void MarkMissing_FlagsKnownTracksWithoutPlayback()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+
+        h.Submit(new MarkMissing([t1.Id, TrackId.New()]));
+
+        Assert.Equal(t1.Id, Assert.Single(h.Snapshot.Transport.Faulted));
+    }
+
+    [Fact]
     public void FreshBoot_HasNoFaults()
     {
         using var h = new Harness();

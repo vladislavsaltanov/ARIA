@@ -180,6 +180,27 @@ public sealed class AppHostTests : IDisposable
         Assert.Equal(wav, Assert.Single(host.Library.Load().Tracks).FilePath);
     }
 
+    [Fact]
+    public async Task Start_MarksMissingLibraryFiles()
+    {
+        Directory.CreateDirectory(_directory);
+        var lost = new Track(TrackId.New(), Path.Combine(_directory, "ghost.wav"), "ghost", TimeSpan.FromMinutes(1), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), lost.Id)]);
+        using (var library = new SqliteLibraryStore(Path.Combine(_directory, "library.db")))
+        {
+            library.Upsert([lost], [playlist]);
+        }
+        using (var store = new JsonSnapshotStore(Path.Combine(_directory, "show.json")))
+        {
+            store.Save(new ShowDocument([lost], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow));
+        }
+
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+
+        await PollAsync(() => host.Bus.Snapshot().Transport.Faulted.Contains(lost.Id));
+    }
+
     private static async Task PollAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);

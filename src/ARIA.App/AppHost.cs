@@ -110,6 +110,7 @@ public sealed class AppHost : IAsyncDisposable
             Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
         }
         RepairTrackNames();
+        ReportMissingFiles();
 
         if (_remoteOptions is { } options)
         {
@@ -213,6 +214,20 @@ public sealed class AppHost : IAsyncDisposable
         }
         SyncShowState([relinked]);
         return true;
+    }
+
+    private void ReportMissingFiles()
+    {
+        if (_library is null)
+        {
+            return;
+        }
+        var (tracks, _) = _library.Load();
+        var missing = tracks.Where(t => !File.Exists(t.FilePath)).Select(t => t.Id).ToImmutableArray();
+        if (!missing.IsEmpty)
+        {
+            Submit(new MarkMissing(missing));
+        }
     }
 
     private void RepairTrackNames()

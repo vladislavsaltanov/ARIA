@@ -92,6 +92,9 @@ public sealed class ShowController : IShowHandler
             case MergeTracks merge:
                 OnMergeTracks(client, seq, merge);
                 break;
+            case MarkMissing markMissing:
+                OnMarkMissing(client, seq, markMissing);
+                break;
             case Play:
                 OnPlay(client, seq);
                 break;
@@ -386,6 +389,27 @@ public sealed class ShowController : IShowHandler
         }
         EmitShow();
         if (faultCleared)
+        {
+            EmitTransport();
+        }
+    }
+
+    private void OnMarkMissing(ClientId client, long seq, MarkMissing markMissing)
+    {
+        if (markMissing.Tracks.IsDefault || markMissing.Tracks.Length == 0)
+        {
+            Reject(client, seq, "show-data-required");
+            return;
+        }
+        var added = false;
+        foreach (var id in markMissing.Tracks)
+        {
+            if (_trackMap.ContainsKey(id))
+            {
+                added |= _faulted.Add(id);
+            }
+        }
+        if (added)
         {
             EmitTransport();
         }
