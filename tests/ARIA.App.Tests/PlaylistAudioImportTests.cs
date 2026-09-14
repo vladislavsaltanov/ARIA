@@ -3,6 +3,8 @@ namespace Aria.App.Tests;
 using Aria.App.ViewModels;
 using Aria.Audio;
 using Aria.Core.Commands;
+using Aria.Core.Model;
+using Aria.Core.Runtime;
 
 public sealed class PlaylistAudioImportTests : IDisposable
 {
@@ -37,6 +39,64 @@ public sealed class PlaylistAudioImportTests : IDisposable
         var entries = host.Bus.Snapshot().Show.Playlists[0].Entries;
         Assert.Equal(trackId, entries[0].TrackId);
         Assert.Contains(host.Library!.Load().Tracks, t => t.Id == trackId);
+    }
+
+    [Fact]
+    public async Task ImportAudioFilesAsync_UnmatchedFile_RaisesIncompleteEvent()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [track],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(0, 0, [])));
+        string? message = null;
+        vm.AudioImportIncomplete += m => message = m;
+
+        var ids = await vm.ImportAudioFilesAsync(["/audio/missing.wav"]);
+
+        Assert.Empty(ids);
+        Assert.Equal("файлы не распознаны", vm.PlaylistIoStatus);
+        Assert.Contains("missing.wav", message);
+    }
+
+    [Fact]
+    public async Task ImportAudioFilesAsync_PartialMatch_ReportsCounts_AndRaises()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [track],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(0, 0, [])));
+        string? message = null;
+        vm.AudioImportIncomplete += m => message = m;
+
+        var ids = await vm.ImportAudioFilesAsync([track.FilePath, "/audio/missing.wav"]);
+
+        Assert.Single(ids);
+        Assert.Contains("добавлено: 1", vm.PlaylistIoStatus);
+        Assert.Contains("не распознано: 1", vm.PlaylistIoStatus);
+        Assert.Contains("missing.wav", message);
+    }
+
+    [Fact]
+    public async Task ImportAudioFilesAsync_SuccessStatus_ClearsAfterTtl()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [track],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(0, 0, [])),
+            transientStatusTtl: TimeSpan.FromMilliseconds(20));
+
+        var ids = await vm.ImportAudioFilesAsync([track.FilePath]);
+
+        Assert.Single(ids);
+        Assert.Equal("в плейлист добавлено: 1", vm.PlaylistIoStatus);
+        await Task.Delay(500);
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
     }
 
     private static async Task PollAsync(Func<bool> condition)

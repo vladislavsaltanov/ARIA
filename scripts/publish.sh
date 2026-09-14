@@ -33,7 +33,7 @@ osx-*)
   <key>CFBundleIdentifier</key><string>io.aria.showplayer</string>
   <key>CFBundleName</key><string>ARIA</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleShortVersionString</key><string>0.2.0</string>
 </dict>
 </plist>
 PLIST
