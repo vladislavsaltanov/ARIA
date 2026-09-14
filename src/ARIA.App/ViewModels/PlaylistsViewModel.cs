@@ -501,22 +501,6 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return sb.ToString();
     }
 
-    private int IndexOf(EntryId entryId)
-    {
-        if (SelectedPlaylist is not { } playlist)
-        {
-            return -1;
-        }
-        for (var i = 0; i < playlist.Entries.Count; i++)
-        {
-            if (playlist.Entries[i].Id == entryId)
-            {
-                return i;
-            }
-        }
-        return -1;
-    }
-
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
         _lastShow = state;

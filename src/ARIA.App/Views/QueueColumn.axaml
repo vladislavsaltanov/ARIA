@@ -3,14 +3,6 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.QueueColumn"
              x:DataType="vm:QueueViewModel">
-  <UserControl.Styles>
-    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-    </Style>
-    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-    </Style>
-  </UserControl.Styles>
   <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}"
           BorderThickness="1" CornerRadius="8" Margin="14,10,14,10">
     <Grid RowDefinitions="Auto,*">
@@ -30,14 +22,8 @@
       </Grid>
       <ListBox Grid.Row="1" x:Name="QueueList" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                DoubleTapped="OnItemDoubleTapped"
-               Background="Transparent" BorderThickness="0" Margin="6,0,6,10">
-        <ListBox.ItemContainerTheme>
-          <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-          </ControlTheme>
-        </ListBox.ItemContainerTheme>
+               Background="Transparent" BorderThickness="0" Margin="6,0,6,10"
+               ItemContainerTheme="{StaticResource PlainRowItem}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:QueueViewModel+QueueItemVm">
             <Border Classes="qRow" Height="36" CornerRadius="6" Padding="10,0" Background="Transparent">

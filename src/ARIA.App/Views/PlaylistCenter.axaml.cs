@@ -43,49 +43,24 @@ public partial class PlaylistCenter : UserControl
 
     private async void OnImportFailed(string message)
     {
-        if (TopLevel.GetTopLevel(this) is not Window owner)
-        {
-            return;
-        }
-        var dialog = new Window
-        {
-            Title = "Импорт плейлиста не удался",
-            Width = 460,
-            MinWidth = 380,
-            MinHeight = 140,
-            MaxWidth = 640,
-            SizeToContent = SizeToContent.Height,
-            CanResize = true,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Content = new StackPanel
-            {
-                Spacing = 12,
-                Margin = new Thickness(16),
-                Children =
-                {
-                    new ScrollViewer
-                    {
-                        MaxHeight = 320,
-                        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-                        Content = new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                    },
-                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
-                },
-            },
-        };
-        ((Button)((StackPanel)dialog.Content!).Children[1]).Click += (_, _) => dialog.Close();
-        await dialog.ShowDialog(owner);
+        await ShowInfoDialog("Импорт плейлиста не удался", message);
     }
 
     private async void OnExportSucceeded(string fileName, string message)
+    {
+        await ShowInfoDialog("Плейлист экспортирован", message);
+    }
+
+    private async Task ShowInfoDialog(string title, string message)
     {
         if (TopLevel.GetTopLevel(this) is not Window owner)
         {
             return;
         }
+        var ok = new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
         var dialog = new Window
         {
-            Title = "Плейлист экспортирован",
+            Title = title,
             Width = 460,
             MinWidth = 380,
             MinHeight = 140,
@@ -105,11 +80,11 @@ public partial class PlaylistCenter : UserControl
                         HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
                         Content = new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
                     },
-                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right },
+                    ok,
                 },
             },
         };
-        ((Button)((StackPanel)dialog.Content!).Children[1]).Click += (_, _) => dialog.Close();
+        ok.Click += (_, _) => dialog.Close();
         await dialog.ShowDialog(owner);
     }
 

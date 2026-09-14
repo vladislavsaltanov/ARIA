@@ -22,20 +22,20 @@
     </Style>
     <Style Selector="Button.panic">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#E5484D"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFaulted}"/>
       <Setter Property="FontWeight" Value="Bold"/>
       <Setter Property="FontSize" Value="15"/>
       <Setter Property="Padding" Value="14,0"/>
       <Setter Property="Height" Value="44"/>
       <Setter Property="CornerRadius" Value="4"/>
       <Setter Property="BorderThickness" Value="2"/>
-      <Setter Property="BorderBrush" Value="#E5484D"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFaulted}"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.panic /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="#E5484D"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushFaulted}"/>
       <Setter Property="BorderThickness" Value="2"/>
     </Style>
     <Style Selector="Button.panic:pointerover /template/ ContentPresenter#PART_ContentPresenter">
@@ -44,7 +44,7 @@
     <Style Selector="Button.panic:pressed">
       <Setter Property="Foreground" Value="#FFFFFF"/>
       <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#E5484D"/>
+        <Setter Property="Background" Value="{StaticResource BrushFaulted}"/>
       </Style>
     </Style>
   </UserControl.Styles>

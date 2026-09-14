@@ -16,12 +16,12 @@
       <Setter Property="Padding" Value="10,0"/>
       <Setter Property="MinHeight" Value="28"/>
       <Setter Property="CornerRadius" Value="6"/>
-      <Setter Property="Foreground" Value="#8A8A8A"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.clockBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#1F1F1F"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
     <Style Selector="Button.clockBtn:disabled">
       <Setter Property="Opacity" Value="0.35"/>
@@ -31,10 +31,10 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,8">
       <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
                  FontFamily="{StaticResource MonoFont}" FontSize="36" FontWeight="SemiBold"
-                 Foreground="#ECECEC" HorizontalAlignment="Center"/>
+                 Foreground="{StaticResource BrushFg}" HorizontalAlignment="Center"/>
       <TextBlock Grid.Row="1" x:Name="TimerSubBig" Text="{Binding TimerSubText}"
                  FontFamily="{StaticResource MonoFont}" FontSize="14"
-                 Foreground="#8A8A8A" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+                 Foreground="{StaticResource BrushDim}" HorizontalAlignment="Center" Margin="0,4,0,8"/>
       <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4" Margin="0,0,0,8">
         <Button x:Name="StartClockButton" Classes="clockBtn" Command="{Binding StartClockCommand}"
                 IsEnabled="{Binding !ClockRunning}" ToolTip.Tip="Запустить часы шоу">
@@ -62,7 +62,7 @@
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <Grid>
           <Canvas x:Name="WaveformCanvas" Background="Transparent">
-            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="#ECECEC"
+            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushFg}"
                        IsVisible="False"/>
           </Canvas>
         </Grid>

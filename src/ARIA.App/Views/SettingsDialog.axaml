@@ -6,12 +6,12 @@
         x:DataType="vm:SettingsViewModel"
         Title="Настройки"
         Width="620" Height="760" MinWidth="480" MinHeight="500"
-        Background="#0F0F0F" Foreground="#ECECEC"
+        Background="{StaticResource BrushBg}" Foreground="{StaticResource BrushFg}"
         CanResize="True">
   <Window.Styles>
     <Style Selector="Border.section">
-      <Setter Property="Background" Value="#161616"/>
-      <Setter Property="BorderBrush" Value="#2C2C2C"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="8"/>
       <Setter Property="Padding" Value="14"/>
@@ -20,24 +20,24 @@
     <Style Selector="TextBlock.sectionTitle">
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="#8A8A8A"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
       <Setter Property="Margin" Value="0,0,0,10"/>
     </Style>
     <Style Selector="Button.action">
       <Setter Property="Height" Value="30"/>
       <Setter Property="Padding" Value="12,0"/>
-      <Setter Property="Background" Value="#1F1F1F"/>
-      <Setter Property="BorderBrush" Value="#2C2C2C"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="6"/>
-      <Setter Property="Foreground" Value="#ECECEC"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.action /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="Button.action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#2A2A2A"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
     </Style>
   </Window.Styles>
   <ScrollViewer>
@@ -64,7 +64,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,4">
                   <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Label}" FontSize="13"/>
-                    <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#E5484D"
+                    <TextBlock Text="{Binding Error}" FontSize="11" Foreground="{StaticResource BrushFaulted}"
                                IsVisible="{Binding HasError}"/>
                   </StackPanel>
                   <Button Grid.Column="1" x:Name="RecordButton" Content="{Binding RecordText}"
@@ -75,7 +75,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <TextBlock Text="запись: кликните жест и нажмите клавиши; Esc — отмена; конфликты проверяются мгновенно"
-                     FontSize="11" Foreground="#565656" Margin="0,8,0,0"/>
+                     FontSize="11" Foreground="{StaticResource BrushFaint}" Margin="0,8,0,0"/>
         </StackPanel>
       </Border>
 
@@ -83,7 +83,7 @@
         <StackPanel Orientation="Horizontal" Spacing="12">
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="Часы" Classes="sectionTitle"/>
-            <TextBlock Text="elapsed сбрасывается только вручную" FontSize="11" Foreground="#565656"/>
+            <TextBlock Text="elapsed сбрасывается только вручную" FontSize="11" Foreground="{StaticResource BrushFaint}"/>
           </StackPanel>
           <Button VerticalAlignment="Center" Classes="action" Content="Сбросить show clock"
                   Command="{Binding ResetClockCommand}" x:Name="ResetClockButton"/>
@@ -97,12 +97,12 @@
                     IsChecked="{Binding UseFileName}" FontSize="12"/>
           <TextBox x:Name="RowFormatBox" Text="{Binding RowFormat, UpdateSourceTrigger=PropertyChanged}"
                    FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="0,8,0,4"
-                   Background="#1F1F1F" BorderBrush="#2C2C2C"/>
-          <TextBlock Text="токены: {position} {name} {filename} {duration}" FontSize="11" Foreground="#565656"/>
+                   Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
+          <TextBlock Text="токены: {position} {name} {filename} {duration}" FontSize="11" Foreground="{StaticResource BrushFaint}"/>
           <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
             <Button Classes="action" Content="Применить" Command="{Binding SaveRowSettingsCommand}"
                     x:Name="ApplyRowFormatButton"/>
-            <TextBlock Text="{Binding RowSettingsStatus}" FontSize="11" Foreground="#565656" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding RowSettingsStatus}" FontSize="11" Foreground="{StaticResource BrushFaint}" VerticalAlignment="Center"/>
           </StackPanel>
         </StackPanel>
       </Border>
@@ -111,7 +111,7 @@
         <StackPanel>
           <TextBlock Text="Воспроизведение" Classes="sectionTitle"/>
           <Grid ColumnDefinitions="Auto,*">
-            <TextBlock Text="после конца трека" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="после конца трека" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <ComboBox Grid.Column="1" x:Name="EndActionBox" SelectedIndex="{Binding DefaultEndActionIndex, Mode=TwoWay}"
                       VerticalAlignment="Center" Margin="14,0,0,0" MinWidth="160">
               <ComboBoxItem>Пауза</ComboBoxItem>
@@ -127,48 +127,48 @@
         <StackPanel>
           <TextBlock Text="Движок" Classes="sectionTitle"/>
           <Grid ColumnDefinitions="Auto,*,Auto">
-            <TextBlock Text="фейд PANIC" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="фейд PANIC" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding PanicFadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding PanicFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
-                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+                       FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
           </Grid>
           <CheckBox Content="сглаживание (как в AIMP)" IsChecked="{Binding SmoothingEnabled}"
                     FontSize="12" Margin="0,12,0,4"/>
           <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}">
-            <TextBlock Text="кроссфейд вручную" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="кроссфейд вручную" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding ManualCrossfadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding ManualCrossfadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
-                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+                       FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
           </Grid>
           <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
-            <TextBlock Text="кроссфейд по очереди" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="кроссфейд по очереди" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <Slider Grid.Column="1" Minimum="0" Maximum="3000" Value="{Binding AutoCrossfadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding AutoCrossfadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
-                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+                       FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
           </Grid>
           <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
-            <TextBlock Text="скорость запуска" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="скорость запуска" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding StartFadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding StartFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
-                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+                       FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
           </Grid>
           <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
-            <TextBlock Text="скорость затухания" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="скорость затухания" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding StopFadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding StopFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
-                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+                       FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
           </Grid>
           <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding SmoothingEnabled}" Margin="0,6,0,0">
-            <TextBlock Text="кроссфейд перемотки" FontSize="12" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+            <TextBlock Text="кроссфейд перемотки" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
             <Slider Grid.Column="1" Minimum="0" Maximum="2000" Value="{Binding SeekFadeMs, Mode=TwoWay}"
                     VerticalAlignment="Center" Margin="14,0"/>
             <TextBlock Grid.Column="2" Text="{Binding SeekFadeMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
-                       FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center" Width="60"/>
+                       FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
           </Grid>
         </StackPanel>
       </Border>

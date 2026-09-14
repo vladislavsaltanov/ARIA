@@ -3,14 +3,6 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.RailPlaylists"
              x:DataType="vm:PlaylistsViewModel">
-  <UserControl.Styles>
-    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-    </Style>
-    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-    </Style>
-  </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -22,14 +14,8 @@
       </Button>
     </Grid>
     <ListBox Grid.Row="1" x:Name="PlaylistNames" ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist}"
-             Background="Transparent" BorderThickness="0" Margin="8,0,8,4">
-      <ListBox.ItemContainerTheme>
-        <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-          <Setter Property="Background" Value="Transparent"/>
-          <Setter Property="Padding" Value="0"/>
-          <Setter Property="Margin" Value="0"/>
-        </ControlTheme>
-      </ListBox.ItemContainerTheme>
+             Background="Transparent" BorderThickness="0" Margin="8,0,8,4"
+             ItemContainerTheme="{StaticResource PlainRowItem}">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:PlaylistsViewModel+PlaylistVm">
           <Border Height="30" CornerRadius="6" Padding="12,0" Background="Transparent">

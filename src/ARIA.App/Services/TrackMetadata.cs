@@ -70,37 +70,17 @@ public static class TrackMetadata
         }
         if ((header[5] & 0x80) != 0)
         {
-            body = RemoveUnsync(body);
+            body = TextCodec.StripUnsync(body);
         }
         var syncSafeSizes = header[3] >= 4;
         var offset = 0;
         while (offset + 10 <= body.Length && stream.Position - size + offset < end)
         {
-            var id = Encoding.Latin1.GetString(body, offset, 4);
-            if (body[offset] == 0)
+            if (!TryParseId3v2FrameHeader(body, offset, syncSafeSizes, out var id, out var frameSize))
             {
                 break;
             }
-            var frameSize = syncSafeSizes ? SyncSafe(body, offset + 4) : ReadBig32(body, offset + 4);
-            if (frameSize <= 1 || offset + 10 + frameSize > body.Length)
-            {
-                break;
-            }
-            if (id is "TPE1" or "TIT2")
-            {
-                var text = DecodeText(body, offset + 10, frameSize);
-                if (text.Length > 0)
-                {
-                    if (id == "TPE1")
-                    {
-                        artist ??= text;
-                    }
-                    else
-                    {
-                        title ??= text;
-                    }
-                }
-            }
+            DecodeTpe1Tit2Frame(body, offset + 10, id, frameSize, ref artist, ref title);
             offset += 10 + frameSize;
         }
         if (artist is null && title is null)
@@ -108,6 +88,39 @@ public static class TrackMetadata
             return null;
         }
         return (artist ?? string.Empty, title ?? string.Empty);
+    }
+
+    private static bool TryParseId3v2FrameHeader(byte[] body, int offset, bool syncSafeSizes, out string id, out int frameSize)
+    {
+        id = Encoding.Latin1.GetString(body, offset, 4);
+        frameSize = 0;
+        if (body[offset] == 0)
+        {
+            return false;
+        }
+        frameSize = syncSafeSizes ? SyncSafe(body, offset + 4) : ReadBig32(body, offset + 4);
+        return frameSize > 1 && offset + 10 + frameSize <= body.Length;
+    }
+
+    private static void DecodeTpe1Tit2Frame(byte[] body, int offset, string id, int frameSize, ref string? artist, ref string? title)
+    {
+        if (id is not ("TPE1" or "TIT2"))
+        {
+            return;
+        }
+        var text = TextCodec.DecodeMp3Text(body, offset, frameSize);
+        if (text.Length == 0)
+        {
+            return;
+        }
+        if (id == "TPE1")
+        {
+            artist ??= text;
+        }
+        else
+        {
+            title ??= text;
+        }
     }
 
     private static (string Artist, string Title)? ReadId3V1(FileStream stream)
@@ -122,8 +135,8 @@ public static class TrackMetadata
         {
             return null;
         }
-        var title = CleanLatin1(tag, 3, 30);
-        var artist = CleanLatin1(tag, 33, 30);
+        var title = TextCodec.TrimLatin1(tag, 3, 30);
+        var artist = TextCodec.TrimLatin1(tag, 33, 30);
         if (title.Length == 0 && artist.Length == 0)
         {
             return null;
@@ -156,15 +169,7 @@ public static class TrackMetadata
                 {
                     return null;
                 }
-                if (length > 7 && block[0] == 0x03 && block[1] == 'v'
-                    && block[2] == 'o' && block[3] == 'r' && block[4] == 'b'
-                    && block[5] == 'i' && block[6] == 's')
-                {
-                    var payload = new byte[length - 7];
-                    Array.Copy(block, 7, payload, 0, payload.Length);
-                    return ParseVorbisComment(payload);
-                }
-                return null;
+                return IsVorbisComment(block) ? TryParseVorbisBlock(block, 7) : null;
             }
             if (stream.Seek(length, SeekOrigin.Current) < 0)
             {
@@ -180,6 +185,23 @@ public static class TrackMetadata
     private static (string Artist, string Title)? ReadOgg(string path)
     {
         using var stream = File.OpenRead(path);
+        var packets = ReadOggPackets(stream);
+        if (packets is null)
+        {
+            return null;
+        }
+        foreach (var candidate in packets)
+        {
+            if (IsTaggedPacket(candidate))
+            {
+                return ParseOpusOrVorbisPacket(candidate);
+            }
+        }
+        return null;
+    }
+
+    private static List<byte[]>? ReadOggPackets(FileStream stream)
+    {
         var packet = new List<byte>();
         var packets = new List<byte[]>();
         var header = new byte[27];
@@ -220,26 +242,29 @@ public static class TrackMetadata
                 }
             }
         }
-        foreach (var candidate in packets)
-        {
-            if (candidate.Length > 7 && candidate[0] == 0x03 && candidate[1] == 'v'
-                && candidate[2] == 'o' && candidate[3] == 'r' && candidate[4] == 'b'
-                && candidate[5] == 'i' && candidate[6] == 's')
-            {
-                var payload = new byte[candidate.Length - 7];
-                Array.Copy(candidate, 7, payload, 0, payload.Length);
-                return ParseVorbisComment(payload);
-            }
-            if (candidate.Length > 8 && candidate[0] == 'O' && candidate[1] == 'p'
-                && candidate[2] == 'u' && candidate[3] == 's' && candidate[4] == 'T'
-                && candidate[5] == 'a' && candidate[6] == 'g' && candidate[7] == 's')
-            {
-                var payload = new byte[candidate.Length - 8];
-                Array.Copy(candidate, 8, payload, 0, payload.Length);
-                return ParseVorbisComment(payload);
-            }
-        }
-        return null;
+        return packets;
+    }
+
+    private static bool IsVorbisComment(byte[] block) =>
+        block.Length > 7 && block[0] == 0x03 && block[1] == 'v'
+        && block[2] == 'o' && block[3] == 'r' && block[4] == 'b'
+        && block[5] == 'i' && block[6] == 's';
+
+    private static bool IsOpusTags(byte[] block) =>
+        block.Length > 8 && block[0] == 'O' && block[1] == 'p'
+        && block[2] == 'u' && block[3] == 's' && block[4] == 'T'
+        && block[5] == 'a' && block[6] == 'g' && block[7] == 's';
+
+    private static bool IsTaggedPacket(byte[] candidate) => IsVorbisComment(candidate) || IsOpusTags(candidate);
+
+    private static (string Artist, string Title)? ParseOpusOrVorbisPacket(byte[] candidate) =>
+        TryParseVorbisBlock(candidate, IsVorbisComment(candidate) ? 7 : 8);
+
+    private static (string Artist, string Title)? TryParseVorbisBlock(byte[] block, int headerBytes)
+    {
+        var payload = new byte[block.Length - headerBytes];
+        Array.Copy(block, headerBytes, payload, 0, payload.Length);
+        return ParseVorbisComment(payload);
     }
 
     private static (string Artist, string Title)? ReadWavInfo(string path)
@@ -263,54 +288,15 @@ public static class TrackMetadata
             var fourcc = Encoding.Latin1.GetString(chunk, 0, 4);
             if (fourcc == "LIST")
             {
-                var kind = new byte[4];
-                if (stream.Read(kind, 0, 4) != 4)
+                var info = ReadListInfoChunk(stream, size, ref artist, ref title);
+                if (info is null)
                 {
                     return null;
                 }
-                if (Encoding.Latin1.GetString(kind, 0, 4) == "INFO")
+                if (info.Value)
                 {
-                    var left = size - 4;
-                    while (left >= 8)
-                    {
-                        var sub = new byte[8];
-                        if (stream.Read(sub, 0, 8) != 8)
-                        {
-                            return null;
-                        }
-                        var subSize = BitConverter.ToInt32(sub, 4);
-                        if (subSize < 0 || subSize > left - 8)
-                        {
-                            return null;
-                        }
-                        var key = Encoding.Latin1.GetString(sub, 0, 4);
-                        var value = new byte[subSize];
-                        if (stream.Read(value, 0, subSize) != subSize)
-                        {
-                            return null;
-                        }
-                        if (subSize % 2 == 1)
-                        {
-                            stream.Seek(1, SeekOrigin.Current);
-                            left -= 1;
-                        }
-                        var text = CleanLatin1(value, 0, value.Length);
-                        if (text.Length > 0)
-                        {
-                            if (key == "IART")
-                            {
-                                artist ??= text;
-                            }
-                            else if (key == "INAM")
-                            {
-                                title ??= text;
-                            }
-                        }
-                        left -= 8 + subSize;
-                    }
                     break;
                 }
-                stream.Seek(size - 4, SeekOrigin.Current);
             }
             else
             {
@@ -322,6 +308,68 @@ public static class TrackMetadata
             return null;
         }
         return (artist ?? string.Empty, title ?? string.Empty);
+    }
+
+    private static bool? ReadListInfoChunk(FileStream stream, int size, ref string? artist, ref string? title)
+    {
+        var kind = new byte[4];
+        if (stream.Read(kind, 0, 4) != 4)
+        {
+            return null;
+        }
+        if (Encoding.Latin1.GetString(kind, 0, 4) != "INFO")
+        {
+            stream.Seek(size - 4, SeekOrigin.Current);
+            return false;
+        }
+        var left = size - 4;
+        while (left >= 8)
+        {
+            if (!ReadInfoSubchunk(stream, ref left, ref artist, ref title))
+            {
+                return null;
+            }
+        }
+        return true;
+    }
+
+    private static bool ReadInfoSubchunk(FileStream stream, ref int left, ref string? artist, ref string? title)
+    {
+        var sub = new byte[8];
+        if (stream.Read(sub, 0, 8) != 8)
+        {
+            return false;
+        }
+        var subSize = BitConverter.ToInt32(sub, 4);
+        if (subSize < 0 || subSize > left - 8)
+        {
+            return false;
+        }
+        var key = Encoding.Latin1.GetString(sub, 0, 4);
+        var value = new byte[subSize];
+        if (stream.Read(value, 0, subSize) != subSize)
+        {
+            return false;
+        }
+        if (subSize % 2 == 1)
+        {
+            stream.Seek(1, SeekOrigin.Current);
+            left -= 1;
+        }
+        var text = TextCodec.TrimLatin1(value, 0, value.Length);
+        if (text.Length > 0)
+        {
+            if (key == "IART")
+            {
+                artist ??= text;
+            }
+            else if (key == "INAM")
+            {
+                title ??= text;
+            }
+        }
+        left -= 8 + subSize;
+        return true;
     }
 
     private static (string Artist, string Title)? ParseVorbisComment(byte[] block)
@@ -385,20 +433,6 @@ public static class TrackMetadata
         return true;
     }
 
-    private static byte[] RemoveUnsync(byte[] body)
-    {
-        var output = new List<byte>(body.Length);
-        for (var i = 0; i < body.Length; i++)
-        {
-            output.Add(body[i]);
-            if (body[i] == 0xFF && i + 1 < body.Length && body[i + 1] == 0x00)
-            {
-                i++;
-            }
-        }
-        return [.. output];
-    }
-
     private static int SyncSafe(byte[] buffer, int offset) =>
         ((buffer[offset] & 0x7F) << 21) | ((buffer[offset + 1] & 0x7F) << 14)
         | ((buffer[offset + 2] & 0x7F) << 7) | (buffer[offset + 3] & 0x7F);
@@ -406,60 +440,4 @@ public static class TrackMetadata
     private static int ReadBig32(byte[] buffer, int offset) =>
         (buffer[offset] << 24) | (buffer[offset + 1] << 16) | (buffer[offset + 2] << 8) | buffer[offset + 3];
 
-    private static string DecodeText(byte[] buffer, int offset, int length)
-    {
-        if (length <= 0)
-        {
-            return string.Empty;
-        }
-        var encoding = buffer[offset];
-        var start = offset + 1;
-        var count = length - 1;
-        if (encoding is 1 or 2)
-        {
-            var bigEndian = encoding == 2;
-            if ((count & 1) == 1)
-            {
-                count--;
-            }
-            var end16 = start + count;
-            while (count >= 2)
-            {
-                var hi = bigEndian ? buffer[end16 - 2] : buffer[end16 - 1];
-                var lo = bigEndian ? buffer[end16 - 1] : buffer[end16 - 2];
-                if (((hi << 8) | lo) is not (0x0000 or 0x0020))
-                {
-                    break;
-                }
-                count -= 2;
-                end16 -= 2;
-            }
-            if (!bigEndian && count >= 2 && buffer[start] == 0xFF && buffer[start + 1] == 0xFE)
-            {
-                start += 2;
-                count -= 2;
-            }
-            return (bigEndian ? Encoding.BigEndianUnicode : Encoding.Unicode).GetString(buffer, start, count & ~1);
-        }
-        var end = start + count;
-        while (count > 0 && (buffer[end - 1] == 0 || buffer[end - 1] == 0x20))
-        {
-            count--;
-            end--;
-        }
-        return encoding == 3
-            ? Encoding.UTF8.GetString(buffer, start, count)
-            : Encoding.Latin1.GetString(buffer, start, count);
-    }
-
-    private static string CleanLatin1(byte[] buffer, int offset, int length)
-    {
-        var end = offset + Math.Min(length, buffer.Length - offset);
-        var stop = end;
-        while (stop > offset && (buffer[stop - 1] == 0 || buffer[stop - 1] == 0x20))
-        {
-            stop--;
-        }
-        return Encoding.Latin1.GetString(buffer, offset, stop - offset).Trim();
-    }
 }

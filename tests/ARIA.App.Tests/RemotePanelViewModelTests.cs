@@ -24,7 +24,7 @@ public sealed class RemotePanelViewModelTests
         var viewModel = new RemotePanelViewModel();
         var info = new RemoteInfo(new Uri("http://192.168.1.5:5432/?id=ARIA-STAGE&key=pw"), []);
 
-        viewModel.Init(info, null);
+        viewModel.Configure(info, null, new RemoteCredentials("ARIA-STAGE", "pw"), () => (info, null, new RemoteCredentials("ARIA-STAGE", "pw")));
 
         Assert.True(viewModel.HasInfo);
         Assert.Equal(info.Url.ToString(), viewModel.UrlText);
@@ -58,7 +58,7 @@ public sealed class RemotePanelViewModelTests
     {
         var viewModel = new RemotePanelViewModel();
 
-        viewModel.Init(null, null);
+        viewModel.Configure(null, null, new RemoteCredentials("ARIA-STAGE", "pw"), () => (null, null, new RemoteCredentials("ARIA-STAGE", "pw")));
 
         Assert.False(viewModel.HasInfo);
         Assert.Equal("LAN-адрес не найден", viewModel.UrlText);

@@ -46,8 +46,6 @@ public sealed partial class RemotePanelViewModel : ObservableObject
         ApplyInfo(info, qr);
     });
 
-    public void Init(RemoteInfo? info, Bitmap? qr) => Post(() => ApplyInfo(info, qr));
-
     public void ResetPassword() => Post(() =>
     {
         if (_resetPair is not { } reset)

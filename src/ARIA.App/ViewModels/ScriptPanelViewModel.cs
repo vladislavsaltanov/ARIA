@@ -83,19 +83,14 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         };
         Lines.CollectionChanged += (_, _) =>
         {
-            OnPropertyChanged(nameof(HasLines));
             OnPropertyChanged(nameof(ShowEmptyScript));
         };
         Rebuild(bus.Snapshot().Show);
     }
 
-    public TimeSpan Elapsed => _elapsed;
-
     public bool HasScripts => Scripts.Count > 0;
 
     public bool ShowNoScripts => Scripts.Count == 0;
-
-    public bool HasLines => Lines.Count > 0;
 
     public bool ShowEmptyScript => SelectedScript is not null && Lines.Count == 0;
 

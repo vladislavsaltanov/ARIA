@@ -6,6 +6,7 @@ using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.State;
 
+// Owns PlayerState: mutate only here, on control thread.
 public sealed class ShowController : IShowHandler
 {
     private const double MasterGainMinDb = -80.0;
@@ -439,6 +440,38 @@ public sealed class ShowController : IShowHandler
         return -1;
     }
 
+    private bool RequireName(string name, ClientId client, long seq)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Reject(client, seq, "bad-name");
+            return false;
+        }
+        return true;
+    }
+
+    private bool RequirePlaylist(PlaylistId id, ClientId client, long seq, out int index)
+    {
+        index = IndexOfPlaylist(id);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-playlist");
+            return false;
+        }
+        return true;
+    }
+
+    private bool RequireScript(ScriptId id, ClientId client, long seq, out int index)
+    {
+        index = IndexOfScript(id);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-script");
+            return false;
+        }
+        return true;
+    }
+
     private void OnPlay(ClientId client, long seq)
     {
         if (_panicked)
@@ -598,6 +631,7 @@ public sealed class ShowController : IShowHandler
 
     private void SeekWithCrossfade(DeckInstance deck, TimeSpan filePosition)
     {
+        // New stream, not in-place seek: overlap fades, no click.
         var settings = deck.Settings;
         var old = deck.Handle!.Value;
         _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
@@ -737,9 +771,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnCreatePlaylist(ClientId client, long seq, CreatePlaylist command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
+        if (!RequireName(command.Name, client, seq))
         {
-            Reject(client, seq, "bad-name");
             return;
         }
         _playlists = _playlists.Add(new Playlist(PlaylistId.New(), command.Name, []));
@@ -750,15 +783,12 @@ public sealed class ShowController : IShowHandler
 
     private void OnRenamePlaylist(ClientId client, long seq, RenamePlaylist command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
+        if (!RequireName(command.Name, client, seq))
         {
-            Reject(client, seq, "bad-name");
             return;
         }
-        var index = IndexOfPlaylist(command.Id);
-        if (index < 0)
+        if (!RequirePlaylist(command.Id, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-playlist");
             return;
         }
         _playlists = _playlists.SetItem(index, _playlists[index] with { Name = command.Name });
@@ -768,10 +798,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnDeletePlaylist(ClientId client, long seq, DeletePlaylist command)
     {
-        var index = IndexOfPlaylist(command.Id);
-        if (index < 0)
+        if (!RequirePlaylist(command.Id, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-playlist");
             return;
         }
         _playlists = _playlists.RemoveAt(index);
@@ -792,10 +820,8 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "panicked");
             return;
         }
-        var index = IndexOfPlaylist(command.Id);
-        if (index < 0)
+        if (!RequirePlaylist(command.Id, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-playlist");
             return;
         }
         _activePlaylistId = _playlists[index].Id;
@@ -806,10 +832,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnAddEntry(ClientId client, long seq, AddEntry command)
     {
-        var index = IndexOfPlaylist(command.Playlist);
-        if (index < 0)
+        if (!RequirePlaylist(command.Playlist, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-playlist");
             return;
         }
         if (!_trackMap.ContainsKey(command.Track))
@@ -833,9 +857,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnImportPlaylist(ClientId client, long seq, ImportPlaylist command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
+        if (!RequireName(command.Name, client, seq))
         {
-            Reject(client, seq, "bad-name");
             return;
         }
         if (command.Entries.IsDefaultOrEmpty)
@@ -984,9 +1007,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnCreateScript(ClientId client, long seq, CreateScript command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
+        if (!RequireName(command.Name, client, seq))
         {
-            Reject(client, seq, "bad-name");
             return;
         }
         _scripts = _scripts.Add(new Script(ScriptId.New(), command.Name, []));
@@ -995,15 +1017,12 @@ public sealed class ShowController : IShowHandler
 
     private void OnRenameScript(ClientId client, long seq, RenameScript command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
+        if (!RequireName(command.Name, client, seq))
         {
-            Reject(client, seq, "bad-name");
             return;
         }
-        var index = IndexOfScript(command.Id);
-        if (index < 0)
+        if (!RequireScript(command.Id, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-script");
             return;
         }
         _scripts = _scripts.SetItem(index, _scripts[index] with { Name = command.Name });
@@ -1012,10 +1031,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnDeleteScript(ClientId client, long seq, DeleteScript command)
     {
-        var index = IndexOfScript(command.Id);
-        if (index < 0)
+        if (!RequireScript(command.Id, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-script");
             return;
         }
         _scripts = _scripts.RemoveAt(index);
@@ -1027,10 +1044,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnAddScriptLine(ClientId client, long seq, AddScriptLine command)
     {
-        var index = IndexOfScript(command.Script);
-        if (index < 0)
+        if (!RequireScript(command.Script, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-script");
             return;
         }
         if (command.AtElapsed < TimeSpan.Zero)
@@ -1047,10 +1062,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnUpdateScriptLine(ClientId client, long seq, UpdateScriptLine command)
     {
-        var index = IndexOfScript(command.Script);
-        if (index < 0)
+        if (!RequireScript(command.Script, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-script");
             return;
         }
         var script = _scripts[index];
@@ -1073,10 +1086,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnRemoveScriptLine(ClientId client, long seq, RemoveScriptLine command)
     {
-        var index = IndexOfScript(command.Script);
-        if (index < 0)
+        if (!RequireScript(command.Script, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-script");
             return;
         }
         var script = _scripts[index];
@@ -1092,10 +1103,8 @@ public sealed class ShowController : IShowHandler
 
     private void OnMoveScriptLine(ClientId client, long seq, MoveScriptLine command)
     {
-        var index = IndexOfScript(command.Script);
-        if (index < 0)
+        if (!RequireScript(command.Script, client, seq, out var index))
         {
-            Reject(client, seq, "unknown-script");
             return;
         }
         var script = _scripts[index];

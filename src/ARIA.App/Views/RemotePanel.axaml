@@ -3,30 +3,30 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.RemotePanel"
              x:DataType="vm:RemotePanelViewModel"
-             Background="#0F0F0F">
+             Background="{StaticResource BrushBg}">
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" Margin="24" MaxWidth="560">
     <TextBlock Text="ПУЛЬТ" Foreground="#EDEDED" FontSize="22" FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
     <Border Background="#FFFFFF" Padding="12" HorizontalAlignment="Center" IsVisible="{Binding HasInfo}">
       <Image Source="{Binding QrImage}" Width="232" Height="232" />
     </Border>
-    <TextBlock Text="LAN-адрес не найден" IsVisible="{Binding !HasInfo}" Foreground="#8A8A8A"
+    <TextBlock Text="LAN-адрес не найден" IsVisible="{Binding !HasInfo}" Foreground="{StaticResource BrushDim}"
                FontSize="16" FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
     <SelectableTextBlock Text="{Binding UrlText}" Foreground="#F2F2F2" FontSize="15" FontFamily="Consolas, Menlo"
                          TextWrapping="Wrap" TextAlignment="Center" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-      <TextBlock Text="ИДЕНТИФИКАТОР" Foreground="#8A8A8A" FontSize="12" FontFamily="Consolas, Menlo" VerticalAlignment="Center" />
+      <TextBlock Text="ИДЕНТИФИКАТОР" Foreground="{StaticResource BrushDim}" FontSize="12" FontFamily="Consolas, Menlo" VerticalAlignment="Center" />
       <SelectableTextBlock Text="{Binding IdentifierText}" Foreground="#EDEDED" FontSize="17" FontFamily="Consolas, Menlo" />
     </StackPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-      <TextBlock Text="ПАРОЛЬ" Foreground="#8A8A8A" FontSize="12" FontFamily="Consolas, Menlo" VerticalAlignment="Center" />
+      <TextBlock Text="ПАРОЛЬ" Foreground="{StaticResource BrushDim}" FontSize="12" FontFamily="Consolas, Menlo" VerticalAlignment="Center" />
       <SelectableTextBlock Text="{Binding PasswordText}" Foreground="#EDEDED" FontSize="17" FontFamily="Consolas, Menlo" />
     </StackPanel>
     <Button Command="{Binding ResetPasswordCommand}" Content="новый пароль"
-            Background="#1A1A1A" Foreground="#EDEDED" BorderBrush="#2A2A2A" Padding="18 8"
+            Background="#1A1A1A" Foreground="#EDEDED" BorderBrush="{StaticResource BrushSurfaceHi}" Padding="18 8"
             FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
     <TextBlock Text="пульт сохраняет пару в браузере; сброс пароля делает старый QR недействительным — пересканируйте"
-               Foreground="#8A8A8A" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="460" />
-    <TextBlock Text="{Binding MdnsStatus}" Foreground="#8A8A8A" FontSize="13" FontFamily="Consolas, Menlo"
+               Foreground="{StaticResource BrushDim}" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="460" />
+    <TextBlock Text="{Binding MdnsStatus}" Foreground="{StaticResource BrushDim}" FontSize="13" FontFamily="Consolas, Menlo"
                HorizontalAlignment="Center" />
   </StackPanel>
 </UserControl>

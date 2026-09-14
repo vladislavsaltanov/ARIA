@@ -133,6 +133,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .seek {
+  position: relative;
   height: 28px;
   display: flex;
   align-items: center;
@@ -157,10 +158,6 @@ body {
   border-radius: 5px;
   pointer-events: none;
 }
-.seek {
-  position: relative;
-}
-
 .track-remain {
   font-size: 16px;
   color: var(--dim);
@@ -307,17 +304,7 @@ body {
   color: var(--text);
   overflow: hidden;
 }
-#queue li.current {
-  border-color: #6ac47a;
-}
-#queue li .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--line);
-  flex: none;
-}
-#queue li .empty {
+#queue li.empty {
   color: var(--dim);
   font-size: 13px;
 }
