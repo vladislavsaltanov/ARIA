@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
              x:Class="Aria.App.Views.SettingsSections.RowFormatSection"
              x:DataType="vm:SettingsViewModel">
-  <Border Classes="section">
+  <Border Classes="section" x:DataType="vms:RowFormatSectionVm" DataContext="{Binding RowFormat}">
     <StackPanel>
       <TextBlock Text="Формат строк" Classes="sectionTitle"/>
       <CheckBox x:Name="UseFileNameCheck" Content="имя файла вместо метаданных"

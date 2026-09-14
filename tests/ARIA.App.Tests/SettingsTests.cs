@@ -163,10 +163,10 @@ public sealed class SettingsTests : IDisposable
             using var viewModel = new SettingsViewModel(
                 bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
                 new AppSettingsStore(path), s => applied = s);
-            viewModel.UseFileName = true;
-            viewModel.RowFormat = "{filename}";
+            viewModel.RowFormat.UseFileName = true;
+            viewModel.RowFormat.RowFormat = "{filename}";
 
-            viewModel.SaveRowSettingsCommand.Execute(null);
+            viewModel.RowFormat.SaveRowSettingsCommand.Execute(null);
 
             Assert.Equal(new AppSettings(true, "{filename}", Smoothing.Default), new AppSettingsStore(path).Load());
         }

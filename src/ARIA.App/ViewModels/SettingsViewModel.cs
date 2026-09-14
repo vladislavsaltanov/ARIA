@@ -15,25 +15,17 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly ICommandBus _bus;
     private readonly ClientId _client = new("desktop-settings");
     private readonly AppSettingsStore _settingsStore;
-    private readonly Action<AppSettings>? _rowSettingsApplied;
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
     private long _seq;
-
-    [ObservableProperty]
-    private bool useFileName;
-
-    [ObservableProperty]
-    private string rowFormat = AppSettings.Default.RowFormat;
-
-    [ObservableProperty]
-    private string rowSettingsStatus = string.Empty;
 
     public HotkeysSectionVm Hotkeys { get; }
 
     public EngineSectionVm Engine { get; }
 
     public PlaybackSectionVm Playback { get; }
+
+    public RowFormatSectionVm RowFormat { get; }
 
     public SettingsViewModel(
         ICommandBus bus,
@@ -45,14 +37,12 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     {
         _bus = bus;
         _settingsStore = settingsStore;
-        _rowSettingsApplied = rowSettingsApplied;
         _sync = sync;
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
-        UseFileName = settings.UseFileName;
-        RowFormat = settings.RowFormat;
+        RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
         Playback = new PlaybackSectionVm(Submit, SnapshotSettings, SaveSettings, settings.DefaultEndAction);
         Engine.ApplyMixer(bus.Snapshot().Mixer);
         Engine.ApplySmoothing(settings.Smoothing);
@@ -67,21 +57,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ResetClock() => Submit(new ResetShowClock());
 
-    [RelayCommand]
-    private void SaveRowSettings()
-    {
-        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction);
-        RowFormat = settings.RowFormat;
-        _settingsStore.Save(settings);
-        _rowSettingsApplied?.Invoke(settings);
-        RowSettingsStatus = "формат строк сохранён";
-    }
-
     public void Dispose() => _subscription.Dispose();
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    public AppSettings SnapshotSettings() => new(UseFileName, RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction);
+    public AppSettings SnapshotSettings() => new(RowFormat.UseFileName, RowFormat.RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction);
 
     public void SaveSettings(AppSettings settings) => _settingsStore.Save(settings);
 
