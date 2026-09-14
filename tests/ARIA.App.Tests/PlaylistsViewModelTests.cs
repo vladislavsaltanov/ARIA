@@ -495,4 +495,75 @@ public sealed class PlaylistsViewModelTests
         Assert.True(ok);
         Assert.Contains("замен", vm.PlaylistIoStatus);
     }
+
+    [Fact]
+    public async Task RelinkEntryAsync_ClearsStatusAfterTtl_WithPostedSyncContext()
+    {
+        var pump = new PumpContext();
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack], sync: pump, transientStatusTtl: TimeSpan.FromMilliseconds(50));
+        var row = vm.Playlists[0].Entries[0];
+        vm.TrackRelink = (_, _) => Task.FromResult(true);
+
+        await vm.RelinkEntryAsync(row, "/audio/found.flac");
+
+        Assert.Contains("замен", vm.PlaylistIoStatus);
+        await Task.Delay(500);
+        pump.PumpAll();
+
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+    }
+
+    [Fact]
+    public async Task ImportDocumentAsync_SuccessSummary_ClearsAfterTtl()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack], transientStatusTtl: TimeSpan.FromMilliseconds(50));
+        var json = PlaylistFormat.Export("Вечер", [
+            new PlaylistExportEntry("/audio/test.flac", Transition: new PlaylistFileTransition("gap", 2)),
+        ]);
+
+        await vm.ImportDocumentAsync(json);
+
+        Assert.Contains("импортировано", vm.PlaylistIoStatus);
+        await Task.Delay(500);
+
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+    }
+
+    [Fact]
+    public async Task SilentRepair_AfterImportSummary_LeavesNoStickyStatus()
+    {
+        var (bus, _, _) = Setup();
+        var found = new Track(TrackId.New(), "/audio/found.wav", "found", TimeSpan.FromMinutes(2), new TrackDefaults());
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack, found],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(1, 0, [])),
+            transientStatusTtl: TimeSpan.FromMilliseconds(50));
+        var json = PlaylistFormat.Export("Вечер", [
+            new PlaylistExportEntry("/audio/test.flac", Transition: new PlaylistFileTransition("gap", 2)),
+            new PlaylistExportEntry("/audio/missing.flac", Transition: new PlaylistFileTransition("gap", 2)),
+        ]);
+
+        await vm.ImportDocumentAsync(json);
+        await vm.ImportAudioFilesAsync([found.FilePath], silent: true);
+        await Task.Delay(500);
+
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+    }
+
+    private sealed class PumpContext : SynchronizationContext
+    {
+        private readonly Queue<(SendOrPostCallback Callback, object? State)> _queue = new();
+
+        public override void Post(SendOrPostCallback d, object? state) => _queue.Enqueue((d, state));
+
+        public void PumpAll()
+        {
+            for (var guard = 0; guard < 1000 && _queue.Count > 0; guard++)
+            {
+                var (callback, state) = _queue.Dequeue();
+                callback(state);
+            }
+        }
+    }
 }

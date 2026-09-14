@@ -52,3 +52,11 @@ and engine-integration levels. Audio import gained a silent flag
 (no progress, no success status); the import-missing repair passes
 it while undecodable picks still raise the failure dialog.
 Tests: Core 177, App 250, Persistence 21, Audio 70, Remote 59.
+
+Follow-up 2026-09-15: stuck strip after repair. Root cause: the
+import summary was the only sticky status; silent repair never
+refreshes it, and it resurfaces under cleared transient notices.
+Fix: success summary moved into the document-import path as a
+transient notice like all others; error paths stay sticky.
+Timer mechanics proven with a posted-context test.
+Tests: Core 178, App 255, Persistence 21, Audio 70, Remote 59.

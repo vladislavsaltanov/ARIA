@@ -263,12 +263,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         await using var stream = await files[0].OpenReadAsync();
         using var reader = new StreamReader(stream);
-        var report = await ImportDocumentAsync(await reader.ReadToEndAsync());
-        if (report.Error is null)
-        {
-            LastImportError = string.Empty;
-            PlaylistIoStatus = Describe(report);
-        }
+        await ImportDocumentAsync(await reader.ReadToEndAsync());
     }
 
     [RelayCommand]
@@ -430,7 +425,9 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         _awaitedPlaylistName = document.Name;
         Submit(new ImportPlaylist(document.Name, [.. imports]));
+        LastImportError = string.Empty;
         var report = new PlaylistImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
+        SetTransientStatus(Describe(report));
         if (report.MissingFiles.Length > 0)
         {
             PlaylistImportMissing?.Invoke(report);
