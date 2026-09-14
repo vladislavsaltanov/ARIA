@@ -99,4 +99,18 @@ public sealed class DefaultEndActionTests
 
         Assert.Equal("default-end-action-unknown", h.RejectionOf(seq)!.Reason);
     }
+
+    [Fact]
+    public void SetDefaultEndAction_EmitsShowDelta_WithNewDefault()
+    {
+        using var h = new Harness();
+        var version = h.Snapshot.ShowVersion;
+
+        h.Submit(new SetDefaultEndAction(EndAction.Pause));
+
+        Assert.Equal(EndAction.Pause, h.Snapshot.Show.DefaultEndAction);
+        Assert.True(h.Snapshot.ShowVersion > version);
+        var delta = h.Events.OfType<ShowDelta>().Last();
+        Assert.Equal(EndAction.Pause, delta.State.DefaultEndAction);
+    }
 }
