@@ -8,7 +8,7 @@ tasks:
     description: "VM SetEntryEndAction merge+тест via bus"
     verify: "dotnet test tests/ARIA.App.Tests --filter SetEntryEndAction"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:
@@ -18,7 +18,7 @@ tasks:
     description: "Меню 'Действие в конце' в PlaylistCenter"
     verify: "dotnet build"
     risk: P2
-    status: failing
+    status: passing
     allure:
       severity: normal
       categories:
@@ -28,7 +28,7 @@ tasks:
     description: "Headless: меню шлёт команду, Vm обновлён"
     verify: "dotnet test tests/ARIA.App.Tests --filter EntryEndActionMenu"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:
@@ -36,9 +36,9 @@ tasks:
         - "integration"
   - id: 4
     description: "Рестарт-пруф и возврат глобала"
-    verify: "dotnet test tests/ARIA.Persistence.Tests tests/ARIA.Core.Tests"
+    verify: "dotnet test"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:

@@ -370,6 +370,25 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public void RemoveEntryAt(EntryVm entry) => Submit(new RemoveEntry(entry.Id));
 
+    public void SetEntryEndAction(EntryVm entry, EndAction? action)
+    {
+        PlaylistOverrides? merged;
+        if (entry.Overrides is { } current)
+        {
+            var next = current with { EndAction = action };
+            merged = next == new PlaylistOverrides() ? null : next;
+        }
+        else if (action is null)
+        {
+            return;
+        }
+        else
+        {
+            merged = new PlaylistOverrides(EndAction: action);
+        }
+        Submit(new SetEntryOverrides(entry.Id, merged));
+    }
+
     public void DeletePlaylistAt(PlaylistVm playlist) => Submit(new DeletePlaylist(playlist.Id));
 
     public void MoveEntry(EntryId id, int newIndex)
@@ -513,6 +532,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
         _newPlaylistCounter = Math.Max(_newPlaylistCounter, state.Playlists.Length);
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
+        var trackEndActions = tracks.ToDictionary(t => t.Id, t => t.Defaults.EndAction);
         var trackDurations = tracks.ToDictionary(t => t.Id, t => t.Duration);
         var trackFiles = tracks.ToDictionary(t => t.Id, t => Path.GetFileName(t.FilePath));
         var selectedPlaylistId = SelectedPlaylist?.Id;
@@ -530,6 +550,9 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 var fileName = trackFiles.GetValueOrDefault(entry.TrackId, displayName);
                 var duration = trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero);
                 var position = $"{index + 1:00}";
+                var trackEndAction = trackEndActions.GetValueOrDefault(entry.TrackId, EndAction.Advance);
+                var effectiveEndAction = entry.Overrides?.EndAction
+                    ?? (trackEndAction != EndAction.Advance ? trackEndAction : _rowSettings.DefaultEndAction);
                 playlistVm.Entries.Add(new EntryVm(
                     entry.Id,
                     entry.TrackId,
@@ -548,7 +571,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                     _faulted.Contains(entry.TrackId),
                     position,
                     duration,
-                    _linkedTrackId == entry.TrackId));
+                    _linkedTrackId == entry.TrackId,
+                    effectiveEndAction));
             }
             Playlists.Add(playlistVm);
         }
@@ -678,7 +702,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         bool IsFaulted,
         string Position,
         TimeSpan Duration,
-        bool IsLinked = false)
+        bool IsLinked = false,
+        EndAction EffectiveEndAction = EndAction.Advance)
     {
         public bool HasOverrides => Overrides is not null;
 

@@ -85,6 +85,13 @@
             <Border.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="В очередь" Click="OnEnqueueClick"/>
+                <MenuItem Header="Действие в конце" SubmenuOpened="OnEndActionMenuOpened">
+                  <MenuItem Header="Наследовать" Tag="inherit" Click="OnEndActionClick"/>
+                  <MenuItem Header="Пауза" Tag="pause" Click="OnEndActionClick"/>
+                  <MenuItem Header="Стоп" Tag="stop" Click="OnEndActionClick"/>
+                  <MenuItem Header="Повтор" Tag="replay" Click="OnEndActionClick"/>
+                  <MenuItem Header="Далее" Tag="advance" Click="OnEndActionClick"/>
+                </MenuItem>
                 <MenuItem Header="Убрать из плейлиста" Click="OnRemoveClick"/>
               </ContextMenu>
             </Border.ContextMenu>

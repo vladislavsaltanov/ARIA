@@ -9,7 +9,7 @@ stories:
     title: "Per-entry EndAction UI в плейлисте"
     scope: S1
     bcps: 5
-    status: failing
+    status: passing
     delta: MODIFIED
   - id: e01s02
     title: "Hotkey через ICommandBus"

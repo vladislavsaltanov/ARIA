@@ -49,9 +49,9 @@
    → verify: `dotnet test tests/ARIA.App.Tests
    --filter EntryEndActionMenu`
 4. Рестарт-пруф: значение живёт reload, сброс
-   возвращает глобал
-   → verify: `dotnet test tests/ARIA.Persistence.Tests
-   tests/ARIA.Core.Tests`
+   возвращает глобал (покрыто LibraryStoreTests:84 +
+   SetEntryEndAction_Null)
+   → verify: `dotnet test`
 
 ## Verification Script
 
