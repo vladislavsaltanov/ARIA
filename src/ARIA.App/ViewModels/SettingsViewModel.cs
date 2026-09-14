@@ -18,14 +18,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly Action<AppSettings>? _rowSettingsApplied;
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
-    private double _panicFadeMs = 100;
     private EndAction _defaultEndAction = EndAction.Advance;
-    private bool _smoothingEnabled;
-    private double _manualCrossfadeMs;
-    private double _autoCrossfadeMs;
-    private double _startFadeMs;
-    private double _stopFadeMs;
-    private double _seekFadeMs;
     private long _seq;
 
     [ObservableProperty]
@@ -38,6 +31,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private string rowSettingsStatus = string.Empty;
 
     public HotkeysSectionVm Hotkeys { get; }
+
+    public EngineSectionVm Engine { get; }
 
     public SettingsViewModel(
         ICommandBus bus,
@@ -52,12 +47,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _rowSettingsApplied = rowSettingsApplied;
         _sync = sync;
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
+        Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         UseFileName = settings.UseFileName;
         RowFormat = settings.RowFormat;
-        ApplyMixer(bus.Snapshot().Mixer);
-        ApplySmoothing(settings.Smoothing);
+        Engine.ApplyMixer(bus.Snapshot().Mixer);
+        Engine.ApplySmoothing(settings.Smoothing);
         if (bus.Snapshot().Mixer.Smoothing != settings.Smoothing)
         {
             Submit(new SetSmoothing(settings.Smoothing));
@@ -92,97 +88,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
-    public double PanicFadeMs
-    {
-        get => _panicFadeMs;
-        set
-        {
-            if (SetProperty(ref _panicFadeMs, value))
-            {
-                Submit(new SetPanicFade(TimeSpan.FromMilliseconds(value)));
-            }
-        }
-    }
-
-    public bool SmoothingEnabled
-    {
-        get => _smoothingEnabled;
-        set
-        {
-            if (SetProperty(ref _smoothingEnabled, value))
-            {
-                SubmitSmoothing();
-            }
-        }
-    }
-
-    public double ManualCrossfadeMs
-    {
-        get => _manualCrossfadeMs;
-        set
-        {
-            if (SetProperty(ref _manualCrossfadeMs, value))
-            {
-                SubmitSmoothing();
-            }
-        }
-    }
-
-    public double AutoCrossfadeMs
-    {
-        get => _autoCrossfadeMs;
-        set
-        {
-            if (SetProperty(ref _autoCrossfadeMs, value))
-            {
-                SubmitSmoothing();
-            }
-        }
-    }
-
-    public double StartFadeMs
-    {
-        get => _startFadeMs;
-        set
-        {
-            if (SetProperty(ref _startFadeMs, value))
-            {
-                SubmitSmoothing();
-            }
-        }
-    }
-
-    public double StopFadeMs
-    {
-        get => _stopFadeMs;
-        set
-        {
-            if (SetProperty(ref _stopFadeMs, value))
-            {
-                SubmitSmoothing();
-            }
-        }
-    }
-
-    public double SeekFadeMs
-    {
-        get => _seekFadeMs;
-        set
-        {
-            if (SetProperty(ref _seekFadeMs, value))
-            {
-                SubmitSmoothing();
-            }
-        }
-    }
-
     [RelayCommand]
     private void ResetClock() => Submit(new ResetShowClock());
 
     [RelayCommand]
     private void SaveRowSettings()
     {
-        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, CurrentSmoothing(), _defaultEndAction);
+        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, Engine.CurrentSmoothing(), _defaultEndAction);
         RowFormat = settings.RowFormat;
         _settingsStore.Save(settings);
         _rowSettingsApplied?.Invoke(settings);
@@ -193,48 +105,21 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    private Smoothing CurrentSmoothing() => new(
-        _smoothingEnabled,
-        TimeSpan.FromMilliseconds(_manualCrossfadeMs),
-        TimeSpan.FromMilliseconds(_autoCrossfadeMs),
-        TimeSpan.FromMilliseconds(_startFadeMs),
-        TimeSpan.FromMilliseconds(_stopFadeMs),
-        TimeSpan.FromMilliseconds(_seekFadeMs));
+    public AppSettings SnapshotSettings() => new(UseFileName, RowFormat, Engine.CurrentSmoothing(), _defaultEndAction);
 
-    private void SubmitSmoothing()
-    {
-        var smoothing = CurrentSmoothing();
-        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, smoothing, _defaultEndAction));
-        Submit(new SetSmoothing(smoothing));
-    }
+    public void SaveSettings(AppSettings settings) => _settingsStore.Save(settings);
 
     private void SubmitEndAction()
     {
-        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, CurrentSmoothing(), _defaultEndAction));
+        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, Engine.CurrentSmoothing(), _defaultEndAction));
         Submit(new SetDefaultEndAction(_defaultEndAction));
-    }
-
-    private void ApplySmoothing(Smoothing smoothing)
-    {
-        _smoothingEnabled = smoothing.Enabled;
-        _manualCrossfadeMs = smoothing.ManualCrossfade.TotalMilliseconds;
-        _autoCrossfadeMs = smoothing.AutoCrossfade.TotalMilliseconds;
-        _startFadeMs = smoothing.StartFade.TotalMilliseconds;
-        _stopFadeMs = smoothing.StopFade.TotalMilliseconds;
-        _seekFadeMs = smoothing.SeekFade.TotalMilliseconds;
-        OnPropertyChanged(nameof(SmoothingEnabled));
-        OnPropertyChanged(nameof(ManualCrossfadeMs));
-        OnPropertyChanged(nameof(AutoCrossfadeMs));
-        OnPropertyChanged(nameof(StartFadeMs));
-        OnPropertyChanged(nameof(StopFadeMs));
-        OnPropertyChanged(nameof(SeekFadeMs));
     }
 
     private void Apply(StateEvent e)
     {
         if (e is MixerDelta delta)
         {
-            Post(() => ApplyMixer(delta.State));
+            Post(() => Engine.ApplyMixer(delta.State));
         }
     }
 
@@ -250,12 +135,6 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void ApplyMixer(MixerState state)
-    {
-        _panicFadeMs = state.PanicFade.TotalMilliseconds;
-        OnPropertyChanged(nameof(PanicFadeMs));
-        ApplySmoothing(state.Smoothing);
-    }
 }
 
 

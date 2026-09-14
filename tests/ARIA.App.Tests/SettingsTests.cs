@@ -146,10 +146,10 @@ public sealed class SettingsTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
 
-        viewModel.PanicFadeMs = 250;
+        viewModel.Engine.PanicFadeMs = 250;
 
         Assert.Equal(TimeSpan.FromMilliseconds(250), bus.Snapshot().Mixer.PanicFade);
-        Assert.Equal(250, viewModel.PanicFadeMs);
+        Assert.Equal(250, viewModel.Engine.PanicFadeMs);
     }
 
     [Fact]
@@ -188,12 +188,12 @@ public sealed class SettingsTests : IDisposable
                 bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
                 new AppSettingsStore(path));
 
-            viewModel.SmoothingEnabled = true;
-            viewModel.ManualCrossfadeMs = 400;
-            viewModel.AutoCrossfadeMs = 900;
-            viewModel.StartFadeMs = 250;
-            viewModel.StopFadeMs = 300;
-            viewModel.SeekFadeMs = 350;
+            viewModel.Engine.SmoothingEnabled = true;
+            viewModel.Engine.ManualCrossfadeMs = 400;
+            viewModel.Engine.AutoCrossfadeMs = 900;
+            viewModel.Engine.StartFadeMs = 250;
+            viewModel.Engine.StopFadeMs = 300;
+            viewModel.Engine.SeekFadeMs = 350;
 
             var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350));
             Assert.Equal(expected, bus.Snapshot().Mixer.Smoothing);
