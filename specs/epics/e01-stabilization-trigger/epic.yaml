@@ -15,22 +15,32 @@ stories:
     title: "Hotkey через ICommandBus"
     scope: S5
     bcps: 5
-    status: failing
+    status: passing
     delta: MODIFIED
   - id: e01s03
     title: "Remote settings для global EndAction"
     scope: S2
     bcps: 3
-    status: failing
+    status: passing
     delta: ADDED
   - id: e01s04
     title: "Headless общий session-fixture"
     scope: S4
     bcps: 3
-    status: failing
+    status: passing
     delta: MODIFIED
   - id: e01s05
     title: "Подтвердить и закрыть BUG-dnd-playlist-drop"
     scope: S3
     bcps: 1
     status: failing
+  - id: e01s06
+    title: "Настройки — боковая навигация и секции"
+    bcps: 5
+    status: passing
+    delta: MODIFIED
+  - id: e01s07
+    title: "Настройки — секционные VM и пункты из данных"
+    bcps: 5
+    status: passing
+    delta: MODIFIED
