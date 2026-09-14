@@ -8,11 +8,14 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 
 [Collection("headless")]
-public sealed class ScriptPaneResizeTests : IDisposable
+public sealed class ScriptPaneResizeTests
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public ScriptPaneResizeTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task GripPointerPress_StartsDrag()

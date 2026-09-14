@@ -12,11 +12,14 @@ using Avalonia.Headless;
 using Avalonia.Media;
 
 [Collection("headless")]
-public sealed class HeaderWaveformFillTests : IDisposable
+public sealed class HeaderWaveformFillTests
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public HeaderWaveformFillTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task AttachedPeaks_RenderFilledWaveGeometry()

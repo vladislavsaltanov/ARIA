@@ -12,14 +12,17 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 [Collection("headless")]
-public sealed class ScriptPanelHeadlessTests : IDisposable
+public sealed class ScriptPanelHeadlessTests
 {
     private static readonly Track TestTrack = new(
         TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
 
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public ScriptPanelHeadlessTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task MainWindow_Composes_ScriptDrawer_ClosedByDefault()
