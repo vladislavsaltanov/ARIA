@@ -1,6 +1,6 @@
 namespace Aria.App.Views.SettingsSections;
 
-using Aria.App.ViewModels;
+using Aria.App.ViewModels.Settings;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -13,8 +13,8 @@ public partial class HotkeysSection : UserControl
 
     private void OnRecordClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button { DataContext: SettingsViewModel.GestureRow row }
-            && DataContext is SettingsViewModel settings)
+        if (sender is Button { DataContext: HotkeysSectionVm.GestureRow row }
+            && DataContext is HotkeysSectionVm settings)
         {
             settings.BeginRecord(row);
         }

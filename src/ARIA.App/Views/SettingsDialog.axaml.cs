@@ -73,7 +73,7 @@ public partial class SettingsDialog : Window
         {
             return;
         }
-        if (_settings.RecordingRow is null)
+        if (_settings.Hotkeys.RecordingRow is null)
         {
             if (e.Key == Key.Escape)
             {
@@ -85,13 +85,13 @@ public partial class SettingsDialog : Window
         switch (e.Key)
         {
             case Key.Escape:
-                _settings.CancelRecord();
+                _settings.Hotkeys.CancelRecord();
                 break;
             case Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
                 or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin:
                 break;
             default:
-                _settings.RecordGesture(HotkeyInput.GestureFor(e.Key, e.KeyModifiers));
+                _settings.Hotkeys.RecordGesture(HotkeyInput.GestureFor(e.Key, e.KeyModifiers));
                 break;
         }
         e.Handled = true;

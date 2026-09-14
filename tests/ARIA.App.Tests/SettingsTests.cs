@@ -79,9 +79,9 @@ public sealed class SettingsTests : IDisposable
     {
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
-        var pause = viewModel.Gestures.First(g => g.Action == "pause");
+        var pause = viewModel.Hotkeys.Gestures.First(g => g.Action == "pause");
 
-        var error = viewModel.TrySetGesture(pause, "Space");
+        var error = viewModel.Hotkeys.TrySetGesture(pause, "Space");
 
         Assert.Contains("Воспроизведение", error);
         Assert.Equal("Esc", pause.Gesture);
@@ -92,9 +92,9 @@ public sealed class SettingsTests : IDisposable
     {
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
-        var pause = viewModel.Gestures.First(g => g.Action == "pause");
+        var pause = viewModel.Hotkeys.Gestures.First(g => g.Action == "pause");
 
-        Assert.Equal("жест занят системой macOS", viewModel.TrySetGesture(pause, "Meta+Q"));
+        Assert.Equal("жест занят системой macOS", viewModel.Hotkeys.TrySetGesture(pause, "Meta+Q"));
     }
 
     [Fact]
@@ -106,10 +106,10 @@ public sealed class SettingsTests : IDisposable
         {
             using var viewModel = new SettingsViewModel(bus, new HotkeyService(HotkeyConfig.Default, _ => { }), path, new AppSettingsStore(Path.Combine(Path.GetTempPath(), $"aria-row-{Guid.NewGuid():N}.json")));
 
-            var pause = viewModel.Gestures.First(g => g.Action == "pause");
-            Assert.Null(viewModel.TrySetGesture(pause, "F9"));
+            var pause = viewModel.Hotkeys.Gestures.First(g => g.Action == "pause");
+            Assert.Null(viewModel.Hotkeys.TrySetGesture(pause, "F9"));
 
-            Assert.Equal("f9", viewModel.Gestures.First(g => g.Action == "pause").Gesture);
+            Assert.Equal("f9", viewModel.Hotkeys.Gestures.First(g => g.Action == "pause").Gesture);
             var dispatched = new List<string>();
             var reloaded = new HotkeyService(HotkeyConfig.Load(path), dispatched.Add);
             Assert.True(reloaded.TryHandle("F9"));
