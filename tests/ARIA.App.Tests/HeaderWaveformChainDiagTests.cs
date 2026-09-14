@@ -14,11 +14,15 @@ using Avalonia.Media;
 public sealed class HeaderWaveformChainDiagTests : IDisposable
 {
     private readonly string _directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"aria-hdiag-{Guid.NewGuid():N}");
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
+
+    public HeaderWaveformChainDiagTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     public void Dispose()
     {
-        _session.Dispose();
         if (Directory.Exists(_directory))
         {
             Directory.Delete(_directory, recursive: true);

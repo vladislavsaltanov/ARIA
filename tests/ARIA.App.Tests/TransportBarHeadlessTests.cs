@@ -5,11 +5,14 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 
 [Collection("headless")]
-public sealed class TransportBarHeadlessTests : IDisposable
+public sealed class TransportBarHeadlessTests
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public TransportBarHeadlessTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task MainWindow_Composes_TransportBar_AndHelpOverlay()

@@ -13,11 +13,15 @@ using Avalonia.Platform.Storage;
 public sealed class OsDropReproTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"aria-osdrop-repro-{Guid.NewGuid():N}");
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
+
+    public OsDropReproTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     public void Dispose()
     {
-        _session.Dispose();
         if (Directory.Exists(_directory))
         {
             Directory.Delete(_directory, recursive: true);

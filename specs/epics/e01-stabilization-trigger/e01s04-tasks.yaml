@@ -1,14 +1,14 @@
 ---
 story_id: e01s04
 title: "Headless общий session-fixture"
-status: failing
+status: passing
 bcps: 3
 tasks:
   - id: 1
     description: "Один session-fixture на коллекцию headless"
     verify: "dotnet build tests/ARIA.App.Tests"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:
@@ -18,7 +18,7 @@ tasks:
     description: "Классы переведены на общий fixture"
     verify: "dotnet test tests/ARIA.App.Tests"
     risk: P1
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:
@@ -28,7 +28,7 @@ tasks:
     description: "5 прогонов подряд без флаков старта"
     verify: "for i in 1 2 3 4 5; do dotnet test tests/ARIA.App.Tests; done"
     risk: P2
-    status: failing
+    status: passing
     allure:
       severity: normal
       categories:
