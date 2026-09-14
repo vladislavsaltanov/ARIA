@@ -1,0 +1,9 @@
+---
+release: "Стабилизация + Trigger срез 1"
+source: specs/product/SCOPE_LATEST.yaml
+epics:
+  - id: e01
+    capsule: specs/epics/e01-stabilization-trigger
+    title: "Стабилизация долгов + hotkey-триггеры"
+    wsjf: 1
+    status: planned

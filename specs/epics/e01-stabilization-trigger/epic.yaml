@@ -1,0 +1,36 @@
+---
+epic_id: e01
+title: "Стабилизация долгов + hotkey-триггеры"
+source: specs/product/SCOPE_LATEST.yaml
+status: planned
+order: WSJF desc
+stories:
+  - id: e01s01
+    title: "Per-entry EndAction UI в плейлисте"
+    scope: S1
+    bcps: 5
+    status: failing
+    delta: MODIFIED
+  - id: e01s02
+    title: "Hotkey через ICommandBus"
+    scope: S5
+    bcps: 5
+    status: failing
+    delta: MODIFIED
+  - id: e01s03
+    title: "Remote settings для global EndAction"
+    scope: S2
+    bcps: 3
+    status: failing
+    delta: ADDED
+  - id: e01s04
+    title: "Headless общий session-fixture"
+    scope: S4
+    bcps: 3
+    status: failing
+    delta: MODIFIED
+  - id: e01s05
+    title: "Подтвердить и закрыть BUG-dnd-playlist-drop"
+    scope: S3
+    bcps: 1
+    status: failing

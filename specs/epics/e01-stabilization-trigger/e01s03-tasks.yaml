@@ -1,0 +1,36 @@
+---
+story_id: e01s03
+title: "Remote settings для global EndAction"
+status: failing
+bcps: 3
+tasks:
+  - id: 1
+    description: "Пульт показывает и меняет global default"
+    verify: "dotnet build"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories:
+        - "Remote"
+        - "unit"
+  - id: 2
+    description: "Кодек round-trip set_default_end_action"
+    verify: "dotnet test tests/ARIA.Remote.Tests"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories:
+        - "Remote"
+        - "unit"
+  - id: 3
+    description: "Смена с пульта видна в десктоп-настройках"
+    verify: "dotnet test tests/ARIA.App.Tests"
+    risk: P2
+    status: failing
+    allure:
+      severity: normal
+      categories:
+        - "Remote"
+        - "integration"

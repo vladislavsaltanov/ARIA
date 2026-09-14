@@ -1,0 +1,88 @@
+core_value: >
+  Шоу не останавливается: закрыть долги
+  стабилизации и дать один срез новой фичи.
+summary: >
+  Итерация смешанная, полная (1-2 недели соло).
+  Первая половина закрывает долги: per-entry
+  EndAction UI, remote settings surface,
+  подтверждение DnD-бага, headless-стабильность.
+  Вторая половина даёт вертикальный срез
+  Trigger'ов — глобальные hotkey, без MIDI/MSC.
+  ShowController не трогаем (ADR-0009 отклонил
+  extract-class); второй деки нет (ADR-0002).
+in_scope:
+  - id: S1
+    title: "Per-entry EndAction UI в плейлисте"
+    notes: >
+      Резолюция уже поддерживает наследование
+      global; нужен только UI редактора
+      строк/overrides.
+      Ref: specs/track-end-action.md.
+  - id: S2
+    title: "Remote settings для global EndAction"
+    notes: >
+      Кодек set_default_end_action готов;
+      добавить UI пульта.
+      Ref: specs/track-end-action.md.
+  - id: S3
+    title: "Подтвердить BUG-dnd-playlist-drop"
+    notes: >
+      Фикс reveal-on-import зелёный; нужно
+      подтверждение пользователя, затем
+      закрыть файл.
+      Ref: specs/bugs/BUG-dnd-playlist-drop.md.
+  - id: S4
+    title: "Headless: общий session-fixture"
+    notes: >
+      Флаки DefaultRenderLoop.Add ~2/5;
+      один fixture на коллекцию вместо
+      сессии на класс. Ref: AGENTS.md.
+  - id: S5
+    title: "Trigger срез 1: глобальные hotkey"
+    notes: >
+      Срез: hotkey -> команда плеера через
+      ICommandBus, с тестами. MIDI/MSC
+      сюда не входят.
+out_of_scope:
+  - item: "MIDI/MSC триггеры"
+    why: >
+      deferred: отдельный срез после hotkey,
+      другой стек.
+  - item: "Preview/PFL канал"
+    why: >
+      deferred: аудио-канал + UI прослушки,
+      тянет на свою итерацию.
+  - item: "ShowController extract-class"
+    why: >
+      rejected: ADR-0009 отклонил, shallow
+      seam + shared state. Partial только
+      по доказанной боли.
+  - item: "Вторая дека"
+    why: "rejected: ADR-0002 single-deck."
+  - item: "Смена движка/БД, новые платформы"
+    why: >
+      not valuable: матрица ADR-0004
+      покрывает, масштаб не болит.
+  - item: "Распил жирных ViewModel"
+    why: >
+      deferred: нет forcing function;
+      взять если всплывёт в итерации.
+constraints:
+  - "Соло, 1-2 недели."
+  - "build 0 ошибок, test зелёный."
+  - "Без комментариев; контракты тестами."
+  - "Батч = коммит + push."
+  - "Общие файлы — worktree-изоляция."
+success_criteria:
+  - "EndAction из UI плейлиста живёт рестарт."
+  - "Global default меняется с пульта."
+  - "BUG-dnd закрыт подтверждением."
+  - "5 прогонов test без headless-флаков."
+  - "Hotkey работает из любого окна + тест."
+references:
+  - "specs/track-end-action.md"
+  - "specs/bugs/BUG-dnd-playlist-drop.md"
+  - "specs/IMPACT_LATEST.md"
+  - "docs/adr/0002-single-deck.md"
+  - "docs/adr/0009-showcontroller-single-file.md"
+  - "CONTEXT.md (Trigger, Preview)"
