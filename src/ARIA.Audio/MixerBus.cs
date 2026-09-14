@@ -16,54 +16,11 @@ public sealed record VoiceConfig(
 
 public sealed class MixerBus : IDisposable
 {
-    private enum CommandKind : byte
-    {
-        Add,
-        Remove,
-        Transport,
-        SetMix,
-        Seek,
-        StopAll,
-    }
-
-    private readonly record struct Command(CommandKind Kind, Voice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix, TimeSpan Duration, long SeekFrame = 0);
-
-    private sealed class Voice
-    {
-        public required StreamHandle Handle { get; init; }
-
-        public required ISampleSource Source { get; init; }
-
-        public required float[] Scratch { get; init; }
-
-        public required FaderNode Fader { get; set; }
-
-        public required GainNode Gain { get; init; }
-
-        public required MarkerSpec[] Markers { get; init; }
-
-        public required double CueInSeconds { get; init; }
-
-        public required bool HasCueOut { get; init; }
-
-        public required double CueOutSeconds { get; init; }
-
-        public long StartFrame;
-
-        public bool Active { get; set; }
-
-        public bool PauseWhenFaded { get; set; }
-
-        public bool Dead { get; set; }
-
-        public bool RemoveRequested { get; set; }
-    }
-
     private readonly int _channels;
     private readonly int _sampleRate;
     private readonly int _blockSizeFrames;
-    private readonly ConcurrentQueue<Command> _commands = new();
-    private readonly List<Voice> _voices = [];
+    private readonly ConcurrentQueue<MixerCommand> _commands = new();
+    private readonly List<MixerVoice> _voices = [];
     private long _handleCounter;
     private int _pauseFadeFrames;
     private int _resumeFadeFrames;
@@ -96,7 +53,7 @@ public sealed class MixerBus : IDisposable
             throw new ArgumentException("Source channel count does not match the mixer.", nameof(config));
         }
         var handle = new StreamHandle((int)Interlocked.Increment(ref _handleCounter));
-        _commands.Enqueue(new Command(CommandKind.Add, CreateVoice(handle, config), handle, default, null, default));
+        _commands.Enqueue(new MixerCommand(CommandKind.Add, CreateVoice(handle, config), handle, default, null, default));
         return handle;
     }
 
@@ -116,22 +73,22 @@ public sealed class MixerBus : IDisposable
     }
 
     public void StopAll(TimeSpan fadeDuration)
-        => _commands.Enqueue(new Command(CommandKind.StopAll, null, default, default, null, fadeDuration));
+        => _commands.Enqueue(new MixerCommand(CommandKind.StopAll, null, default, default, null, fadeDuration));
 
     public void Transport(StreamHandle handle, TransportCommand command)
-        => _commands.Enqueue(new Command(CommandKind.Transport, null, handle, command, null, default));
+        => _commands.Enqueue(new MixerCommand(CommandKind.Transport, null, handle, command, null, default));
 
     public void SetMix(StreamHandle handle, MixParameters mix)
     {
         ArgumentNullException.ThrowIfNull(mix);
-        _commands.Enqueue(new Command(CommandKind.SetMix, null, handle, default, mix, default));
+        _commands.Enqueue(new MixerCommand(CommandKind.SetMix, null, handle, default, mix, default));
     }
 
     public void RemoveVoice(StreamHandle handle)
-        => _commands.Enqueue(new Command(CommandKind.Remove, null, handle, default, null, default));
+        => _commands.Enqueue(new MixerCommand(CommandKind.Remove, null, handle, default, null, default));
 
     public void Seek(StreamHandle handle, long frameIndex)
-        => _commands.Enqueue(new Command(CommandKind.Seek, null, handle, default, null, default, frameIndex));
+        => _commands.Enqueue(new MixerCommand(CommandKind.Seek, null, handle, default, null, default, frameIndex));
 
     public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, bool enabled)
     {
@@ -181,7 +138,7 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private Voice CreateVoice(StreamHandle handle, VoiceConfig config)
+    private MixerVoice CreateVoice(StreamHandle handle, VoiceConfig config)
     {
         var markers = config.Markers.IsDefaultOrEmpty ? Array.Empty<MarkerSpec>() : config.Markers.ToArray();
         if (markers.Length > 1)
@@ -192,7 +149,7 @@ public sealed class MixerBus : IDisposable
         var fadeInFrames = fadeIn is null || fadeIn.Duration <= TimeSpan.Zero
             ? 0
             : Math.Max(1, (int)Math.Round(fadeIn.Duration.TotalSeconds * _sampleRate));
-        return new Voice
+        return new MixerVoice
         {
             Handle = handle,
             Source = config.Source,
@@ -260,7 +217,7 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private void ApplyTransport(Voice? voice, TransportCommand command)
+    private void ApplyTransport(MixerVoice? voice, TransportCommand command)
     {
         if (voice is null || voice.RemoveRequested)
         {
@@ -309,7 +266,7 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private static void ApplySeek(Voice? voice, long frameIndex)
+    private static void ApplySeek(MixerVoice? voice, long frameIndex)
     {
         if (voice is null || voice.RemoveRequested || voice.Dead)
         {
@@ -319,7 +276,7 @@ public sealed class MixerBus : IDisposable
         voice.StartFrame = frameIndex;
     }
 
-    private void ApplyMix(Voice? voice, MixParameters mix)
+    private void ApplyMix(MixerVoice? voice, MixParameters mix)
     {
         if (voice is null || voice.RemoveRequested)
         {
@@ -398,7 +355,7 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private int ScanCutoff(Voice voice, int frames, out StreamEndReason reason)
+    private int ScanCutoff(MixerVoice voice, int frames, out StreamEndReason reason)
     {
         reason = default;
         var markers = voice.Markers;
@@ -429,7 +386,7 @@ public sealed class MixerBus : IDisposable
         return -1;
     }
 
-    private void EndVoice(Voice voice, StreamEndReason reason)
+    private void EndVoice(MixerVoice voice, StreamEndReason reason)
     {
         if (voice.Dead)
         {
@@ -439,7 +396,7 @@ public sealed class MixerBus : IDisposable
         Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Ended, reason));
     }
 
-    private Voice? FindVoice(StreamHandle handle)
+    private MixerVoice? FindVoice(StreamHandle handle)
     {
         for (var index = 0; index < _voices.Count; index++)
         {

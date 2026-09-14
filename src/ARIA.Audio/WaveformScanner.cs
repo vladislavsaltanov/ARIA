@@ -7,6 +7,45 @@ public sealed class WaveformScanner
 {
     private const int MaxBlockFrames = 8192;
 
+    private struct Bucket
+    {
+        public float Min = float.MaxValue;
+        public float Max = float.MinValue;
+        public int Filled;
+
+        public Bucket()
+        {
+        }
+
+        public void AccumulateFrame(float[] buffer, int offset, int channels)
+        {
+            var sum = 0f;
+            for (var channel = 0; channel < channels; channel++)
+            {
+                sum += buffer[offset + channel];
+            }
+            var value = sum / channels;
+            if (value < Min)
+            {
+                Min = value;
+            }
+            if (value > Max)
+            {
+                Max = value;
+            }
+            Filled++;
+        }
+
+        public PeakPoint Flush()
+        {
+            var point = new PeakPoint(Min, Max);
+            Min = float.MaxValue;
+            Max = float.MinValue;
+            Filled = 0;
+            return point;
+        }
+    }
+
     private readonly MiniaudioSourceFactory _factory;
 
     public WaveformScanner(MiniaudioSourceFactory factory)
@@ -29,43 +68,23 @@ public sealed class WaveformScanner
         var blockFrames = Math.Clamp(sampleRate / 4, 1, MaxBlockFrames);
         var buffer = new float[blockFrames * channels];
         var points = new List<PeakPoint>();
-        var min = float.MaxValue;
-        var max = float.MinValue;
-        var filled = 0;
+        var bucket = new Bucket();
 
         while (source.ReadFrames(buffer) is var read && read > 0)
         {
             for (var frame = 0; frame < read; frame++)
             {
-                var sum = 0f;
-                var offset = frame * channels;
-                for (var channel = 0; channel < channels; channel++)
+                bucket.AccumulateFrame(buffer, frame * channels, channels);
+                if (bucket.Filled == framesPerBucket)
                 {
-                    sum += buffer[offset + channel];
-                }
-                var value = sum / channels;
-                if (value < min)
-                {
-                    min = value;
-                }
-                if (value > max)
-                {
-                    max = value;
-                }
-                filled++;
-                if (filled == framesPerBucket)
-                {
-                    points.Add(new PeakPoint(min, max));
-                    min = float.MaxValue;
-                    max = float.MinValue;
-                    filled = 0;
+                    points.Add(bucket.Flush());
                 }
             }
         }
 
-        if (filled > 0)
+        if (bucket.Filled > 0)
         {
-            points.Add(new PeakPoint(min, max));
+            points.Add(bucket.Flush());
         }
 
         return new WaveformPeaks(trackId, pointsPerSecond, sampleRate, [.. points]);
