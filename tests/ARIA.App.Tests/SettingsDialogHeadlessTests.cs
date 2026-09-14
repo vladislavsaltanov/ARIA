@@ -12,7 +12,12 @@ using Avalonia.Input;
 [Collection("headless")]
 public sealed class SettingsDialogHeadlessTests : IDisposable
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
+
+    public SettingsDialogHeadlessTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     private readonly string _hotkeysPath = Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json");
 
@@ -20,7 +25,6 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
 
     public void Dispose()
     {
-        _session.Dispose();
         foreach (var file in new[] { _hotkeysPath, _settingsPath })
         {
             if (File.Exists(file))
