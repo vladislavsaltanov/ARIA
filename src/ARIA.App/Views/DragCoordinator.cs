@@ -137,6 +137,8 @@ internal sealed class DragCoordinator
         e.Handled = true;
     }
 
+    public void Reset() => Clear();
+
     private void Clear()
     {
         _source = null;

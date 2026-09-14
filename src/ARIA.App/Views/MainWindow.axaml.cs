@@ -229,6 +229,8 @@ public partial class MainWindow : Window
             QueueColumn.QueueListBox);
     }
 
+    public void ResetDrag() => _drag?.Reset();
+
     public void AttachPlaybackHeader(PlaybackMonitor monitor, IWaveformStore? waveforms)
     {
         if (PlaybackHeader is { } header)

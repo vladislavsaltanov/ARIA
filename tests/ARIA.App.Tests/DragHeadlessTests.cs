@@ -101,6 +101,58 @@ public sealed class DragHeadlessTests : IDisposable
         await CloseAsync(window!);
     }
 
+    [Fact]
+    public async Task InterruptedDrag_ResetClearsInsertionLine_AndBlocksMove()
+    {
+        var wav1 = TestWav.Write(_directory, "stuck-a.wav");
+        var wav2 = TestWav.Write(_directory, "stuck-b.wav");
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
+        await host.StartAsync();
+        Assert.Equal(2, (await host.ImportTracksAsync([wav1, wav2])).Added);
+        host.Submit(new CreatePlaylist("StuckTarget"));
+        var tracks = await TracksEventuallyAsync(host, 2);
+        var playlistId = await PlaylistEventuallyAsync(host);
+        host.Submit(new AddEntry(playlistId, tracks[0].Id, 0));
+        host.Submit(new AddEntry(playlistId, tracks[1].Id, 1));
+        Assert.Equal(2, (await EntriesEventuallyAsync(host, 2)).Length);
+        Views.MainWindow? window = null;
+        await _session.Dispatch(() =>
+        {
+            var sync = SynchronizationContext.Current;
+            var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, sync: sync);
+            var queue = new QueueViewModel(host.Bus, sync);
+            window = new Views.MainWindow(null, playlistsViewModel: playlists, queueViewModel: queue);
+            window.Show();
+            window.UpdateLayout();
+            return 0;
+        }, CancellationToken.None);
+
+        await _session.Dispatch(() =>
+        {
+            window!.UpdateLayout();
+            var entryList = window.FindControl<Views.PlaylistCenter>("PlaylistCenter")!.EntryListBox;
+            var first = Assert.IsType<ListBoxItem>(entryList.ItemsPanelRoot!.Children[0]);
+            var second = Assert.IsType<ListBoxItem>(entryList.ItemsPanelRoot!.Children[1]);
+            var from = first.TranslatePoint(new Point(first.Bounds.Width / 2, first.Bounds.Height / 2), window);
+            var bottom = second.TranslatePoint(new Point(second.Bounds.Width / 2, second.Bounds.Height - 4), window);
+            Assert.NotNull(from);
+            Assert.NotNull(bottom);
+            window.MouseDown(from.Value, MouseButton.Left);
+            window.MouseMove(bottom.Value);
+            Assert.Contains("dropAfter", second.Classes);
+            window.ResetDrag();
+            window.MouseUp(bottom.Value, MouseButton.Left);
+            Assert.DoesNotContain("dropBefore", second.Classes);
+            Assert.DoesNotContain("dropAfter", second.Classes);
+            return 0;
+        }, CancellationToken.None);
+
+        var entries = host.Bus.Snapshot().Show.Playlists[0].Entries;
+        Assert.Equal(tracks[0].Id, entries[0].TrackId);
+        Assert.Equal(tracks[1].Id, entries[1].TrackId);
+        await CloseAsync(window!);
+    }
+
     private static async Task<ImmutableArray<Track>> TracksEventuallyAsync(AppHost host, int count)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);

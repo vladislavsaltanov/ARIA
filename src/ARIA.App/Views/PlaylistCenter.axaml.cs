@@ -68,6 +68,7 @@ public partial class PlaylistCenter : UserControl
         {
             return;
         }
+        ResetDragState();
         var listed = string.Join("\n", report.MissingFiles.Take(MaxListedMissing));
         if (report.MissingFiles.Length > MaxListedMissing)
         {
@@ -143,6 +144,7 @@ public partial class PlaylistCenter : UserControl
             viewModel.AudioImport = host.ImportTracksAsync;
         }
         await viewModel.ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath), silent: true);
+        ResetDragState();
     }
 
     private async void OnExportSucceeded(string fileName, string message)
@@ -243,6 +245,7 @@ public partial class PlaylistCenter : UserControl
         {
             return;
         }
+        ResetDragState();
         var missing = viewModel.IsTrackMissing(entry);
         var buttons = new StackPanel
         {
@@ -332,6 +335,15 @@ public partial class PlaylistCenter : UserControl
         if (!ok)
         {
             await ShowInfoDialog("Замена трека", "не удалось подменить файл");
+        }
+        ResetDragState();
+    }
+
+    private void ResetDragState()
+    {
+        if (TopLevel.GetTopLevel(this) is MainWindow main)
+        {
+            main.ResetDrag();
         }
     }
 
@@ -458,5 +470,6 @@ public partial class PlaylistCenter : UserControl
         {
             await viewModel.ImportAudioFilesAsync(paths);
         }
+        ResetDragState();
     }
 }

@@ -60,3 +60,11 @@ Fix: success summary moved into the document-import path as a
 transient notice like all others; error paths stay sticky.
 Timer mechanics proven with a posted-context test.
 Tests: Core 178, App 255, Persistence 21, Audio 70, Remote 59.
+
+Follow-up 2026-09-15: drag visuals stuck after replace. Modals
+(fault dialog, file picker) tear the pointer flow, stranding the row
+reorder coordinator mid-drag with insertion highlight on. Fix:
+public coordinator reset, called on both dialogs opening and after
+relink, missing-import and OS-drop completions. Headless test proves
+interrupted drag leaves no classes and no spurious move.
+Tests: Core 178, App 256, Persistence 21, Audio 70, Remote 59.
