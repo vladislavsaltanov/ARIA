@@ -17,6 +17,14 @@ done
 case "$RID" in
 osx-*)
   xattr -cr "publish/$RID/stage"
+  case "$RID" in osx-arm64) THIN=arm64 ;; osx-x64) THIN=x86_64 ;; esac
+  if [ -n "${THIN:-}" ] && command -v lipo >/dev/null 2>&1; then
+    find "publish/$RID/stage" -name "*.dylib" | while IFS= read -r d; do
+      if file "$d" | grep -q "universal binary"; then
+        lipo -thin "$THIN" -output "$d.thin" "$d" && mv "$d.thin" "$d"
+      fi
+    done
+  fi
   find "publish/$RID/stage" -name "*.dylib" -exec codesign -f -s - {} \;
   codesign -f -s - "publish/$RID/stage/ARIA.App"
   APP="publish/$RID/ARIA.app"
