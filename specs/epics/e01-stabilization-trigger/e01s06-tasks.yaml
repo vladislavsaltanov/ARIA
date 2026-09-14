@@ -1,0 +1,46 @@
+---
+story_id: e01s06
+title: "Настройки — боковая навигация и секции"
+status: failing
+bcps: 5
+tasks:
+  - id: 1
+    description: "Секции UserControls + nav-шелл"
+    verify: "dotnet build"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Settings"
+        - "unit"
+  - id: 2
+    description: "Headless: навигация, Esc, запись жестов"
+    verify: "dotnet test tests/ARIA.App.Tests --filter SettingsDialog"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Settings"
+        - "integration"
+  - id: 3
+    description: "Реестр секций + тест фабрик"
+    verify: "dotnet test tests/ARIA.App.Tests --filter SettingsSections"
+    risk: P2
+    status: passing
+    allure:
+      severity: normal
+      categories:
+        - "Settings"
+        - "unit"
+  - id: 4
+    description: "Полный прогон"
+    verify: "dotnet test"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Settings"
+        - "integration"

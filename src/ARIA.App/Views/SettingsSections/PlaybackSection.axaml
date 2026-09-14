@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             x:Class="Aria.App.Views.SettingsSections.PlaybackSection"
+             x:DataType="vm:SettingsViewModel">
+  <Border Classes="section">
+    <StackPanel>
+      <TextBlock Text="Воспроизведение" Classes="sectionTitle"/>
+      <Grid ColumnDefinitions="Auto,*">
+        <TextBlock Text="после конца трека" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <ComboBox Grid.Column="1" x:Name="EndActionBox" SelectedIndex="{Binding DefaultEndActionIndex, Mode=TwoWay}"
+                  VerticalAlignment="Center" Margin="14,0,0,0" MinWidth="160">
+          <ComboBoxItem>Пауза</ComboBoxItem>
+          <ComboBoxItem>Стоп</ComboBoxItem>
+          <ComboBoxItem>Повтор</ComboBoxItem>
+          <ComboBoxItem>Далее</ComboBoxItem>
+        </ComboBox>
+      </Grid>
+    </StackPanel>
+  </Border>
+</UserControl>
