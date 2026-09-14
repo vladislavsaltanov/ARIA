@@ -19,9 +19,20 @@
       <SolidColorBrush x:Key="BrushWave" Color="#565656"/>
       <SolidColorBrush x:Key="BrushWaveDim" Color="#2E2E2E"/>
       <FontFamily x:Key="MonoFont">Menlo, Consolas, monospace</FontFamily>
+      <ControlTheme x:Key="PlainRowItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0"/>
+      </ControlTheme>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
   </Application.Styles>
 </Application>

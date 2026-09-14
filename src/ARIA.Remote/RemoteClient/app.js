@@ -10,6 +10,7 @@
   var STORAGE_KEY = "aria-remote-pairing";
 
   var el = {
+    app: document.getElementById("app"),
     conn: document.getElementById("conn"),
     status: document.getElementById("status"),
     title: document.getElementById("title"),
@@ -42,6 +43,11 @@
     mentionOptions: document.getElementById("mention-options"),
     lock: document.getElementById("lock"),
     toast: document.getElementById("toast"),
+    clearYes: document.getElementById("clear-yes"),
+    clearNo: document.getElementById("clear-no"),
+    panicYes: document.getElementById("panic-yes"),
+    panicNo: document.getElementById("panic-no"),
+    mentionCancel: document.getElementById("mention-cancel"),
   };
 
   function savedPairing() {
@@ -85,7 +91,7 @@
 
   function showLogin(error) {
     el.login.classList.remove("hidden");
-    document.getElementById("app").style.display = "none";
+    el.app.style.display = "none";
     el.loginError.classList.toggle("hidden", !error);
     el.loginError.textContent = error || "неверный идентификатор или пароль";
     el.loginId.value = creds ? creds.identifier : el.loginId.value;
@@ -93,7 +99,7 @@
 
   function hideLogin() {
     el.login.classList.add("hidden");
-    document.getElementById("app").style.display = "";
+    el.app.style.display = "";
   }
 
   function authRequest(identifier, password) {
@@ -297,7 +303,6 @@
   }
 
   function renderSeek(fileMs) {
-    if (!el.seekFill) return;
     if (fileMs == null || !trackWindowMs || trackWindowMs <= 0) {
       el.seekFill.style.width = "0%";
       return;
@@ -306,7 +311,7 @@
     el.seekFill.style.width = (ratio * 100).toFixed(1) + "%";
   }
 
-  function pad(n) {
+  function pad2(n) {
     return n < 10 ? "0" + n : "" + n;
   }
 
@@ -316,7 +321,7 @@
     el.status.textContent = (t.status || "STOP").toUpperCase();
     marquee(el.title, t.current ? t.current.displayName : "—");
     marquee(el.next, "далее: " + (t.next ? t.next.displayName : "—"));
-    el.panic.disabled = panicked(t.status);
+    el.panic.disabled = t.status === "Panicked";
     trackWindowMs = trackWindow(t.current);
     renderSeek(state.lastFileMs);
   }
@@ -330,10 +335,6 @@
     var end = cueOut == null ? total : cueOut;
     var window = (end - cueIn) * 1000;
     return window > 0 ? window : null;
-  }
-
-  function panicked(status) {
-    return status === "Panicked";
   }
 
   function parseIsoDuration(text) {
@@ -364,7 +365,7 @@
     var h = Math.floor(total / 3600);
     var m = Math.floor((total % 3600) / 60);
     var s = total % 60;
-    return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s);
+    return h > 0 ? h + ":" + pad2(m) + ":" + pad2(s) : m + ":" + pad2(s);
   }
 
   function renderShowClock() {
@@ -373,14 +374,14 @@
     el.showClock.textContent = total == null ? "--:--" : formatSeconds(total);
   }
 
-  function scriptChanged(a, b) {
-    return JSON.stringify(a) !== JSON.stringify(b);
-  }
-
   function scriptContentChanged(prev, next) {
+    var prevScripts = prev && prev.scripts;
+    var nextScripts = next && next.scripts;
+    var prevDigest = prev && prev.trackDigest;
+    var nextDigest = next && next.trackDigest;
     return (
-      scriptChanged(prev && prev.scripts, next && next.scripts) ||
-      scriptChanged(prev && prev.trackDigest, next && next.trackDigest)
+      JSON.stringify(prevScripts) !== JSON.stringify(nextScripts) ||
+      JSON.stringify(prevDigest) !== JSON.stringify(nextDigest)
     );
   }
 
@@ -1311,24 +1312,19 @@
     host.appendChild(createToggle);
   }
 
-  function showConfirm() {
+  el.panic.addEventListener("click", () => {
     el.panicConfirm.classList.remove("hidden");
-  }
-  function hideConfirm() {
-    el.panicConfirm.classList.add("hidden");
-  }
-
-  el.panic.addEventListener("click", showConfirm);
+  });
 
   el.queueClear.addEventListener("click", () => {
     el.clearConfirm.classList.remove("hidden");
   });
-  document.getElementById("clear-yes").addEventListener("click", () => {
+  el.clearYes.addEventListener("click", () => {
     el.clearConfirm.classList.add("hidden");
     send("clear_queue");
     vibrate();
   });
-  document.getElementById("clear-no").addEventListener("click", () => {
+  el.clearNo.addEventListener("click", () => {
     el.clearConfirm.classList.add("hidden");
   });
 
@@ -1346,12 +1342,14 @@
     }
     vibrate();
   });
-  document.getElementById("panic-yes").addEventListener("click", () => {
-    hideConfirm();
+  el.panicYes.addEventListener("click", () => {
+    el.panicConfirm.classList.add("hidden");
     send("panic");
     vibrate();
   });
-  document.getElementById("panic-no").addEventListener("click", hideConfirm);
+  el.panicNo.addEventListener("click", () => {
+    el.panicConfirm.classList.add("hidden");
+  });
 
   function vibrate() {
     if (navigator.vibrate) navigator.vibrate(80);
@@ -1386,9 +1384,7 @@
     });
   }
 
-  document
-    .getElementById("mention-cancel")
-    .addEventListener("click", hideMentionMenu);
+  el.mentionCancel.addEventListener("click", hideMentionMenu);
 
   var actions = {
     "btn-play": "play",
@@ -1407,12 +1403,11 @@
     });
   });
 
-  var wakeLock = null;
   async function requestWakeLock() {
     try {
       if ("wakeLock" in navigator) {
-        wakeLock = await navigator.wakeLock.request("screen");
-        wakeLock.addEventListener("release", () => {
+        var lock = await navigator.wakeLock.request("screen");
+        lock.addEventListener("release", () => {
           setTimeout(requestWakeLock, 1000);
         });
       }
