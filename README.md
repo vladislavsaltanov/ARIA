@@ -145,7 +145,7 @@ sh scripts/publish.sh <RID>          # шим + dotnet publish + упаковк�
 
 ## License
 
-TODO: файла лицензии в репозитории нет. MIT — см. LICENSE после добавления.
+MIT — см. [LICENSE](LICENSE).
 
 ## Verify
 
