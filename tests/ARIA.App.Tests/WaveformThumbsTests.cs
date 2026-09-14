@@ -7,11 +7,14 @@ using Aria.Persistence;
 using Avalonia.Headless;
 
 [Collection("headless")]
-public sealed class WaveformThumbsTests : IDisposable
+public sealed class WaveformThumbsTests
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public WaveformThumbsTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public void MissingPeaks_ReturnsNull()
