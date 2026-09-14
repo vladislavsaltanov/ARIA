@@ -48,6 +48,7 @@
     panicYes: document.getElementById("panic-yes"),
     panicNo: document.getElementById("panic-no"),
     mentionCancel: document.getElementById("mention-cancel"),
+    defaultAction: document.getElementById("default-action"),
   };
 
   function savedPairing() {
@@ -223,6 +224,12 @@
     el.lock.classList.toggle("hidden", !(state.show && state.show.locked));
   }
 
+  function renderDefaultAction() {
+    if (!el.defaultAction) return;
+    var value = state.show ? state.show.defaultEndAction : null;
+    if (value) el.defaultAction.value = value;
+  }
+
   function applySnapshot(frame) {
     state.show = frame.show ? frame.show.state : null;
     state.mixer = frame.mixer ? frame.mixer.state : null;
@@ -236,6 +243,7 @@
     renderPlaylists();
     renderScript();
     renderLock();
+    renderDefaultAction();
   }
 
   function applyDelta(frame) {
@@ -251,6 +259,7 @@
       renderShowClock();
       renderPlaylists();
       renderLock();
+      renderDefaultAction();
       if (scriptContentChanged(prev, frame.state)) {
         renderScript();
       } else {
@@ -1402,6 +1411,13 @@
       vibrate();
     });
   });
+
+  if (el.defaultAction) {
+    el.defaultAction.addEventListener("change", () => {
+      send("set_default_end_action", { end_action: el.defaultAction.value });
+      vibrate();
+    });
+  }
 
   async function requestWakeLock() {
     try {

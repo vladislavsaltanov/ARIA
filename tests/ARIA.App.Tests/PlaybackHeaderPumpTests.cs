@@ -15,11 +15,14 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 
 [Collection("headless")]
-public sealed class PlaybackHeaderPumpTests : IDisposable
+public sealed class PlaybackHeaderPumpTests
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public PlaybackHeaderPumpTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task PumpedBus_OffThreadTrackChange_DrawsWaveform()

@@ -52,7 +52,8 @@ public sealed record ShowState(
     bool Locked,
     ShowClockState Clock,
     ImmutableArray<Script> Scripts,
-    TrackDigest TrackDigest);
+    TrackDigest TrackDigest,
+    EndAction DefaultEndAction);
 
 public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade, Smoothing Smoothing);
 

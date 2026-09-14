@@ -1,0 +1,46 @@
+---
+story_id: e01s07
+title: "Настройки — секционные VM и пункты из данных"
+status: failing
+bcps: 5
+tasks:
+  - id: 1
+    description: "Секционные VM, тесты переехали 1:1"
+    verify: "dotnet test tests/ARIA.App.Tests --filter Settings"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Settings"
+        - "unit"
+  - id: 2
+    description: "Слайдеры движка из дескрипторов"
+    verify: "dotnet build"
+    risk: P2
+    status: passing
+    allure:
+      severity: normal
+      categories:
+        - "Settings"
+        - "unit"
+  - id: 3
+    description: "Headless: секция персистит и шлёт"
+    verify: "dotnet test tests/ARIA.App.Tests --filter SettingsDialog"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Settings"
+        - "integration"
+  - id: 4
+    description: "Полный прогон"
+    verify: "dotnet test"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Settings"
+        - "integration"

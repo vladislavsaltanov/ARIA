@@ -7,11 +7,14 @@ using Avalonia.Headless;
 using Avalonia.VisualTree;
 
 [Collection("headless")]
-public sealed class TransportBarLayoutTests : IDisposable
+public sealed class TransportBarLayoutTests
 {
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public TransportBarLayoutTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task ProgressStrip_StaysAbove_TrackNameRow()

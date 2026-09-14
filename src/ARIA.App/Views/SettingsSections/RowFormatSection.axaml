@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
+             x:Class="Aria.App.Views.SettingsSections.RowFormatSection"
+             x:DataType="vm:SettingsViewModel">
+  <Border Classes="section" x:DataType="vms:RowFormatSectionVm" DataContext="{Binding RowFormat}">
+    <StackPanel>
+      <TextBlock Text="Формат строк" Classes="sectionTitle"/>
+      <CheckBox x:Name="UseFileNameCheck" Content="имя файла вместо метаданных"
+                IsChecked="{Binding UseFileName}" FontSize="12"/>
+      <TextBox x:Name="RowFormatBox" Text="{Binding RowFormat, UpdateSourceTrigger=PropertyChanged}"
+               FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="0,8,0,4"
+               Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"/>
+      <TextBlock Text="токены: {position} {name} {filename} {duration}" FontSize="11" Foreground="{StaticResource BrushFaint}"/>
+      <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+        <Button Classes="action" Content="Применить" Command="{Binding SaveRowSettingsCommand}"
+                x:Name="ApplyRowFormatButton"/>
+        <TextBlock Text="{Binding RowSettingsStatus}" FontSize="11" Foreground="{StaticResource BrushFaint}" VerticalAlignment="Center"/>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

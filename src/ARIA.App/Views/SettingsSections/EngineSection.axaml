@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
+             x:Class="Aria.App.Views.SettingsSections.EngineSection"
+             x:DataType="vm:SettingsViewModel">
+  <Border Classes="section" x:DataType="vms:EngineSectionVm" DataContext="{Binding Engine}">
+    <StackPanel>
+      <TextBlock Text="Движок" Classes="sectionTitle"/>
+      <CheckBox Content="сглаживание (как в AIMP)" IsChecked="{Binding SmoothingEnabled}"
+                FontSize="12" Margin="0,0,0,4"/>
+      <ItemsControl ItemsSource="{Binding FadeSettings}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vms:FadeSetting">
+            <Grid ColumnDefinitions="Auto,*,Auto" IsEnabled="{Binding IsEnabled}" Margin="0,6,0,0">
+              <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+              <Slider Grid.Column="1" Minimum="0" Maximum="{Binding Max}" Value="{Binding ValueMs, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0"/>
+              <TextBlock Grid.Column="2" Text="{Binding ValueMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                         FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="60"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</UserControl>

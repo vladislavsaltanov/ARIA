@@ -1,6 +1,6 @@
 namespace Aria.App.Tests;
 
 [CollectionDefinition("headless")]
-public sealed class HeadlessCollection
+public sealed class HeadlessCollection : ICollectionFixture<HeadlessSessionFixture>
 {
 }

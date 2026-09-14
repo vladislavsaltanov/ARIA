@@ -220,7 +220,7 @@ public sealed class ShowController : IShowHandler
 
     public ShowSnapshot Snapshot() => new(
         _showVersion,
-        new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest),
+        new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction),
         _transportVersion,
         BuildTransport(),
         _queueVersion,
@@ -1198,6 +1198,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _defaultEndAction = command.Action;
+        EmitShow();
     }
 
     private void OnMonitorPosition(PositionSnapshot snapshot)
@@ -1599,7 +1600,7 @@ public sealed class ShowController : IShowHandler
     private void EmitShow()
     {
         _emittedDigest = BuildDigest();
-        Emit(new ShowDelta(++_showVersion, new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest)));
+        Emit(new ShowDelta(++_showVersion, new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction)));
     }
 
     private void SyncDigest()

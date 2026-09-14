@@ -15,7 +15,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 
 [Collection("headless")]
-public sealed class PlaybackHeaderHeadlessTests : IDisposable
+public sealed class PlaybackHeaderHeadlessTests
 {
     private static readonly Track TestTrack = new(
         TrackId.New(),
@@ -24,9 +24,12 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
         TimeSpan.FromSeconds(90),
         new TrackDefaults());
 
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public PlaybackHeaderHeadlessTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task MainWindow_Composes_PlaybackHeader_AndDragOnWaveSeeks()
@@ -142,7 +145,7 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
 
         private readonly ShowSnapshot _snapshot = new(
             0,
-            new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty),
+            new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty, EndAction.Advance),
             0,
             new TransportState(TransportStatus.Stopped, TestDeck, null, []),
             0,

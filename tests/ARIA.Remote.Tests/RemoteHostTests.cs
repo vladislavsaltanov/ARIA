@@ -184,6 +184,28 @@ public sealed class RemoteHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Snapshot_ContainsDefaultEndAction()
+    {
+        using var client = Connected();
+
+        var snapshot = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "snapshot", TimeSpan.FromSeconds(5));
+
+        Assert.Equal("Advance", snapshot.GetProperty("show").GetProperty("state").GetProperty("defaultEndAction").GetString());
+    }
+
+    [Fact]
+    public async Task SetDefaultEndAction_BroadcastsShowDelta_WithNewDefault()
+    {
+        using var client = Connected();
+
+        await client.SendAsync("""{"client":"pult-1","seq":1,"command":{"type":"set_default_end_action","end_action":"Pause"}}""");
+
+        var delta = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "delta" && e.GetProperty("partition").GetString() == "show", TimeSpan.FromSeconds(5));
+
+        Assert.Equal("Pause", delta.GetProperty("state").GetProperty("defaultEndAction").GetString());
+    }
+
+    [Fact]
     public async Task ScriptCommands_CreateEditDeleteLine_RoundTrip()
     {
         using var client = Connected();

@@ -11,14 +11,17 @@ using Avalonia.Headless;
 using Avalonia.Input;
 
 [Collection("headless")]
-public sealed class SpaceHotkeyHeadlessTests : IDisposable
+public sealed class SpaceHotkeyHeadlessTests
 {
     private static readonly Track TestTrack = new(
         TrackId.New(), "/audio/space.flac", "space", TimeSpan.FromMinutes(3), new TrackDefaults());
 
-    private readonly HeadlessUnitTestSession _session = HeadlessUnitTestSession.StartNew(typeof(App));
+    private readonly HeadlessUnitTestSession _session;
 
-    public void Dispose() => _session.Dispose();
+    public SpaceHotkeyHeadlessTests(HeadlessSessionFixture fixture)
+    {
+        _session = fixture.Session;
+    }
 
     [Fact]
     public async Task Space_OnFocusedButton_TogglesPlayPause_WithoutClick()

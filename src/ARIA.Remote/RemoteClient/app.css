@@ -226,6 +226,12 @@ body {
   gap: 12px;
   margin-bottom: 14px;
 }
+.default-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
 .master {
   flex: 1;
   min-height: 56px;

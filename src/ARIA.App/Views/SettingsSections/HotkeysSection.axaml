@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
+             x:Class="Aria.App.Views.SettingsSections.HotkeysSection"
+             x:DataType="vm:SettingsViewModel">
+  <Border Classes="section" x:DataType="vms:HotkeysSectionVm" DataContext="{Binding Hotkeys}">
+    <StackPanel>
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="Жесты" Classes="sectionTitle"/>
+        <Button Grid.Column="1" Classes="action" Content="сбросить" Command="{Binding ResetGesturesCommand}"
+                ToolTip.Tip="Вернуть умолчания" MinHeight="26" Padding="10,0" FontSize="11"/>
+      </Grid>
+      <ItemsControl ItemsSource="{Binding Gestures}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vms:HotkeysSectionVm+GestureRow">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+              <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Label}" FontSize="13"/>
+                <TextBlock Text="{Binding Error}" FontSize="11" Foreground="{StaticResource BrushFaulted}"
+                           IsVisible="{Binding HasError}"/>
+              </StackPanel>
+              <Button Grid.Column="1" x:Name="RecordButton" Content="{Binding RecordText}"
+                      FontFamily="{StaticResource MonoFont}" FontSize="12" MinWidth="120"
+                      Classes="action" Click="OnRecordClick" ToolTip.Tip="Записать жест"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Text="запись: кликните жест и нажмите клавиши; Esc — отмена; конфликты проверяются мгновенно"
+                 FontSize="11" Foreground="{StaticResource BrushFaint}" Margin="0,8,0,0"/>
+    </StackPanel>
+  </Border>
+</UserControl>

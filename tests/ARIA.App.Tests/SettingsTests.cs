@@ -79,9 +79,9 @@ public sealed class SettingsTests : IDisposable
     {
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
-        var pause = viewModel.Gestures.First(g => g.Action == "pause");
+        var pause = viewModel.Hotkeys.Gestures.First(g => g.Action == "pause");
 
-        var error = viewModel.TrySetGesture(pause, "Space");
+        var error = viewModel.Hotkeys.TrySetGesture(pause, "Space");
 
         Assert.Contains("Воспроизведение", error);
         Assert.Equal("Esc", pause.Gesture);
@@ -92,9 +92,9 @@ public sealed class SettingsTests : IDisposable
     {
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
-        var pause = viewModel.Gestures.First(g => g.Action == "pause");
+        var pause = viewModel.Hotkeys.Gestures.First(g => g.Action == "pause");
 
-        Assert.Equal("жест занят системой macOS", viewModel.TrySetGesture(pause, "Meta+Q"));
+        Assert.Equal("жест занят системой macOS", viewModel.Hotkeys.TrySetGesture(pause, "Meta+Q"));
     }
 
     [Fact]
@@ -106,10 +106,10 @@ public sealed class SettingsTests : IDisposable
         {
             using var viewModel = new SettingsViewModel(bus, new HotkeyService(HotkeyConfig.Default, _ => { }), path, new AppSettingsStore(Path.Combine(Path.GetTempPath(), $"aria-row-{Guid.NewGuid():N}.json")));
 
-            var pause = viewModel.Gestures.First(g => g.Action == "pause");
-            Assert.Null(viewModel.TrySetGesture(pause, "F9"));
+            var pause = viewModel.Hotkeys.Gestures.First(g => g.Action == "pause");
+            Assert.Null(viewModel.Hotkeys.TrySetGesture(pause, "F9"));
 
-            Assert.Equal("f9", viewModel.Gestures.First(g => g.Action == "pause").Gesture);
+            Assert.Equal("f9", viewModel.Hotkeys.Gestures.First(g => g.Action == "pause").Gesture);
             var dispatched = new List<string>();
             var reloaded = new HotkeyService(HotkeyConfig.Load(path), dispatched.Add);
             Assert.True(reloaded.TryHandle("F9"));
@@ -134,7 +134,7 @@ public sealed class SettingsTests : IDisposable
         bus.Submit(new ClientId("setup"), 10, new StartShowClock());
         Assert.True(bus.Snapshot().Show.Clock.Running);
 
-        viewModel.ResetClockCommand.Execute(null);
+        viewModel.Clock.ResetClockCommand.Execute(null);
 
         Assert.Equal(TimeSpan.Zero, bus.Snapshot().Show.Clock.Elapsed);
         Assert.False(bus.Snapshot().Show.Clock.Running);
@@ -146,10 +146,10 @@ public sealed class SettingsTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
 
-        viewModel.PanicFadeMs = 250;
+        viewModel.Engine.PanicFadeMs = 250;
 
         Assert.Equal(TimeSpan.FromMilliseconds(250), bus.Snapshot().Mixer.PanicFade);
-        Assert.Equal(250, viewModel.PanicFadeMs);
+        Assert.Equal(250, viewModel.Engine.PanicFadeMs);
     }
 
     [Fact]
@@ -163,10 +163,10 @@ public sealed class SettingsTests : IDisposable
             using var viewModel = new SettingsViewModel(
                 bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
                 new AppSettingsStore(path), s => applied = s);
-            viewModel.UseFileName = true;
-            viewModel.RowFormat = "{filename}";
+            viewModel.RowFormat.UseFileName = true;
+            viewModel.RowFormat.RowFormat = "{filename}";
 
-            viewModel.SaveRowSettingsCommand.Execute(null);
+            viewModel.RowFormat.SaveRowSettingsCommand.Execute(null);
 
             Assert.Equal(new AppSettings(true, "{filename}", Smoothing.Default), new AppSettingsStore(path).Load());
         }
@@ -188,12 +188,12 @@ public sealed class SettingsTests : IDisposable
                 bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
                 new AppSettingsStore(path));
 
-            viewModel.SmoothingEnabled = true;
-            viewModel.ManualCrossfadeMs = 400;
-            viewModel.AutoCrossfadeMs = 900;
-            viewModel.StartFadeMs = 250;
-            viewModel.StopFadeMs = 300;
-            viewModel.SeekFadeMs = 350;
+            viewModel.Engine.SmoothingEnabled = true;
+            viewModel.Engine.ManualCrossfadeMs = 400;
+            viewModel.Engine.AutoCrossfadeMs = 900;
+            viewModel.Engine.StartFadeMs = 250;
+            viewModel.Engine.StopFadeMs = 300;
+            viewModel.Engine.SeekFadeMs = 350;
 
             var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350));
             Assert.Equal(expected, bus.Snapshot().Mixer.Smoothing);
