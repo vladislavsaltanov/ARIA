@@ -5,10 +5,10 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using CommunityToolkit.Mvvm.Input;
 using Aria.App.Services;
 using Aria.App.ViewModels;
 using Aria.App.Views;
+using Aria.Core.Commands;
 using Aria.Remote;
 
 public partial class App : Application
@@ -78,7 +78,7 @@ public partial class App : Application
             {
                 if (window is not null)
                 {
-                    DispatchHotkey(window, transport, action);
+                    DispatchHotkey(window, host, action);
                 }
             });
         var settings = new SettingsViewModel(
@@ -117,27 +117,19 @@ public partial class App : Application
         }
     }
 
-    private static void DispatchHotkey(MainWindow window, TransportViewModel viewModel, string action)
-    {
-        switch (action)
-        {
-            case "play": Run(viewModel.PlayCommand); break;
-            case "pause": Run(viewModel.PauseCommand); break;
-            case "stop": Run(viewModel.StopCommand); break;
-            case "next": Run(viewModel.NextCommand); break;
-            case "replay": Run(viewModel.ReplayCommand); break;
-            case "panic": Run(viewModel.PanicCommand); break;
-            case "lock": viewModel.ToggleLock(); break;
-            case "toggle-script": window.ToggleScriptPane(); break;
-            case "reset-clock": Run(viewModel.ResetClockCommand); break;
-        }
-    }
+    private static long _hotkeySeq;
 
-    private static void Run(IRelayCommand command)
+    private static void DispatchHotkey(MainWindow window, AppHost host, string action)
     {
-        if (command.CanExecute(null))
+        if (action == "toggle-script")
         {
-            command.Execute(null);
+            window.ToggleScriptPane();
+            return;
+        }
+        var command = HotkeyCommands.ToCommand(action, host.Bus.Snapshot().Show.Locked);
+        if (command is not null)
+        {
+            host.Bus.Submit(new ClientId("desktop-hotkeys"), Interlocked.Increment(ref _hotkeySeq), command);
         }
     }
 
