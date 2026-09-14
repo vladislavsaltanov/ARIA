@@ -134,7 +134,7 @@ public sealed class SettingsTests : IDisposable
         bus.Submit(new ClientId("setup"), 10, new StartShowClock());
         Assert.True(bus.Snapshot().Show.Clock.Running);
 
-        viewModel.ResetClockCommand.Execute(null);
+        viewModel.Clock.ResetClockCommand.Execute(null);
 
         Assert.Equal(TimeSpan.Zero, bus.Snapshot().Show.Clock.Elapsed);
         Assert.False(bus.Snapshot().Show.Clock.Running);

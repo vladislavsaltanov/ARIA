@@ -27,6 +27,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public RowFormatSectionVm RowFormat { get; }
 
+    public ClockSectionVm Clock { get; }
+
     public SettingsViewModel(
         ICommandBus bus,
         HotkeyService hotkeys,
@@ -40,6 +42,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _sync = sync;
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
+        Clock = new ClockSectionVm(Submit);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
@@ -54,8 +57,6 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Submit(new SetDefaultEndAction(settings.DefaultEndAction));
     }
 
-    [RelayCommand]
-    private void ResetClock() => Submit(new ResetShowClock());
 
     public void Dispose() => _subscription.Dispose();
 
