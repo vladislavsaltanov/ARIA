@@ -18,7 +18,6 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private readonly Action<AppSettings>? _rowSettingsApplied;
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
-    private EndAction _defaultEndAction = EndAction.Advance;
     private long _seq;
 
     [ObservableProperty]
@@ -33,6 +32,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     public HotkeysSectionVm Hotkeys { get; }
 
     public EngineSectionVm Engine { get; }
+
+    public PlaybackSectionVm Playback { get; }
 
     public SettingsViewModel(
         ICommandBus bus,
@@ -52,40 +53,15 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         var settings = settingsStore.Load();
         UseFileName = settings.UseFileName;
         RowFormat = settings.RowFormat;
+        Playback = new PlaybackSectionVm(Submit, SnapshotSettings, SaveSettings, settings.DefaultEndAction);
         Engine.ApplyMixer(bus.Snapshot().Mixer);
         Engine.ApplySmoothing(settings.Smoothing);
         if (bus.Snapshot().Mixer.Smoothing != settings.Smoothing)
         {
             Submit(new SetSmoothing(settings.Smoothing));
         }
-        _defaultEndAction = settings.DefaultEndAction;
-        OnPropertyChanged(nameof(DefaultEndActionIndex));
+        OnPropertyChanged(nameof(Playback.DefaultEndActionIndex));
         Submit(new SetDefaultEndAction(settings.DefaultEndAction));
-    }
-
-    public int DefaultEndActionIndex
-    {
-        get => _defaultEndAction switch
-        {
-            EndAction.Pause => 0,
-            EndAction.Stop => 1,
-            EndAction.Replay => 2,
-            _ => 3,
-        };
-        set
-        {
-            var action = value switch
-            {
-                0 => EndAction.Pause,
-                1 => EndAction.Stop,
-                2 => EndAction.Replay,
-                _ => EndAction.Advance,
-            };
-            if (SetProperty(ref _defaultEndAction, action))
-            {
-                SubmitEndAction();
-            }
-        }
     }
 
     [RelayCommand]
@@ -94,7 +70,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SaveRowSettings()
     {
-        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, Engine.CurrentSmoothing(), _defaultEndAction);
+        var settings = new AppSettings(UseFileName, string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction);
         RowFormat = settings.RowFormat;
         _settingsStore.Save(settings);
         _rowSettingsApplied?.Invoke(settings);
@@ -105,15 +81,9 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    public AppSettings SnapshotSettings() => new(UseFileName, RowFormat, Engine.CurrentSmoothing(), _defaultEndAction);
+    public AppSettings SnapshotSettings() => new(UseFileName, RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction);
 
     public void SaveSettings(AppSettings settings) => _settingsStore.Save(settings);
-
-    private void SubmitEndAction()
-    {
-        _settingsStore.Save(new AppSettings(UseFileName, RowFormat, Engine.CurrentSmoothing(), _defaultEndAction));
-        Submit(new SetDefaultEndAction(_defaultEndAction));
-    }
 
     private void Apply(StateEvent e)
     {
