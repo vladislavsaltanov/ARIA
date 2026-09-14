@@ -291,7 +291,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         await ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath));
     }
 
-    public async Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths)
+    public async Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths, bool silent = false)
     {
         var inputs = paths.ToArray();
         if (inputs.Length == 0)
@@ -308,7 +308,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             PlaylistIoStatus = "импорт недоступен";
             return [];
         }
-        var progress = new Progress<string>(name => PlaylistIoStatus = $"импорт: {name}");
+        IProgress<string>? progress = silent ? null : new Progress<string>(name => PlaylistIoStatus = $"импорт: {name}");
         await _audioImport(inputs, progress);
         var tracks = _trackSource?.Invoke() ?? [];
         var ordered = new List<TrackId>();
@@ -340,7 +340,10 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         if (unmatched.Count == 0)
         {
-            SetTransientStatus($"в плейлист добавлено: {ordered.Count}");
+            if (!silent)
+            {
+                SetTransientStatus($"в плейлист добавлено: {ordered.Count}");
+            }
         }
         else
         {

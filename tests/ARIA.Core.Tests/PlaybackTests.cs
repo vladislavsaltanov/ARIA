@@ -261,7 +261,7 @@ public sealed class PlaybackTests
     }
 
     [Fact]
-    public void FaultedStream_SkipsToNext()
+    public void FaultedStream_StopsWithoutAdvance()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("broken");
@@ -272,9 +272,10 @@ public sealed class PlaybackTests
 
         h.Engine.Fault(h.Engine.Created[0].Handle);
 
-        Assert.Equal(2, h.Engine.Created.Count);
-        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
-        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Single(h.Engine.Created);
+        Assert.Null(h.Transport.Current);
+        Assert.Equal(TransportStatus.Stopped, h.Transport.Status);
+        Assert.Contains(t1.Id, h.Transport.Faulted);
     }
 
     [Fact]

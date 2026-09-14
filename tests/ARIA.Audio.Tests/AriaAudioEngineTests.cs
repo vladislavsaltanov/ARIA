@@ -29,16 +29,17 @@ public sealed class AriaAudioEngineTests
     }
 
     [Fact]
-    public async Task BrokenTrack_AutoSkipsToNext()
+    public async Task BrokenTrack_StopsWithoutAdvance()
     {
         using var stack = new Stack("broken.flac", "sine.flac");
         stack.Submit(new Play());
 
         await Poll(
-            () => stack.Transport.Current?.TrackId == stack.Tracks[1].Id && stack.Transport.Status == TransportStatus.Playing,
-            "controller did not skip broken track");
+            () => stack.Transport.Current is null && stack.Transport.Status == TransportStatus.Stopped,
+            "controller did not stop on broken track");
 
         Assert.Contains(stack.EngineEvents, e => e.Kind == StreamEventKind.Faulted);
+        Assert.Contains(stack.Tracks[0].Id, stack.Transport.Faulted);
     }
 
     [Fact]

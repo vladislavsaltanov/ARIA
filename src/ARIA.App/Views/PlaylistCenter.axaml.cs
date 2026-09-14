@@ -142,7 +142,7 @@ public partial class PlaylistCenter : UserControl
         {
             viewModel.AudioImport = host.ImportTracksAsync;
         }
-        await viewModel.ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath));
+        await viewModel.ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath), silent: true);
     }
 
     private async void OnExportSucceeded(string fileName, string message)

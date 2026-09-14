@@ -1287,11 +1287,8 @@ public sealed class ShowController : IShowHandler
                 _faulted.Add(failed.Track.Id);
             }
             DisposeCurrentHandle();
-            if (!StartFromOrder())
-            {
-                _status = TransportStatus.Stopped;
-                _current = null;
-            }
+            _status = TransportStatus.Stopped;
+            _current = null;
             EmitTransport();
             return;
         }

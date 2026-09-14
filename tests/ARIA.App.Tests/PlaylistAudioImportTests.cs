@@ -99,6 +99,29 @@ public sealed class PlaylistAudioImportTests : IDisposable
         Assert.Equal(string.Empty, vm.PlaylistIoStatus);
     }
 
+    [Fact]
+    public async Task ImportAudioFilesAsync_Silent_SkipsProgressAndStatus()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var found = new Track(TrackId.New(), "/audio/found.wav", "found", TimeSpan.FromMinutes(2), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track, found], [playlist], playlist.Id));
+        IProgress<string>? captured = new Progress<string>(_ => { });
+        using var vm = new PlaylistsViewModel(bus, () => [track, found],
+            audioImport: (_, progress) =>
+            {
+                captured = progress;
+                return Task.FromResult(new Aria.App.ImportReport(1, 0, []));
+            });
+
+        var ids = await vm.ImportAudioFilesAsync([found.FilePath], silent: true);
+
+        Assert.Equal(found.Id, Assert.Single(ids));
+        Assert.Null(captured);
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+    }
+
     private static async Task PollAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
