@@ -61,6 +61,23 @@ public sealed class PlaylistAudioImportTests : IDisposable
     }
 
     [Fact]
+    public async Task ImportAudioFilesAsync_WithoutImporter_StatusClearsAfterTtl()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [track], transientStatusTtl: TimeSpan.FromMilliseconds(50));
+
+        var ids = await vm.ImportAudioFilesAsync(["/audio/new.wav"]);
+
+        Assert.Empty(ids);
+        Assert.Equal("импорт недоступен", vm.PlaylistIoStatus);
+        await Task.Delay(500);
+        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+    }
+
+    [Fact]
     public async Task ImportAudioFilesAsync_PartialMatch_ReportsCounts_AndRaises()
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);

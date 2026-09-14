@@ -68,3 +68,9 @@ public coordinator reset, called on both dialogs opening and after
 relink, missing-import and OS-drop completions. Headless test proves
 interrupted drag leaves no classes and no spurious move.
 Tests: Core 178, App 256, Persistence 21, Audio 70, Remote 59.
+
+Follow-up 2026-09-15: import button reported unavailable. Root cause:
+audio import delegate was wired only on OS file drop, never at
+composition, so the button path hit a null delegate. Fix: pass the
+delegate in composition; all error statuses transient so none sticks.
+Tests: Core 178, App 257, Persistence 21, Audio 70, Remote 59.

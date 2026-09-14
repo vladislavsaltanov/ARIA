@@ -205,12 +205,12 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
         {
-            PlaylistIoStatus = "экспорт недоступен";
+            SetTransientStatus("экспорт недоступен");
             return;
         }
         if (SelectedPlaylist is null)
         {
-            PlaylistIoStatus = "нет плейлиста для экспорта";
+            SetTransientStatus("нет плейлиста для экспорта");
             return;
         }
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -245,7 +245,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
         {
-            PlaylistIoStatus = "импорт недоступен";
+            SetTransientStatus("импорт недоступен");
             return;
         }
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -272,7 +272,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
         {
-            PlaylistIoStatus = "импорт недоступен";
+            SetTransientStatus("импорт недоступен");
             return;
         }
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -300,12 +300,12 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         if (SelectedPlaylist is null)
         {
-            PlaylistIoStatus = "нет плейлиста для импорта";
+            SetTransientStatus("нет плейлиста для импорта");
             return [];
         }
         if (_audioImport is null)
         {
-            PlaylistIoStatus = "импорт недоступен";
+            SetTransientStatus("импорт недоступен");
             return [];
         }
         IProgress<string>? progress = silent ? null : new Progress<string>(name => PlaylistIoStatus = $"импорт: {name}");
@@ -388,7 +388,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         catch (PlaylistFormatException e)
         {
             LastImportError = e.Message;
-            PlaylistIoStatus = "импорт не удался";
+            SetTransientStatus("импорт не удался");
             ImportFailed?.Invoke(e.Message);
             return Task.FromResult(new PlaylistImportReport(string.Empty, 0, [], 0, e.Message));
         }
