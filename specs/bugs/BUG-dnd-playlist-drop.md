@@ -103,3 +103,11 @@ it and raises `RevealRequested`; `PlaylistCenter` scrolls it into view. Covers b
 and `В плейлист` button (same method). Mismatch/playlist-switch clears silently.
 Tests: `ImportAudioFilesAsync_RevealsAddedEntry` (event + selection + visibility, sync Inline
 bus) and end-to-end `OsDropReproTests` (Drop event → entry). Full suite green.
+
+## Phase 5 — Closed
+
+Status: CLOSED 2026-09-14. User confirmed reveal works in the live app (list
+scrolls to the new row, row selected). Follow-up polish shipped on top:
+success status auto-dismisses after 10s (`transientStatusTtl`), unmatched files
+raise an `AudioImportIncomplete` modal listing names (partial and total mismatch).
+Tests: mismatch event, partial counts, TTL auto-clear. Suite green.
