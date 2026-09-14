@@ -57,6 +57,8 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public event Action<string>? AudioImportIncomplete;
 
+    public event Action<PlaylistImportReport>? PlaylistImportMissing;
+
     public event Action<string, string>? ExportSucceeded;
 
     public event Action<EntryVm>? RevealRequested;
@@ -91,14 +93,19 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return $"Не удалось декодировать «{entry.DisplayName}».\nФайл на месте ({path}), но движок не смог его открыть — возможно, он повреждён или формат не поддерживается.";
     }
 
-    public Task<bool> RelinkEntryAsync(EntryVm entry, string newPath)
+    public async Task<bool> RelinkEntryAsync(EntryVm entry, string newPath)
     {
         var relink = TrackRelink;
         if (relink is null)
         {
-            return Task.FromResult(false);
+            return false;
         }
-        return relink(entry.TrackId, newPath);
+        var ok = await relink(entry.TrackId, newPath);
+        if (ok)
+        {
+            SetTransientStatus($"трек заменён: {entry.DisplayName}");
+        }
+        return ok;
     }
 
     private string? TrackPath(TrackId id)
@@ -406,10 +413,21 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         if (imports.Count == 0)
         {
-            return Task.FromResult(new PlaylistImportReport(document.Name, 0, [.. missing], 0, "нет известных треков"));
+            var empty = new PlaylistImportReport(document.Name, 0, [.. missing], 0, "нет известных треков");
+            if (empty.MissingFiles.Length > 0)
+            {
+                PlaylistImportMissing?.Invoke(empty);
+            }
+            return Task.FromResult(empty);
         }
+        _awaitedPlaylistName = document.Name;
         Submit(new ImportPlaylist(document.Name, [.. imports]));
-        return Task.FromResult(new PlaylistImportReport(document.Name, imports.Count, [.. missing], pendingTransitions));
+        var report = new PlaylistImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
+        if (report.MissingFiles.Length > 0)
+        {
+            PlaylistImportMissing?.Invoke(report);
+        }
+        return Task.FromResult(report);
     }
 
     private static string Describe(PlaylistImportReport report)

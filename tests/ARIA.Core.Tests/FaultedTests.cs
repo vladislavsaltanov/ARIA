@@ -63,4 +63,21 @@ public sealed class FaultedTests
 
         Assert.Empty(h.Snapshot.Transport.Faulted);
     }
+
+    [Fact]
+    public void RelinkEmitsTransportWithoutFault()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Engine.Fault(h.Engine.Last!.Handle);
+        var before = h.Events.OfType<TransportDelta>().Count();
+
+        h.Submit(new MergeTracks([t1 with { FilePath = "/audio/one-relinked.flac" }]));
+
+        Assert.Equal(before + 1, h.Events.OfType<TransportDelta>().Count());
+        Assert.Empty(h.Events.OfType<TransportDelta>().Last().State.Faulted);
+    }
 }

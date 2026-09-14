@@ -414,4 +414,70 @@ public sealed class PlaylistsViewModelTests
 
         Assert.False(ok);
     }
+
+    [Fact]
+    public void MergeTracksReplace_ClearsRowFault()
+    {
+        var engine = new StubEngine();
+        var entry = new PlaylistEntry(EntryId.New(), TestTrack.Id);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        bus.Submit(new ClientId("setup"), 2, new Play());
+        engine.Raise(new StreamEvent(new StreamHandle(1), StreamEventKind.Faulted, StreamEndReason.Faulted));
+        Assert.True(vm.Playlists[0].Entries[0].IsFaulted);
+
+        bus.Submit(new ClientId("setup"), 3, new MergeTracks([TestTrack with { FilePath = "/audio/test-relinked.flac" }]));
+
+        Assert.False(vm.Playlists[0].Entries[0].IsFaulted);
+    }
+
+    [Fact]
+    public async Task ImportDocumentAsync_MissingFiles_RaisesMissingEvent()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var raised = new List<PlaylistsViewModel.PlaylistImportReport>();
+        vm.PlaylistImportMissing += raised.Add;
+        var json = PlaylistFormat.Export("Вечер", [
+            new PlaylistExportEntry("/audio/test.flac", Transition: new PlaylistFileTransition("gap", 2)),
+            new PlaylistExportEntry("/audio/missing.flac", Transition: new PlaylistFileTransition("gap", 2)),
+        ]);
+
+        var report = await vm.ImportDocumentAsync(json);
+
+        var fired = Assert.Single(raised);
+        Assert.Same(report, fired);
+        Assert.Equal("/audio/missing.flac", Assert.Single(fired.MissingFiles));
+    }
+
+    [Fact]
+    public async Task ImportDocumentAsync_MissingFiles_SelectsImportedPlaylist()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var json = PlaylistFormat.Export("Вечер", [
+            new PlaylistExportEntry("/audio/test.flac", Transition: new PlaylistFileTransition("gap", 2)),
+            new PlaylistExportEntry("/audio/missing.flac", Transition: new PlaylistFileTransition("gap", 2)),
+        ]);
+
+        await vm.ImportDocumentAsync(json);
+
+        Assert.Equal("Вечер", vm.SelectedPlaylist?.Name);
+    }
+
+    [Fact]
+    public async Task RelinkEntryAsync_Success_SetsReplacedStatus()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var row = vm.Playlists[0].Entries[0];
+        vm.TrackRelink = (_, _) => Task.FromResult(true);
+
+        var ok = await vm.RelinkEntryAsync(row, "/audio/found.flac");
+
+        Assert.True(ok);
+        Assert.Contains("замен", vm.PlaylistIoStatus);
+    }
 }

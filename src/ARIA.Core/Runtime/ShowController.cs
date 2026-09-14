@@ -362,6 +362,7 @@ public sealed class ShowController : IShowHandler
             }
         }
         var added = false;
+        var faultCleared = false;
         foreach (var track in merge.Tracks)
         {
             if (_trackMap.TryGetValue(track.Id, out var existing))
@@ -370,7 +371,7 @@ public sealed class ShowController : IShowHandler
                 {
                     _tracks = _tracks.Replace(existing, track);
                     _trackMap[track.Id] = track;
-                    _faulted.Remove(track.Id);
+                    faultCleared |= _faulted.Remove(track.Id);
                     added = true;
                 }
                 continue;
@@ -384,6 +385,10 @@ public sealed class ShowController : IShowHandler
             return;
         }
         EmitShow();
+        if (faultCleared)
+        {
+            EmitTransport();
+        }
     }
 
     private static bool ValidateShow(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists, ImmutableArray<QueueItem> queue)

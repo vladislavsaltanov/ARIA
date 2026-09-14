@@ -25,6 +25,7 @@ public partial class PlaylistCenter : UserControl
         {
             _bound.ImportFailed -= OnImportFailed;
             _bound.AudioImportIncomplete -= OnAudioImportIncomplete;
+            _bound.PlaylistImportMissing -= OnPlaylistImportMissing;
             _bound.ExportSucceeded -= OnExportSucceeded;
             _bound.RevealRequested -= OnRevealRequested;
         }
@@ -33,6 +34,7 @@ public partial class PlaylistCenter : UserControl
         {
             _bound.ImportFailed += OnImportFailed;
             _bound.AudioImportIncomplete += OnAudioImportIncomplete;
+            _bound.PlaylistImportMissing += OnPlaylistImportMissing;
             _bound.ExportSucceeded += OnExportSucceeded;
             _bound.RevealRequested += OnRevealRequested;
         }
@@ -52,6 +54,95 @@ public partial class PlaylistCenter : UserControl
     private async void OnAudioImportIncomplete(string message)
     {
         await ShowInfoDialog("Импорт аудио", message);
+    }
+
+    private const int MaxListedMissing = 30;
+
+    private async void OnPlaylistImportMissing(PlaylistsViewModel.PlaylistImportReport report)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        if (DataContext is not PlaylistsViewModel viewModel)
+        {
+            return;
+        }
+        var listed = string.Join("\n", report.MissingFiles.Take(MaxListedMissing));
+        if (report.MissingFiles.Length > MaxListedMissing)
+        {
+            listed += $"\n…и ещё {report.MissingFiles.Length - MaxListedMissing}";
+        }
+        var find = new Button { Content = "Найти файлы…" };
+        var dismiss = new Button { Content = "Понятно" };
+        var dialog = new Window
+        {
+            Title = "Не хватает файлов",
+            Width = 460,
+            MinWidth = 380,
+            MinHeight = 140,
+            MaxWidth = 640,
+            SizeToContent = SizeToContent.Height,
+            CanResize = true,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new ScrollViewer
+                    {
+                        MaxHeight = 320,
+                        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                        Content = new TextBlock
+                        {
+                            Text = $"В плейлисте «{report.PlaylistName}» не хватает файлов: {report.MissingFiles.Length}\n{listed}",
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        },
+                    },
+                    new StackPanel
+                    {
+                        Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        Spacing = 8,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                        Children = { find, dismiss },
+                    },
+                },
+            },
+        };
+        find.Click += (_, _) => dialog.Close("find");
+        dismiss.Click += (_, _) => dialog.Close(null);
+        if (await dialog.ShowDialog<string?>(owner) == "find")
+        {
+            await PickMissingAsync(viewModel);
+        }
+    }
+
+    private async Task PickMissingAsync(PlaylistsViewModel viewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } topLevel)
+        {
+            return;
+        }
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Найти файлы треков",
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Аудио") { Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"] },
+            ],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+        if (viewModel.AudioImport is null && App.Host is { } host)
+        {
+            viewModel.AudioImport = host.ImportTracksAsync;
+        }
+        await viewModel.ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath));
     }
 
     private async void OnExportSucceeded(string fileName, string message)
