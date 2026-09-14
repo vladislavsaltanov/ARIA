@@ -1,0 +1,46 @@
+---
+story_id: e01s03
+title: "Remote settings для global EndAction"
+status: failing
+bcps: 3
+tasks:
+  - id: 1
+    description: "ShowState.DefaultEndAction + EmitShow + тест"
+    verify: "dotnet test tests/ARIA.Core.Tests --filter DefaultEndAction"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Remote"
+        - "unit"
+  - id: 2
+    description: "Селект в пульте: показ и отправка"
+    verify: "dotnet build"
+    risk: P2
+    status: passing
+    allure:
+      severity: normal
+      categories:
+        - "Remote"
+        - "unit"
+  - id: 3
+    description: "Show-кадр несёт defaultEndAction"
+    verify: "dotnet test tests/ARIA.Remote.Tests"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Remote"
+        - "integration"
+  - id: 4
+    description: "Полный прогон"
+    verify: "dotnet test"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Remote"
+        - "integration"

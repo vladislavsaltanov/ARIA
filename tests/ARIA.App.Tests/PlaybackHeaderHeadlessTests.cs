@@ -142,7 +142,7 @@ public sealed class PlaybackHeaderHeadlessTests : IDisposable
 
         private readonly ShowSnapshot _snapshot = new(
             0,
-            new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty),
+            new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty, EndAction.Advance),
             0,
             new TransportState(TransportStatus.Stopped, TestDeck, null, []),
             0,
