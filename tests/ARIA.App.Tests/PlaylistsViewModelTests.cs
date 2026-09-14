@@ -328,4 +328,33 @@ public sealed class PlaylistsViewModelTests
         Assert.Equal(revealed.Id, vm.SelectedEntry?.Id);
         Assert.Contains(revealed, vm.VisibleEntries);
     }
+
+    [Fact]
+    public void SetEntryEndAction_SetsAction_AndKeepsNote()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var row = vm.Playlists[0].Entries[1];
+
+        vm.SetEntryEndAction(row, EndAction.Pause);
+
+        var updated = vm.Playlists[0].Entries[1];
+        Assert.Equal(EndAction.Pause, updated.Overrides?.EndAction);
+        Assert.Equal("заметка", updated.Note);
+    }
+
+    [Fact]
+    public void SetEntryEndAction_Null_ClearsActionKeepsNote()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var row = vm.Playlists[0].Entries[1];
+        vm.SetEntryEndAction(row, EndAction.Stop);
+
+        vm.SetEntryEndAction(vm.Playlists[0].Entries[1], null);
+
+        var updated = vm.Playlists[0].Entries[1];
+        Assert.Null(updated.Overrides?.EndAction);
+        Assert.Equal("заметка", updated.Note);
+    }
 }

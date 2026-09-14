@@ -1,0 +1,46 @@
+---
+story_id: e01s01
+title: "Per-entry EndAction UI в плейлисте"
+status: failing
+bcps: 5
+tasks:
+  - id: 1
+    description: "VM SetEntryEndAction merge+тест via bus"
+    verify: "dotnet test tests/ARIA.App.Tests --filter SetEntryEndAction"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Playlist"
+        - "unit"
+  - id: 2
+    description: "Меню 'Действие в конце' в PlaylistCenter"
+    verify: "dotnet build"
+    risk: P2
+    status: passing
+    allure:
+      severity: normal
+      categories:
+        - "Playlist"
+        - "unit"
+  - id: 3
+    description: "Headless: меню шлёт команду, Vm обновлён"
+    verify: "dotnet test tests/ARIA.App.Tests --filter EntryEndActionMenu"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Playlist"
+        - "integration"
+  - id: 4
+    description: "Рестарт-пруф и возврат глобала"
+    verify: "dotnet test"
+    risk: P1
+    status: passing
+    allure:
+      severity: high
+      categories:
+        - "Playlist"
+        - "integration"

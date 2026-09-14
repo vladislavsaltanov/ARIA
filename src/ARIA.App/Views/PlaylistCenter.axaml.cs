@@ -2,6 +2,7 @@ namespace Aria.App.Views;
 
 using Aria.App.Services;
 using Aria.App.ViewModels;
+using Aria.Core.Model;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -161,6 +162,45 @@ public partial class PlaylistCenter : UserControl
             && DataContext is PlaylistsViewModel viewModel)
         {
             viewModel.EnqueueEntry(entry);
+        }
+    }
+
+    private void OnEndActionMenuOpened(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menu
+            || menu.DataContext is not PlaylistsViewModel.EntryVm entry)
+        {
+            return;
+        }
+        var inherited = entry.Overrides?.EndAction is null;
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            item.IsChecked = (item.Tag as string) switch
+            {
+                "inherit" => inherited,
+                "pause" => !inherited && entry.EffectiveEndAction == EndAction.Pause,
+                "stop" => !inherited && entry.EffectiveEndAction == EndAction.Stop,
+                "replay" => !inherited && entry.EffectiveEndAction == EndAction.Replay,
+                "advance" => !inherited && entry.EffectiveEndAction == EndAction.Advance,
+                _ => false,
+            };
+        }
+    }
+
+    private void OnEndActionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item
+            && item.DataContext is PlaylistsViewModel.EntryVm entry
+            && DataContext is PlaylistsViewModel viewModel)
+        {
+            viewModel.SetEntryEndAction(entry, (item.Tag as string) switch
+            {
+                "pause" => EndAction.Pause,
+                "stop" => EndAction.Stop,
+                "replay" => EndAction.Replay,
+                "advance" => EndAction.Advance,
+                _ => (EndAction?)null,
+            });
         }
     }
 

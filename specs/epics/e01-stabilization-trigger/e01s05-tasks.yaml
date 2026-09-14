@@ -1,0 +1,26 @@
+---
+story_id: e01s05
+title: "Подтвердить и закрыть BUG-dnd-playlist-drop"
+status: failing
+bcps: 1
+tasks:
+  - id: 1
+    description: "Юзер подтверждает reveal дропа на сборке"
+    verify: "verify-script: drop файл, строка видна сразу"
+    risk: P3
+    status: failing
+    allure:
+      severity: minor
+      categories:
+        - "Playlist"
+        - "manual"
+  - id: 2
+    description: "BUG-файл закрыт по подтверждению"
+    verify: "grep -q -i closed specs/bugs/BUG-dnd-playlist-drop.md"
+    risk: P3
+    status: failing
+    allure:
+      severity: minor
+      categories:
+        - "Playlist"
+        - "unit"

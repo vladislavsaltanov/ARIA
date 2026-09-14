@@ -1,0 +1,36 @@
+---
+story_id: e01s02
+title: "Hotkey через ICommandBus"
+status: failing
+bcps: 5
+tasks:
+  - id: 1
+    description: "DispatchHotkey шлёт команды плеера в шину"
+    verify: "dotnet build"
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories:
+        - "Trigger"
+        - "unit"
+  - id: 2
+    description: "Маппинг action->команда покрыт тестами via bus"
+    verify: "dotnet test tests/ARIA.Core.Tests"
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories:
+        - "Trigger"
+        - "unit"
+  - id: 3
+    description: "Hotkey срабатывает из любого окна, фокус не важен"
+    verify: "dotnet test tests/ARIA.App.Tests"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories:
+        - "Trigger"
+        - "integration"
