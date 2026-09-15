@@ -7,7 +7,8 @@ public sealed record TrackDefaults(
     EndAction EndAction = EndAction.Advance,
     Fade? In = null,
     Fade? Out = null,
-    ImmutableArray<Marker>? Markers = null);
+    ImmutableArray<Marker>? Markers = null,
+    TrackAudioSettings? Audio = null);
 
 public sealed record Track(
     TrackId Id,

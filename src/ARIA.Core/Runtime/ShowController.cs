@@ -39,6 +39,7 @@ public sealed class ShowController : IShowHandler
     private double _masterGainDb;
     private bool _muted;
     private bool _locked;
+    private GlobalAudioSettings _globalAudio = GlobalAudioSettings.Default;
     private TimeSpan _clockElapsed;
     private bool _clockRunning;
     private TimeSpan _panicFade = TimeSpan.FromMilliseconds(100);
@@ -173,6 +174,15 @@ public sealed class ShowController : IShowHandler
             case SetLocked setLocked:
                 OnSetLocked(setLocked);
                 break;
+            case SetGlobalAudio setGlobalAudio:
+                OnSetGlobalAudio(client, seq, setGlobalAudio);
+                break;
+            case SetTrackAudio setTrackAudio:
+                OnSetTrackAudio(client, seq, setTrackAudio);
+                break;
+            case SetEntryAudio setEntryAudio:
+                OnSetEntryAudio(client, seq, setEntryAudio);
+                break;
             case CreateScript createScript:
                 OnCreateScript(client, seq, createScript);
                 break;
@@ -229,7 +239,7 @@ public sealed class ShowController : IShowHandler
         _queueVersion,
         new QueueState([.. _queue]),
         _mixerVersion,
-        new MixerState(_masterGainDb, _muted, _panicFade, _smoothing));
+        new MixerState(_masterGainDb, _muted, _panicFade, _smoothing, _globalAudio));
 
     private void OnLoadShow(ClientId client, long seq, LoadShow load)
     {
@@ -1011,6 +1021,56 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
+    private void OnSetGlobalAudio(ClientId client, long seq, SetGlobalAudio command)
+    {
+        if (AudioValidation.ValidateGlobal(command.Value) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        _globalAudio = command.Value;
+        EmitMixer();
+    }
+
+    private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
+    {
+        if (AudioValidation.ValidateTrack(command.Audio) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var existing))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var updated = existing with { Defaults = existing.Defaults with { Audio = command.Audio } };
+        _tracks = _tracks.Replace(existing, updated);
+        _trackMap[command.Track] = updated;
+        EmitShow();
+    }
+
+    private void OnSetEntryAudio(ClientId client, long seq, SetEntryAudio command)
+    {
+        if (command.Audio is { } audio && AudioValidation.ValidateTrack(audio) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        if (!_entryMap.TryGetValue(command.Entry, out var location))
+        {
+            Reject(client, seq, "unknown-entry");
+            return;
+        }
+        var playlist = location.Playlist;
+        var entry = playlist.Entries[location.Index];
+        var overrides = (entry.Overrides ?? new PlaylistOverrides()) with { Audio = command.Audio };
+        var entries = playlist.Entries.SetItem(location.Index, entry with { Overrides = overrides });
+        _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = entries });
+        RebuildEntryMap();
+        EmitShow();
+    }
+
     private int IndexOfScript(ScriptId id)
     {
         for (var i = 0; i < _scripts.Length; i++)
@@ -1648,7 +1708,7 @@ public sealed class ShowController : IShowHandler
 
     private void EmitQueue() => Emit(new QueueDelta(++_queueVersion, new QueueState([.. _queue])));
 
-    private void EmitMixer() => Emit(new MixerDelta(++_mixerVersion, new MixerState(_masterGainDb, _muted, _panicFade, _smoothing)));
+    private void EmitMixer() => Emit(new MixerDelta(++_mixerVersion, new MixerState(_masterGainDb, _muted, _panicFade, _smoothing, _globalAudio)));
 
     private sealed class DeckInstance
     {

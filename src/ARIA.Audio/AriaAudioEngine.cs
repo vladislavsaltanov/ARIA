@@ -17,6 +17,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<int, StreamHandle> _mixerHandles = new();
     private readonly ConcurrentQueue<int> _faultedAtBirth = [];
+    private readonly MixerBus _preview;
+    private readonly IAudioSink _previewSink;
+    private readonly float[] _previewBlock;
+    private readonly ConcurrentDictionary<int, StreamHandle> _previewHandles = new();
+    private long _previewGainBits = BitConverter.DoubleToInt64Bits(1.0);
+    private int _previewMuted;
     private long _lastPublishTicks = Environment.TickCount64 - 1000;
     private long _lastMeterTicks = Environment.TickCount64 - 1000;
     private long _masterGainBits = BitConverter.DoubleToInt64Bits(1.0);
@@ -30,7 +36,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         int channels = 2,
         int blockSizeFrames = 512,
         IAudioSink? sink = null,
-        MeterMonitor? meters = null)
+        MeterMonitor? meters = null,
+        IAudioSink? previewSink = null)
     {
         ArgumentNullException.ThrowIfNull(sourceFactory);
         _sourceFactory = sourceFactory;
@@ -41,6 +48,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _mixer = new MixerBus(channels, sampleRate, blockSizeFrames);
         _block = new float[blockSizeFrames * channels];
         _mixer.Events += ForwardEvent;
+        _previewSink = previewSink ?? new NullSink(sampleRate, channels);
+        _preview = new MixerBus(channels, sampleRate, blockSizeFrames);
+        _previewBlock = new float[blockSizeFrames * channels];
+        _preview.Events += ForwardEvent;
         _renderThread = new Thread(RenderLoop) { IsBackground = true, Name = "aria-render" };
         _renderThread.Start();
     }
@@ -104,6 +115,35 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _sink.Flush();
     }
 
+    public StreamHandle StartPreview(TrackSource source, StreamOptions options)
+    {
+        var handle = new StreamHandle(Interlocked.Increment(ref _handleCounter));
+        var sample = _sourceFactory.Open(source.FilePath, source.CueIn, source.CueOut);
+        if (sample is null)
+        {
+            _faultedAtBirth.Enqueue(handle.Value);
+            return handle;
+        }
+        _preview.StopAll(TimeSpan.Zero);
+        _previewHandles.Clear();
+        var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut));
+        _previewHandles[handle.Value] = mixerHandle;
+        return handle;
+    }
+
+    public void StopPreview()
+    {
+        _preview.StopAll(TimeSpan.Zero);
+        _previewHandles.Clear();
+        _previewSink.Flush();
+    }
+
+    public void SetPreviewGain(double gainDb)
+        => Volatile.Write(ref _previewGainBits, BitConverter.DoubleToInt64Bits(Math.Pow(10.0, gainDb / 20.0)));
+
+    public void SetPreviewMuted(bool muted)
+        => Volatile.Write(ref _previewMuted, muted ? 1 : 0);
+
     public void DisposeStream(StreamHandle handle)
     {
         if (_mixerHandles.TryRemove(handle.Value, out var mixerHandle))
@@ -117,6 +157,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _cts.Cancel();
         _renderThread.Join(TimeSpan.FromSeconds(2));
         _mixer.Dispose();
+        _preview.Dispose();
         _cts.Dispose();
     }
 
@@ -135,8 +176,30 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             {
                 Thread.Sleep(1);
             }
+            RenderPreview();
             PublishPosition();
         }
+    }
+
+    private void RenderPreview()
+    {
+        _preview.Render(_previewBlock);
+        if (Volatile.Read(ref _previewMuted) == 1)
+        {
+            Array.Clear(_previewBlock);
+        }
+        else
+        {
+            var gain = (float)BitConverter.Int64BitsToDouble(Volatile.Read(ref _previewGainBits));
+            if (gain != 1f)
+            {
+                for (var index = 0; index < _previewBlock.Length; index++)
+                {
+                    _previewBlock[index] *= gain;
+                }
+            }
+        }
+        _previewSink.Write(_previewBlock);
     }
 
     private void EmitFaults()

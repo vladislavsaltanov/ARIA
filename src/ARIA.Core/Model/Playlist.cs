@@ -16,6 +16,7 @@ public sealed record PlaylistOverrides(
     Fade? In = null,
     Fade? Out = null,
     TimeSpan? CueIn = null,
-    TimeSpan? CueOut = null);
+    TimeSpan? CueOut = null,
+    TrackAudioSettings? Audio = null);
 
 public sealed record Playlist(PlaylistId Id, string Name, ImmutableArray<PlaylistEntry> Entries);

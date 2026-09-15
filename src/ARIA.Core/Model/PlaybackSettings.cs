@@ -11,7 +11,8 @@ public sealed record PlaybackSettings(
     Fade Out,
     TimeSpan CueIn,
     TimeSpan? CueOut,
-    ImmutableArray<Marker> Markers);
+    ImmutableArray<Marker> Markers,
+    TrackAudioSettings Audio);
 
 public static class EffectiveSettings
 {
@@ -28,7 +29,8 @@ public static class EffectiveSettings
             Out: o?.Out ?? d.Out ?? Fade.None,
             CueIn: o?.CueIn ?? TimeSpan.Zero,
             CueOut: o?.CueOut,
-            Markers: d.Markers ?? ImmutableArray<Marker>.Empty);
+            Markers: d.Markers ?? ImmutableArray<Marker>.Empty,
+            Audio: o?.Audio ?? d.Audio ?? TrackAudioSettings.Default);
     }
 
     public static PlaybackSettings ForTrack(Track track, EndAction defaultEndAction = EndAction.Advance)
@@ -43,6 +45,7 @@ public static class EffectiveSettings
             Out: d.Out ?? Fade.None,
             CueIn: TimeSpan.Zero,
             CueOut: null,
-            Markers: d.Markers ?? ImmutableArray<Marker>.Empty);
+            Markers: d.Markers ?? ImmutableArray<Marker>.Empty,
+            Audio: d.Audio ?? TrackAudioSettings.Default);
     }
 }

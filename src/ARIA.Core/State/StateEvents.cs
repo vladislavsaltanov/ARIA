@@ -55,7 +55,10 @@ public sealed record ShowState(
     TrackDigest TrackDigest,
     EndAction DefaultEndAction);
 
-public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade, Smoothing Smoothing);
+public sealed record MixerState(double MasterGainDb, bool Muted, TimeSpan PanicFade, Smoothing Smoothing, GlobalAudioSettings? Global = null)
+{
+    public GlobalAudioSettings EffectiveGlobal => Global ?? GlobalAudioSettings.Default;
+}
 
 public abstract record StateEvent;
 

@@ -68,5 +68,19 @@ public interface IAudioEngine
 
     void DisposeStream(StreamHandle handle);
 
+    StreamHandle StartPreview(TrackSource source, StreamOptions options) => default;
+
+    void StopPreview()
+    {
+    }
+
+    void SetPreviewGain(double gainDb)
+    {
+    }
+
+    void SetPreviewMuted(bool muted)
+    {
+    }
+
     event Action<StreamEvent>? Events;
 }

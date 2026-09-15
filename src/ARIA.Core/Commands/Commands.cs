@@ -62,6 +62,12 @@ public sealed record SetMuted(bool Muted) : Command;
 
 public sealed record SetLocked(bool Locked) : Command;
 
+public sealed record SetGlobalAudio(GlobalAudioSettings Value) : Command;
+
+public sealed record SetTrackAudio(TrackId Track, TrackAudioSettings Audio) : Command;
+
+public sealed record SetEntryAudio(EntryId Entry, TrackAudioSettings? Audio) : Command;
+
 public sealed record CreateScript(string Name) : Command;
 
 public sealed record RenameScript(ScriptId Id, string Name) : Command;
