@@ -1,4 +1,4 @@
-# Track end action: global default + future per-entry inheritance
+# Track end action: global default + per-entry inheritance
 
 ## Status
 
@@ -29,14 +29,14 @@ entry.Override?.EndAction
 - `SettingsViewModel` pushes the stored value to Core at startup and on
   every change (`SubmitEndAction`).
 - Remote codec accepts `set_default_end_action` (`end_action` string,
-  case-insensitive); no remote settings UI yet.
+  case-insensitive); remote select shows the current value and sends
+  changes back (e01s03, 0.2.0), two-way with desktop, no reload.
 
 ## Future work (recorded per user request)
 
-- Per-track-entry setting in the playlist (row editor / overrides form):
-  writes `PlaylistOverrides.EndAction`, inherits the global when the local
-  value is not overridden (resolution above already supports this; only
-  the UI is missing).
-- Remote settings surface for the global default (codec is ready).
+- Per-entry UI done via playlist context menu (e01s01, 0.2.0):
+  writes `PlaylistOverrides.EndAction`, Наследовать clears the local
+  value back to the global.
+- Remote settings surface done (e01s03, 0.2.0).
 - `TrackDefaults.EndAction` stays model/persistence-compatible; do not
   repurpose it as the global.
