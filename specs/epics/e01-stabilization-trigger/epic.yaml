@@ -2,7 +2,7 @@
 epic_id: e01
 title: "Стабилизация долгов + hotkey-триггеры"
 source: specs/product/SCOPE_LATEST.yaml
-status: planned
+status: done
 order: WSJF desc
 stories:
   - id: e01s01

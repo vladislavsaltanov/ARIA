@@ -6,4 +6,4 @@ epics:
     capsule: specs/epics/e01-stabilization-trigger
     title: "Стабилизация долгов + hotkey-триггеры"
     wsjf: 1
-    status: planned
+    status: done
