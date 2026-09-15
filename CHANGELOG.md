@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-09-15
+
 ### Добавлено
 
 - **Окно битого трека.** Клик по значку недоступного трека
@@ -98,5 +100,6 @@
 - Горячие клавиши, часы шоу, сценарии.
 - Настройки воспроизведения, движка и формата строк.
 
+[0.2.1]: https://github.com/vladislavsaltanov/ARIA/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/vladislavsaltanov/ARIA/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vladislavsaltanov/ARIA/releases/tag/v0.1.0
