@@ -64,4 +64,9 @@ Risk level: Low. Один прод-вызыватель Core (AppHost через
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-09-15 on branch fix/queue-end-pause.
+Core: ApplyEndAction checks _queue first — non-empty queue advances via
+AdvanceFromBoundary regardless of Pause/Stop/Replay. 3 new tests in
+PlaybackTests (Pause/Stop/Replay + queued item). Full suite 588 green.
+UI: ToggleType Radio + GroupName EndAction on the 5 After-menu items —
+IsChecked logic unchanged, checkmark now visible, default Inherit.
