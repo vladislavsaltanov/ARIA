@@ -33,7 +33,7 @@ stories:
     title: "Подтвердить и закрыть BUG-dnd-playlist-drop"
     scope: S3
     bcps: 1
-    status: failing
+    status: passing
   - id: e01s06
     title: "Настройки — боковая навигация и секции"
     bcps: 5

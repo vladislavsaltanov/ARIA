@@ -38,11 +38,11 @@ Not a regression. Behavior change request plus noise leak.
 
 ## Acceptance Criteria
 
-- [ ] Playing a broken track stops transport, marks fault, never starts the next entry
-- [ ] Find-from-import adds picks with no progress strip and no status noise
-- [ ] Undecodable picks still report a failure dialog
-- [ ] All new tests pass
-- [ ] Existing tests still pass
+- [x] Playing a broken track stops transport, marks fault, never starts the next entry
+- [x] Find-from-import adds picks with no progress strip and no status noise
+- [x] Undecodable picks still report a failure dialog
+- [x] All new tests pass
+- [x] Existing tests still pass
 
 ## Resolution
 

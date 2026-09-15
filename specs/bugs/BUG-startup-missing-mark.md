@@ -27,10 +27,10 @@ Fix shape: IO stays at the app boundary. The host scans library file existence o
 
 ## Acceptance Criteria
 
-- [ ] Missing files flagged at startup, badge visible before any play attempt
-- [ ] Unknown ids never pollute the fault set
-- [ ] All new tests pass
-- [ ] Existing tests still pass
+- [x] Missing files flagged at startup, badge visible before any play attempt
+- [x] Unknown ids never pollute the fault set
+- [x] All new tests pass
+- [x] Existing tests still pass
 
 ## Resolution
 

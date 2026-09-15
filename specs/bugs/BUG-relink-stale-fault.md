@@ -46,11 +46,11 @@ Not a regression. Missing feature + missing notification.
 
 ## Acceptance Criteria
 
-- [ ] Fault icon clears right after successful "Найти…" plus confirmation status
-- [ ] Import with missing files opens exactly one dialog immediately, capped list for many files
-- [ ] Bulk find appends into the just-imported playlist
-- [ ] All new tests pass
-- [ ] Existing tests still pass
+- [x] Fault icon clears right after successful "Найти…" plus confirmation status
+- [x] Import with missing files opens exactly one dialog immediately, capped list for many files
+- [x] Bulk find appends into the just-imported playlist
+- [x] All new tests pass
+- [x] Existing tests still pass
 
 ## Resolution
 

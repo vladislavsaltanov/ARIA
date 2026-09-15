@@ -1,7 +1,7 @@
 ---
 story_id: e01s01
 title: "Per-entry EndAction UI в плейлисте"
-status: failing
+status: passing
 bcps: 5
 tasks:
   - id: 1

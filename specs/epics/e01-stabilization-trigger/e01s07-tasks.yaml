@@ -1,7 +1,7 @@
 ---
 story_id: e01s07
 title: "Настройки — секционные VM и пункты из данных"
-status: failing
+status: passing
 bcps: 5
 tasks:
   - id: 1
