@@ -78,6 +78,7 @@ internal static class CommandCodec
                 "set_preview_gain" => new SetPreviewGain(DoubleOf(commandElement, "gain_db")),
                 "set_preview_muted" => new SetPreviewMuted(BoolOf(commandElement, "muted")),
                 "normalize_track" => new NormalizeTrack(new TrackId(GuidOf(commandElement, "track"))),
+                "normalize_playlist" => new NormalizePlaylist(new PlaylistId(GuidOf(commandElement, "playlist"))),
                 "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
                 "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
@@ -143,7 +144,8 @@ internal static class CommandCodec
             DoubleOf(element, "pan"),
             ParseAudioEq(element.GetProperty("eq")),
             OptionalBool(element, "normalize_enabled", false),
-            OptionalNullableDouble(element, "measured_lufs"));
+            OptionalNullableDouble(element, "measured_lufs"),
+            OptionalNullableDouble(element, "normalize_target_lufs"));
         if (AudioValidation.ValidateTrack(value) is { } reason)
         {
             throw new FormatException(reason);

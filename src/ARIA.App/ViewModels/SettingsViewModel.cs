@@ -45,7 +45,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         Clock = new ClockSectionVm(Submit);
-        Audio = new AudioSectionVm(Submit);
+        Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
@@ -76,6 +76,10 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         {
             Post(() => Engine.ApplyMixer(delta.State));
             Post(() => Audio.ApplyMixer(delta.State));
+        }
+        else if (e is ShowDelta)
+        {
+            Post(() => Audio.OnShow());
         }
     }
 

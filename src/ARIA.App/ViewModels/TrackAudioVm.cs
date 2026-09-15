@@ -20,6 +20,8 @@ public sealed partial class TrackAudioVm : ObservableObject
     private double _normalizeTargetLufs;
     private bool _normalizeEnabled;
     private double? _measuredLufs;
+    private bool _ownTargetLufs;
+    private double _targetLufs = NormalizeDefaultLufs;
     private readonly bool _globalNormalizeEnabled;
     private readonly Func<double?>? _measureReader;
 
@@ -34,6 +36,8 @@ public sealed partial class TrackAudioVm : ObservableObject
         var audio = initial ?? TrackAudioSettings.Default;
         _normalizeEnabled = audio.NormalizeEnabled;
         _measuredLufs = audio.MeasuredLufs;
+        _ownTargetLufs = audio.NormalizeTargetLufs is { } own;
+        _targetLufs = audio.NormalizeTargetLufs ?? NormalizeDefaultLufs;
         _gainDb = audio.GainDb;
         _pan = audio.Pan;
         EqBands = [.. audio.Eq.Bands.Select((b, i) => new AudioSectionVm.EqBandVm(AudioSectionVm.BandLabel(i, b.FrequencyHz), b.FrequencyHz, b.GainDb, SubmitCurrent))];
@@ -45,6 +49,34 @@ public sealed partial class TrackAudioVm : ObservableObject
     public bool IsEntry => _entryId is not null;
 
     public double NormalizeTargetLufs => _normalizeTargetLufs;
+
+    public double EffectiveTargetLufs => _ownTargetLufs ? _targetLufs : _normalizeTargetLufs;
+
+    public bool OwnTargetLufs
+    {
+        get => _ownTargetLufs;
+        set
+        {
+            if (SetProperty(ref _ownTargetLufs, value))
+            {
+                OnPropertyChanged(nameof(NormalizeStatus));
+                SubmitCurrent();
+            }
+        }
+    }
+
+    public double TargetLufs
+    {
+        get => _targetLufs;
+        set
+        {
+            if (SetProperty(ref _targetLufs, Math.Clamp(value, -36.0, -6.0)))
+            {
+                OnPropertyChanged(nameof(NormalizeStatus));
+                SubmitCurrent();
+            }
+        }
+    }
 
     public bool NormalizeEnabled
     {
@@ -84,7 +116,7 @@ public sealed partial class TrackAudioVm : ObservableObject
             {
                 return "Включена, измерение не выполнено";
             }
-            var offset = _normalizeTargetLufs - measured;
+            var offset = EffectiveTargetLufs - measured;
             return $"Измерено {measured.ToString("F1", CultureInfo.InvariantCulture)} LUFS, поправка {offset:+0.0;-0.0} дБ";
         }
     }
@@ -132,7 +164,8 @@ public sealed partial class TrackAudioVm : ObservableObject
         _pan,
         new AudioEq([.. EqBands.Select(b => new EqBand(b.FrequencyHz, (float)b.GainDb, 1))]),
         _normalizeEnabled,
-        _measuredLufs);
+        _measuredLufs,
+        _ownTargetLufs ? _targetLufs : null);
 
     [RelayCommand]
     private void Preview() => _submit(new StartPreviewTrack(_trackId));

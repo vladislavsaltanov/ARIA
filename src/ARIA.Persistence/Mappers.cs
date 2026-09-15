@@ -48,6 +48,7 @@ internal sealed class TrackAudioDto
     public EqDto? Eq { get; set; }
     public bool NormalizeEnabled { get; set; }
     public double? MeasuredLufs { get; set; }
+    public double? NormalizeTargetLufs { get; set; }
 }
 
 internal sealed class GlobalAudioDto
@@ -74,12 +75,12 @@ internal static class AudioMapper
     public static TrackAudioDto? ToDto(TrackAudioSettings? audio) =>
         audio is null
             ? null
-            : new TrackAudioDto { GainDb = audio.GainDb, Pan = audio.Pan, Eq = ToDto(audio.Eq), NormalizeEnabled = audio.NormalizeEnabled, MeasuredLufs = audio.MeasuredLufs };
+            : new TrackAudioDto { GainDb = audio.GainDb, Pan = audio.Pan, Eq = ToDto(audio.Eq), NormalizeEnabled = audio.NormalizeEnabled, MeasuredLufs = audio.MeasuredLufs, NormalizeTargetLufs = audio.NormalizeTargetLufs };
 
     public static TrackAudioSettings? ToDomain(TrackAudioDto? dto) =>
         dto is null
             ? null
-            : new TrackAudioSettings(dto.GainDb, dto.Pan, ToDomain(dto.Eq), dto.NormalizeEnabled, dto.MeasuredLufs);
+            : new TrackAudioSettings(dto.GainDb, dto.Pan, ToDomain(dto.Eq), dto.NormalizeEnabled, dto.MeasuredLufs, dto.NormalizeTargetLufs);
 
     public static GlobalAudioDto ToDto(GlobalAudioSettings audio) => new()
     {

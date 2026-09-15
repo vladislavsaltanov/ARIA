@@ -17,6 +17,15 @@ public sealed class NormalizeCodecTests
         Assert.Equal(track, Assert.IsType<NormalizeTrack>(command).Track.Value.ToString("N"));
     }
 
+    [Fact]
+    public void NormalizePlaylist_Parses()
+    {
+        var id = Guid.NewGuid().ToString("N");
+
+        Assert.True(CommandCodec.TryParse(Json("{\"type\":\"normalize_playlist\",\"playlist\":\"" + id + "\"}"), out _, out _, out var command));
+        Assert.Equal(id, Assert.IsType<NormalizePlaylist>(command).Playlist.Value.ToString("N"));
+    }
+
     private static string GlobalJson(string extra = "") =>
         "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_global_audio\","
         + "\"pan\":0,\"mono\":false,\"hpf_hz\":0,\"eq\":{\"bands\":["

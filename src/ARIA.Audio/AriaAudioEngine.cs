@@ -177,7 +177,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         {
             return resolved;
         }
-        return resolved with { GainDb = LufsNormalize.AdjustGain(resolved.GainDb, measured, global.NormalizeTargetLufs) };
+        var target = resolved.NormalizeTargetLufs ?? global.NormalizeTargetLufs;
+        return resolved with { GainDb = LufsNormalize.AdjustGain(resolved.GainDb, measured, target) };
     }
 
     public void SetGlobalAudio(GlobalAudioSettings audio)

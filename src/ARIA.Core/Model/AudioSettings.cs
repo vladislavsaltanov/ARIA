@@ -52,7 +52,8 @@ public sealed record TrackAudioSettings(
     double Pan,
     AudioEq Eq,
     bool NormalizeEnabled = false,
-    double? MeasuredLufs = null)
+    double? MeasuredLufs = null,
+    double? NormalizeTargetLufs = null)
 {
     public static TrackAudioSettings Default { get; } = new(0, 0, AudioEq.Flat);
 }
@@ -129,6 +130,10 @@ public static class AudioValidation
         if (value.Pan is < PanMin or > PanMax)
         {
             return "pan-out-of-range";
+        }
+        if (value.NormalizeTargetLufs is { } target && target is < LufsTargetMinLufs or > LufsTargetMaxLufs)
+        {
+            return "lufs-out-of-range";
         }
         return ValidateEq(value.Eq);
     }

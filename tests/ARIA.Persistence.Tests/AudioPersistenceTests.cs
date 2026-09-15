@@ -68,6 +68,27 @@ public sealed class AudioPersistenceTests : IDisposable
     }
 
     [Fact]
+    public void Library_TrackAudio_TargetOverride_RoundTrips()
+    {
+        var audio = NonFlatAudio() with { NormalizeEnabled = true, MeasuredLufs = -10.5, NormalizeTargetLufs = -12.0 };
+        var track = TestFactory.Track("target") with { Defaults = TestFactory.Track("target").Defaults with { Audio = audio } };
+        using (var store = new SqliteLibraryStore(_dbPath))
+        {
+            store.Upsert([track], []);
+        }
+
+        using (var store = new SqliteLibraryStore(_dbPath))
+        {
+            var reloaded = Assert.Single(store.Load().Tracks).Defaults.Audio;
+
+            Assert.NotNull(reloaded);
+            Assert.True(reloaded.NormalizeEnabled);
+            Assert.Equal(-10.5, reloaded.MeasuredLufs);
+            Assert.Equal(-12.0, reloaded.NormalizeTargetLufs);
+        }
+    }
+
+    [Fact]
     public void Library_TrackAudio_Null_RoundTripsAsNull()
     {
         var track = TestFactory.Track("flat");

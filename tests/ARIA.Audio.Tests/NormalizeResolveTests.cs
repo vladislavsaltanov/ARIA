@@ -24,6 +24,21 @@ public sealed class NormalizeResolveTests
     }
 
     [Fact]
+    public async Task TrackTargetOverride_WinsOverGlobal()
+    {
+        using var rig = new Rig();
+        var measured = rig.Engine.ScanTrackLufs("/audio/finite.flac");
+        Assert.False(double.IsNaN(measured));
+        rig.Engine.SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true, NormalizeTargetLufs = measured - 6.0 });
+        var audio = new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeEnabled: true, MeasuredLufs: measured, NormalizeTargetLufs: measured - 12.0);
+
+        rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        var peak = await PeakOf(rig);
+
+        Assert.InRange(peak, 0.08, 0.18);
+    }
+
+    [Fact]
     public async Task DisabledGlobal_IgnoresOffset()
     {
         using var rig = new Rig();

@@ -200,6 +200,9 @@ public sealed class ShowController : IShowHandler
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
                 break;
+            case NormalizePlaylist normalizePlaylist:
+                OnNormalizePlaylist(client, seq, normalizePlaylist);
+                break;
             case CreateScript createScript:
                 OnCreateScript(client, seq, createScript);
                 break;
@@ -1141,6 +1144,60 @@ public sealed class ShowController : IShowHandler
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
         if (_current?.Track.Id == command.Track)
+        {
+            PushCurrentAudio();
+        }
+        EmitShow();
+    }
+
+    private void OnNormalizePlaylist(ClientId client, long seq, NormalizePlaylist command)
+    {
+        if (!_globalAudio.NormalizeEnabled)
+        {
+            Reject(client, seq, "normalize-disabled");
+            return;
+        }
+        var index = IndexOfPlaylist(command.Playlist);
+        if (index < 0)
+        {
+            Reject(client, seq, "unknown-playlist");
+            return;
+        }
+        var ids = _playlists[index].Entries.Select(e => e.TrackId).Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            Reject(client, seq, "nothing-to-normalize");
+            return;
+        }
+        var changed = false;
+        foreach (var id in ids)
+        {
+            if (!_trackMap.TryGetValue(id, out var existing))
+            {
+                continue;
+            }
+            var measured = _engine.ScanTrackLufs(existing.FilePath);
+            if (double.IsNaN(measured))
+            {
+                continue;
+            }
+            var audio = existing.Defaults.Audio ?? TrackAudioSettings.Default;
+            var adjusted = audio with { MeasuredLufs = measured, NormalizeEnabled = true };
+            if (AudioValidation.ValidateTrack(adjusted) is not null)
+            {
+                continue;
+            }
+            var updated = existing with { Defaults = existing.Defaults with { Audio = adjusted } };
+            _tracks = _tracks.Replace(existing, updated);
+            _trackMap[id] = updated;
+            changed = true;
+        }
+        if (!changed)
+        {
+            Reject(client, seq, "lufs-scan-failed");
+            return;
+        }
+        if (_current is not null && ids.Contains(_current.Track.Id))
         {
             PushCurrentAudio();
         }

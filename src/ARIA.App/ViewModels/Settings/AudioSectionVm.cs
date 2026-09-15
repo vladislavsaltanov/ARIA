@@ -4,6 +4,7 @@ using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.State;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 public sealed partial class AudioSectionVm : ObservableObject
 {
@@ -21,11 +22,43 @@ public sealed partial class AudioSectionVm : ObservableObject
     private double _zoneRedDb = -5.0;
     private double _previewGainDb;
     private bool _previewMuted;
+    private readonly Func<PlaylistId?>? _activePlaylist;
+    private bool _measuringPlaylist;
+    private string _normalizePlaylistStatus = "Не измерялся";
 
-    public AudioSectionVm(Action<Command> submit)
+    public AudioSectionVm(Action<Command> submit, Func<PlaylistId?>? activePlaylist = null)
     {
         _submit = submit;
+        _activePlaylist = activePlaylist;
         EqBands = [.. AudioEq.DefaultFrequencies.Select((f, i) => new EqBandVm(BandLabel(i, f), f, 0, SubmitGlobal))];
+    }
+
+    public string NormalizePlaylistStatus
+    {
+        get => _normalizePlaylistStatus;
+        private set => SetProperty(ref _normalizePlaylistStatus, value);
+    }
+
+    [RelayCommand]
+    private void MeasurePlaylist()
+    {
+        if (_activePlaylist?.Invoke() is not { } id)
+        {
+            return;
+        }
+        _measuringPlaylist = true;
+        NormalizePlaylistStatus = "Замер выполняется…";
+        _submit(new NormalizePlaylist(id));
+    }
+
+    public void OnShow()
+    {
+        if (!_measuringPlaylist)
+        {
+            return;
+        }
+        _measuringPlaylist = false;
+        NormalizePlaylistStatus = "Готово";
     }
 
     public IReadOnlyList<EqBandVm> EqBands { get; }

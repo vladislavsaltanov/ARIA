@@ -122,6 +122,64 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void AudioSection_MeasurePlaylist_SubmitsActiveId()
+    {
+        var submitted = new List<Command>();
+        var id = PlaylistId.New();
+        var section = new AudioSectionVm(submitted.Add, () => id);
+
+        section.MeasurePlaylistCommand.Execute(null);
+
+        var command = Assert.IsType<NormalizePlaylist>(Assert.Single(submitted));
+        Assert.Equal(id, command.Playlist);
+        Assert.Equal("Замер выполняется…", section.NormalizePlaylistStatus);
+
+        section.OnShow();
+
+        Assert.Equal("Готово", section.NormalizePlaylistStatus);
+    }
+
+    [Fact]
+    public void AudioSection_MeasurePlaylist_WithoutActive_SubmitsNothing()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add, () => null);
+
+        section.MeasurePlaylistCommand.Execute(null);
+
+        Assert.Empty(submitted);
+    }
+
+    [Fact]
+    public void TrackAudio_OwnTarget_SubmitsOverride()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), new TrackAudioSettings(0, 0, AudioEq.Flat, true, -20.0));
+
+        editor.OwnTargetLufs = true;
+        editor.TargetLufs = -10.0;
+
+        var last = Assert.IsType<SetTrackAudio>(submitted[^1]);
+        Assert.Equal(-10.0, last.Audio.NormalizeTargetLufs);
+        Assert.Contains("+10.0", editor.NormalizeStatus.Replace(',', '.'));
+    }
+
+    [Fact]
+    public void TrackAudio_OwnTargetOff_SubmitsNull()
+    {
+        var submitted = new List<Command>();
+        var initial = new TrackAudioSettings(0, 0, AudioEq.Flat, true, -10.0, -12.0);
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initial);
+
+        Assert.True(editor.OwnTargetLufs);
+        Assert.Equal(-12.0, editor.TargetLufs);
+
+        editor.OwnTargetLufs = false;
+
+        Assert.Null(Assert.IsType<SetTrackAudio>(submitted[^1]).Audio.NormalizeTargetLufs);
+    }
+
+    [Fact]
     public void AudioSection_Mono_Submits()
     {
         var submitted = new List<Command>();

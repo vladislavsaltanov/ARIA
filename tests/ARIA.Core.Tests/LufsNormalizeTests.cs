@@ -158,6 +158,110 @@ public sealed class LufsNormalizeTests
     }
 
     [Fact]
+    public void NormalizePlaylist_MeasuresAndEnablesAll()
+    {
+        using var h = new Harness();
+        h.Engine.ScanLufs = _ => -10.0;
+        var a = TestShow.Track("a");
+        var b = TestShow.Track("b");
+        var playlist = TestShow.Playlist("Main", TestShow.Entry(a), TestShow.Entry(b));
+        h.Submit(new LoadShow([a, b], [playlist], playlist.Id));
+        EnableGlobal(h);
+
+        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+
+        Assert.Null(h.RejectionOf(seq));
+        Assert.Equal(2, h.Engine.ScannedPaths.Count);
+    }
+
+    [Fact]
+    public void NormalizePlaylist_SkipsFailedScans()
+    {
+        using var h = new Harness();
+        h.Engine.ScanLufs = path => path.Contains("broken") ? double.NaN : -10.0;
+        var a = TestShow.Track("a");
+        var broken = TestShow.Track("broken");
+        var playlist = TestShow.Playlist("Main", TestShow.Entry(a), TestShow.Entry(broken));
+        h.Submit(new LoadShow([a, broken], [playlist], playlist.Id));
+        EnableGlobal(h);
+
+        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+
+        Assert.Null(h.RejectionOf(seq));
+        Assert.Equal(2, h.Engine.ScannedPaths.Count);
+    }
+
+    [Fact]
+    public void NormalizePlaylist_AllFailed_Rejects()
+    {
+        using var h = new Harness();
+        h.Engine.ScanLufs = _ => double.NaN;
+        var a = TestShow.Track("a");
+        var playlist = TestShow.Playlist("Main", TestShow.Entry(a));
+        h.Submit(new LoadShow([a], [playlist], playlist.Id));
+        EnableGlobal(h);
+
+        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+
+        Assert.Equal("lufs-scan-failed", h.RejectionOf(seq)!.Reason);
+    }
+
+    [Fact]
+    public void NormalizePlaylist_UnknownPlaylist_Rejects()
+    {
+        using var h = new Harness();
+        EnableGlobal(h);
+
+        var seq = h.Submit(new NormalizePlaylist(PlaylistId.New()));
+
+        Assert.Equal("unknown-playlist", h.RejectionOf(seq)!.Reason);
+    }
+
+    [Fact]
+    public void NormalizePlaylist_DisabledGlobal_Rejects()
+    {
+        using var h = new Harness();
+        var a = TestShow.Track("a");
+        var playlist = TestShow.Playlist("Main", TestShow.Entry(a));
+        h.Submit(new LoadShow([a], [playlist], playlist.Id));
+
+        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+
+        Assert.Equal("normalize-disabled", h.RejectionOf(seq)!.Reason);
+        Assert.Empty(h.Engine.ScannedPaths);
+    }
+
+    [Fact]
+    public void NormalizePlaylist_PlayingMember_PushesLiveVoice()
+    {
+        using var h = new Harness();
+        h.Engine.ScanLufs = _ => -10.0;
+        var a = TestShow.Track("a");
+        var b = TestShow.Track("b");
+        var playlist = TestShow.Playlist("Main", TestShow.Entry(a), TestShow.Entry(b));
+        h.Submit(new LoadShow([a, b], [playlist], playlist.Id));
+        EnableGlobal(h);
+        h.Submit(new PlayTrack(b.Id));
+        var handle = h.Engine.Last!.Handle;
+
+        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+
+        Assert.Null(h.RejectionOf(seq));
+        var push = Assert.Single(h.Engine.VoiceAudios);
+        Assert.Equal(handle, push.Handle);
+        Assert.Equal(-10.0, push.Audio.MeasuredLufs);
+    }
+
+    [Fact]
+    public void TrackTargetOverride_Validation()
+    {
+        Assert.Equal("lufs-out-of-range", AudioValidation.ValidateTrack(new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeTargetLufs: -5.0)));
+        Assert.Equal("lufs-out-of-range", AudioValidation.ValidateTrack(new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeTargetLufs: -48.0)));
+        Assert.Null(AudioValidation.ValidateTrack(new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeTargetLufs: -10.0)));
+        Assert.Null(AudioValidation.ValidateTrack(TrackAudioSettings.Default));
+    }
+
+    [Fact]
     public void AddsToExistingGain()
     {
         Assert.Equal(-9.0, LufsNormalize.AdjustGain(-3, -10.0, -16.0), 9);
