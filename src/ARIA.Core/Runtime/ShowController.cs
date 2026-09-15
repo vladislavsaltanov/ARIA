@@ -1052,6 +1052,7 @@ public sealed class ShowController : IShowHandler
         }
         _globalAudio = command.Value;
         _engine.SetGlobalAudio(command.Value);
+        PushCurrentAudio();
         EmitMixer();
     }
 
@@ -1104,6 +1105,10 @@ public sealed class ShowController : IShowHandler
         var updated = existing with { Defaults = existing.Defaults with { Audio = command.Audio } };
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
+        if (_current?.Track.Id == command.Track)
+        {
+            PushCurrentAudio();
+        }
         EmitShow();
     }
 
@@ -1135,7 +1140,42 @@ public sealed class ShowController : IShowHandler
         var updated = existing with { Defaults = existing.Defaults with { Audio = adjusted } };
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
+        if (_current?.Track.Id == command.Track)
+        {
+            PushCurrentAudio();
+        }
         EmitShow();
+    }
+
+    private void PushCurrentAudio()
+    {
+        if (_current?.Handle is not { } handle)
+        {
+            return;
+        }
+        if (CurrentEffectiveAudio() is not { } audio)
+        {
+            return;
+        }
+        _engine.SetVoiceAudio(handle, audio);
+    }
+
+    private TrackAudioSettings? CurrentEffectiveAudio()
+    {
+        if (_current is null)
+        {
+            return null;
+        }
+        if (!_trackMap.TryGetValue(_current.Track.Id, out var track))
+        {
+            return null;
+        }
+        if (_current.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location))
+        {
+            var entry = location.Playlist.Entries[location.Index];
+            return entry.Overrides?.Audio ?? track.Defaults.Audio;
+        }
+        return track.Defaults.Audio;
     }
 
     private void OnSetEntryAudio(ClientId client, long seq, SetEntryAudio command)
@@ -1156,6 +1196,10 @@ public sealed class ShowController : IShowHandler
         var entries = playlist.Entries.SetItem(location.Index, entry with { Overrides = overrides });
         _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = entries });
         RebuildEntryMap();
+        if (_current?.Entry is { } currentEntry && currentEntry == command.Entry)
+        {
+            PushCurrentAudio();
+        }
         EmitShow();
     }
 

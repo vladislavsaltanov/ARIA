@@ -1,0 +1,7 @@
+- bug_id: BUG-2026-09-15-normalize-live-voice
+  date: 2026-09-15
+  severity: medium
+  priority: high
+  scope: audio-normalize
+  summary: Normalization inaudible without track restart, LUFS meter static
+  file: specs/bugs/BUG-2026-09-15-normalize-live-voice.md
