@@ -74,3 +74,5 @@ audio import delegate was wired only on OS file drop, never at
 composition, so the button path hit a null delegate. Fix: pass the
 delegate in composition; all error statuses transient so none sticks.
 Tests: Core 178, App 257, Persistence 21, Audio 70, Remote 59.
+
+Status: CLOSED 2026-09-15.

@@ -67,5 +67,5 @@
 
 ## Acceptance
 
-- [ ] Значение в обе стороны, без reload.
-- [ ] `dotnet test` зелен, 0 warnings.
+- [x] Значение в обе стороны, без reload.
+- [x] `dotnet test` зелен, 0 warnings.

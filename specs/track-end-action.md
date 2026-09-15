@@ -2,7 +2,7 @@
 
 ## Status
 
-Global default implemented (2026-09-13). Per-entry UI pending.
+Global default implemented (2026-09-13). Per-entry UI done (e01s01, 0.2.0).
 
 ## Resolution order (implemented)
 

@@ -69,6 +69,6 @@
 
 ## Acceptance
 
-- [ ] Все 9 действий маппятся как раньше.
-- [ ] `toggle-script` шину не трогает.
-- [ ] `dotnet test` зелен, 0 warnings.
+- [x] Все 9 действий маппятся как раньше.
+- [x] `toggle-script` шину не трогает.
+- [x] `dotnet test` зелен, 0 warnings.

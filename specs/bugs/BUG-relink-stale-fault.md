@@ -61,3 +61,5 @@ imported playlist; the view opens one capped aggregated dialog with
 bulk find (multi-pick audio appended to the fresh playlist).
 Successful relink writes a transient replaced status.
 Tests: Core 177, App 249, Persistence 21, Audio 70, Remote 59.
+
+Status: CLOSED 2026-09-15.

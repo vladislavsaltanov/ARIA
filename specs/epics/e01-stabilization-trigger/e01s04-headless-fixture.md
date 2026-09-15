@@ -61,6 +61,6 @@ Dispose чистят только своё (temp-диры).
 
 ## Acceptance
 
-- [ ] Один `StartNew` на весь прогон.
-- [ ] 5 чистых прогонов подряд.
-- [ ] `dotnet test` зелен, 0 warnings.
+- [x] Один `StartNew` на весь прогон.
+- [x] 5 чистых прогонов подряд.
+- [x] `dotnet test` зелен, 0 warnings.

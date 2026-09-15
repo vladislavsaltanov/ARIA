@@ -9,12 +9,12 @@ src/ARIA.Core/Runtime/ShowController.cs (1627 lines) — split into cohort files
 
 ## Affected Stories
 
-- None filed (no specs/release-plan.yaml; repo tracks work via git log)
+- e01 epic (specs/epics/e01-stabilization-trigger/epic.yaml), all 7 stories passing
 
 ## Test Coverage
 
-- tests/ARIA.Core.Tests (174): BusTests, RestoreShowTests, ShowClockTests via public bus
-- tests/ARIA.App.Tests (219), Remote (57), Audio (70): all through public seams
+- tests/ARIA.Core.Tests (178), ARIA.App.Tests (257), Persistence (21), Audio (70), Remote (59):
+  all through public seams (verified 2026-09-15, full suite green)
 - Gap: zero tests pin internal layout; any split keeps suite green by construction
 
 ## Risk: Medium

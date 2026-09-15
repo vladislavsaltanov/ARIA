@@ -46,3 +46,5 @@ mirror filled only from live transport deltas, missing the one emitted
 at startup. Fix: seed the mirror from the bus snapshot in the
 constructor. Tests: Core 178, App 252, Persistence 21, Audio 70,
 Remote 59.
+
+Status: CLOSED 2026-09-15.

@@ -62,6 +62,6 @@ Playback, RowFormat, Clock; тесты переехали за кодом
 
 ## Acceptance
 
-- [ ] God-VM разобран, поведение 1:1.
-- [ ] Тесты те же, по новым домам.
-- [ ] `dotnet test` зелен, 0 warnings.
+- [x] God-VM разобран, поведение 1:1.
+- [x] Тесты те же, по новым домам.
+- [x] `dotnet test` зелен, 0 warnings.
