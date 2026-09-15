@@ -1339,6 +1339,11 @@ public sealed class ShowController : IShowHandler
 
     private void ApplyEndAction()
     {
+        if (_queue.Count > 0)
+        {
+            AdvanceFromBoundary();
+            return;
+        }
         switch (_current!.Settings.EndAction)
         {
             case EndAction.Pause:

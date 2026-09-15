@@ -150,6 +150,60 @@ public sealed class PlaybackTests
     }
 
     [Fact]
+    public void EndAction_Pause_WithQueuedItem_AdvancesToQueue()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one", EndAction.Pause);
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new EnqueueTrack(t2.Id));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+        Assert.Empty(h.Snapshot.Queue.Items);
+    }
+
+    [Fact]
+    public void EndAction_Stop_WithQueuedItem_AdvancesToQueue()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one", EndAction.Stop);
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new EnqueueTrack(t2.Id));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+        Assert.Empty(h.Snapshot.Queue.Items);
+    }
+
+    [Fact]
+    public void EndAction_Replay_WithQueuedItem_AdvancesToQueue()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one", EndAction.Replay);
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new EnqueueTrack(t2.Id));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+        Assert.Empty(h.Snapshot.Queue.Items);
+    }
+
+    [Fact]
     public void Queue_PlaysFirst_ThenPlaylistContinuesFromCursor()
     {
         using var h = new Harness();
