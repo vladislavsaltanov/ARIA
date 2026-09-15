@@ -23,6 +23,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<TopLevel?>? _topLevel;
     private Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? _audioImport;
+    private readonly Func<TrackId, TrackAudioSettings?>? _trackAudio;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private string? _awaitedPlaylistName;
@@ -124,7 +125,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null)
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -134,6 +135,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         _sync = sync;
         _topLevel = topLevel;
         _audioImport = audioImport;
+        _trackAudio = trackAudio;
         _subscription = bus.Subscribe(Apply);
         var snapshot = bus.Snapshot();
         foreach (var id in snapshot.Transport.Faulted)
@@ -476,12 +478,18 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public TrackAudioVm CreateEntryAudioEditor(EntryVm entry)
     {
-        var initial = entry.Overrides?.Audio;
-        if (initial is null)
-        {
-            initial = _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Audio;
-        }
-        var editor = new TrackAudioVm(Submit, entry.TrackId, initial, entry.Id, _bus.Snapshot().Mixer.EffectiveGlobal.NormalizeTargetLufs)
+        var global = _bus.Snapshot().Mixer.EffectiveGlobal;
+        var initial = entry.Overrides?.Audio
+            ?? _trackAudio?.Invoke(entry.TrackId)
+            ?? _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Audio;
+        var editor = new TrackAudioVm(
+            Submit,
+            entry.TrackId,
+            initial,
+            entry.Id,
+            global.NormalizeTargetLufs,
+            global.NormalizeEnabled,
+            () => _trackAudio?.Invoke(entry.TrackId)?.MeasuredLufs)
         {
             InheritTrackSettings = entry.Overrides?.Audio is null,
         };

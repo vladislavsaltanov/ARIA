@@ -50,6 +50,36 @@ public sealed class PlaylistsViewModelTests
         Assert.Equal(-23.0, follower.NormalizeTargetLufs);
     }
 
+    [Fact]
+    public void CreateEntryAudioEditor_PrefersControllerAudio()
+    {
+        var (bus, _, _) = Setup();
+        bus.Submit(new ClientId("setup"), 9, new SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true }));
+        var measured = new TrackAudioSettings(0, 0, AudioEq.Flat, true, -10.0);
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack], trackAudio: _ => measured);
+
+        var editor = vm.CreateEntryAudioEditor(vm.Playlists[0].Entries[0]);
+
+        Assert.Equal("Измерено -10.0 LUFS, поправка -6.0 дБ", editor.NormalizeStatus);
+    }
+
+    [Fact]
+    public void CreateEntryAudioEditor_RefreshPicksUpMeasurement()
+    {
+        var (bus, _, _) = Setup();
+        bus.Submit(new ClientId("setup"), 9, new SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true }));
+        var current = new TrackAudioSettings(0, 0, AudioEq.Flat, true, null);
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack], trackAudio: _ => current);
+
+        var editor = vm.CreateEntryAudioEditor(vm.Playlists[0].Entries[0]);
+        Assert.Equal("Включена, измерение не выполнено", editor.NormalizeStatus);
+
+        current = new TrackAudioSettings(0, 0, AudioEq.Flat, true, -10.0);
+        editor.RefreshMeasurement();
+
+        Assert.Equal("Измерено -10.0 LUFS, поправка -6.0 дБ", editor.NormalizeStatus);
+    }
+
     private static (CommandBus Bus, Playlist Playlist, PlaylistEntry Entry1) Setup()
     {
         var entry1 = new PlaylistEntry(EntryId.New(), TestTrack.Id);

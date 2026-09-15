@@ -20,13 +20,17 @@ public sealed partial class TrackAudioVm : ObservableObject
     private double _normalizeTargetLufs;
     private bool _normalizeEnabled;
     private double? _measuredLufs;
+    private readonly bool _globalNormalizeEnabled;
+    private readonly Func<double?>? _measureReader;
 
-    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs)
+    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null)
     {
         _submit = submit;
         _trackId = trackId;
         _entryId = entryId;
-        _normalizeTargetLufs = Math.Clamp(normalizeTargetLufs, -36.0, -12.0);
+        _normalizeTargetLufs = Math.Clamp(normalizeTargetLufs, -36.0, -6.0);
+        _globalNormalizeEnabled = globalNormalizeEnabled;
+        _measureReader = measureReader;
         var audio = initial ?? TrackAudioSettings.Default;
         _normalizeEnabled = audio.NormalizeEnabled;
         _measuredLufs = audio.MeasuredLufs;
@@ -55,10 +59,23 @@ public sealed partial class TrackAudioVm : ObservableObject
         }
     }
 
+    public void RefreshMeasurement()
+    {
+        if (_measureReader?.Invoke() is { } measured && measured != _measuredLufs)
+        {
+            _measuredLufs = measured;
+            OnPropertyChanged(nameof(NormalizeStatus));
+        }
+    }
+
     public string NormalizeStatus
     {
         get
         {
+            if (!_globalNormalizeEnabled)
+            {
+                return "Выключена в настройках Звука";
+            }
             if (!_normalizeEnabled)
             {
                 return "Нормализация выключена";
@@ -126,6 +143,10 @@ public sealed partial class TrackAudioVm : ObservableObject
     [RelayCommand]
     private void Normalize()
     {
+        if (!_globalNormalizeEnabled)
+        {
+            return;
+        }
         NormalizeEnabled = true;
         NormalizeRequest?.Invoke(_trackId);
     }

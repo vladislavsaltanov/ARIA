@@ -14,9 +14,10 @@ public sealed class LufsGlobalTests
     [Fact]
     public void TargetOutOfRange_Rejects()
     {
-        Assert.Equal("lufs-out-of-range", AudioValidation.ValidateGlobal(GlobalAudioSettings.Default with { NormalizeTargetLufs = -6.0 }));
+        Assert.Equal("lufs-out-of-range", AudioValidation.ValidateGlobal(GlobalAudioSettings.Default with { NormalizeTargetLufs = -5.0 }));
         Assert.Equal("lufs-out-of-range", AudioValidation.ValidateGlobal(GlobalAudioSettings.Default with { NormalizeTargetLufs = -48.0 }));
         Assert.Null(AudioValidation.ValidateGlobal(GlobalAudioSettings.Default with { NormalizeTargetLufs = -23.0 }));
+        Assert.Null(AudioValidation.ValidateGlobal(GlobalAudioSettings.Default with { NormalizeTargetLufs = -6.0 }));
     }
 
     [Fact]

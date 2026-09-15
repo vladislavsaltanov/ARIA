@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 
 public partial class PlaylistCenter : UserControl
 {
@@ -451,6 +452,7 @@ public partial class PlaylistCenter : UserControl
             return;
         }
         ResetDragState();
+        var editor = viewModel.CreateEntryAudioEditor(entry);
         var dialog = new Window
         {
             Title = $"Звук — {entry.DisplayName}",
@@ -460,8 +462,15 @@ public partial class PlaylistCenter : UserControl
             SizeToContent = SizeToContent.Height,
             CanResize = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Content = new TrackAudioView { DataContext = viewModel.CreateEntryAudioEditor(entry) },
+            Content = new TrackAudioView { DataContext = editor },
         };
+        using var refresh = DispatcherTimer.Run(
+            () =>
+            {
+                editor.RefreshMeasurement();
+                return dialog.IsVisible;
+            },
+            TimeSpan.FromMilliseconds(500));
         await dialog.ShowDialog(owner);
     }
 

@@ -119,7 +119,7 @@ public sealed partial class AudioSectionVm : ObservableObject
         get => _normalizeTargetLufs;
         set
         {
-            if (SetProperty(ref _normalizeTargetLufs, Math.Clamp(value, -36.0, -12.0)))
+            if (SetProperty(ref _normalizeTargetLufs, Math.Clamp(value, -36.0, -6.0)))
             {
                 SubmitGlobal();
             }

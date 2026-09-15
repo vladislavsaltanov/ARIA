@@ -82,7 +82,7 @@ public static class AudioValidation
     private const double PanMax = 1.0;
     private const double HpfMaxHz = 400.0;
     private const double LufsTargetMinLufs = -36.0;
-    private const double LufsTargetMaxLufs = -12.0;
+    private const double LufsTargetMaxLufs = -6.0;
     private const double MeterZoneMinDb = -60.0;
     private const double MeterZoneMaxDb = 0.0;
     private const double TrackGainMinDb = -60.0;

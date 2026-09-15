@@ -299,6 +299,35 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void TrackAudio_Normalize_GlobalOff_DoesNothing()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), null, null, -16.0, false);
+        var calls = 0;
+        editor.NormalizeRequest = _ => calls++;
+
+        editor.NormalizeCommand.Execute(null);
+
+        Assert.Equal(0, calls);
+        Assert.Empty(submitted);
+        Assert.Equal("Выключена в настройках Звука", editor.NormalizeStatus);
+    }
+
+    [Fact]
+    public void TrackAudio_RefreshMeasurement_UpdatesStatus()
+    {
+        double? measured = null;
+        var editor = new TrackAudioVm(_ => { }, TrackId.New(), new TrackAudioSettings(0, 0, AudioEq.Flat, true, null), null, -16.0, true, () => measured);
+
+        Assert.Equal("Включена, измерение не выполнено", editor.NormalizeStatus);
+
+        measured = -10.0;
+        editor.RefreshMeasurement();
+
+        Assert.Equal("Измерено -10.0 LUFS, поправка -6.0 дБ", editor.NormalizeStatus);
+    }
+
+    [Fact]
     public void TrackAudio_Normalize_WithoutHook_DoesNotThrow()
     {
         var editor = new TrackAudioVm(_ => { }, TrackId.New());

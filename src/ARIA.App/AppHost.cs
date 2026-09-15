@@ -40,6 +40,7 @@ public sealed class AppHost : IAsyncDisposable
     private ShowAutosaver? _autosaver;
     private AriaAudioEngine? _engine;
     private CommandBus? _busRef;
+    private ShowController? _controller;
     private System.Threading.Timer? _clockTimer;
     private long _seq;
     private bool _started;
@@ -98,6 +99,7 @@ public sealed class AppHost : IAsyncDisposable
         _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters, CreatePreviewSink(), PreviewTap);
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
+        _controller = controller;
 
         Bus = _ownedBus = new CommandBus(controller, BusMode.Pumped);
         _busRef = _ownedBus;
@@ -152,6 +154,8 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     public void Submit(Command command) => Bus.Submit(new ClientId("app"), Interlocked.Increment(ref _seq), command);
+
+    public TrackAudioSettings? GetTrackAudio(TrackId id) => _controller?.TrackAudio(id);
 
     public async Task<ImportReport> ImportTracksAsync(IReadOnlyList<string> paths, IProgress<string>? progress = null)
     {

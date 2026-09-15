@@ -248,6 +248,9 @@ public sealed class ShowController : IShowHandler
         }
     }
 
+    public TrackAudioSettings? TrackAudio(TrackId id) =>
+        _trackMap.TryGetValue(id, out var track) ? track.Defaults.Audio : null;
+
     public ShowSnapshot Snapshot() => new(
         _showVersion,
         new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction),

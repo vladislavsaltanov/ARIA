@@ -104,7 +104,7 @@ internal static class AudioMapper
                 dto.Limiter is null
                     ? LimiterSettings.Default
                     : new LimiterSettings(dto.Limiter.Enabled, dto.Limiter.ThresholdDb, dto.Limiter.ReleaseMs),
-                dto.NormalizeTargetLufs is < -36.0 or > -12.0 ? -16.0 : dto.NormalizeTargetLufs,
+                dto.NormalizeTargetLufs is < -36.0 or > -6.0 ? -16.0 : dto.NormalizeTargetLufs,
                 dto.MeterZones is null
                     ? null
                     : new LufsMeterZones(dto.MeterZones.GreenDb, dto.MeterZones.YellowDb, dto.MeterZones.RedDb),
