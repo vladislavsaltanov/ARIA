@@ -73,6 +73,17 @@
       <div class="lufs-bar"><div id="lufs-fill" class="lufs-fill"></div></div>
     </section>
 
+    <section class="preview">
+      <h2>МОНИТОР</h2>
+      <div class="preview-row">
+        <button id="btn-preview-play" class="pad">▶<span>ПРЕВЬЮ</span></button>
+        <button id="btn-preview-stop" class="pad">■<span>СТОП</span></button>
+        <input id="preview-gain" class="master" type="range" min="0" max="125" step="1" value="100">
+        <button id="btn-preview-mute" class="mute">MUTE</button>
+      </div>
+      <audio id="preview-audio" class="preview-audio" controls preload="none"></audio>
+    </section>
+
     <section class="queue">
       <h2>ОЧЕРЕДЬ <button id="btn-queue-clear" class="forget">ОЧИСТИТЬ</button> <button id="btn-forget" class="forget">забыть пару</button></h2>
       <ol id="queue"></ol>

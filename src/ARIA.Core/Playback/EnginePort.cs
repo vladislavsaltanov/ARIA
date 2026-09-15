@@ -90,5 +90,7 @@ public interface IAudioEngine
     {
     }
 
+    double ScanTrackLufs(string filePath) => double.NaN;
+
     event Action<StreamEvent>? Events;
 }

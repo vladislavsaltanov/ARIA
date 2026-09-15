@@ -29,6 +29,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public ClockSectionVm Clock { get; }
 
+    public AudioSectionVm Audio { get; }
+
     public SettingsViewModel(
         ICommandBus bus,
         HotkeyService hotkeys,
@@ -43,11 +45,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         Clock = new ClockSectionVm(Submit);
+        Audio = new AudioSectionVm(Submit);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
         Playback = new PlaybackSectionVm(Submit, SnapshotSettings, SaveSettings, settings.DefaultEndAction);
         Engine.ApplyMixer(bus.Snapshot().Mixer);
+        Audio.ApplyMixer(bus.Snapshot().Mixer);
         Engine.ApplySmoothing(settings.Smoothing);
         if (bus.Snapshot().Mixer.Smoothing != settings.Smoothing)
         {
@@ -71,6 +75,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         if (e is MixerDelta delta)
         {
             Post(() => Engine.ApplyMixer(delta.State));
+            Post(() => Audio.ApplyMixer(delta.State));
         }
     }
 

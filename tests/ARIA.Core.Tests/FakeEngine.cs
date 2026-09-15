@@ -29,6 +29,14 @@ public sealed class FakeEngine : IAudioEngine
     public List<bool> PreviewMutes { get; } = [];
     public List<GlobalAudioSettings> GlobalAudios { get; } = [];
     public List<(StreamHandle Handle, TrackAudioSettings Audio)> VoiceAudios { get; } = [];
+    public Func<string, double> ScanLufs { get; set; } = _ => double.NaN;
+    public List<string> ScannedPaths { get; } = [];
+
+    public double ScanTrackLufs(string filePath)
+    {
+        ScannedPaths.Add(filePath);
+        return ScanLufs(filePath);
+    }
 
     public event Action<StreamEvent>? Events;
 

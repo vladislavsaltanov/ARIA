@@ -13,6 +13,7 @@ public static class SettingsSectionRegistry
         new("clock", "Часы", () => new ClockSection()),
         new("rowformat", "Формат строк", () => new RowFormatSection()),
         new("playback", "Воспроизведение", () => new PlaybackSection()),
+        new("audio", "Звук", () => new AudioSection()),
         new("engine", "Движок", () => new EngineSection()),
     ];
 }

@@ -286,6 +286,24 @@ body {
 .lufs-fill.hot {
   background: var(--danger);
 }
+.preview {
+  margin-bottom: 20px;
+}
+.preview h2 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+.preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.preview-audio {
+  width: 100%;
+}
 
 .queue h2 {
   font-size: 12px;

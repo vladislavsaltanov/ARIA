@@ -76,6 +76,8 @@ public sealed record SetPreviewGain(double GainDb) : Command;
 
 public sealed record SetPreviewMuted(bool Muted) : Command;
 
+public sealed record NormalizeTrackToLufs(TrackId Track, double TargetLufs) : Command;
+
 public sealed record CreateScript(string Name) : Command;
 
 public sealed record RenameScript(ScriptId Id, string Name) : Command;

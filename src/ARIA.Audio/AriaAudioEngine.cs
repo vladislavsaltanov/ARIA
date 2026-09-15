@@ -1,5 +1,6 @@
 namespace Aria.Audio;
 
+using System.Buffers;
 using System.Collections.Concurrent;
 using Aria.Core.Model;
 using Aria.Core.Playback;
@@ -173,6 +174,69 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         ArgumentNullException.ThrowIfNull(audio);
         Volatile.Write(ref _globalAudio, audio);
     }
+
+    public double ScanTrackLufs(string filePath)
+    {
+        try
+        {
+            var source = _sourceFactory.Open(filePath, TimeSpan.Zero, null);
+            if (source is null || source.Channels <= 0 || source.SampleRate <= 0)
+            {
+                (source as IDisposable)?.Dispose();
+                return double.NaN;
+            }
+            using (source as IDisposable)
+            {
+                return MeasureIntegratedLufs(source);
+            }
+        }
+        catch
+        {
+            return double.NaN;
+        }
+    }
+
+    private static double MeasureIntegratedLufs(ISampleSource source)
+    {
+        var channels = source.Channels;
+        var pre = new BiquadFilter[channels];
+        var post = new BiquadFilter[channels];
+        for (var channel = 0; channel < channels; channel++)
+        {
+            pre[channel] = BiquadFilter.KWeightingPreFilter(source.SampleRate);
+            post[channel] = BiquadFilter.KWeightingHighPass(source.SampleRate);
+        }
+        var buffer = ArrayPool<float>.Shared.Rent(Math.Min(65536, 4096 * channels));
+        try
+        {
+            double sum = 0;
+            long frames = 0;
+            var frameCap = (long)source.SampleRate * 30;
+            int read;
+            while (frames < frameCap && (read = source.ReadFrames(buffer.AsSpan(0, buffer.Length / channels * channels))) > 0)
+            {
+                for (var frame = 0; frame < read; frame++)
+                {
+                    for (var channel = 0; channel < channels; channel++)
+                    {
+                        var filtered = post[channel].ProcessSample(pre[channel].ProcessSample(buffer[frame * channels + channel]));
+                        sum += filtered * filtered;
+                    }
+                }
+                frames += read;
+            }
+            if (frames == 0 || !(sum > 0.0))
+            {
+                return double.NaN;
+            }
+            return -0.691 + 10.0 * Math.Log10(sum / frames);
+        }
+        finally
+        {
+            ArrayPool<float>.Shared.Return(buffer);
+        }
+    }
+
 
     public void DisposeStream(StreamHandle handle)
     {

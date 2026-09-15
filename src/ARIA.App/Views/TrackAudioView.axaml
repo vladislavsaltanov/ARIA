@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
+             x:Class="Aria.App.Views.TrackAudioView"
+             x:DataType="vm:TrackAudioVm">
+  <StackPanel Spacing="8" Margin="16">
+    <TextBlock Text="Звук вхождения" FontSize="15" FontWeight="SemiBold"/>
+    <CheckBox Content="Наследовать настройки трека" IsChecked="{Binding InheritTrackSettings}" FontSize="12"
+              IsVisible="{Binding IsEntry}"/>
+    <Grid ColumnDefinitions="Auto,*,Auto">
+      <TextBlock Text="громкость" FontSize="12" VerticalAlignment="Center"/>
+      <Slider Grid.Column="1" Minimum="-60" Maximum="12" Value="{Binding GainDb, Mode=TwoWay}"
+              VerticalAlignment="Center" Margin="14,0"/>
+      <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontSize="11"
+                 VerticalAlignment="Center" Width="64"/>
+    </Grid>
+    <Grid ColumnDefinitions="Auto,*,Auto">
+      <TextBlock Text="баланс" FontSize="12" VerticalAlignment="Center"/>
+      <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Pan, Mode=TwoWay}"
+              VerticalAlignment="Center" Margin="14,0"/>
+      <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" FontSize="11"
+                 VerticalAlignment="Center" Width="64"/>
+    </Grid>
+    <TextBlock Text="Эквалайзер" FontSize="12" Margin="0,4,0,0"/>
+    <ItemsControl ItemsSource="{Binding EqBands}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vms:AudioSectionVm+EqBandVm">
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+            <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center" Width="52"/>
+            <Slider Grid.Column="1" Minimum="-15" Maximum="15" Value="{Binding GainDb, Mode=TwoWay}"
+                    VerticalAlignment="Center" Margin="14,0"/>
+            <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontSize="11"
+                       VerticalAlignment="Center" Width="64"/>
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+      <Button Content="Прослушать" Command="{Binding PreviewCommand}"/>
+      <Button Content="Стоп" Command="{Binding StopPreviewCommand}"/>
+      <Button Content="Выровнять −16 LUFS" Command="{Binding NormalizeCommand}"/>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

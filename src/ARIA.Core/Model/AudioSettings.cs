@@ -37,6 +37,15 @@ public sealed record TrackAudioSettings(double GainDb, double Pan, AudioEq Eq)
     public static TrackAudioSettings Default { get; } = new(0, 0, AudioEq.Flat);
 }
 
+public static class LufsNormalize
+{
+    private const double GainMinDb = -60.0;
+    private const double GainMaxDb = 12.0;
+
+    public static double AdjustGain(double baseGainDb, double measuredLufs, double targetLufs)
+        => Math.Clamp(baseGainDb + targetLufs - measuredLufs, GainMinDb, GainMaxDb);
+}
+
 public static class AudioValidation
 {
     private const float EqGainMinDb = -15.0f;

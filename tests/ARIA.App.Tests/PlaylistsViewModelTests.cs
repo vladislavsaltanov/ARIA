@@ -12,6 +12,38 @@ public sealed class PlaylistsViewModelTests
     private static readonly Track TestTrack = new(
         TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
 
+    [Fact]
+    public void CreateEntryAudioEditor_InheritsTrackAudioByDefault()
+    {
+        var trackAudio = new TrackAudioSettings(-6, 0.5, AudioEq.Flat);
+        var track = new Track(TestTrack.Id, TestTrack.FilePath, TestTrack.DefaultName, TestTrack.Duration, new TrackDefaults(Audio: trackAudio));
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [track]);
+
+        var editor = vm.CreateEntryAudioEditor(vm.Playlists[0].Entries[0]);
+
+        Assert.True(editor.IsEntry);
+        Assert.True(editor.InheritTrackSettings);
+        Assert.Equal(-6, editor.GainDb);
+        Assert.Equal(0.5, editor.Pan);
+    }
+
+    [Fact]
+    public void CreateEntryAudioEditor_UsesEntryOverride()
+    {
+        var entryAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);
+        var entry1 = new PlaylistEntry(EntryId.New(), TestTrack.Id, new PlaylistOverrides(Audio: entryAudio));
+        var playlist = new Playlist(PlaylistId.New(), "Main", [entry1]);
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+
+        var editor = vm.CreateEntryAudioEditor(vm.Playlists[0].Entries[0]);
+
+        Assert.False(editor.InheritTrackSettings);
+        Assert.Equal(-3, editor.GainDb);
+    }
+
     private static (CommandBus Bus, Playlist Playlist, PlaylistEntry Entry1) Setup()
     {
         var entry1 = new PlaylistEntry(EntryId.New(), TestTrack.Id);

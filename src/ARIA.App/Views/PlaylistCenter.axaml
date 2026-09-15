@@ -99,6 +99,7 @@
                   <MenuItem Header="Далее" Tag="advance" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
                 </MenuItem>
                 <MenuItem Header="Убрать из плейлиста" Click="OnRemoveClick"/>
+                <MenuItem Header="Звук…" Click="OnAudioClick"/>
               </ContextMenu>
             </Border.ContextMenu>
             <Grid ColumnDefinitions="28,*,Auto,58,110,32">

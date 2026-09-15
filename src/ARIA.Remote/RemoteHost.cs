@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
+using Aria.Audio;
 using Aria.Core.Commands;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
@@ -31,6 +32,7 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly RemoteOptions _options;
     private readonly PlaybackMonitor? _monitor;
     private readonly MeterMonitor? _meters;
+    private readonly SampleRing? _previewTap;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -53,12 +55,13 @@ public sealed class RemoteHost : IAsyncDisposable
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, SampleRing? previewTap = null)
     {
         _bus = bus;
         _options = options;
         _monitor = monitor;
         _meters = meters;
+        _previewTap = previewTap;
     }
 
     public Uri HttpEndpoint { get; private set; } = new("http://127.0.0.1:0/");
@@ -81,6 +84,7 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapGet("/health", () => Results.Text("ok"));
         app.MapPost("/auth", AuthenticateAsync);
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
+        app.MapGet("/preview", PreviewAsync);
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
@@ -141,6 +145,15 @@ public sealed class RemoteHost : IAsyncDisposable
         && (_options.Credentials is null
             ? token == _options.AuthToken
             : _sessionTokens.ContainsKey(token));
+
+    private IResult PreviewAsync(HttpContext context)
+    {
+        if (!IsTokenValid(context.Request.Query["token"]))
+        {
+            return Results.Unauthorized();
+        }
+        return new PreviewCapture(_previewTap);
+    }
 
     private async Task HandleWebSocket(HttpContext context)
     {

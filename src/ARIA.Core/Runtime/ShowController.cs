@@ -14,6 +14,8 @@ public sealed class ShowController : IShowHandler
     private const double SilenceDb = -80.0;
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
+    private const double LufsTargetMin = -36.0;
+    private const double LufsTargetMax = -12.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
@@ -196,6 +198,9 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetPreviewMuted setPreviewMuted:
                 OnSetPreviewMuted(setPreviewMuted);
+                break;
+            case NormalizeTrackToLufs normalize:
+                OnNormalizeTrackToLufs(client, seq, normalize);
                 break;
             case CreateScript createScript:
                 OnCreateScript(client, seq, createScript);
@@ -1096,6 +1101,37 @@ public sealed class ShowController : IShowHandler
             return;
         }
         var updated = existing with { Defaults = existing.Defaults with { Audio = command.Audio } };
+        _tracks = _tracks.Replace(existing, updated);
+        _trackMap[command.Track] = updated;
+        EmitShow();
+    }
+
+    private void OnNormalizeTrackToLufs(ClientId client, long seq, NormalizeTrackToLufs command)
+    {
+        if (command.TargetLufs is < LufsTargetMin or > LufsTargetMax)
+        {
+            Reject(client, seq, "lufs-out-of-range");
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var existing))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var measured = _engine.ScanTrackLufs(existing.FilePath);
+        if (double.IsNaN(measured))
+        {
+            Reject(client, seq, "lufs-scan-failed");
+            return;
+        }
+        var current = existing.Defaults.Audio ?? TrackAudioSettings.Default;
+        var adjusted = current with { GainDb = LufsNormalize.AdjustGain(current.GainDb, measured, command.TargetLufs) };
+        if (AudioValidation.ValidateTrack(adjusted) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        var updated = existing with { Defaults = existing.Defaults with { Audio = adjusted } };
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
         EmitShow();

@@ -70,6 +70,14 @@ internal static class CommandCodec
                 "move_queue_item" => new MoveQueueItem(IntOf(commandElement, "from"), IntOf(commandElement, "to")),
                 "set_master_gain" => new SetMasterGain(DoubleOf(commandElement, "gain_db")),
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
+                "set_global_audio" => ParseSetGlobalAudio(commandElement),
+                "set_track_audio" => ParseSetTrackAudio(commandElement),
+                "set_entry_audio" => ParseSetEntryAudio(commandElement),
+                "start_preview_track" => new StartPreviewTrack(new TrackId(GuidOf(commandElement, "track"))),
+                "stop_preview" => new StopPreview(),
+                "set_preview_gain" => new SetPreviewGain(DoubleOf(commandElement, "gain_db")),
+                "set_preview_muted" => new SetPreviewMuted(BoolOf(commandElement, "muted")),
+                "normalize_track_to_lufs" => ParseNormalizeTrackToLufs(commandElement),
                 "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
                 "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
@@ -95,6 +103,83 @@ internal static class CommandCodec
             return true;
         }
     }
+
+    private static SetGlobalAudio ParseSetGlobalAudio(JsonElement element)
+    {
+        var value = new GlobalAudioSettings(
+            DoubleOf(element, "pan"),
+            BoolOf(element, "mono"),
+            DoubleOf(element, "hpf_hz"),
+            ParseAudioEq(element.GetProperty("eq")),
+            ParseLimiter(element.GetProperty("limiter")));
+        if (AudioValidation.ValidateGlobal(value) is { } reason)
+        {
+            throw new FormatException(reason);
+        }
+        return new SetGlobalAudio(value);
+    }
+
+    private static SetTrackAudio ParseSetTrackAudio(JsonElement element) =>
+        new(new TrackId(GuidOf(element, "track")), ParseTrackAudio(element));
+
+    private static NormalizeTrackToLufs ParseNormalizeTrackToLufs(JsonElement element)
+    {
+        var target = DoubleOf(element, "target_lufs");
+        if (target is < -36.0 or > -12.0)
+        {
+            throw new FormatException("lufs-out-of-range");
+        }
+        return new NormalizeTrackToLufs(new TrackId(GuidOf(element, "track")), target);
+    }
+
+    private static SetEntryAudio ParseSetEntryAudio(JsonElement element)
+    {
+        TrackAudioSettings? audio = null;
+        if (element.TryGetProperty("audio", out var audioElement)
+            && audioElement.ValueKind == JsonValueKind.Object)
+        {
+            audio = ParseTrackAudio(audioElement);
+        }
+        return new SetEntryAudio(new EntryId(GuidOf(element, "entry")), audio);
+    }
+
+    private static TrackAudioSettings ParseTrackAudio(JsonElement element)
+    {
+        var value = new TrackAudioSettings(
+            DoubleOf(element, "gain_db"),
+            DoubleOf(element, "pan"),
+            ParseAudioEq(element.GetProperty("eq")));
+        if (AudioValidation.ValidateTrack(value) is { } reason)
+        {
+            throw new FormatException(reason);
+        }
+        return value;
+    }
+
+    private static AudioEq ParseAudioEq(JsonElement element)
+    {
+        if (!element.TryGetProperty("bands", out var bandsElement)
+            || bandsElement.ValueKind != JsonValueKind.Array
+            || bandsElement.GetArrayLength() != AudioEq.DefaultFrequencies.Length)
+        {
+            throw new FormatException("eq-requires-7-bands");
+        }
+        var builder = ImmutableArray.CreateBuilder<EqBand>();
+        foreach (var band in bandsElement.EnumerateArray())
+        {
+            builder.Add(new EqBand(
+                (float)band.GetProperty("freq_hz").GetDouble(),
+                (float)band.GetProperty("gain_db").GetDouble(),
+                (float)band.GetProperty("q").GetDouble()));
+        }
+        return new AudioEq(builder.ToImmutable());
+    }
+
+    private static LimiterSettings ParseLimiter(JsonElement element) =>
+        new(
+            element.GetProperty("enabled").GetBoolean(),
+            element.GetProperty("threshold_db").GetDouble(),
+            element.GetProperty("release_ms").GetDouble());
 
     private static AddEntry ParseAddEntry(JsonElement element)
     {

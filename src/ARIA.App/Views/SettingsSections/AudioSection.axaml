@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aria.App.ViewModels"
+             xmlns:vms="using:Aria.App.ViewModels.Settings"
+             x:Class="Aria.App.Views.SettingsSections.AudioSection"
+             x:DataType="vm:SettingsViewModel">
+  <Border Classes="section" x:DataType="vms:AudioSectionVm" DataContext="{Binding Audio}">
+    <StackPanel>
+      <TextBlock Text="Звук" Classes="sectionTitle"/>
+      <TextBlock Text="Эквалайзер" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,0,0,4"/>
+      <ItemsControl ItemsSource="{Binding EqBands}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vms:AudioSectionVm+EqBandVm">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+              <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="52"/>
+              <Slider Grid.Column="1" Minimum="-15" Maximum="15" Value="{Binding GainDb, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0"/>
+              <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontFamily="{StaticResource MonoFont}"
+                         FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <CheckBox Content="лимитер" IsChecked="{Binding LimiterEnabled}" FontSize="12" Margin="0,10,0,0"/>
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+        <TextBlock Text="порог" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <Slider Grid.Column="1" Minimum="-24" Maximum="0" Value="{Binding LimiterThresholdDb, Mode=TwoWay}"
+                VerticalAlignment="Center" Margin="14,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding LimiterThresholdDb, StringFormat={}{0:0.0} дБ}" FontFamily="{StaticResource MonoFont}"
+                   FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+        <TextBlock Text="восстановление" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <Slider Grid.Column="1" Minimum="10" Maximum="1000" Value="{Binding LimiterReleaseMs, Mode=TwoWay}"
+                VerticalAlignment="Center" Margin="14,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding LimiterReleaseMs, StringFormat={}{0:0} мс}" FontFamily="{StaticResource MonoFont}"
+                   FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+        <TextBlock Text="баланс" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Pan, Mode=TwoWay}"
+                VerticalAlignment="Center" Margin="14,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" FontFamily="{StaticResource MonoFont}"
+                   FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+        <TextBlock Text="срез низов" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <Slider Grid.Column="1" Minimum="0" Maximum="400" Value="{Binding HpfHz, Mode=TwoWay}"
+                VerticalAlignment="Center" Margin="14,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding HpfHz, StringFormat={}{0:0} Гц}" FontFamily="{StaticResource MonoFont}"
+                   FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
+      </Grid>
+      <CheckBox Content="моно" IsChecked="{Binding Mono}" FontSize="12" Margin="0,6,0,0"/>
+      <TextBlock Text="Прослушка" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,10,0,0"/>
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+        <TextBlock Text="громкость" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <Slider Grid.Column="1" Minimum="-80" Maximum="12" Value="{Binding PreviewGainDb, Mode=TwoWay}"
+                VerticalAlignment="Center" Margin="14,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding PreviewGainDb, StringFormat={}{0:0.0} дБ}" FontFamily="{StaticResource MonoFont}"
+                   FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
+      </Grid>
+      <CheckBox Content="заглушить прослушку" IsChecked="{Binding PreviewMuted}" FontSize="12" Margin="0,6,0,0"/>
+    </StackPanel>
+  </Border>
+</UserControl>

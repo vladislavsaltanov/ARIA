@@ -35,6 +35,11 @@
     mute: document.getElementById("btn-mute"),
     lufsValue: document.getElementById("lufs-value"),
     lufsFill: document.getElementById("lufs-fill"),
+    previewPlay: document.getElementById("btn-preview-play"),
+    previewStop: document.getElementById("btn-preview-stop"),
+    previewGain: document.getElementById("preview-gain"),
+    previewMute: document.getElementById("btn-preview-mute"),
+    previewAudio: document.getElementById("preview-audio"),
     playlists: document.getElementById("playlists"),
     scriptSection: document.getElementById("script-section"),
     scriptTabs: document.getElementById("script-tabs"),
@@ -1372,6 +1377,43 @@
   el.mute.addEventListener("click", () => {
     if (!state.mixer) return;
     send("set_muted", { muted: !state.mixer.muted });
+    vibrate();
+  });
+
+  var previewMuted = false;
+
+  el.previewPlay.addEventListener("click", () => {
+    var current = state.transport && state.transport.current;
+    if (!current || !current.trackId) return;
+    send("start_preview_track", { track: current.trackId });
+    ensureToken().then((token) => {
+      if (!token) return;
+      el.previewAudio.src = "/preview?token=" + encodeURIComponent(token);
+      el.previewAudio.play().catch(() => {});
+    });
+    vibrate();
+  });
+
+  el.previewStop.addEventListener("click", () => {
+    send("stop_preview", {});
+    try {
+      el.previewAudio.pause();
+      el.previewAudio.removeAttribute("src");
+      el.previewAudio.load();
+    } catch {}
+    vibrate();
+  });
+
+  el.previewGain.addEventListener("input", () => {
+    send("set_preview_gain", {
+      gain_db: pctToGain(Number(el.previewGain.value)),
+    });
+  });
+
+  el.previewMute.addEventListener("click", () => {
+    previewMuted = !previewMuted;
+    send("set_preview_muted", { muted: previewMuted });
+    el.previewMute.classList.toggle("active", previewMuted);
     vibrate();
   });
 

@@ -1,0 +1,278 @@
+namespace Aria.App.Tests;
+
+using Aria.App.Services;
+using Aria.App.ViewModels;
+using Aria.App.ViewModels.Settings;
+using Aria.Core.Commands;
+using Aria.Core.Model;
+using Aria.Core.Runtime;
+using Aria.Core.State;
+
+public sealed class AudioSettingsVmTests : IDisposable
+{
+    private readonly string _settingsPath = Path.Combine(Path.GetTempPath(), $"aria-audio-row-{Guid.NewGuid():N}.json");
+    private readonly string _hotkeysPath = Path.Combine(Path.GetTempPath(), $"aria-audio-hk-{Guid.NewGuid():N}.json");
+
+    public void Dispose()
+    {
+        if (File.Exists(_settingsPath))
+        {
+            File.Delete(_settingsPath);
+        }
+        if (File.Exists(_hotkeysPath))
+        {
+            File.Delete(_hotkeysPath);
+        }
+    }
+
+    [Fact]
+    public void AudioSection_EqChange_SubmitsExactGlobal()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.EqBands[3].GainDb = 6;
+
+        var global = Assert.IsType<SetGlobalAudio>(Assert.Single(submitted)).Value;
+        Assert.Equal(6, global.Eq.Bands[3].GainDb);
+        Assert.Equal(0, global.Eq.Bands[0].GainDb);
+        Assert.Equal(AudioEq.DefaultFrequencies, global.Eq.Bands.Select(b => b.FrequencyHz).ToArray());
+    }
+
+    [Fact]
+    public void AudioSection_EqGain_ClampsToRange()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.EqBands[0].GainDb = 20;
+
+        Assert.Equal(15, section.EqBands[0].GainDb);
+        Assert.Equal(15, Assert.IsType<SetGlobalAudio>(Assert.Single(submitted)).Value.Eq.Bands[0].GainDb);
+    }
+
+    [Fact]
+    public void AudioSection_Limiter_ClampsAndSubmits()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.LimiterThresholdDb = -30;
+        section.LimiterReleaseMs = 5000;
+
+        Assert.Equal(-24, section.LimiterThresholdDb);
+        Assert.Equal(1000, section.LimiterReleaseMs);
+        Assert.All(submitted, c => Assert.IsType<SetGlobalAudio>(c));
+        var last = Assert.IsType<SetGlobalAudio>(submitted[^1]).Value;
+        Assert.Equal(-24, last.Limiter.ThresholdDb);
+        Assert.Equal(1000, last.Limiter.ReleaseMs);
+    }
+
+    [Fact]
+    public void AudioSection_PanAndHpf_Clamp()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.Pan = 2;
+        section.HpfHz = 500;
+
+        Assert.Equal(1, section.Pan);
+        Assert.Equal(400, section.HpfHz);
+    }
+
+    [Fact]
+    public void AudioSection_Mono_Submits()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.Mono = true;
+
+        Assert.True(Assert.IsType<SetGlobalAudio>(Assert.Single(submitted)).Value.Mono);
+    }
+
+    [Fact]
+    public void AudioSection_ApplyMixer_ReflectsWithoutSubmitting()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+        var eq = new AudioEq([.. AudioEq.DefaultFrequencies.Select((f, i) => new EqBand(f, i - 3, 1))]);
+
+        section.ApplyMixer(new MixerState(0, false, TimeSpan.FromMilliseconds(100), Smoothing.Default, new GlobalAudioSettings(0.5, true, 120, eq, new LimiterSettings(false, -6, 200))));
+
+        Assert.Equal(-3, section.EqBands[0].GainDb);
+        Assert.Equal(3, section.EqBands[6].GainDb);
+        Assert.Equal(0.5, section.Pan);
+        Assert.True(section.Mono);
+        Assert.Equal(120, section.HpfHz);
+        Assert.False(section.LimiterEnabled);
+        Assert.Empty(submitted);
+    }
+
+    [Fact]
+    public void AudioSection_HasSevenBandsWithLabels()
+    {
+        var section = new AudioSectionVm(_ => { });
+
+        Assert.Equal(7, section.EqBands.Count);
+        Assert.Equal("63", section.EqBands[0].Label);
+        Assert.Equal("12 кГц", section.EqBands[6].Label);
+    }
+
+    [Fact]
+    public void AudioSection_PreviewGain_ClampsAndSubmits()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.PreviewGainDb = -100;
+
+        Assert.Equal(-80, section.PreviewGainDb);
+        Assert.Equal(-80, Assert.IsType<SetPreviewGain>(Assert.Single(submitted)).GainDb);
+    }
+
+    [Fact]
+    public void AudioSection_PreviewMuted_Submits()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.PreviewMuted = true;
+
+        Assert.True(Assert.IsType<SetPreviewMuted>(Assert.Single(submitted)).Muted);
+    }
+
+    [Fact]
+    public void TrackAudio_TrackMode_SubmitsSetTrackAudio()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId);
+
+        editor.GainDb = -6;
+        editor.Pan = -0.5;
+        editor.EqBands[1].GainDb = 3;
+
+        var last = Assert.IsType<SetTrackAudio>(submitted[^1]);
+        Assert.Equal(trackId, last.Track);
+        Assert.Equal(-6, last.Audio.GainDb);
+        Assert.Equal(-0.5, last.Audio.Pan);
+        Assert.Equal(3, last.Audio.Eq.Bands[1].GainDb);
+    }
+
+    [Fact]
+    public void TrackAudio_Gain_Clamps()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New());
+
+        editor.GainDb = -100;
+
+        Assert.Equal(-60, editor.GainDb);
+        Assert.Equal(-60, Assert.IsType<SetTrackAudio>(Assert.Single(submitted)).Audio.GainDb);
+    }
+
+    [Fact]
+    public void TrackAudio_EntryMode_SubmitsSetEntryAudio()
+    {
+        var submitted = new List<Command>();
+        var entryId = EntryId.New();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), entryId: entryId);
+
+        editor.GainDb = 2;
+
+        var command = Assert.IsType<SetEntryAudio>(Assert.Single(submitted));
+        Assert.Equal(entryId, command.Entry);
+        Assert.Equal(2, command.Audio!.GainDb);
+    }
+
+    [Fact]
+    public void TrackAudio_EntryInherit_SubmitsNull()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), entryId: EntryId.New());
+
+        editor.InheritTrackSettings = true;
+
+        var command = Assert.IsType<SetEntryAudio>(Assert.Single(submitted));
+        Assert.Null(command.Audio);
+    }
+
+    [Fact]
+    public void TrackAudio_DefaultsToFlat()
+    {
+        var editor = new TrackAudioVm(_ => { }, TrackId.New());
+
+        Assert.Equal(0, editor.GainDb);
+        Assert.Equal(0, editor.Pan);
+        Assert.All(editor.EqBands, b => Assert.Equal(0, b.GainDb));
+        Assert.Equal(7, editor.EqBands.Count);
+    }
+
+    [Fact]
+    public void TrackAudio_PreviewCommands_Submit()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId);
+
+        editor.PreviewCommand.Execute(null);
+        editor.StopPreviewCommand.Execute(null);
+
+        Assert.Equal(trackId, Assert.IsType<StartPreviewTrack>(submitted[0]).Track);
+        Assert.IsType<StopPreview>(submitted[1]);
+    }
+
+    [Fact]
+    public void TrackAudio_Normalize_InvokesHookWithMinusSixteen()
+    {
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(_ => { }, trackId);
+        var calls = new List<(TrackId, double)>();
+        editor.NormalizeRequest = (id, target) => calls.Add((id, target));
+
+        editor.NormalizeCommand.Execute(null);
+
+        var call = Assert.Single(calls);
+        Assert.Equal(trackId, call.Item1);
+        Assert.Equal(-16.0, call.Item2);
+    }
+
+    [Fact]
+    public void TrackAudio_Normalize_WithoutHook_DoesNotThrow()
+    {
+        var editor = new TrackAudioVm(_ => { }, TrackId.New());
+
+        editor.NormalizeCommand.Execute(null);
+    }
+
+    [Fact]
+    public void TrackAudio_Normalize_DefaultHook_SubmitsCommand()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId);
+
+        editor.NormalizeCommand.Execute(null);
+
+        var command = Assert.IsType<NormalizeTrackToLufs>(Assert.Single(submitted));
+        Assert.Equal(trackId, command.Track);
+        Assert.Equal(-16.0, command.TargetLufs);
+    }
+
+    [Fact]
+    public void SettingsViewModel_ExposesAudio_AndSyncsFromMixer()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        using var viewModel = new SettingsViewModel(
+            bus, new HotkeyService(HotkeyConfig.Default, _ => { }), _hotkeysPath,
+            new AppSettingsStore(_settingsPath));
+
+        Assert.NotNull(viewModel.Audio);
+        bus.Submit(new ClientId("setup"), 7, new SetGlobalAudio(new GlobalAudioSettings(-0.5, false, 80, AudioEq.Flat, LimiterSettings.Default)));
+
+        Assert.Equal(-0.5, viewModel.Audio.Pan);
+        Assert.Equal(80, viewModel.Audio.HpfHz);
+    }
+}

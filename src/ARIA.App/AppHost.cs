@@ -118,14 +118,14 @@ public sealed class AppHost : IAsyncDisposable
 
         if (_remoteOptions is { } options)
         {
-            Remote = new RemoteHost(Bus, options, Monitor, Meters);
+            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap);
             try
             {
                 await Remote.StartAsync(cancellationToken);
             }
             catch (Exception e) when (options.Port != 0 && IsPortBusy(e))
             {
-                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters);
+                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap);
                 await Remote.StartAsync(cancellationToken);
             }
         }

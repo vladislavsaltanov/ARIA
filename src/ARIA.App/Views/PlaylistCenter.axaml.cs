@@ -441,6 +441,30 @@ public partial class PlaylistCenter : UserControl
         }
     }
 
+    private async void OnAudioClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item
+            || item.DataContext is not PlaylistsViewModel.EntryVm entry
+            || DataContext is not PlaylistsViewModel viewModel
+            || TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+        ResetDragState();
+        var dialog = new Window
+        {
+            Title = $"Звук — {entry.DisplayName}",
+            Width = 480,
+            MinWidth = 400,
+            MaxWidth = 640,
+            SizeToContent = SizeToContent.Height,
+            CanResize = true,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new TrackAudioView { DataContext = viewModel.CreateEntryAudioEditor(entry) },
+        };
+        await dialog.ShowDialog(owner);
+    }
+
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem item

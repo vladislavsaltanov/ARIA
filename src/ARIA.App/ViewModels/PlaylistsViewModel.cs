@@ -474,6 +474,20 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         Submit(new SetEntryOverrides(entry.Id, merged));
     }
 
+    public TrackAudioVm CreateEntryAudioEditor(EntryVm entry)
+    {
+        var initial = entry.Overrides?.Audio;
+        if (initial is null)
+        {
+            initial = _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Audio;
+        }
+        var editor = new TrackAudioVm(Submit, entry.TrackId, initial, entry.Id)
+        {
+            InheritTrackSettings = entry.Overrides?.Audio is null,
+        };
+        return editor;
+    }
+
     public void DeletePlaylistAt(PlaylistVm playlist) => Submit(new DeletePlaylist(playlist.Id));
 
     public void MoveEntry(EntryId id, int newIndex)
