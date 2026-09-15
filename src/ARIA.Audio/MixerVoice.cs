@@ -14,6 +14,12 @@ internal sealed class MixerVoice
 
     public required GainNode Gain { get; init; }
 
+    public SevenBandEq Eq { get; set; } = null!;
+
+    public PanNode Pan { get; set; } = null!;
+
+    public bool BypassPan { get; set; }
+
     public required MarkerSpec[] Markers { get; init; }
 
     public required double CueInSeconds { get; init; }

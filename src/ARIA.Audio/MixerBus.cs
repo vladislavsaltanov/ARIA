@@ -5,6 +5,37 @@ using System.Collections.Immutable;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 
+internal static class AudioChain
+{
+    public static float[] SafeFrequencies(ImmutableArray<EqBand> bands, int sampleRate)
+    {
+        var ceiling = sampleRate * 0.45f;
+        var result = new float[SevenBandEq.BandCount];
+        for (var index = 0; index < result.Length; index++)
+        {
+            result[index] = Math.Min(bands[index].FrequencyHz, ceiling);
+        }
+        return result;
+    }
+
+    public static SevenBandEq BuildEq(TrackAudioSettings audio, int channels, int sampleRate)
+    {
+        var eq = new SevenBandEq(SafeFrequencies(audio.Eq.Bands, sampleRate), channels, sampleRate);
+        ApplyEq(eq, audio);
+        return eq;
+    }
+
+    public static void ApplyEq(SevenBandEq eq, TrackAudioSettings audio) => ApplyEq(eq, audio.Eq);
+
+    public static void ApplyEq(SevenBandEq eq, AudioEq audioEq)
+    {
+        for (var band = 0; band < SevenBandEq.BandCount; band++)
+        {
+            eq.SetBand(band, audioEq.Bands[band].GainDb, audioEq.Bands[band].Q);
+        }
+    }
+}
+
 public sealed record VoiceConfig(
     ISampleSource Source,
     double GainDb,
@@ -12,7 +43,8 @@ public sealed record VoiceConfig(
     Fade? Out,
     ImmutableArray<MarkerSpec> Markers,
     TimeSpan CueIn,
-    TimeSpan? CueOut);
+    TimeSpan? CueOut,
+    TrackAudioSettings? Audio = null);
 
 public sealed class MixerBus : IDisposable
 {
@@ -82,6 +114,12 @@ public sealed class MixerBus : IDisposable
     {
         ArgumentNullException.ThrowIfNull(mix);
         _commands.Enqueue(new MixerCommand(CommandKind.SetMix, null, handle, default, mix, default));
+    }
+
+    public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+        _commands.Enqueue(new MixerCommand(CommandKind.SetAudio, null, handle, default, null, default, 0, audio));
     }
 
     public void RemoveVoice(StreamHandle handle)
@@ -156,6 +194,9 @@ public sealed class MixerBus : IDisposable
             Scratch = new float[_blockSizeFrames * _channels],
             Fader = new FaderNode(fadeInFrames, fadeIn?.Curve ?? FadeCurve.Linear, 0.0, 1.0, stopWhenDone: false),
             Gain = new GainNode(config.GainDb),
+            Eq = AudioChain.BuildEq(config.Audio ?? TrackAudioSettings.Default, _channels, _sampleRate),
+            Pan = new PanNode(config.Audio?.Pan ?? 0.0),
+            BypassPan = (config.Audio?.Pan ?? 0.0) == 0.0,
             Markers = markers,
             CueInSeconds = config.CueIn.TotalSeconds,
             HasCueOut = config.CueOut is not null,
@@ -185,6 +226,9 @@ public sealed class MixerBus : IDisposable
                     break;
                 case CommandKind.SetMix:
                     ApplyMix(FindVoice(command.Handle), command.Mix!);
+                    break;
+                case CommandKind.SetAudio:
+                    ApplyAudio(FindVoice(command.Handle), command.Audio!);
                     break;
                 case CommandKind.Seek:
                     ApplySeek(FindVoice(command.Handle), command.SeekFrame);
@@ -298,6 +342,17 @@ public sealed class MixerBus : IDisposable
         }
     }
 
+    private void ApplyAudio(MixerVoice? voice, TrackAudioSettings audio)
+    {
+        if (voice is null || voice.RemoveRequested)
+        {
+            return;
+        }
+        voice.Eq = AudioChain.BuildEq(audio, _channels, _sampleRate);
+        voice.Pan = new PanNode(audio.Pan);
+        voice.BypassPan = audio.Pan == 0.0;
+    }
+
     private void RenderChunk(Span<float> chunk, int frames)
     {
         for (var index = 0; index < _voices.Count; index++)
@@ -314,8 +369,14 @@ public sealed class MixerBus : IDisposable
             var wasCompleted = fader.HasCompleted;
             if (validSamples > 0)
             {
-                fader.Process(scratch.Slice(0, validSamples), _channels);
-                voice.Gain.Process(scratch.Slice(0, validSamples), _channels);
+                var segment = scratch.Slice(0, validSamples);
+                voice.Eq.Process(segment, _channels);
+                voice.Gain.Process(segment, _channels);
+                if (_channels == 2 && !voice.BypassPan)
+                {
+                    voice.Pan.Process(segment, _channels);
+                }
+                fader.Process(segment, _channels);
             }
             var contributionFrames = read;
             StreamEndReason? reason = null;

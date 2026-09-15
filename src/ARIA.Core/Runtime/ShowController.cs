@@ -12,6 +12,8 @@ public sealed class ShowController : IShowHandler
     private const double MasterGainMinDb = -80.0;
     private const double MasterGainMaxDb = 12.0;
     private const double SilenceDb = -80.0;
+    private const double PreviewGainMinDb = -80.0;
+    private const double PreviewGainMaxDb = 12.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
@@ -182,6 +184,18 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetEntryAudio setEntryAudio:
                 OnSetEntryAudio(client, seq, setEntryAudio);
+                break;
+            case StartPreviewTrack startPreviewTrack:
+                OnStartPreviewTrack(client, seq, startPreviewTrack);
+                break;
+            case StopPreview:
+                OnStopPreview();
+                break;
+            case SetPreviewGain setPreviewGain:
+                OnSetPreviewGain(client, seq, setPreviewGain);
+                break;
+            case SetPreviewMuted setPreviewMuted:
+                OnSetPreviewMuted(setPreviewMuted);
                 break;
             case CreateScript createScript:
                 OnCreateScript(client, seq, createScript);
@@ -608,6 +622,7 @@ public sealed class ShowController : IShowHandler
         }
         _status = TransportStatus.Stopped;
         _atEndBoundary = false;
+        _engine.StopPreview();
         EmitTransport();
     }
 
@@ -677,7 +692,7 @@ public sealed class ShowController : IShowHandler
         _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
         _retired.Add(old);
         _monitor?.Unbind(old);
-        var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut);
+        var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut, settings.Audio);
         var options = new StreamOptions(
             StreamBus.Main,
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
@@ -696,6 +711,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _engine.Panic(new PanicSpec(_panicFade));
+        _engine.StopPreview();
         if (_current is { Handle: { } handle })
         {
             _retired.Add(handle);
@@ -1029,8 +1045,43 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _globalAudio = command.Value;
+        _engine.SetGlobalAudio(command.Value);
         EmitMixer();
     }
+
+    private void OnStartPreviewTrack(ClientId client, long seq, StartPreviewTrack command)
+    {
+        if (_panicked)
+        {
+            Reject(client, seq, "panicked");
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var track))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
+        var source = new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio);
+        var options = new StreamOptions(
+            StreamBus.Preview,
+            settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
+        _engine.StartPreview(source, options);
+    }
+
+    private void OnStopPreview() => _engine.StopPreview();
+
+    private void OnSetPreviewGain(ClientId client, long seq, SetPreviewGain command)
+    {
+        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
+        {
+            Reject(client, seq, "gain-out-of-range");
+            return;
+        }
+        _engine.SetPreviewGain(command.GainDb);
+    }
+
+    private void OnSetPreviewMuted(SetPreviewMuted command) => _engine.SetPreviewMuted(command.Muted);
 
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {
@@ -1509,7 +1560,7 @@ public sealed class ShowController : IShowHandler
         }
         _faulted.Remove(deck.Track.Id);
         var settings = deck.Settings;
-        var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut);
+        var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut, settings.Audio);
         var options = new StreamOptions(
             StreamBus.Main,
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());

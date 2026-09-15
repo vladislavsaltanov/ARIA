@@ -65,6 +65,8 @@ public sealed class AppHost : IAsyncDisposable
 
     public string DataDirectory { get; }
 
+    public SampleRing PreviewTap { get; private set; } = null!;
+
     public AppHost(
         string dataDirectory,
         RemoteOptions? remoteOptions = null,
@@ -92,7 +94,8 @@ public sealed class AppHost : IAsyncDisposable
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
         WaveformScanner = new WaveformScanner(_decoderFactory);
         _importer = new TrackImporter(_decoderFactory, WaveformScanner);
-        _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters);
+        PreviewTap = new SampleRing(SampleRate * 2, Channels);
+        _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters, CreatePreviewSink(), PreviewTap);
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
 
@@ -108,6 +111,7 @@ public sealed class AppHost : IAsyncDisposable
         if (document is { } saved)
         {
             Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
+            Submit(new SetGlobalAudio(saved.EffectiveGlobal));
         }
         RepairTrackNames();
         ReportMissingFiles();
@@ -134,6 +138,18 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     private void MarshalEngineEvent(Action work) => _busRef?.Post(work);
+
+    private static IAudioSink CreatePreviewSink()
+    {
+        try
+        {
+            return new MiniaudioSink(SampleRate, Channels, BlockSizeFrames);
+        }
+        catch (Exception e) when (e is InvalidOperationException or DllNotFoundException)
+        {
+            return new NullSink(SampleRate, Channels);
+        }
+    }
 
     public void Submit(Command command) => Bus.Submit(new ClientId("app"), Interlocked.Increment(ref _seq), command);
 

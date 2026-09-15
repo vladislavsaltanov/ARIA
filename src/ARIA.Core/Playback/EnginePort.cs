@@ -11,7 +11,7 @@ public enum StreamBus
     Preview,
 }
 
-public sealed record TrackSource(string FilePath, TimeSpan CueIn, TimeSpan? CueOut);
+public sealed record TrackSource(string FilePath, TimeSpan CueIn, TimeSpan? CueOut, TrackAudioSettings? Audio = null);
 
 public sealed record MarkerSpec(string Name, TimeSpan Position, MarkerAction Action);
 
@@ -79,6 +79,14 @@ public interface IAudioEngine
     }
 
     void SetPreviewMuted(bool muted)
+    {
+    }
+
+    void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio)
+    {
+    }
+
+    void SetGlobalAudio(GlobalAudioSettings audio)
     {
     }
 

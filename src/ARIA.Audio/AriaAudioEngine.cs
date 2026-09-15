@@ -26,6 +26,13 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private long _lastPublishTicks = Environment.TickCount64 - 1000;
     private long _lastMeterTicks = Environment.TickCount64 - 1000;
     private long _masterGainBits = BitConverter.DoubleToInt64Bits(1.0);
+    private GlobalAudioSettings _globalAudio = GlobalAudioSettings.Default;
+    private readonly HighPassNode _masterHpf;
+    private readonly SevenBandEq _masterEq;
+    private readonly PanNode _masterPan;
+    private readonly SimpleLimiter _masterLimiter;
+    private readonly MonoSumNode _masterMono;
+    private readonly SampleRing? _previewTap;
     private int _handleCounter;
     private int _currentHandle;
 
@@ -37,7 +44,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         int blockSizeFrames = 512,
         IAudioSink? sink = null,
         MeterMonitor? meters = null,
-        IAudioSink? previewSink = null)
+        IAudioSink? previewSink = null,
+        SampleRing? previewTap = null)
     {
         ArgumentNullException.ThrowIfNull(sourceFactory);
         _sourceFactory = sourceFactory;
@@ -48,6 +56,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _mixer = new MixerBus(channels, sampleRate, blockSizeFrames);
         _block = new float[blockSizeFrames * channels];
         _mixer.Events += ForwardEvent;
+        _masterHpf = new HighPassNode(0, channels, sampleRate);
+        _masterEq = new SevenBandEq(AudioChain.SafeFrequencies(GlobalAudioSettings.Default.Eq.Bands, sampleRate), channels, sampleRate);
+        _masterPan = new PanNode(0);
+        _masterLimiter = new SimpleLimiter(channels, sampleRate);
+        _masterMono = new MonoSumNode();
+        _previewTap = previewTap;
         _previewSink = previewSink ?? new NullSink(sampleRate, channels);
         _preview = new MixerBus(channels, sampleRate, blockSizeFrames);
         _previewBlock = new float[blockSizeFrames * channels];
@@ -67,7 +81,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             _faultedAtBirth.Enqueue(handle.Value);
             return handle;
         }
-        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut));
+        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, source.Audio));
         _mixerHandles[handle.Value] = mixerHandle;
         Volatile.Write(ref _currentHandle, handle.Value);
         return handle;
@@ -111,6 +125,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public void Panic(PanicSpec spec)
     {
         _mixer.StopAll(spec.FadeDuration);
+        _preview.StopAll(spec.FadeDuration);
+        _previewHandles.Clear();
         Volatile.Write(ref _currentHandle, 0);
         _sink.Flush();
     }
@@ -126,7 +142,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _preview.StopAll(TimeSpan.Zero);
         _previewHandles.Clear();
-        var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut));
+        var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, source.Audio));
         _previewHandles[handle.Value] = mixerHandle;
         return handle;
     }
@@ -143,6 +159,20 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     public void SetPreviewMuted(bool muted)
         => Volatile.Write(ref _previewMuted, muted ? 1 : 0);
+
+    public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio)
+    {
+        if (_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
+        {
+            _mixer.SetVoiceAudio(mixerHandle, audio);
+        }
+    }
+
+    public void SetGlobalAudio(GlobalAudioSettings audio)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+        Volatile.Write(ref _globalAudio, audio);
+    }
 
     public void DisposeStream(StreamHandle handle)
     {
@@ -169,7 +199,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         {
             EmitFaults();
             _mixer.Render(_block);
-            ApplyMasterGain();
+            ApplyMasterChain();
             PublishMeter();
             var accepted = _sink.Write(_block);
             if (accepted < _block.Length)
@@ -200,6 +230,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             }
         }
         _previewSink.Write(_previewBlock);
+        _previewTap?.Write(_previewBlock);
     }
 
     private void EmitFaults()
@@ -207,6 +238,36 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         while (_faultedAtBirth.TryDequeue(out var handle))
         {
             Events?.Invoke(new StreamEvent(new StreamHandle(handle), StreamEventKind.Faulted, StreamEndReason.Faulted));
+        }
+    }
+
+    private void ApplyMasterChain()
+    {
+        var global = Volatile.Read(ref _globalAudio);
+        var span = _block.AsSpan();
+        _masterHpf.SetFrequency(global.HpfHz);
+        _masterHpf.Process(span, _mixer.Channels);
+        AudioChain.ApplyEq(_masterEq, global.Eq);
+        _masterEq.Process(span, _mixer.Channels);
+        if (_mixer.Channels == 2 && global.Pan != 0.0)
+        {
+            _masterPan.SetPan(global.Pan);
+            _masterPan.Process(span, _mixer.Channels);
+        }
+        ApplyMasterGain();
+        if (global.Limiter.Enabled)
+        {
+            _masterLimiter.SetParams(global.Limiter.ThresholdDb, global.Limiter.ReleaseMs);
+            _masterLimiter.Process(span, _mixer.Channels);
+        }
+        if (global.Mono && _mixer.Channels == 2)
+        {
+            _masterMono.Enabled = true;
+            _masterMono.Process(span, _mixer.Channels);
+        }
+        else
+        {
+            _masterMono.Enabled = false;
         }
     }
 

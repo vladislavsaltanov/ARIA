@@ -23,6 +23,12 @@ public sealed class FakeEngine : IAudioEngine
     public List<double> MasterGains { get; } = [];
     public List<PanicSpec> Panics { get; } = [];
     public List<Smoothing> Smoothings { get; } = [];
+    public List<(TrackSource Source, StreamOptions Options)> PreviewStarts { get; } = [];
+    public int PreviewStops { get; private set; }
+    public List<double> PreviewGains { get; } = [];
+    public List<bool> PreviewMutes { get; } = [];
+    public List<GlobalAudioSettings> GlobalAudios { get; } = [];
+    public List<(StreamHandle Handle, TrackAudioSettings Audio)> VoiceAudios { get; } = [];
 
     public event Action<StreamEvent>? Events;
 
@@ -72,6 +78,25 @@ public sealed class FakeEngine : IAudioEngine
             Disposed.Add(handle);
         }
     }
+
+    public StreamHandle StartPreview(TrackSource source, StreamOptions options)
+    {
+        var handle = new StreamHandle(++_next);
+        var stream = new FakeStream(handle, source, options);
+        _streams[handle] = stream;
+        PreviewStarts.Add((source, options));
+        return handle;
+    }
+
+    public void StopPreview() => PreviewStops++;
+
+    public void SetPreviewGain(double gainDb) => PreviewGains.Add(gainDb);
+
+    public void SetPreviewMuted(bool muted) => PreviewMutes.Add(muted);
+
+    public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio) => VoiceAudios.Add((handle, audio));
+
+    public void SetGlobalAudio(GlobalAudioSettings audio) => GlobalAudios.Add(audio);
 
     public FakeStream? Stream(StreamHandle handle) => _streams.GetValueOrDefault(handle);
 

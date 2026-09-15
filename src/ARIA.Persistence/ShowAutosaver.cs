@@ -85,7 +85,8 @@ public sealed class ShowAutosaver : IDisposable
             snapshot.Show.Clock.Elapsed,
             snapshot.Show.Clock.Running,
             snapshot.Show.Scripts,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            snapshot.Mixer.EffectiveGlobal);
         _store.Save(document);
     }
 }

@@ -68,6 +68,14 @@ public sealed record SetTrackAudio(TrackId Track, TrackAudioSettings Audio) : Co
 
 public sealed record SetEntryAudio(EntryId Entry, TrackAudioSettings? Audio) : Command;
 
+public sealed record StartPreviewTrack(TrackId Track) : Command;
+
+public sealed record StopPreview : Command;
+
+public sealed record SetPreviewGain(double GainDb) : Command;
+
+public sealed record SetPreviewMuted(bool Muted) : Command;
+
 public sealed record CreateScript(string Name) : Command;
 
 public sealed record RenameScript(ScriptId Id, string Name) : Command;

@@ -15,7 +15,11 @@ public sealed record ShowDocument(
     TimeSpan ClockElapsed,
     bool ClockRunning,
     ImmutableArray<Script> Scripts,
-    DateTimeOffset SavedAt);
+    DateTimeOffset SavedAt,
+    GlobalAudioSettings? Global = null)
+{
+    public GlobalAudioSettings EffectiveGlobal => Global ?? GlobalAudioSettings.Default;
+}
 
 public interface ISnapshotStore : IDisposable
 {
@@ -77,6 +81,7 @@ public sealed class JsonSnapshotStore : ISnapshotStore
             Color = q.Color,
         })],
         MasterGainDb = document.MasterGainDb,
+        Global = AudioMapper.ToDto(document.EffectiveGlobal),
         PanicFadeTicks = document.PanicFade.Ticks,
         ClockElapsedTicks = document.ClockElapsed.Ticks,
         ClockRunning = document.ClockRunning,
@@ -111,6 +116,7 @@ internal sealed class ShowDocumentDto
     public long ClockElapsedTicks { get; set; }
     public bool ClockRunning { get; set; }
     public List<ScriptDto>? Scripts { get; set; }
+    public GlobalAudioDto? Global { get; set; }
     public DateTimeOffset SavedAt { get; set; }
 
     public ShowDocument ToDomain() => new(
@@ -127,7 +133,8 @@ internal sealed class ShowDocumentDto
         new TimeSpan(ClockElapsedTicks),
         ClockRunning,
         Scripts is null ? [] : [.. Scripts.Select(ScriptMapper.ToDomain)],
-        SavedAt);
+        SavedAt,
+        AudioMapper.ToDomain(Global));
 }
 
 internal sealed class QueueItemDto

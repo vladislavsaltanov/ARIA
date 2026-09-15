@@ -22,6 +22,89 @@ internal sealed class MarkerDto
     public int Action { get; set; }
 }
 
+internal sealed class EqBandDto
+{
+    public float FrequencyHz { get; set; }
+    public float GainDb { get; set; }
+    public float Q { get; set; }
+}
+
+internal sealed class EqDto
+{
+    public List<EqBandDto> Bands { get; set; } = [];
+}
+
+internal sealed class LimiterDto
+{
+    public bool Enabled { get; set; }
+    public double ThresholdDb { get; set; }
+    public double ReleaseMs { get; set; }
+}
+
+internal sealed class TrackAudioDto
+{
+    public double GainDb { get; set; }
+    public double Pan { get; set; }
+    public EqDto? Eq { get; set; }
+}
+
+internal sealed class GlobalAudioDto
+{
+    public double Pan { get; set; }
+    public bool Mono { get; set; }
+    public double HpfHz { get; set; }
+    public EqDto? Eq { get; set; }
+    public LimiterDto? Limiter { get; set; }
+}
+
+internal static class AudioMapper
+{
+    public static TrackAudioDto? ToDto(TrackAudioSettings? audio) =>
+        audio is null
+            ? null
+            : new TrackAudioDto { GainDb = audio.GainDb, Pan = audio.Pan, Eq = ToDto(audio.Eq) };
+
+    public static TrackAudioSettings? ToDomain(TrackAudioDto? dto) =>
+        dto is null
+            ? null
+            : new TrackAudioSettings(dto.GainDb, dto.Pan, ToDomain(dto.Eq));
+
+    public static GlobalAudioDto ToDto(GlobalAudioSettings audio) => new()
+    {
+        Pan = audio.Pan,
+        Mono = audio.Mono,
+        HpfHz = audio.HpfHz,
+        Eq = ToDto(audio.Eq),
+        Limiter = new LimiterDto { Enabled = audio.Limiter.Enabled, ThresholdDb = audio.Limiter.ThresholdDb, ReleaseMs = audio.Limiter.ReleaseMs },
+    };
+
+    public static GlobalAudioSettings ToDomain(GlobalAudioDto? dto) =>
+        dto is null
+            ? GlobalAudioSettings.Default
+            : new GlobalAudioSettings(
+                dto.Pan,
+                dto.Mono,
+                dto.HpfHz,
+                ToDomain(dto.Eq),
+                dto.Limiter is null
+                    ? LimiterSettings.Default
+                    : new LimiterSettings(dto.Limiter.Enabled, dto.Limiter.ThresholdDb, dto.Limiter.ReleaseMs));
+
+    private static EqDto ToDto(AudioEq eq) => new()
+    {
+        Bands = [.. eq.Bands.Select(b => new EqBandDto { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })],
+    };
+
+    private static AudioEq ToDomain(EqDto? dto)
+    {
+        if (dto?.Bands.Count != 7)
+        {
+            return AudioEq.Flat;
+        }
+        return new AudioEq([.. dto.Bands.Select(b => new EqBand(b.FrequencyHz, b.GainDb, b.Q))]);
+    }
+}
+
 internal sealed class TrackDto
 {
     public Guid Id { get; set; }
@@ -35,6 +118,7 @@ internal sealed class TrackDto
     public long? FadeOutTicks { get; set; }
     public int? FadeOutCurve { get; set; }
     public List<MarkerDto>? Markers { get; set; }
+    public TrackAudioDto? Audio { get; set; }
 }
 
 internal sealed class OverridesDto
@@ -50,6 +134,7 @@ internal sealed class OverridesDto
     public int? OutCurve { get; set; }
     public long? CueInTicks { get; set; }
     public long? CueOutTicks { get; set; }
+    public TrackAudioDto? Audio { get; set; }
 }
 
 internal sealed class EntryDto
@@ -86,6 +171,7 @@ internal static class TrackMapper
             Markers = d.Markers is null
                 ? null
                 : [.. d.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
+            Audio = AudioMapper.ToDto(d.Audio),
         };
     }
 
@@ -104,7 +190,8 @@ internal static class TrackMapper
                 EndAction: (EndAction)dto.EndAction,
                 In: dto.FadeInTicks is null ? null : new Fade(new TimeSpan(dto.FadeInTicks.Value), (FadeCurve)dto.FadeInCurve!.Value),
                 Out: dto.FadeOutTicks is null ? null : new Fade(new TimeSpan(dto.FadeOutTicks.Value), (FadeCurve)dto.FadeOutCurve!.Value),
-                Markers: markers));
+                Markers: markers,
+                Audio: AudioMapper.ToDomain(dto.Audio)));
     }
 }
 
@@ -126,6 +213,7 @@ internal static class PlaylistMapper
                 OutCurve = overrides.Out is null ? null : (int)overrides.Out.Curve,
                 CueInTicks = overrides.CueIn?.Ticks,
                 CueOutTicks = overrides.CueOut?.Ticks,
+                Audio = AudioMapper.ToDto(overrides.Audio),
             };
 
     public static PlaylistOverrides? ToDomain(OverridesDto? dto) =>
@@ -140,7 +228,8 @@ internal static class PlaylistMapper
                 In: dto.InTicks is null ? null : new Fade(new TimeSpan(dto.InTicks.Value), (FadeCurve)dto.InCurve!.Value),
                 Out: dto.OutTicks is null ? null : new Fade(new TimeSpan(dto.OutTicks.Value), (FadeCurve)dto.OutCurve!.Value),
                 CueIn: dto.CueInTicks is null ? null : new TimeSpan(dto.CueInTicks.Value),
-                CueOut: dto.CueOutTicks is null ? null : new TimeSpan(dto.CueOutTicks.Value));
+                CueOut: dto.CueOutTicks is null ? null : new TimeSpan(dto.CueOutTicks.Value),
+                Audio: AudioMapper.ToDomain(dto.Audio));
 
     public static EntryDto ToDto(PlaylistEntry entry) => new()
     {

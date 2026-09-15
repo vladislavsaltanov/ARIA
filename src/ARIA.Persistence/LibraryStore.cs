@@ -20,6 +20,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
         using var connection = Open();
         EnsureSchema(connection);
+        EnsureAudioColumn(connection);
     }
 
     public void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists)
@@ -37,9 +38,9 @@ public sealed class SqliteLibraryStore : ILibraryStore
             command.Transaction = transaction;
             command.CommandText = """
                 INSERT INTO tracks(id, file_path, default_name, duration_ticks, gain_db, end_action,
-                    fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json)
+                    fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json, audio_json)
                 VALUES($id, $file_path, $default_name, $duration_ticks, $gain_db, $end_action,
-                    $fade_in_ticks, $fade_in_curve, $fade_out_ticks, $fade_out_curve, $markers_json)
+                    $fade_in_ticks, $fade_in_curve, $fade_out_ticks, $fade_out_curve, $markers_json, $audio_json)
                 """;
             command.Parameters.AddWithValue("$id", dto.Id);
             command.Parameters.AddWithValue("$file_path", dto.FilePath);
@@ -52,6 +53,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
             command.Parameters.AddWithValue("$fade_out_ticks", (object?)dto.FadeOutTicks ?? DBNull.Value);
             command.Parameters.AddWithValue("$fade_out_curve", (object?)dto.FadeOutCurve ?? DBNull.Value);
             command.Parameters.AddWithValue("$markers_json", dto.Markers is null ? DBNull.Value : DtoJson.Serialize(dto.Markers));
+            command.Parameters.AddWithValue("$audio_json", dto.Audio is null ? DBNull.Value : DtoJson.Serialize(dto.Audio));
             command.ExecuteNonQuery();
         }
 
@@ -92,7 +94,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
 
         var tracks = new List<Track>();
         var trackCommand = connection.CreateCommand();
-        trackCommand.CommandText = "SELECT id, file_path, default_name, duration_ticks, gain_db, end_action, fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json FROM tracks";
+        trackCommand.CommandText = "SELECT id, file_path, default_name, duration_ticks, gain_db, end_action, fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json, audio_json FROM tracks";
         using (var reader = trackCommand.ExecuteReader())
         {
             while (reader.Read())
@@ -110,6 +112,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
                     FadeOutTicks = reader.IsDBNull(8) ? null : reader.GetInt64(8),
                     FadeOutCurve = reader.IsDBNull(9) ? null : reader.GetInt32(9),
                     Markers = reader.IsDBNull(10) ? null : DtoJson.Deserialize<List<MarkerDto>>(reader.GetString(10)),
+                    Audio = reader.IsDBNull(11) ? null : DtoJson.Deserialize<TrackAudioDto>(reader.GetString(11)),
                 };
                 tracks.Add(TrackMapper.ToDomain(dto));
             }
@@ -188,7 +191,8 @@ public sealed class SqliteLibraryStore : ILibraryStore
                 fade_in_curve INTEGER,
                 fade_out_ticks INTEGER,
                 fade_out_curve INTEGER,
-                markers_json TEXT)
+                markers_json TEXT,
+                audio_json TEXT)
             """);
         Execute(connection, null, """
             CREATE TABLE IF NOT EXISTS playlists(
@@ -204,6 +208,21 @@ public sealed class SqliteLibraryStore : ILibraryStore
                 position INTEGER NOT NULL,
                 overrides_json TEXT)
             """);
+    }
+
+    private static void EnsureAudioColumn(SqliteConnection connection)
+    {
+        using var pragma = connection.CreateCommand();
+        pragma.CommandText = "PRAGMA table_info(tracks)";
+        using var reader = pragma.ExecuteReader();
+        while (reader.Read())
+        {
+            if (reader.GetString(1) == "audio_json")
+            {
+                return;
+            }
+        }
+        Execute(connection, null, "ALTER TABLE tracks ADD COLUMN audio_json TEXT");
     }
 
     private static void Execute(SqliteConnection connection, SqliteTransaction? transaction, string sql)
