@@ -193,7 +193,8 @@ public sealed class MixerBus : IDisposable
             Source = config.Source,
             Scratch = new float[_blockSizeFrames * _channels],
             Fader = new FaderNode(fadeInFrames, fadeIn?.Curve ?? FadeCurve.Linear, 0.0, 1.0, stopWhenDone: false),
-            Gain = new GainNode(config.GainDb),
+            Gain = new GainNode(config.GainDb + (config.Audio?.GainDb ?? 0.0)),
+            BaseGainDb = config.GainDb,
             Eq = AudioChain.BuildEq(config.Audio ?? TrackAudioSettings.Default, _channels, _sampleRate),
             Pan = new PanNode(config.Audio?.Pan ?? 0.0),
             BypassPan = (config.Audio?.Pan ?? 0.0) == 0.0,
@@ -351,6 +352,7 @@ public sealed class MixerBus : IDisposable
         voice.Eq = AudioChain.BuildEq(audio, _channels, _sampleRate);
         voice.Pan = new PanNode(audio.Pan);
         voice.BypassPan = audio.Pan == 0.0;
+        voice.Gain.SetGainDb(voice.BaseGainDb + audio.GainDb);
     }
 
     private void RenderChunk(Span<float> chunk, int frames)

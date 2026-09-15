@@ -3,6 +3,7 @@ namespace Aria.App.ViewModels;
 using Aria.App.ViewModels.Settings;
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -17,6 +18,8 @@ public sealed partial class TrackAudioVm : ObservableObject
     private double _pan;
     private bool _inheritTrackSettings;
     private double _normalizeTargetLufs;
+    private bool _normalizeEnabled;
+    private double? _measuredLufs;
 
     public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs)
     {
@@ -25,10 +28,12 @@ public sealed partial class TrackAudioVm : ObservableObject
         _entryId = entryId;
         _normalizeTargetLufs = Math.Clamp(normalizeTargetLufs, -36.0, -12.0);
         var audio = initial ?? TrackAudioSettings.Default;
+        _normalizeEnabled = audio.NormalizeEnabled;
+        _measuredLufs = audio.MeasuredLufs;
         _gainDb = audio.GainDb;
         _pan = audio.Pan;
         EqBands = [.. audio.Eq.Bands.Select((b, i) => new AudioSectionVm.EqBandVm(AudioSectionVm.BandLabel(i, b.FrequencyHz), b.FrequencyHz, b.GainDb, SubmitCurrent))];
-        NormalizeRequest = (id, target) => _submit(new NormalizeTrackToLufs(id, target));
+        NormalizeRequest = id => _submit(new NormalizeTrack(id));
     }
 
     public IReadOnlyList<AudioSectionVm.EqBandVm> EqBands { get; }
@@ -37,7 +42,37 @@ public sealed partial class TrackAudioVm : ObservableObject
 
     public double NormalizeTargetLufs => _normalizeTargetLufs;
 
-    public Action<TrackId, double>? NormalizeRequest { get; set; }
+    public bool NormalizeEnabled
+    {
+        get => _normalizeEnabled;
+        set
+        {
+            if (SetProperty(ref _normalizeEnabled, value))
+            {
+                OnPropertyChanged(nameof(NormalizeStatus));
+                SubmitCurrent();
+            }
+        }
+    }
+
+    public string NormalizeStatus
+    {
+        get
+        {
+            if (!_normalizeEnabled)
+            {
+                return "Нормализация выключена";
+            }
+            if (_measuredLufs is not { } measured)
+            {
+                return "Включена, измерение не выполнено";
+            }
+            var offset = _normalizeTargetLufs - measured;
+            return $"Измерено {measured.ToString("F1", CultureInfo.InvariantCulture)} LUFS, поправка {offset:+0.0;-0.0} дБ";
+        }
+    }
+
+    public Action<TrackId>? NormalizeRequest { get; set; }
 
     public double GainDb
     {
@@ -78,7 +113,9 @@ public sealed partial class TrackAudioVm : ObservableObject
     public TrackAudioSettings Current() => new(
         _gainDb,
         _pan,
-        new AudioEq([.. EqBands.Select(b => new EqBand(b.FrequencyHz, (float)b.GainDb, 1))]));
+        new AudioEq([.. EqBands.Select(b => new EqBand(b.FrequencyHz, (float)b.GainDb, 1))]),
+        _normalizeEnabled,
+        _measuredLufs);
 
     [RelayCommand]
     private void Preview() => _submit(new StartPreviewTrack(_trackId));
@@ -87,7 +124,11 @@ public sealed partial class TrackAudioVm : ObservableObject
     private void StopPreview() => _submit(new StopPreview());
 
     [RelayCommand]
-    private void Normalize() => NormalizeRequest?.Invoke(_trackId, _normalizeTargetLufs);
+    private void Normalize()
+    {
+        NormalizeEnabled = true;
+        NormalizeRequest?.Invoke(_trackId);
+    }
 
     private void SubmitCurrent()
     {

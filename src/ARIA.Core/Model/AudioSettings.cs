@@ -39,14 +39,20 @@ public sealed record GlobalAudioSettings(
     AudioEq Eq,
     LimiterSettings Limiter,
     double NormalizeTargetLufs = -16.0,
-    LufsMeterZones? MeterZones = null)
+    LufsMeterZones? MeterZones = null,
+    bool NormalizeEnabled = false)
 {
     public static GlobalAudioSettings Default { get; } = new(0, false, 0, AudioEq.Flat, LimiterSettings.Default);
 
     public LufsMeterZones EffectiveZones => MeterZones ?? LufsMeterZones.Default;
 }
 
-public sealed record TrackAudioSettings(double GainDb, double Pan, AudioEq Eq)
+public sealed record TrackAudioSettings(
+    double GainDb,
+    double Pan,
+    AudioEq Eq,
+    bool NormalizeEnabled = false,
+    double? MeasuredLufs = null)
 {
     public static TrackAudioSettings Default { get; } = new(0, 0, AudioEq.Flat);
 }

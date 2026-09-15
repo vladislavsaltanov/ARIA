@@ -51,6 +51,7 @@
                    FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
       </Grid>
       <CheckBox Content="моно" IsChecked="{Binding Mono}" FontSize="12" Margin="0,6,0,0"/>
+      <CheckBox Content="нормализация" IsChecked="{Binding NormalizeEnabled}" FontSize="12" Margin="0,10,0,0"/>
       <TextBlock Text="Нормализация" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,10,0,0"/>
       <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
         <TextBlock Text="цель" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>

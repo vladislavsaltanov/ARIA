@@ -82,7 +82,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             _faultedAtBirth.Enqueue(handle.Value);
             return handle;
         }
-        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, source.Audio));
+        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio)));
         _mixerHandles[handle.Value] = mixerHandle;
         Volatile.Write(ref _currentHandle, handle.Value);
         return handle;
@@ -143,7 +143,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _preview.StopAll(TimeSpan.Zero);
         _previewHandles.Clear();
-        var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, source.Audio));
+        var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio)));
         _previewHandles[handle.Value] = mixerHandle;
         return handle;
     }
@@ -165,8 +165,19 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         if (_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
         {
-            _mixer.SetVoiceAudio(mixerHandle, audio);
+            _mixer.SetVoiceAudio(mixerHandle, ResolveAudio(audio));
         }
+    }
+
+    private TrackAudioSettings ResolveAudio(TrackAudioSettings? audio)
+    {
+        var resolved = audio ?? TrackAudioSettings.Default;
+        var global = Volatile.Read(ref _globalAudio);
+        if (global is null || !global.NormalizeEnabled || !resolved.NormalizeEnabled || resolved.MeasuredLufs is not { } measured)
+        {
+            return resolved;
+        }
+        return resolved with { GainDb = LufsNormalize.AdjustGain(resolved.GainDb, measured, global.NormalizeTargetLufs) };
     }
 
     public void SetGlobalAudio(GlobalAudioSettings audio)

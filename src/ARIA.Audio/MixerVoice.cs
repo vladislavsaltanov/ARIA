@@ -30,6 +30,8 @@ internal sealed class MixerVoice
 
     public long StartFrame;
 
+    public double BaseGainDb;
+
     public bool Active { get; set; }
 
     public bool PauseWhenFaded { get; set; }

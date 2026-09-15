@@ -5,28 +5,16 @@ using Aria.Core.Model;
 
 public sealed class NormalizeCodecTests
 {
-    private static string Json(double target) =>
-        "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"normalize_track_to_lufs\","
-        + "\"track\":\"" + Guid.NewGuid().ToString("N") + "\",\"target_lufs\":" + target + "}}";
+    private static string Json(string command) =>
+        "{\"client\":\"c\",\"seq\":1,\"command\":" + command + "}";
 
     [Fact]
-    public void NormalizeTrackToLufs_Parses()
+    public void NormalizeTrack_Parses()
     {
-        Assert.True(CommandCodec.TryParse(Json(-16), out _, out _, out var command));
-        var parsed = Assert.IsType<NormalizeTrackToLufs>(command);
-        Assert.Equal(-16, parsed.TargetLufs);
-    }
+        var track = Guid.NewGuid().ToString("N");
 
-    [Fact]
-    public void NormalizeTrackToLufs_TooHot_Throws()
-    {
-        Assert.Throws<FormatException>(() => CommandCodec.TryParse(Json(-6), out _, out _, out _));
-    }
-
-    [Fact]
-    public void NormalizeTrackToLufs_TooQuiet_Throws()
-    {
-        Assert.Throws<FormatException>(() => CommandCodec.TryParse(Json(-48), out _, out _, out _));
+        Assert.True(CommandCodec.TryParse(Json("{\"type\":\"normalize_track\",\"track\":\"" + track + "\"}"), out _, out _, out var command));
+        Assert.Equal(track, Assert.IsType<NormalizeTrack>(command).Track.Value.ToString("N"));
     }
 
     private static string GlobalJson(string extra = "") =>
@@ -39,11 +27,12 @@ public sealed class NormalizeCodecTests
     [Fact]
     public void SetGlobalAudio_NewFields_Parse()
     {
-        var json = GlobalJson(",\"normalize_target_lufs\":-23,\"meter_zones\":{\"green_db\":-18,\"yellow_db\":-12,\"red_db\":-4}");
+        var json = GlobalJson(",\"normalize_target_lufs\":-23,\"normalize_enabled\":true,\"meter_zones\":{\"green_db\":-18,\"yellow_db\":-12,\"red_db\":-4}");
 
         Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
         var parsed = Assert.IsType<SetGlobalAudio>(command);
         Assert.Equal(-23, parsed.Value.NormalizeTargetLufs);
+        Assert.True(parsed.Value.NormalizeEnabled);
         Assert.Equal(new LufsMeterZones(-18, -12, -4), parsed.Value.EffectiveZones);
     }
 
@@ -53,6 +42,7 @@ public sealed class NormalizeCodecTests
         Assert.True(CommandCodec.TryParse(GlobalJson(), out _, out _, out var command));
         var parsed = Assert.IsType<SetGlobalAudio>(command);
         Assert.Equal(-16.0, parsed.Value.NormalizeTargetLufs);
+        Assert.False(parsed.Value.NormalizeEnabled);
         Assert.Equal(LufsMeterZones.Default, parsed.Value.EffectiveZones);
     }
 

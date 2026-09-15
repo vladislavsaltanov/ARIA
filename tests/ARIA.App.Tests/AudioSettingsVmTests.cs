@@ -265,18 +265,37 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
-    public void TrackAudio_Normalize_InvokesHookWithMinusSixteen()
+    public void TrackAudio_Normalize_InvokesHookAndEnables()
     {
+        var submitted = new List<Command>();
         var trackId = TrackId.New();
-        var editor = new TrackAudioVm(_ => { }, trackId);
-        var calls = new List<(TrackId, double)>();
-        editor.NormalizeRequest = (id, target) => calls.Add((id, target));
+        var editor = new TrackAudioVm(submitted.Add, trackId);
+        var calls = new List<TrackId>();
+        editor.NormalizeRequest = calls.Add;
 
         editor.NormalizeCommand.Execute(null);
 
-        var call = Assert.Single(calls);
-        Assert.Equal(trackId, call.Item1);
-        Assert.Equal(-16.0, call.Item2);
+        Assert.Equal(trackId, Assert.Single(calls));
+        Assert.True(editor.NormalizeEnabled);
+        var toggle = Assert.IsType<SetTrackAudio>(submitted[0]);
+        Assert.True(toggle.Audio.NormalizeEnabled);
+    }
+
+    [Fact]
+    public void TrackAudio_NormalizeToggle_SubmitsAndReportsStatus()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New());
+
+        Assert.Equal("Нормализация выключена", editor.NormalizeStatus);
+
+        editor.NormalizeEnabled = true;
+
+        Assert.Equal("Включена, измерение не выполнено", editor.NormalizeStatus);
+
+        var measured = new TrackAudioVm(submitted.Add, TrackId.New(), new TrackAudioSettings(0, 0, AudioEq.Flat, true, -10.0), null, -16.0);
+
+        Assert.Equal("Измерено -10.0 LUFS, поправка -6.0 дБ", measured.NormalizeStatus);
     }
 
     [Fact]
@@ -296,9 +315,10 @@ public sealed class AudioSettingsVmTests : IDisposable
 
         editor.NormalizeCommand.Execute(null);
 
-        var command = Assert.IsType<NormalizeTrackToLufs>(Assert.Single(submitted));
+        var toggle = Assert.IsType<SetTrackAudio>(submitted[0]);
+        Assert.True(toggle.Audio.NormalizeEnabled);
+        var command = Assert.IsType<NormalizeTrack>(Assert.Single(submitted, c => c is NormalizeTrack));
         Assert.Equal(trackId, command.Track);
-        Assert.Equal(-16.0, command.TargetLufs);
     }
 
     [Fact]

@@ -14,8 +14,6 @@ public sealed class ShowController : IShowHandler
     private const double SilenceDb = -80.0;
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
-    private const double LufsTargetMin = -36.0;
-    private const double LufsTargetMax = -12.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
@@ -199,8 +197,8 @@ public sealed class ShowController : IShowHandler
             case SetPreviewMuted setPreviewMuted:
                 OnSetPreviewMuted(setPreviewMuted);
                 break;
-            case NormalizeTrackToLufs normalize:
-                OnNormalizeTrackToLufs(client, seq, normalize);
+            case NormalizeTrack normalize:
+                OnNormalizeTrack(client, seq, normalize);
                 break;
             case CreateScript createScript:
                 OnCreateScript(client, seq, createScript);
@@ -1106,11 +1104,11 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
-    private void OnNormalizeTrackToLufs(ClientId client, long seq, NormalizeTrackToLufs command)
+    private void OnNormalizeTrack(ClientId client, long seq, NormalizeTrack command)
     {
-        if (command.TargetLufs is < LufsTargetMin or > LufsTargetMax)
+        if (!_globalAudio.NormalizeEnabled)
         {
-            Reject(client, seq, "lufs-out-of-range");
+            Reject(client, seq, "normalize-disabled");
             return;
         }
         if (!_trackMap.TryGetValue(command.Track, out var existing))
@@ -1125,7 +1123,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         var current = existing.Defaults.Audio ?? TrackAudioSettings.Default;
-        var adjusted = current with { GainDb = LufsNormalize.AdjustGain(current.GainDb, measured, command.TargetLufs) };
+        var adjusted = current with { MeasuredLufs = measured, NormalizeEnabled = true };
         if (AudioValidation.ValidateTrack(adjusted) is { } reason)
         {
             Reject(client, seq, reason);

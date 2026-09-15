@@ -77,7 +77,7 @@ internal static class CommandCodec
                 "stop_preview" => new StopPreview(),
                 "set_preview_gain" => new SetPreviewGain(DoubleOf(commandElement, "gain_db")),
                 "set_preview_muted" => new SetPreviewMuted(BoolOf(commandElement, "muted")),
-                "normalize_track_to_lufs" => ParseNormalizeTrackToLufs(commandElement),
+                "normalize_track" => new NormalizeTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
                 "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
@@ -113,7 +113,8 @@ internal static class CommandCodec
             ParseAudioEq(element.GetProperty("eq")),
             ParseLimiter(element.GetProperty("limiter")),
             OptionalDouble(element, "normalize_target_lufs", -16.0),
-            ParseMeterZones(element));
+            ParseMeterZones(element),
+            OptionalBool(element, "normalize_enabled", false));
         if (AudioValidation.ValidateGlobal(value) is { } reason)
         {
             throw new FormatException(reason);
@@ -123,16 +124,6 @@ internal static class CommandCodec
 
     private static SetTrackAudio ParseSetTrackAudio(JsonElement element) =>
         new(new TrackId(GuidOf(element, "track")), ParseTrackAudio(element));
-
-    private static NormalizeTrackToLufs ParseNormalizeTrackToLufs(JsonElement element)
-    {
-        var target = DoubleOf(element, "target_lufs");
-        if (target is < -36.0 or > -12.0)
-        {
-            throw new FormatException("lufs-out-of-range");
-        }
-        return new NormalizeTrackToLufs(new TrackId(GuidOf(element, "track")), target);
-    }
 
     private static SetEntryAudio ParseSetEntryAudio(JsonElement element)
     {
@@ -150,7 +141,9 @@ internal static class CommandCodec
         var value = new TrackAudioSettings(
             DoubleOf(element, "gain_db"),
             DoubleOf(element, "pan"),
-            ParseAudioEq(element.GetProperty("eq")));
+            ParseAudioEq(element.GetProperty("eq")),
+            OptionalBool(element, "normalize_enabled", false),
+            OptionalNullableDouble(element, "measured_lufs"));
         if (AudioValidation.ValidateTrack(value) is { } reason)
         {
             throw new FormatException(reason);
@@ -176,6 +169,16 @@ internal static class CommandCodec
         }
         return new AudioEq(builder.ToImmutable());
     }
+
+    private static bool OptionalBool(JsonElement element, string name, bool fallback) =>
+        element.TryGetProperty(name, out var flag) && flag.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? flag.GetBoolean()
+            : fallback;
+
+    private static double? OptionalNullableDouble(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Number
+            ? property.GetDouble()
+            : null;
 
     private static double OptionalDouble(JsonElement element, string name, double fallback) =>
         element.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Number

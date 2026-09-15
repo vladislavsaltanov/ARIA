@@ -46,6 +46,8 @@ internal sealed class TrackAudioDto
     public double GainDb { get; set; }
     public double Pan { get; set; }
     public EqDto? Eq { get; set; }
+    public bool NormalizeEnabled { get; set; }
+    public double? MeasuredLufs { get; set; }
 }
 
 internal sealed class GlobalAudioDto
@@ -56,6 +58,7 @@ internal sealed class GlobalAudioDto
     public EqDto? Eq { get; set; }
     public LimiterDto? Limiter { get; set; }
     public double NormalizeTargetLufs { get; set; } = -16.0;
+    public bool NormalizeEnabled { get; set; }
     public MeterZonesDto? MeterZones { get; set; }
 }
 
@@ -71,12 +74,12 @@ internal static class AudioMapper
     public static TrackAudioDto? ToDto(TrackAudioSettings? audio) =>
         audio is null
             ? null
-            : new TrackAudioDto { GainDb = audio.GainDb, Pan = audio.Pan, Eq = ToDto(audio.Eq) };
+            : new TrackAudioDto { GainDb = audio.GainDb, Pan = audio.Pan, Eq = ToDto(audio.Eq), NormalizeEnabled = audio.NormalizeEnabled, MeasuredLufs = audio.MeasuredLufs };
 
     public static TrackAudioSettings? ToDomain(TrackAudioDto? dto) =>
         dto is null
             ? null
-            : new TrackAudioSettings(dto.GainDb, dto.Pan, ToDomain(dto.Eq));
+            : new TrackAudioSettings(dto.GainDb, dto.Pan, ToDomain(dto.Eq), dto.NormalizeEnabled, dto.MeasuredLufs);
 
     public static GlobalAudioDto ToDto(GlobalAudioSettings audio) => new()
     {
@@ -86,6 +89,7 @@ internal static class AudioMapper
         Eq = ToDto(audio.Eq),
         Limiter = new LimiterDto { Enabled = audio.Limiter.Enabled, ThresholdDb = audio.Limiter.ThresholdDb, ReleaseMs = audio.Limiter.ReleaseMs },
         NormalizeTargetLufs = audio.NormalizeTargetLufs,
+        NormalizeEnabled = audio.NormalizeEnabled,
         MeterZones = new MeterZonesDto { GreenDb = audio.EffectiveZones.GreenDb, YellowDb = audio.EffectiveZones.YellowDb, RedDb = audio.EffectiveZones.RedDb },
     };
 
@@ -103,7 +107,8 @@ internal static class AudioMapper
                 dto.NormalizeTargetLufs is < -36.0 or > -12.0 ? -16.0 : dto.NormalizeTargetLufs,
                 dto.MeterZones is null
                     ? null
-                    : new LufsMeterZones(dto.MeterZones.GreenDb, dto.MeterZones.YellowDb, dto.MeterZones.RedDb));
+                    : new LufsMeterZones(dto.MeterZones.GreenDb, dto.MeterZones.YellowDb, dto.MeterZones.RedDb),
+                dto.NormalizeEnabled);
 
     private static EqDto ToDto(AudioEq eq) => new()
     {

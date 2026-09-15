@@ -15,6 +15,7 @@ public sealed partial class AudioSectionVm : ObservableObject
     private double _hpfHz;
     private bool _mono;
     private double _normalizeTargetLufs = -16.0;
+    private bool _normalizeEnabled;
     private double _zoneGreenDb = -15.0;
     private double _zoneYellowDb = -9.0;
     private double _zoneRedDb = -5.0;
@@ -101,6 +102,18 @@ public sealed partial class AudioSectionVm : ObservableObject
         }
     }
 
+    public bool NormalizeEnabled
+    {
+        get => _normalizeEnabled;
+        set
+        {
+            if (SetProperty(ref _normalizeEnabled, value))
+            {
+                SubmitGlobal();
+            }
+        }
+    }
+
     public double NormalizeTargetLufs
     {
         get => _normalizeTargetLufs;
@@ -180,7 +193,8 @@ public sealed partial class AudioSectionVm : ObservableObject
         new AudioEq([.. EqBands.Select(b => new EqBand(b.FrequencyHz, (float)b.GainDb, 1))]),
         new LimiterSettings(_limiterEnabled, _limiterThresholdDb, _limiterReleaseMs),
         _normalizeTargetLufs,
-        new LufsMeterZones(_zoneGreenDb, _zoneYellowDb, _zoneRedDb));
+        new LufsMeterZones(_zoneGreenDb, _zoneYellowDb, _zoneRedDb),
+        _normalizeEnabled);
 
     public void ApplyMixer(MixerState state)
     {
@@ -192,6 +206,7 @@ public sealed partial class AudioSectionVm : ObservableObject
         _limiterThresholdDb = global.Limiter.ThresholdDb;
         _limiterReleaseMs = global.Limiter.ReleaseMs;
         _normalizeTargetLufs = global.NormalizeTargetLufs;
+        _normalizeEnabled = global.NormalizeEnabled;
         _zoneGreenDb = global.EffectiveZones.GreenDb;
         _zoneYellowDb = global.EffectiveZones.YellowDb;
         _zoneRedDb = global.EffectiveZones.RedDb;
@@ -206,6 +221,7 @@ public sealed partial class AudioSectionVm : ObservableObject
         OnPropertyChanged(nameof(LimiterThresholdDb));
         OnPropertyChanged(nameof(LimiterReleaseMs));
         OnPropertyChanged(nameof(NormalizeTargetLufs));
+        OnPropertyChanged(nameof(NormalizeEnabled));
         OnPropertyChanged(nameof(ZoneGreenDb));
         OnPropertyChanged(nameof(ZoneYellowDb));
         OnPropertyChanged(nameof(ZoneRedDb));
