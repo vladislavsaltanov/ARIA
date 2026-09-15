@@ -16,11 +16,11 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 {
     private const double VolumeMinDb = -80.0;
     private const double VolumeMaxDb = 12.0;
-    private const double LufsRedThresholdDb = -14.0;
-
     private static readonly SolidColorBrush BrushFg = new(Color.Parse("#ECECEC"));
     private static readonly SolidColorBrush BrushDim = new(Color.Parse("#8A8A8A"));
     private static readonly SolidColorBrush BrushFaulted = new(Color.Parse("#E5484D"));
+    private static readonly SolidColorBrush BrushOk = new(Color.Parse("#3FB950"));
+    private static readonly SolidColorBrush BrushWarm = new(Color.Parse("#D29922"));
 
     private readonly ICommandBus _bus;
     private readonly ClientId _client = new("desktop-transport");
@@ -36,6 +36,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private double _volumePercent = DbToPercent(0.0);
     private bool _playing;
     private double _lastLufs = double.NaN;
+    private LufsMeterZones _zones = LufsMeterZones.Default;
     private string _trackElapsedText = "--:--";
     private string _timeOfDayText = "--:--:--";
 
@@ -274,6 +275,8 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private void ApplyMixer(MixerState state)
     {
+        _zones = state.EffectiveGlobal.EffectiveZones;
+        RefreshLufs();
         _masterGainDb = state.MasterGainDb;
         _volumePercent = DbToPercent(state.MasterGainDb);
         OnPropertyChanged(nameof(VolumePercent));
@@ -317,8 +320,25 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         }
         LufsText = _lastLufs.ToString("F1", CultureInfo.InvariantCulture);
         LufsLevel = Math.Clamp((_lastLufs + 60.0) / 60.0, 0.0, 1.0);
-        LufsHot = _lastLufs >= LufsRedThresholdDb;
-        LufsBarBrush = LufsHot ? BrushFaulted : BrushFg;
+        LufsBarBrush = ZoneBrush(_lastLufs, _zones);
+        LufsHot = ReferenceEquals(LufsBarBrush, BrushFaulted);
+    }
+
+    internal static SolidColorBrush ZoneBrush(double lufs, LufsMeterZones zones)
+    {
+        if (lufs < zones.GreenDb)
+        {
+            return BrushFg;
+        }
+        if (lufs < zones.YellowDb)
+        {
+            return BrushOk;
+        }
+        if (lufs < zones.RedDb)
+        {
+            return BrushWarm;
+        }
+        return BrushFaulted;
     }
 
     private void RefreshTimerSubText() => TimerSubText = $"{_timeOfDayText} · {_trackElapsedText}";

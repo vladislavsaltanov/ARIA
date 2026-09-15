@@ -481,7 +481,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         {
             initial = _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Audio;
         }
-        var editor = new TrackAudioVm(Submit, entry.TrackId, initial, entry.Id)
+        var editor = new TrackAudioVm(Submit, entry.TrackId, initial, entry.Id, _bus.Snapshot().Mixer.EffectiveGlobal.NormalizeTargetLufs)
         {
             InheritTrackSettings = entry.Overrides?.Audio is null,
         };

@@ -14,6 +14,10 @@ public sealed partial class AudioSectionVm : ObservableObject
     private double _pan;
     private double _hpfHz;
     private bool _mono;
+    private double _normalizeTargetLufs = -16.0;
+    private double _zoneGreenDb = -15.0;
+    private double _zoneYellowDb = -9.0;
+    private double _zoneRedDb = -5.0;
     private double _previewGainDb;
     private bool _previewMuted;
 
@@ -97,6 +101,54 @@ public sealed partial class AudioSectionVm : ObservableObject
         }
     }
 
+    public double NormalizeTargetLufs
+    {
+        get => _normalizeTargetLufs;
+        set
+        {
+            if (SetProperty(ref _normalizeTargetLufs, Math.Clamp(value, -36.0, -12.0)))
+            {
+                SubmitGlobal();
+            }
+        }
+    }
+
+    public double ZoneGreenDb
+    {
+        get => _zoneGreenDb;
+        set
+        {
+            if (SetProperty(ref _zoneGreenDb, Math.Clamp(value, -60.0, 0.0)))
+            {
+                SubmitGlobal();
+            }
+        }
+    }
+
+    public double ZoneYellowDb
+    {
+        get => _zoneYellowDb;
+        set
+        {
+            if (SetProperty(ref _zoneYellowDb, Math.Clamp(value, -60.0, 0.0)))
+            {
+                SubmitGlobal();
+            }
+        }
+    }
+
+    public double ZoneRedDb
+    {
+        get => _zoneRedDb;
+        set
+        {
+            if (SetProperty(ref _zoneRedDb, Math.Clamp(value, -60.0, 0.0)))
+            {
+                SubmitGlobal();
+            }
+        }
+    }
+
     public double PreviewGainDb
     {
         get => _previewGainDb;
@@ -126,7 +178,9 @@ public sealed partial class AudioSectionVm : ObservableObject
         _mono,
         _hpfHz,
         new AudioEq([.. EqBands.Select(b => new EqBand(b.FrequencyHz, (float)b.GainDb, 1))]),
-        new LimiterSettings(_limiterEnabled, _limiterThresholdDb, _limiterReleaseMs));
+        new LimiterSettings(_limiterEnabled, _limiterThresholdDb, _limiterReleaseMs),
+        _normalizeTargetLufs,
+        new LufsMeterZones(_zoneGreenDb, _zoneYellowDb, _zoneRedDb));
 
     public void ApplyMixer(MixerState state)
     {
@@ -137,6 +191,10 @@ public sealed partial class AudioSectionVm : ObservableObject
         _limiterEnabled = global.Limiter.Enabled;
         _limiterThresholdDb = global.Limiter.ThresholdDb;
         _limiterReleaseMs = global.Limiter.ReleaseMs;
+        _normalizeTargetLufs = global.NormalizeTargetLufs;
+        _zoneGreenDb = global.EffectiveZones.GreenDb;
+        _zoneYellowDb = global.EffectiveZones.YellowDb;
+        _zoneRedDb = global.EffectiveZones.RedDb;
         for (var i = 0; i < EqBands.Count && i < global.Eq.Bands.Length; i++)
         {
             EqBands[i].SetGainSilently(global.Eq.Bands[i].GainDb);
@@ -147,6 +205,10 @@ public sealed partial class AudioSectionVm : ObservableObject
         OnPropertyChanged(nameof(LimiterEnabled));
         OnPropertyChanged(nameof(LimiterThresholdDb));
         OnPropertyChanged(nameof(LimiterReleaseMs));
+        OnPropertyChanged(nameof(NormalizeTargetLufs));
+        OnPropertyChanged(nameof(ZoneGreenDb));
+        OnPropertyChanged(nameof(ZoneYellowDb));
+        OnPropertyChanged(nameof(ZoneRedDb));
     }
 
     private void SubmitGlobal() => _submit(new SetGlobalAudio(CurrentGlobal()));

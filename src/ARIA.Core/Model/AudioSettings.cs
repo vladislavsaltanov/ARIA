@@ -27,9 +27,23 @@ public sealed record LimiterSettings(bool Enabled, double ThresholdDb, double Re
     public static LimiterSettings Default { get; } = new(true, -1.0, 100.0);
 }
 
-public sealed record GlobalAudioSettings(double Pan, bool Mono, double HpfHz, AudioEq Eq, LimiterSettings Limiter)
+public sealed record LufsMeterZones(double GreenDb = -15.0, double YellowDb = -9.0, double RedDb = -5.0)
+{
+    public static LufsMeterZones Default { get; } = new();
+}
+
+public sealed record GlobalAudioSettings(
+    double Pan,
+    bool Mono,
+    double HpfHz,
+    AudioEq Eq,
+    LimiterSettings Limiter,
+    double NormalizeTargetLufs = -16.0,
+    LufsMeterZones? MeterZones = null)
 {
     public static GlobalAudioSettings Default { get; } = new(0, false, 0, AudioEq.Flat, LimiterSettings.Default);
+
+    public LufsMeterZones EffectiveZones => MeterZones ?? LufsMeterZones.Default;
 }
 
 public sealed record TrackAudioSettings(double GainDb, double Pan, AudioEq Eq)
@@ -61,6 +75,10 @@ public static class AudioValidation
     private const double PanMin = -1.0;
     private const double PanMax = 1.0;
     private const double HpfMaxHz = 400.0;
+    private const double LufsTargetMinLufs = -36.0;
+    private const double LufsTargetMaxLufs = -12.0;
+    private const double MeterZoneMinDb = -60.0;
+    private const double MeterZoneMaxDb = 0.0;
     private const double TrackGainMinDb = -60.0;
     private const double TrackGainMaxDb = 12.0;
 
@@ -79,6 +97,18 @@ public static class AudioValidation
             || value.Limiter.ReleaseMs is < LimiterReleaseMinMs or > LimiterReleaseMaxMs)
         {
             return "limiter-out-of-range";
+        }
+        if (value.NormalizeTargetLufs is < LufsTargetMinLufs or > LufsTargetMaxLufs)
+        {
+            return "lufs-out-of-range";
+        }
+        var zones = value.EffectiveZones;
+        if (zones.GreenDb is < MeterZoneMinDb or > MeterZoneMaxDb
+            || zones.YellowDb is < MeterZoneMinDb or > MeterZoneMaxDb
+            || zones.RedDb is < MeterZoneMinDb or > MeterZoneMaxDb
+            || !(zones.GreenDb < zones.YellowDb && zones.YellowDb < zones.RedDb))
+        {
+            return "meter-out-of-range";
         }
         return ValidateEq(value.Eq);
     }

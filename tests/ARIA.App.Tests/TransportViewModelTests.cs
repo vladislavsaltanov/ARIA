@@ -7,6 +7,7 @@ using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
+using Avalonia.Media;
 
 public sealed class TransportViewModelTests
 {
@@ -146,7 +147,48 @@ public sealed class TransportViewModelTests
 
         Assert.Equal("-13.5", vm.LufsText);
         Assert.Equal(0.775, vm.LufsLevel, 3);
+        Assert.False(vm.LufsHot);
+
+        meters.Publish(-3.0);
+
         Assert.True(vm.LufsHot);
+    }
+
+    [Theory]
+    [InlineData(-30.0, "#FFECECEC")]
+    [InlineData(-15.0, "#FF3FB950")]
+    [InlineData(-12.0, "#FF3FB950")]
+    [InlineData(-9.0, "#FFD29922")]
+    [InlineData(-7.0, "#FFD29922")]
+    [InlineData(-5.0, "#FFE5484D")]
+    [InlineData(-1.0, "#FFE5484D")]
+    public void Lufs_Zones_PaintBar(double lufs, string expected)
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var meters = new MeterMonitor();
+        using var vm = new TransportViewModel(bus, null, null, meters);
+
+        meters.Publish(lufs);
+
+        Assert.Equal(expected, ((SolidColorBrush)vm.LufsBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Lufs_CustomZones_FromMixer()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var meters = new MeterMonitor();
+        using var vm = new TransportViewModel(bus, null, null, meters);
+        bus.Submit(new ClientId("setup"), 2, new SetGlobalAudio(GlobalAudioSettings.Default with { MeterZones = new LufsMeterZones(-10.0, -5.0, -2.0) }));
+
+        meters.Publish(-13.5);
+
+        Assert.False(vm.LufsHot);
+        Assert.Equal("#FFECECEC", ((SolidColorBrush)vm.LufsBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
+
+        meters.Publish(-7.0);
+
+        Assert.Equal("#FF3FB950", ((SolidColorBrush)vm.LufsBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -30,7 +30,9 @@ public sealed class AudioPersistenceTests : IDisposable
         Mono: true,
         HpfHz: 80,
         Eq: new AudioEq([.. AudioEq.DefaultFrequencies.Select((f, i) => new EqBand(f, 2 - i, 1.2f))]),
-        Limiter: new LimiterSettings(true, -3.0, 250.0));
+        Limiter: new LimiterSettings(true, -3.0, 250.0),
+        NormalizeTargetLufs: -23.5,
+        MeterZones: new LufsMeterZones(-18.0, -12.0, -4.0));
 
     private static void AssertAudioEqual(TrackAudioSettings expected, TrackAudioSettings? actual)
     {
@@ -219,6 +221,8 @@ public sealed class AudioPersistenceTests : IDisposable
             Assert.Equal(global.Mono, loaded.Global.Mono);
             Assert.Equal(global.HpfHz, loaded.Global.HpfHz);
             Assert.Equal(global.Limiter, loaded.Global.Limiter);
+            Assert.Equal(-23.5, loaded.Global.NormalizeTargetLufs);
+            Assert.Equal(new LufsMeterZones(-18.0, -12.0, -4.0), loaded.Global.EffectiveZones);
             Assert.Equal(7, loaded.Global.Eq.Bands.Length);
             for (var i = 0; i < 7; i++)
             {

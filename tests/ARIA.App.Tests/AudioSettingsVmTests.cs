@@ -82,6 +82,46 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void AudioSection_NormalizeTarget_ClampsAndSubmits()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.NormalizeTargetLufs = -48;
+
+        Assert.Equal(-36, section.NormalizeTargetLufs);
+        Assert.Equal(-36, Assert.IsType<SetGlobalAudio>(Assert.Single(submitted)).Value.NormalizeTargetLufs);
+    }
+
+    [Fact]
+    public void AudioSection_Zones_Submit()
+    {
+        var submitted = new List<Command>();
+        var section = new AudioSectionVm(submitted.Add);
+
+        section.ZoneGreenDb = -18;
+        section.ZoneYellowDb = -12;
+        section.ZoneRedDb = -4;
+
+        var last = Assert.IsType<SetGlobalAudio>(submitted[^1]).Value;
+        Assert.Equal(new LufsMeterZones(-18, -12, -4), last.EffectiveZones);
+    }
+
+    [Fact]
+    public void AudioSection_ApplyMixer_SyncsTargetAndZones()
+    {
+        var section = new AudioSectionVm(_ => { });
+        var global = GlobalAudioSettings.Default with { NormalizeTargetLufs = -23.0, MeterZones = new LufsMeterZones(-18.0, -12.0, -4.0) };
+
+        section.ApplyMixer(new MixerState(0, false, TimeSpan.FromMilliseconds(100), Smoothing.Default, global));
+
+        Assert.Equal(-23.0, section.NormalizeTargetLufs);
+        Assert.Equal(-18.0, section.ZoneGreenDb);
+        Assert.Equal(-12.0, section.ZoneYellowDb);
+        Assert.Equal(-4.0, section.ZoneRedDb);
+    }
+
+    [Fact]
     public void AudioSection_Mono_Submits()
     {
         var submitted = new List<Command>();

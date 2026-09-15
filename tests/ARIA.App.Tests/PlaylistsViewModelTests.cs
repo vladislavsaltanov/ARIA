@@ -26,6 +26,7 @@ public sealed class PlaylistsViewModelTests
         Assert.True(editor.InheritTrackSettings);
         Assert.Equal(-6, editor.GainDb);
         Assert.Equal(0.5, editor.Pan);
+        Assert.Equal(-16.0, editor.NormalizeTargetLufs);
     }
 
     [Fact]
@@ -42,6 +43,11 @@ public sealed class PlaylistsViewModelTests
 
         Assert.False(editor.InheritTrackSettings);
         Assert.Equal(-3, editor.GainDb);
+
+        bus.Submit(new ClientId("setup"), 2, new SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeTargetLufs = -23.0 }));
+        var follower = vm.CreateEntryAudioEditor(vm.Playlists[0].Entries[0]);
+
+        Assert.Equal(-23.0, follower.NormalizeTargetLufs);
     }
 
     private static (CommandBus Bus, Playlist Playlist, PlaylistEntry Entry1) Setup()

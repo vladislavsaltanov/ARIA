@@ -55,6 +55,15 @@ internal sealed class GlobalAudioDto
     public double HpfHz { get; set; }
     public EqDto? Eq { get; set; }
     public LimiterDto? Limiter { get; set; }
+    public double NormalizeTargetLufs { get; set; } = -16.0;
+    public MeterZonesDto? MeterZones { get; set; }
+}
+
+internal sealed class MeterZonesDto
+{
+    public double GreenDb { get; set; } = -15.0;
+    public double YellowDb { get; set; } = -9.0;
+    public double RedDb { get; set; } = -5.0;
 }
 
 internal static class AudioMapper
@@ -76,6 +85,8 @@ internal static class AudioMapper
         HpfHz = audio.HpfHz,
         Eq = ToDto(audio.Eq),
         Limiter = new LimiterDto { Enabled = audio.Limiter.Enabled, ThresholdDb = audio.Limiter.ThresholdDb, ReleaseMs = audio.Limiter.ReleaseMs },
+        NormalizeTargetLufs = audio.NormalizeTargetLufs,
+        MeterZones = new MeterZonesDto { GreenDb = audio.EffectiveZones.GreenDb, YellowDb = audio.EffectiveZones.YellowDb, RedDb = audio.EffectiveZones.RedDb },
     };
 
     public static GlobalAudioSettings ToDomain(GlobalAudioDto? dto) =>
@@ -88,7 +99,11 @@ internal static class AudioMapper
                 ToDomain(dto.Eq),
                 dto.Limiter is null
                     ? LimiterSettings.Default
-                    : new LimiterSettings(dto.Limiter.Enabled, dto.Limiter.ThresholdDb, dto.Limiter.ReleaseMs));
+                    : new LimiterSettings(dto.Limiter.Enabled, dto.Limiter.ThresholdDb, dto.Limiter.ReleaseMs),
+                dto.NormalizeTargetLufs is < -36.0 or > -12.0 ? -16.0 : dto.NormalizeTargetLufs,
+                dto.MeterZones is null
+                    ? null
+                    : new LufsMeterZones(dto.MeterZones.GreenDb, dto.MeterZones.YellowDb, dto.MeterZones.RedDb));
 
     private static EqDto ToDto(AudioEq eq) => new()
     {

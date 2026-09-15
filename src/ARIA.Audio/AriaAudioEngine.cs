@@ -198,45 +198,22 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private static double MeasureIntegratedLufs(ISampleSource source)
     {
-        var channels = source.Channels;
-        var pre = new BiquadFilter[channels];
-        var post = new BiquadFilter[channels];
-        for (var channel = 0; channel < channels; channel++)
-        {
-            pre[channel] = BiquadFilter.KWeightingPreFilter(source.SampleRate);
-            post[channel] = BiquadFilter.KWeightingHighPass(source.SampleRate);
-        }
-        var buffer = ArrayPool<float>.Shared.Rent(Math.Min(65536, 4096 * channels));
+        var scan = new IntegratedLufsScan(source.Channels, source.SampleRate);
+        var buffer = ArrayPool<float>.Shared.Rent(Math.Min(65536, 4096 * source.Channels));
         try
         {
-            double sum = 0;
-            long frames = 0;
-            var frameCap = (long)source.SampleRate * 30;
             int read;
-            while (frames < frameCap && (read = source.ReadFrames(buffer.AsSpan(0, buffer.Length / channels * channels))) > 0)
+            while ((read = source.ReadFrames(buffer.AsSpan(0, buffer.Length / source.Channels * source.Channels))) > 0)
             {
-                for (var frame = 0; frame < read; frame++)
-                {
-                    for (var channel = 0; channel < channels; channel++)
-                    {
-                        var filtered = post[channel].ProcessSample(pre[channel].ProcessSample(buffer[frame * channels + channel]));
-                        sum += filtered * filtered;
-                    }
-                }
-                frames += read;
+                scan.Feed(buffer.AsSpan(0, read * source.Channels), source.Channels);
             }
-            if (frames == 0 || !(sum > 0.0))
-            {
-                return double.NaN;
-            }
-            return -0.691 + 10.0 * Math.Log10(sum / frames);
+            return scan.Result;
         }
         finally
         {
             ArrayPool<float>.Shared.Return(buffer);
         }
     }
-
 
     public void DisposeStream(StreamHandle handle)
     {

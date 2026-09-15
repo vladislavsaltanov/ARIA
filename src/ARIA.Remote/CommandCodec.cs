@@ -111,7 +111,9 @@ internal static class CommandCodec
             BoolOf(element, "mono"),
             DoubleOf(element, "hpf_hz"),
             ParseAudioEq(element.GetProperty("eq")),
-            ParseLimiter(element.GetProperty("limiter")));
+            ParseLimiter(element.GetProperty("limiter")),
+            OptionalDouble(element, "normalize_target_lufs", -16.0),
+            ParseMeterZones(element));
         if (AudioValidation.ValidateGlobal(value) is { } reason)
         {
             throw new FormatException(reason);
@@ -173,6 +175,23 @@ internal static class CommandCodec
                 (float)band.GetProperty("q").GetDouble()));
         }
         return new AudioEq(builder.ToImmutable());
+    }
+
+    private static double OptionalDouble(JsonElement element, string name, double fallback) =>
+        element.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Number
+            ? property.GetDouble()
+            : fallback;
+
+    private static LufsMeterZones? ParseMeterZones(JsonElement element)
+    {
+        if (!element.TryGetProperty("meter_zones", out var zones) || zones.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+        return new LufsMeterZones(
+            OptionalDouble(zones, "green_db", -15.0),
+            OptionalDouble(zones, "yellow_db", -9.0),
+            OptionalDouble(zones, "red_db", -5.0));
     }
 
     private static LimiterSettings ParseLimiter(JsonElement element) =>

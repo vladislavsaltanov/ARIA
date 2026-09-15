@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 
 public sealed partial class TrackAudioVm : ObservableObject
 {
-    public const double NormalizeTargetLufs = -16.0;
+    public const double NormalizeDefaultLufs = -16.0;
 
     private readonly Action<Command> _submit;
     private readonly TrackId _trackId;
@@ -16,12 +16,14 @@ public sealed partial class TrackAudioVm : ObservableObject
     private double _gainDb;
     private double _pan;
     private bool _inheritTrackSettings;
+    private double _normalizeTargetLufs;
 
-    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null)
+    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs)
     {
         _submit = submit;
         _trackId = trackId;
         _entryId = entryId;
+        _normalizeTargetLufs = Math.Clamp(normalizeTargetLufs, -36.0, -12.0);
         var audio = initial ?? TrackAudioSettings.Default;
         _gainDb = audio.GainDb;
         _pan = audio.Pan;
@@ -32,6 +34,8 @@ public sealed partial class TrackAudioVm : ObservableObject
     public IReadOnlyList<AudioSectionVm.EqBandVm> EqBands { get; }
 
     public bool IsEntry => _entryId is not null;
+
+    public double NormalizeTargetLufs => _normalizeTargetLufs;
 
     public Action<TrackId, double>? NormalizeRequest { get; set; }
 
@@ -83,7 +87,7 @@ public sealed partial class TrackAudioVm : ObservableObject
     private void StopPreview() => _submit(new StopPreview());
 
     [RelayCommand]
-    private void Normalize() => NormalizeRequest?.Invoke(_trackId, NormalizeTargetLufs);
+    private void Normalize() => NormalizeRequest?.Invoke(_trackId, _normalizeTargetLufs);
 
     private void SubmitCurrent()
     {
