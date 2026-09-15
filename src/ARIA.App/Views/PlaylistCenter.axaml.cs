@@ -225,6 +225,16 @@ public partial class PlaylistCenter : UserControl
         }
     }
 
+    private void OnFaultRowTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Border border
+            && border.DataContext is PlaylistsViewModel.EntryVm entry
+            && entry.IsFaulted)
+        {
+            _ = ShowFaultDialog(entry);
+        }
+    }
+
     private void OnFaultIconTapped(object? sender, TappedEventArgs e)
     {
         if (sender is PathIcon icon

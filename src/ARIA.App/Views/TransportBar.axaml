@@ -57,7 +57,7 @@
         <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
         <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
       </StackPanel>
-      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,10">
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,10">
         <Button Grid.Column="0" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
                 Command="{Binding TogglePlayPauseCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
           <Panel>
@@ -92,22 +92,16 @@
           <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
                      Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>
         </StackPanel>
-        <StackPanel Grid.Column="6" VerticalAlignment="Center" Margin="0,0,14,0" MinWidth="86">
-          <TextBlock Text="{Binding ShowClockText}" FontFamily="{StaticResource MonoFont}" FontSize="14"
-                     Foreground="{StaticResource BrushFg}"/>
-          <TextBlock Text="{Binding TimerSubText}" FontFamily="{StaticResource MonoFont}" FontSize="11"
-                     Foreground="{StaticResource BrushDim}"/>
-        </StackPanel>
-        <Button Grid.Column="7" x:Name="LockIcon" Classes="bar" Width="44" Height="44"
+        <Button Grid.Column="6" x:Name="LockIcon" Classes="bar" Width="44" Height="44"
                 Command="{Binding ToggleLockCommand}" VerticalAlignment="Center" Margin="0,0,14,0">
           <PathIcon Data="{StaticResource icon_lock}" Width="18" Height="18"
                     Foreground="{Binding LockBrush}"/>
         </Button>
-        <Button Grid.Column="8" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
+        <Button Grid.Column="7" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
                 Click="OnSettingsClick">
           <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
         </Button>
-        <Button Grid.Column="9" x:Name="PanicButton" Classes="panic" Content="PANIC"
+        <Button Grid.Column="8" x:Name="PanicButton" Classes="panic" Content="PANIC"
                 Command="{Binding PanicCommand}" VerticalAlignment="Center" Margin="6,0,0,0"/>
       </Grid>
     </Grid>

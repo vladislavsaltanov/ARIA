@@ -359,6 +359,44 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public void EndActionBadge_ReflectsOverride()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        var plain = vm.Playlists[0].Entries[0];
+        Assert.False(plain.HasEndActionOverride);
+        Assert.Equal(string.Empty, plain.EndActionBadge);
+
+        vm.SetEntryEndAction(plain, EndAction.Pause);
+        var updated = vm.Playlists[0].Entries[0];
+        Assert.True(updated.HasEndActionOverride);
+        Assert.Equal("Пауза", updated.EndActionBadge);
+        Assert.Contains("Пауза", updated.EndActionTip);
+    }
+
+    [Fact]
+    public void CenterSearch_ShowsFilteredCount()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        Assert.Equal("2 трека · 6:00", vm.EntryCountText);
+
+        vm.CenterSearchText = "no-such-name";
+        Assert.Equal("0 из 2 · 6:00", vm.EntryCountText);
+    }
+
+    [Fact]
+    public void ClearSearchCommand_ClearsText()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
+        vm.CenterSearchText = "test";
+        vm.ClearSearchCommand.Execute(null);
+        Assert.Equal(string.Empty, vm.CenterSearchText);
+        Assert.Equal(2, vm.VisibleEntries.Count);
+    }
+
+    [Fact]
     public void DescribeFault_PresentFile_ReportsDecodeFailure()
     {
         var path = Path.GetTempFileName();

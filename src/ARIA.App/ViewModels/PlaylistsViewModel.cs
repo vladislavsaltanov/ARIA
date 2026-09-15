@@ -730,7 +730,14 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         RefreshCenterHeader();
     }
 
-    partial void OnCenterSearchTextChanged(string value) => RefreshVisible();
+    partial void OnCenterSearchTextChanged(string value)
+    {
+        RefreshVisible();
+        RefreshCenterHeader();
+    }
+
+    [RelayCommand]
+    private void ClearSearch() => CenterSearchText = string.Empty;
 
     private void RefreshCenterHeader()
     {
@@ -748,7 +755,10 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             ? $"{seconds / 3600}:{seconds % 3600 / 60:00}:{seconds % 60:00}"
             : $"{seconds / 60}:{seconds % 60:00}";
         var count = SelectedPlaylist.Entries.Count;
-        EntryCountText = $"{count} {TrackCountWord(count)} · {total}";
+        var shown = VisibleEntries.Count;
+        EntryCountText = CenterSearchText.Length == 0 || shown == count
+            ? $"{count} {TrackCountWord(count)} · {total}"
+            : $"{shown} из {count} · {total}";
     }
 
     private static string TrackCountWord(int count)
@@ -821,6 +831,19 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         public bool HasOverrides => Overrides is not null;
 
         public bool HasNote => !string.IsNullOrEmpty(Note);
+
+        public bool HasEndActionOverride => Overrides?.EndAction is not null;
+
+        public string EndActionBadge => Overrides?.EndAction switch
+        {
+            EndAction.Pause => "Пауза",
+            EndAction.Stop => "Стоп",
+            EndAction.Replay => "Повтор",
+            EndAction.Advance => "Далее",
+            _ => string.Empty,
+        };
+
+        public string EndActionTip => HasEndActionOverride ? $"Действие в конце: {EndActionBadge}" : string.Empty;
 
         public string DurationText => Duration.ToString(@"mm\:ss");
 

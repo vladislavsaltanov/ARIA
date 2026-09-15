@@ -51,7 +51,7 @@
                KeyDown="OnNameKeyDown" LostFocus="OnNameCommit"/>
       <Button Grid.Column="1" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28"
               Click="OnCloseClick" ToolTip.Tip="Скрыть панель — Ctrl+T">
-        <PathIcon Data="{StaticResource icon_next}" Width="13" Height="13"/>
+        <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
       </Button>
     </Grid>
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8" IsVisible="{Binding HasScripts}">
@@ -84,16 +84,15 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ScriptPanelViewModel+ScriptLineVm">
               <Border Classes="scriptLine" Classes.current="{Binding IsCurrent}" Classes.editing="{Binding IsEditing}"
-                      MinHeight="34" CornerRadius="6" Padding="8,6" Background="Transparent" Tapped="OnLineTapped"
-                      PointerEntered="OnRowHover" PointerExited="OnRowHover">
+                      MinHeight="34" CornerRadius="6" Padding="8,6" Background="Transparent" Tapped="OnLineTapped">
                 <Grid>
-                  <Grid ColumnDefinitions="52,*,24" IsVisible="{Binding !IsEditing}">
+                  <Grid ColumnDefinitions="78,*,24" IsVisible="{Binding !IsEditing}">
                     <Grid Grid.Column="0">
                       <Button Tag="ScriptTime" Classes="ghost" FontFamily="{StaticResource MonoFont}" FontSize="12"
                               Foreground="{StaticResource BrushDim}" Content="{Binding DisplayTime}"
                               ToolTip.Tip="{Binding WallTimeTip}"
                               HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"/>
-                      <Button Tag="ScriptGo" Classes="ghost goHint" Width="26" Height="26" IsVisible="False"
+                      <Button Tag="ScriptGo" Classes="ghost goHint" Width="26" Height="26"
                               HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"
                               ToolTip.Tip="Исполнить строку">
                         <PathIcon Data="{StaticResource icon_play}" Width="13" Height="13"/>

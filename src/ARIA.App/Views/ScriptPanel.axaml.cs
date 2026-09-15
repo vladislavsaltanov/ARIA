@@ -157,25 +157,6 @@ public partial class ScriptPanel : UserControl
         }
     }
 
-    private void OnRowHover(object? sender, PointerEventArgs e)
-    {
-        if (sender is Control row)
-        {
-            SetHoverHint(row, e.RoutedEvent == InputElement.PointerEnteredEvent);
-        }
-    }
-
-    private static void SetHoverHint(Control row, bool hover)
-    {
-        if (FindDescendant(row, "ScriptGo") is { } go)
-        {
-            go.IsVisible = hover;
-        }
-        if (FindDescendant(row, "ScriptTime") is { } time)
-        {
-            time.IsVisible = !hover;
-        }
-    }
 
     private static bool IsInside<T>(object? source) where T : Visual
     {
@@ -191,21 +172,6 @@ public partial class ScriptPanel : UserControl
         return false;
     }
 
-    private static Control? FindDescendant(Control root, string tag)
-    {
-        if (root.Tag as string == tag)
-        {
-            return root;
-        }
-        foreach (var child in root.GetVisualChildren())
-        {
-            if (child is Control control && FindDescendant(control, tag) is { } found)
-            {
-                return found;
-            }
-        }
-        return null;
-    }
 
     private void OnLineTapped(object? sender, TappedEventArgs e)    {
         if (_suppressTap)

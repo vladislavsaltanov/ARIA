@@ -166,9 +166,9 @@ public sealed class ScriptPanelHeadlessTests
     }
 
     [Fact]
-    public async Task HoverRow_SwapsTimecodeForPlayHint()
+    public async Task PlayHint_AlwaysVisible_WithTimecode()
     {
-        await _session.Dispatch(async () =>
+        await _session.Dispatch(() =>
         {
             using var bus = NewBus();
             using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
@@ -185,15 +185,9 @@ public sealed class ScriptPanelHeadlessTests
             Assert.NotNull(go);
             var time = FindByTag(row, "ScriptTime");
             Assert.NotNull(time);
-            for (var attempt = 0; attempt < 20 && !row.IsPointerOver; attempt++)
-            {
-                window.MouseMove(RowCenter(window, row));
-                await Task.Delay(50);
-            }
 
-            Assert.True(row.IsPointerOver);
             Assert.True(go.IsVisible);
-            Assert.False(time.IsVisible);
+            Assert.True(time.IsVisible);
 
             window.Close();
             return 0;

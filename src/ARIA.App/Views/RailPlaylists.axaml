@@ -3,6 +3,12 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.RailPlaylists"
              x:DataType="vm:PlaylistsViewModel">
+  <UserControl.Styles>
+    <Style Selector="ListBoxItem:selected TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
