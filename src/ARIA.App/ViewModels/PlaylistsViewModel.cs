@@ -23,6 +23,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<TopLevel?>? _topLevel;
+    private readonly Func<Task<IReadOnlyList<string>>>? _folderPicker;
     private Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? _audioImport;
     private readonly Func<TrackId, TrackAudioSettings?>? _trackAudio;
     private readonly SynchronizationContext? _sync;
@@ -149,7 +150,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null)
+    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -158,6 +159,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         _transientStatusTtl = transientStatusTtl ?? TimeSpan.FromSeconds(10);
         _sync = sync;
         _topLevel = topLevel;
+        _folderPicker = folderPicker;
         _audioImport = audioImport;
         _trackAudio = trackAudio;
         _subscription = bus.Subscribe(Apply);
@@ -308,7 +310,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             AllowMultiple = true,
             FileTypeFilter =
             [
-                new FilePickerFileType("Аудио") { Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"] },
+                AudioFileTypes.Filter,
             ],
         });
         if (files.Count == 0)
@@ -316,6 +318,32 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             return;
         }
         await ImportAudioFilesAsync(files.Select(file => file.Path.LocalPath));
+    }
+
+    [RelayCommand]
+    private async Task ImportAudioFolder()
+    {
+        var folders = await (_folderPicker ?? PickAudioFolderAsync)();
+        if (folders.Count == 0)
+        {
+            return;
+        }
+        await ImportAudioFilesAsync(folders);
+    }
+
+    private async Task<IReadOnlyList<string>> PickAudioFolderAsync()
+    {
+        var topLevel = _topLevel?.Invoke();
+        if (topLevel is null)
+        {
+            return [];
+        }
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Импорт папки с аудио",
+            AllowMultiple = true,
+        });
+        return [.. folders.Select(folder => folder.Path.LocalPath)];
     }
 
     public async Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths, bool silent = false)

@@ -23,14 +23,6 @@ public sealed class AppHost : IAsyncDisposable
     private readonly Func<IAudioSink>? _sinkFactory;
     private readonly Func<ISourceFactory>? _sourceFactory;
 
-    private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".wav",
-        ".flac",
-        ".mp3",
-        ".ogg",
-    };
-
     private CommandBus? _ownedBus;
     private SqliteLibraryStore? _library;
     private SqliteWaveformStore? _waveforms;
@@ -355,12 +347,12 @@ public sealed class AppHost : IAsyncDisposable
                 }
                 else if (File.Exists(entry))
                 {
-                    if (AudioExtensions.Contains(Path.GetExtension(entry)))
+                    if (AudioFileTypes.Extensions.Contains(Path.GetExtension(entry), StringComparer.OrdinalIgnoreCase))
                     {
                         files.Add(entry);
                     }
                 }
-                else if (AudioExtensions.Contains(Path.GetExtension(entry)))
+                else if (AudioFileTypes.Extensions.Contains(Path.GetExtension(entry), StringComparer.OrdinalIgnoreCase))
                 {
                     files.Add(entry);
                 }

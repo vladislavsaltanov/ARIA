@@ -45,7 +45,7 @@
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
         </Button>
       </Grid>
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="0,4,10,0">
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="0,4,10,0">
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="{Binding EntryCountText}" FontSize="12" Foreground="{StaticResource BrushDim}"
                      VerticalAlignment="Center"/>
@@ -70,11 +70,15 @@
                 Command="{Binding ImportAudioCommand}" ToolTip.Tip="Добавить аудиофайлы в выбранный плейлист" VerticalAlignment="Center">
           <TextBlock Text="+ Аудио" FontSize="12" VerticalAlignment="Center"/>
         </Button>
-        <Button Grid.Column="4" x:Name="ImportPlaylistButton" Classes="ghost" MinHeight="32" Padding="10,0"
+        <Button Grid.Column="4" x:Name="ImportFolderButton" Classes="ghost" MinHeight="32" Padding="10,0"
+                Command="{Binding ImportAudioFolderCommand}" ToolTip.Tip="Добавить папку с аудио в выбранный плейлист" VerticalAlignment="Center" Margin="6,0,0,0">
+          <TextBlock Text="+ Папка" FontSize="12" VerticalAlignment="Center"/>
+        </Button>
+        <Button Grid.Column="5" x:Name="ImportPlaylistButton" Classes="ghost" MinHeight="32" Padding="10,0"
                 Command="{Binding ImportPlaylistCommand}" ToolTip.Tip="Импорт плейлиста из .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
           <TextBlock Text="+ Плейлист" FontSize="12" VerticalAlignment="Center"/>
         </Button>
-        <Button Grid.Column="5" x:Name="ExportPlaylistButton" Classes="ghost" MinHeight="32" Padding="10,0"
+        <Button Grid.Column="6" x:Name="ExportPlaylistButton" Classes="ghost" MinHeight="32" Padding="10,0"
                 Command="{Binding ExportPlaylistCommand}" ToolTip.Tip="Экспорт плейлиста в .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
           <TextBlock Text="Экспорт" FontSize="12" VerticalAlignment="Center"/>
         </Button>
