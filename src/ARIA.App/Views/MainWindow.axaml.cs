@@ -58,7 +58,6 @@ public partial class MainWindow : Window
             scriptViewModel.PropertyChanged += OnScriptPropertyChanged;
         }
         ProjectCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
-        ProjectCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
         QueueColumn.CloseRequested += (_, _) => SetQueueOpen(false);
         TransportBar.SettingsRequested += OnSettingsRequested;
         Opened += OnOpened;
@@ -222,7 +221,6 @@ public partial class MainWindow : Window
         {
             TransportBar.ApplyGestures(_hotkeys);
             ProjectCenter.ApplyGestures(_hotkeys);
-            BuildHotkeyTable();
         }
         _drag = new DragCoordinator(
             ProjectCenter.EntryListBox,
@@ -259,18 +257,6 @@ public partial class MainWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (HelpOverlay.IsVisible)
-        {
-            HelpOverlay.IsVisible = false;
-            e.Handled = true;
-            return;
-        }
-        if (e.Key == Key.F1)
-        {
-            HelpOverlay.IsVisible = true;
-            e.Handled = true;
-            return;
-        }
         if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
         {
             if (!IsTextInput(e.Source)
@@ -320,46 +306,5 @@ public partial class MainWindow : Window
             current = current.Parent as Control;
         }
         return false;
-    }
-
-    private void OnHelpOverlayClick(object? sender, PointerPressedEventArgs e) => HelpOverlay.IsVisible = false;
-
-    private void BuildHotkeyTable()
-    {
-        if (_hotkeys is null)
-        {
-            return;
-        }
-        string[] actions = ["play", "pause", "panic", "next", "replay", "lock", "toggle-script", "reset-clock"];
-        for (var row = 0; row < actions.Length; row++)
-        {
-            var action = new TextBlock
-            {
-                Text = HotkeyLabels.Label(actions[row]),
-                FontSize = 13,
-                Foreground = Avalonia.Media.Brushes.Gainsboro,
-                Margin = new Avalonia.Thickness(0, 9, 0, 0),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            };
-            Grid.SetRow(action, row + 1);
-            var gesture = new TextBlock
-            {
-                Text = _hotkeys.GestureFor(actions[row]),
-                FontFamily = new FontFamily("Consolas, Menlo"),
-                FontSize = 12,
-                Foreground = Avalonia.Media.Brushes.DimGray,
-                TextAlignment = TextAlignment.Right,
-                Margin = new Avalonia.Thickness(0, 9, 0, 0),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            };
-            Grid.SetRow(gesture, row + 1);
-            Grid.SetColumn(gesture, 1);
-            HotkeyTable.Children.Add(action);
-            HotkeyTable.Children.Add(gesture);
-        }
-        for (var row = 0; row <= actions.Length; row++)
-        {
-            HotkeyTable.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        }
     }
 }

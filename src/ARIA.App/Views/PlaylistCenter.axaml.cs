@@ -192,7 +192,6 @@ public partial class ProjectCenter : UserControl
 
     public event EventHandler? ScenarioToggleRequested;
 
-    public event EventHandler? HelpRequested;
 
     public ListBox EntryListBox => EntryList;
 
@@ -201,7 +200,6 @@ public partial class ProjectCenter : UserControl
 
     private void OnScenarioClick(object? sender, RoutedEventArgs e) => ScenarioToggleRequested?.Invoke(this, EventArgs.Empty);
 
-    private void OnHelpClick(object? sender, RoutedEventArgs e) => HelpRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnDeleteProjectClick(object? sender, RoutedEventArgs e)
     {
