@@ -803,7 +803,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        if (!IsInActivePlaylist(command.Track))
+        if (!IsInActiveProject(command.Track))
         {
             Reject(client, seq, "track-not-in-playlist");
             return;
@@ -820,14 +820,14 @@ public sealed class ShowController : IShowHandler
         ReleaseOld(old, wasPlaying, manual: true);
     }
 
-    private bool IsInActivePlaylist(TrackId track)
+    private bool IsInActiveProject(TrackId track)
     {
-        if (_activePlaylistId is not { } playlistId)
+        if (_activeProjectId is not { } projectId)
         {
             return false;
         }
-        var playlist = _playlists.FirstOrDefault(p => p.Id == playlistId);
-        return playlist is not null && playlist.Entries.Any(e => e.TrackId == track);
+        var project = _projects.FirstOrDefault(p => p.Id == projectId);
+        return project is not null && project.Entries.Any(e => e.TrackId == track);
     }
 
     private void OnRemoveFromQueue(ClientId client, long seq, RemoveFromQueue command)
