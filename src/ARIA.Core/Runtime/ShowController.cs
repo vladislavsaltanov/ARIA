@@ -803,6 +803,11 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
+        if (!IsInActivePlaylist(command.Track))
+        {
+            Reject(client, seq, "track-not-in-playlist");
+            return;
+        }
         var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
         _queue.Insert(0, new QueueItem(null, track.Id, settings.DisplayName, settings.Color));
         var wasPlaying = _status == TransportStatus.Playing;
@@ -813,6 +818,16 @@ public sealed class ShowController : IShowHandler
             return;
         }
         ReleaseOld(old, wasPlaying, manual: true);
+    }
+
+    private bool IsInActivePlaylist(TrackId track)
+    {
+        if (_activePlaylistId is not { } playlistId)
+        {
+            return false;
+        }
+        var playlist = _playlists.FirstOrDefault(p => p.Id == playlistId);
+        return playlist is not null && playlist.Entries.Any(e => e.TrackId == track);
     }
 
     private void OnRemoveFromQueue(ClientId client, long seq, RemoveFromQueue command)
