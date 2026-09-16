@@ -64,6 +64,8 @@ public sealed class ScriptImportCopyTests : IDisposable
     public async Task ImportProject_RemembersSourceDirectory()
     {
         var projectDir = Directory.CreateDirectory(Path.Combine(_root, "proj")).FullName;
+        var seed = new Project(ProjectId.New(), "Seed", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        _bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [seed], seed.Id));
         using var projects = new ProjectsViewModel(_bus, () => [TestTrack]);
         var json = ProjectFormat.Export("Вечер", [new ProjectExportEntry("/audio/test.flac")]);
 

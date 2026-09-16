@@ -193,7 +193,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         }
         await using var stream = await files[0].OpenReadAsync();
         using var reader = new StreamReader(stream);
-        ImportDocument(await reader.ReadToEndAsync());
+        ImportDocument(await reader.ReadToEndAsync(), files[0].Path.LocalPath);
     }
 
     public string ExportSelectedDocument()
@@ -256,13 +256,37 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             }
             lines.Add((atElapsed, line.Text ?? string.Empty, ResolveFileRefs(line.Tracks, tracks)));
         }
+        var copyNote = CopyScriptBesideProject(sourcePath);
         var name = UniqueScriptName(document.Name.Trim());
         _pendingImportLines = lines;
         _awaitedScriptName = name;
         Submit(new CreateScript(name));
         LastScriptError = string.Empty;
-        ScriptIoStatus = $"импортировано: {name} ({lines.Count})";
+        ScriptIoStatus = $"импортировано: {name} ({lines.Count}){copyNote}";
         return new ScriptImportReport(name, lines.Count, null);
+    }
+
+    private string CopyScriptBesideProject(string? sourcePath)
+    {
+        if (sourcePath is null)
+        {
+            return string.Empty;
+        }
+        var destDir = _projectDirSource?.Invoke(_bus.Snapshot().Show.ActiveId);
+        if (destDir is null || destDir == Path.GetDirectoryName(sourcePath))
+        {
+            return string.Empty;
+        }
+        try
+        {
+            Directory.CreateDirectory(destDir);
+            File.Copy(sourcePath, Path.Combine(destDir, Path.GetFileName(sourcePath)), overwrite: true);
+            return string.Empty;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return " — не удалось скопировать файл рядом с проектом";
+        }
     }
 
     [RelayCommand]

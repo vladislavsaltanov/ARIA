@@ -259,7 +259,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        await FinishExportAsync(() => file.OpenWriteAsync(), file.Name);
+        await FinishExportAsync(() => file.OpenWriteAsync(), file.Name, Path.GetDirectoryName(file.Path.LocalPath), SelectedProject.Id);
     }
 
     public async Task FinishExportAsync(Func<Task<Stream>> openWrite, string fileName, string? fileDir = null, ProjectId? project = null)
@@ -267,6 +267,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         await using var stream = await openWrite();
         await using var writer = new StreamWriter(stream);
         await writer.WriteAsync(ExportSelectedDocument());
+        if (fileDir is not null && (project ?? SelectedProject?.Id) is { } pid)
+        {
+            _projectDirs[pid] = fileDir;
+        }
         var count = SelectedProject?.Entries.Count ?? 0;
         ProjectIoStatus = string.Empty;
         ExportSucceeded?.Invoke(fileName, $"Сохранено: {fileName}\nТреков: {count}");
@@ -296,7 +300,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         await using var stream = await files[0].OpenReadAsync();
         using var reader = new StreamReader(stream);
-        await ImportDocumentAsync(await reader.ReadToEndAsync());
+        await ImportDocumentAsync(await reader.ReadToEndAsync(), Path.GetDirectoryName(files[0].Path.LocalPath));
     }
 
     [RelayCommand]
@@ -561,6 +565,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                 _awaitedProjectName = shellName;
                 Submit(new CreateProject(shellName));
                 MergeProjectScripts(stagedScripts, shellName);
+                NoteProjectDirectory(shellName, sourceDir);
             }
             if (empty.MissingFiles.Length > 0)
             {
@@ -571,6 +576,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         _awaitedProjectName = document.Name;
         Submit(new ImportProject(document.Name, [.. imports]));
         MergeProjectScripts(stagedScripts, document.Name);
+        NoteProjectDirectory(document.Name, sourceDir);
         LastImportError = string.Empty;
         var report = new ProjectImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
         SetTransientStatus(Describe(report));
@@ -609,6 +615,37 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             }
         }
         return [.. result];
+    }
+
+    private void NoteProjectDirectory(string projectName, string? dir)
+    {
+        if (dir is null)
+        {
+            return;
+        }
+        _pendingDirs.Add((projectName, dir));
+        DrainPendingDirs(_bus.Snapshot().Show);
+    }
+
+    private void DrainPendingDirs(ShowState state)
+    {
+        if (_pendingDirs.Count == 0)
+        {
+            return;
+        }
+        var remaining = new List<(string Name, string Dir)>();
+        foreach (var (name, dir) in _pendingDirs)
+        {
+            var project = state.Projects.FirstOrDefault(pr => pr.Name == name);
+            if (project is null)
+            {
+                remaining.Add((name, dir));
+                continue;
+            }
+            _projectDirs[project.Id] = dir;
+        }
+        _pendingDirs.Clear();
+        _pendingDirs.AddRange(remaining);
     }
 
     private void MergeProjectScripts(List<StagedProjectScript> staged, string projectName)
@@ -936,6 +973,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
         _lastShow = state;
+        DrainPendingDirs(state);
         var key = BuildKey(state, tracks);
         if (key == _lastKey)
         {
