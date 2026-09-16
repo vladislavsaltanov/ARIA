@@ -12,3 +12,10 @@
   scope: audio-fault
   summary: Потеря доступа к воспроизводимому файлу вешает приложение, требуется перезапуск
   file: specs/bugs/BUG-2026-09-16-file-loss-hang.md
+- bug_id: BUG-2026-09-16-file-lock
+  date: 2026-09-16
+  severity: high
+  priority: high
+  scope: audio-resource
+  summary: Удалённый из проекта трек держит файл открытым, помогает только перезапуск
+  file: specs/bugs/BUG-2026-09-16-file-lock.md
