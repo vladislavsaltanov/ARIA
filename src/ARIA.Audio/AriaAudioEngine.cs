@@ -159,6 +159,14 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public void SetPreviewMuted(bool muted)
         => Volatile.Write(ref _previewMuted, muted ? 1 : 0);
 
+    public void ReplaceSink(IAudioSink sink)
+    {
+    }
+
+    public void ReplacePreviewSink(IAudioSink sink)
+    {
+    }
+
     public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio)
     {
         if (_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
