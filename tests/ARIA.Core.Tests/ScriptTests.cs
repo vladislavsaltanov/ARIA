@@ -27,6 +27,61 @@ public sealed class ScriptTests : IDisposable
     }
 
     [Fact]
+    public void CreateScript_BindsActiveProject()
+    {
+        var t1 = TestShow.Track();
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        _harness.Submit(new LoadShow([t1], [p], p.Id));
+
+        _harness.Submit(new CreateScript("Вечер"));
+
+        var script = Assert.Single(_harness.Snapshot.Show.Scripts);
+        Assert.Equal<ProjectId?>(p.Id, script.Project);
+    }
+
+    [Fact]
+    public void CreateScript_ExplicitProject_BindsIt()
+    {
+        var t1 = TestShow.Track();
+        var a = TestShow.Project("A", TestShow.Entry(t1));
+        var b = TestShow.Project("B", TestShow.Entry(t1));
+        _harness.Submit(new LoadShow([t1], [a, b], a.Id));
+
+        _harness.Submit(new CreateScript("Вечер", b.Id));
+
+        var script = Assert.Single(_harness.Snapshot.Show.Scripts);
+        Assert.Equal<ProjectId?>(b.Id, script.Project);
+    }
+
+    [Fact]
+    public void DeleteProject_RemovesItsScripts_KeepsOthers()
+    {
+        var t1 = TestShow.Track();
+        var a = TestShow.Project("A", TestShow.Entry(t1));
+        var b = TestShow.Project("B", TestShow.Entry(t1));
+        _harness.Submit(new LoadShow([t1], [a, b], a.Id));
+        _harness.Submit(new CreateScript("Утро", a.Id));
+        _harness.Submit(new CreateScript("Вечер", b.Id));
+
+        _harness.Submit(new DeleteProject(a.Id));
+
+        var script = Assert.Single(_harness.Snapshot.Show.Scripts);
+        Assert.Equal("Вечер", script.Name);
+    }
+
+    [Fact]
+    public void LoadShow_MigratesUnassignedScripts_ToActive()
+    {
+        var t1 = TestShow.Track();
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        var legacy = new Script(ScriptId.New(), "Старый", []);
+        _harness.Submit(new LoadShow([t1], [p], p.Id, [legacy]));
+
+        var script = Assert.Single(_harness.Snapshot.Show.Scripts);
+        Assert.Equal<ProjectId?>(p.Id, script.Project);
+    }
+
+    [Fact]
     public void CreateScript_BlankName_Rejects()
     {
         var seq = _harness.Submit(new CreateScript("  "));

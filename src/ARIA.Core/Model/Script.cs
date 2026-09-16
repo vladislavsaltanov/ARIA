@@ -6,7 +6,7 @@ public sealed record Mention(TrackId Track);
 
 public sealed record ScriptLine(ScriptLineId Id, TimeSpan AtElapsed, string Text, ImmutableArray<Mention> Mentions);
 
-public sealed record Script(ScriptId Id, string Name, ImmutableArray<ScriptLine> Lines);
+public sealed record Script(ScriptId Id, string Name, ImmutableArray<ScriptLine> Lines, ProjectId? Project = null);
 
 public sealed record TrackDigestEntry(TrackId Track, string DisplayName);
 
