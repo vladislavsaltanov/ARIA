@@ -13,6 +13,7 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Controls.Shapes;
 
 public partial class MainWindow : Window
 {
@@ -92,6 +93,15 @@ public partial class MainWindow : Window
         else
         {
             ScriptDrawer.IsPaneOpen = true;
+            HideDismissLayer();
+        }
+    }
+
+    private void HideDismissLayer()
+    {
+        foreach (var layer in ScriptDrawer.GetVisualDescendants().OfType<Rectangle>().Where(r => r.Name == "LightDismissLayer"))
+        {
+            layer.IsVisible = false;
         }
     }
 

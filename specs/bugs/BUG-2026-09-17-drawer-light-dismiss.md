@@ -46,3 +46,10 @@ theirs is cancelled via PaneClosing unless the close is explicit
 button, Scenario button, hotkey, Esc (built-in). Lesson: headless MouseDown
 alone is not a click — test does Down+Up now.
 Tests: App 337 isolated green.
+
+Follow-up (same branch): panel stayed open but outside clicks never arrived —
+SplitView template shows a transparent LightDismissLayer over content in
+overlay mode; it eats presses (releases still bubble, hence the earlier
+confusion). A Window.Styles override lost to the theme; HideDismissLayer sets
+a local IsVisible=false on open (single opener: ToggleScriptPane).
+Tests: App 338 isolated green.
