@@ -21,8 +21,9 @@ public sealed class ProjectFormatTests
         var json = ProjectFormat.Export("Вечер", entries);
         var document = ProjectFormat.Import(json);
 
-        Assert.Equal("aria-playlist", document.Format);
-        Assert.Equal(1, document.Version);
+        Assert.Equal("aria-project", document.Format);
+        Assert.Equal(2, document.Version);
+        Assert.Empty(document.Scripts);
         Assert.Equal("Вечер", document.Name);
         var first = Assert.Single(document.Entries.Take(1));
         Assert.Equal("/audio/one.flac", first.File);
@@ -41,6 +42,98 @@ public sealed class ProjectFormatTests
         var second = document.Entries[1];
         Assert.Equal("/audio/two.flac", second.File);
         Assert.Null(ProjectFormat.ToOverrides(second));
+    }
+
+    [Fact]
+    public void Export_WritesV2()
+    {
+        var json = ProjectFormat.Export("Вечер", [new ProjectExportEntry("/audio/one.flac")]);
+        var document = ProjectFormat.Import(json);
+
+        Assert.Equal("aria-project", document.Format);
+        Assert.Equal(2, document.Version);
+        Assert.Equal("Вечер", document.Name);
+        Assert.Equal("/audio/one.flac", Assert.Single(document.Entries).File);
+        Assert.Empty(document.Scripts);
+    }
+
+    [Fact]
+    public void Import_LegacyV1_MigratesEntriesWithoutLoss()
+    {
+        var json = """
+            {
+                "format": "aria-playlist", "version": 1, "name": "Вечер",
+                "entries": [
+                    {
+                        "file": "/audio/one.flac", "name": "Утро", "color": "#FF0000",
+                        "note": "опенер", "gainDb": 1.5, "end": "advance",
+                        "in": { "seconds": 2, "curve": "exponential" },
+                        "out": { "seconds": 5, "curve": "s" },
+                        "cueIn": 1, "cueOut": 170,
+                        "transition": { "kind": "crossfade", "seconds": 4 }
+                    },
+                    { "file": "/audio/two.flac" }
+                ]
+            }
+            """;
+        var document = ProjectFormat.Import(json);
+
+        Assert.Equal("Вечер", document.Name);
+        var first = Assert.Single(document.Entries.Take(1));
+        Assert.Equal("/audio/one.flac", first.File);
+        Assert.Equal("Утро", first.Name);
+        Assert.Equal("#FF0000", first.Color);
+        Assert.Equal("опенер", first.Note);
+        Assert.Equal(1.5, first.GainDb);
+        Assert.Equal("advance", first.End, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(2, first.In?.Seconds);
+        Assert.Equal("exponential", first.In?.Curve, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(5, first.Out?.Seconds);
+        Assert.Equal(1, first.CueIn);
+        Assert.Equal(170, first.CueOut);
+        Assert.Equal("crossfade", first.Transition?.Kind, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(4, first.Transition?.Seconds);
+        Assert.Equal("/audio/two.flac", document.Entries[1].File);
+        Assert.Empty(document.Scripts);
+    }
+
+    [Fact]
+    public void ExportImport_RoundTrips_Scripts()
+    {
+        var scripts = new[]
+        {
+            new ProjectExportScript("Утро", new[]
+            {
+                new ProjectExportScriptLine("1:05", "открывашка", ["/audio/one.flac"]),
+                new ProjectExportScriptLine("2:00", null, null),
+            }),
+            new ProjectExportScript("Финал", []),
+        };
+        var json = ProjectFormat.Export("Вечер", [new ProjectExportEntry("/audio/one.flac")], scripts);
+        var document = ProjectFormat.Import(json);
+
+        Assert.Equal("aria-project", document.Format);
+        Assert.Equal(2, document.Version);
+        Assert.Equal(2, document.Scripts.Length);
+        Assert.Equal("Утро", document.Scripts[0].Name);
+        Assert.Equal(2, document.Scripts[0].Lines?.Length);
+        Assert.Equal("1:05", document.Scripts[0].Lines?[0].At);
+        Assert.Equal("открывашка", document.Scripts[0].Lines?[0].Text);
+        Assert.Equal("/audio/one.flac", Assert.Single(document.Scripts[0].Lines?[0].Tracks!));
+        Assert.Equal("2:00", document.Scripts[0].Lines?[1].At);
+        Assert.Equal("Финал", document.Scripts[1].Name);
+        Assert.Empty(document.Scripts[1].Lines ?? []);
+    }
+
+    [Theory]
+    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"lines\":[]}]}}", "bad-script")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"  \",\"lines\":[]}]}}", "bad-script")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"Утро\"}]}}", "bad-script")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":1,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}]}", "bad-version")]
+    public void Import_V2_InvalidDocument_Throws(string json, string prefix)
+    {
+        var exception = Assert.Throws<ProjectFormatException>(() => ProjectFormat.Import(json));
+        Assert.StartsWith(prefix, exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
