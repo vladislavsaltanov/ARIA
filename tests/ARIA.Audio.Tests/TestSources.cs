@@ -10,6 +10,7 @@ public sealed class SyntheticSourceFactory(int sampleRate, int channels = 2) : I
         {
             "sine.flac" => new SineSource(channels, sampleRate, 440.0, 0.5),
             "broken.flac" => null,
+            "dying.flac" => new DyingSource(channels, sampleRate, sampleRate / 4),
             "finite.flac" => new FiniteSource(channels, sampleRate, 440.0, 0.5, (int)(0.5 * sampleRate)),
             _ => null,
         };
@@ -51,6 +52,39 @@ public sealed class SyntheticSourceFactory(int sampleRate, int channels = 2) : I
             _inner.Seek(clamped);
             _remaining = _totalFrames - (int)clamped;
         }
+    }
+}
+
+public sealed class DyingSource : ISampleSource
+{
+    private readonly SineSource _inner;
+    private int _remaining;
+
+    public DyingSource(int channels, int sampleRate, int healthyFrames)
+    {
+        _inner = new SineSource(channels, sampleRate, 440.0, 0.5);
+        Channels = channels;
+        SampleRate = sampleRate;
+        _remaining = healthyFrames;
+    }
+
+    public int Channels { get; }
+
+    public int SampleRate { get; }
+
+    public int ReadFrames(Span<float> destination)
+    {
+        if (_remaining < destination.Length / Channels)
+        {
+            throw new InvalidOperationException("Source failed mid-stream.");
+        }
+        var read = _inner.ReadFrames(destination);
+        _remaining -= read;
+        return read;
+    }
+
+    public void Seek(long frameIndex)
+    {
     }
 }
 

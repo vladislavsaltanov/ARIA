@@ -50,6 +50,15 @@ public enum StreamEventKind
 
 public sealed record StreamEvent(StreamHandle Handle, StreamEventKind Kind, StreamEndReason Reason, string? Detail = null);
 
+public enum SourceOpenFault
+{
+    Unknown,
+    Missing,
+    Undecodable,
+}
+
+public sealed record FaultCause(TrackId Track, SourceOpenFault Cause);
+
 public interface IAudioEngine
 {
     StreamHandle StartStream(TrackSource source, StreamOptions options);

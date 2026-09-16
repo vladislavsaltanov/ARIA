@@ -35,6 +35,10 @@ public sealed class ShowController : IShowHandler
     private DeckInstance? _current;
     private readonly HashSet<StreamHandle> _retired = [];
     private readonly HashSet<TrackId> _faulted = [];
+    private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
+    private readonly TimeSpan _openTimeout;
+    private long _openSeq;
+    private (long Seq, DeckInstance Deck)? _pendingOpen;
     private bool _atEndBoundary;
     private bool _panicked;
 
@@ -58,11 +62,12 @@ public sealed class ShowController : IShowHandler
 
     public Action<StateEvent>? Emitted { get; set; }
 
-    public ShowController(IAudioEngine engine, PlaybackMonitor? monitor = null, Action<Action>? marshalEngineEvents = null)
+    public ShowController(IAudioEngine engine, PlaybackMonitor? monitor = null, Action<Action>? marshalEngineEvents = null, TimeSpan? streamOpenTimeout = null)
     {
         _engine = engine;
         _monitor = monitor;
         _marshal = marshalEngineEvents;
+        _openTimeout = streamOpenTimeout ?? TimeSpan.FromSeconds(15);
         if (marshalEngineEvents is { } marshal)
         {
             _engine.Events += e => marshal(() => OnStreamEvent(e));
@@ -408,6 +413,7 @@ public sealed class ShowController : IShowHandler
                     _tracks = _tracks.Replace(existing, track);
                     _trackMap[track.Id] = track;
                     faultCleared |= _faulted.Remove(track.Id);
+                    _faultCauses.Remove(track.Id);
                     added = true;
                 }
                 continue;
@@ -1555,14 +1561,7 @@ public sealed class ShowController : IShowHandler
     {
         if (e.Kind == StreamEventKind.Faulted)
         {
-            if (_current is { } failed)
-            {
-                _faulted.Add(failed.Track.Id);
-            }
-            DisposeCurrentHandle();
-            _status = TransportStatus.Stopped;
-            _current = null;
-            EmitTransport();
+            FaultCurrent(e.Detail);
             return;
         }
 
@@ -1689,6 +1688,19 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
+    private void FaultCurrent(string? detail)
+    {
+        if (_current is { } failed)
+        {
+            _faulted.Add(failed.Track.Id);
+            _faultCauses[failed.Track.Id] = ParseFaultCause(detail);
+        }
+        DisposeCurrentHandle();
+        _status = TransportStatus.Stopped;
+        _current = null;
+        EmitTransport();
+    }
+
     private void StartStreamFor(DeckInstance deck, bool auto)
     {
         _preRolled = false;
@@ -1697,21 +1709,72 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(previous);
         }
         _faulted.Remove(deck.Track.Id);
+        _faultCauses.Remove(deck.Track.Id);
         var settings = deck.Settings;
         var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut, settings.Audio);
         var options = new StreamOptions(
             StreamBus.Main,
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
-        var handle = _engine.StartStream(source, options);
+        var engine = _engine;
+        if (_marshal is not { } marshal)
+        {
+            FinishOpen(deck, engine.StartStream(source, options), auto);
+            return;
+        }
+        var seq = ++_openSeq;
+        _pendingOpen = (seq, deck);
+        _ = Task.Run(() => engine.StartStream(source, options)).ContinueWith(
+            task => marshal(() => CompleteOpen(seq, deck, auto, task)),
+            TaskScheduler.Default);
+        _ = Task.Delay(_openTimeout).ContinueWith(
+            _ => marshal(() => OpenExpired(seq, deck)),
+            TaskScheduler.Default);
+    }
+
+    private void FinishOpen(DeckInstance deck, StreamHandle handle, bool auto)
+    {
         deck.Handle = handle;
         _monitor?.Bind(handle, Content(deck));
-
+        var settings = deck.Settings;
         var fadeIn = ResolveFadeIn(settings.In, auto);
         var mix = fadeIn.Duration > TimeSpan.Zero
             ? new MixParameters(settings.GainDb, new FadeSpec(fadeIn.Duration, fadeIn.Curve, settings.GainDb, StopWhenDone: false))
             : new MixParameters(settings.GainDb, null);
         _engine.SetMix(handle, mix);
         _engine.Transport(handle, TransportCommand.Play);
+    }
+
+    private void CompleteOpen(long seq, DeckInstance deck, bool auto, Task<StreamHandle> task)
+    {
+        if (_pendingOpen is not { } pending || pending.Seq != seq || !ReferenceEquals(_current, deck))
+        {
+            if (task.Status == TaskStatus.RanToCompletion)
+            {
+                _engine.DisposeStream(task.Result);
+            }
+            else
+            {
+                _ = task.Exception;
+            }
+            return;
+        }
+        _pendingOpen = null;
+        if (task.Status != TaskStatus.RanToCompletion)
+        {
+            FaultCurrent(SourceOpenFault.Unknown.ToString());
+            return;
+        }
+        FinishOpen(deck, task.Result, auto);
+    }
+
+    private void OpenExpired(long seq, DeckInstance deck)
+    {
+        if (_pendingOpen is not { } pending || pending.Seq != seq || !ReferenceEquals(_current, deck))
+        {
+            return;
+        }
+        _pendingOpen = null;
+        FaultCurrent(SourceOpenFault.Unknown.ToString());
     }
 
     private void RestartCurrent()
@@ -1779,7 +1842,7 @@ public sealed class ShowController : IShowHandler
     private TransportState BuildTransport()
     {
         var current = _current is null ? null : Content(_current);
-        return new TransportState(_status, current, PeekNext(), [.. _faulted]);
+        return new TransportState(_status, current, PeekNext(), [.. _faulted], [.. _faulted.Select(id => new FaultCause(id, _faultCauses.GetValueOrDefault(id, SourceOpenFault.Unknown)))]);
     }
 
     private static DeckContent Content(DeckInstance deck) => new(
@@ -1894,6 +1957,9 @@ public sealed class ShowController : IShowHandler
     }
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));
+
+    private static SourceOpenFault ParseFaultCause(string? detail) =>
+        Enum.TryParse<SourceOpenFault>(detail, out var cause) ? cause : SourceOpenFault.Unknown;
 
     private void EmitQueue() => Emit(new QueueDelta(++_queueVersion, new QueueState([.. _queue])));
 

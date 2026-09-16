@@ -7,6 +7,7 @@ using System.Text;
 using Aria.App.Services;
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
 using Avalonia.Controls;
@@ -26,6 +27,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly Func<TrackId, TrackAudioSettings?>? _trackAudio;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
+    private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedPlaylistName;
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
@@ -78,6 +80,10 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public bool IsTrackMissing(EntryVm entry)
     {
+        if (_faultCauses.TryGetValue(entry.TrackId, out var cause) && cause is not SourceOpenFault.Unknown)
+        {
+            return cause == SourceOpenFault.Missing;
+        }
         var path = TrackPath(entry.TrackId);
         return path is null || !File.Exists(path);
     }
@@ -85,14 +91,31 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     public string DescribeFault(EntryVm entry)
     {
         var path = TrackPath(entry.TrackId);
+        if (_faultCauses.TryGetValue(entry.TrackId, out var cause))
+        {
+            if (cause == SourceOpenFault.Missing)
+            {
+                return MissingMessage(entry, path);
+            }
+            if (cause == SourceOpenFault.Undecodable)
+            {
+                return DecodeMessage(entry, path);
+            }
+        }
         if (path is null || !File.Exists(path))
         {
-            return path is null
-                ? $"Файл не найден.\nТрек «{entry.DisplayName}» не загрузился — файл переместили, переименовали или удалили."
-                : $"Файл не найден: {path}\nТрек «{entry.DisplayName}» не загрузился — файл переместили, переименовали или удалили.";
+            return MissingMessage(entry, path);
         }
-        return $"Не удалось декодировать «{entry.DisplayName}».\nФайл на месте ({path}), но движок не смог его открыть — возможно, он повреждён или формат не поддерживается.";
+        return DecodeMessage(entry, path);
     }
+
+    private static string MissingMessage(EntryVm entry, string? path) =>
+        path is null
+            ? $"Файл не найден.\nТрек «{entry.DisplayName}» не загрузился — файл переместили, переименовали или удалили."
+            : $"Файл не найден: {path}\nТрек «{entry.DisplayName}» не загрузился — файл переместили, переименовали или удалили.";
+
+    private static string DecodeMessage(EntryVm entry, string? path) =>
+        $"Не удалось декодировать «{entry.DisplayName}».\nФайл на месте ({path}), но движок не смог его открыть — возможно, он повреждён или формат не поддерживается.";
 
     public async Task<bool> RelinkEntryAsync(EntryVm entry, string newPath)
     {
@@ -142,6 +165,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         {
             _faulted.Add(id);
         }
+        MirrorFaultCauses(snapshot.Transport);
         Rebuild(snapshot.Show, _trackSource?.Invoke() ?? []);
     }
 
@@ -612,13 +636,15 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 break;
             case TransportDelta delta:
                 var incoming = new HashSet<TrackId>(delta.State.Faulted);
-                if (!incoming.SetEquals(_faulted))
+                var incomingCauses = FaultCauseMap(delta.State);
+                if (!incoming.SetEquals(_faulted) || !CausesEqual(incomingCauses))
                 {
                     _faulted.Clear();
                     foreach (var id in incoming)
                     {
                         _faulted.Add(id);
                     }
+                    MirrorFaultCauses(delta.State);
                     if (_lastShow is { } show)
                     {
                         Rebuild(show, _trackSource?.Invoke() ?? []);
@@ -626,6 +652,45 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 }
                 break;
         }
+    }
+
+    private void MirrorFaultCauses(TransportState state)
+    {
+        _faultCauses.Clear();
+        foreach (var entry in FaultCauseMap(state))
+        {
+            _faultCauses[entry.Key] = entry.Value;
+        }
+    }
+
+    private static Dictionary<TrackId, SourceOpenFault> FaultCauseMap(TransportState state)
+    {
+        var map = new Dictionary<TrackId, SourceOpenFault>();
+        if (state.FaultCauses.IsDefault)
+        {
+            return map;
+        }
+        foreach (var mark in state.FaultCauses)
+        {
+            map[mark.Track] = mark.Cause;
+        }
+        return map;
+    }
+
+    private bool CausesEqual(Dictionary<TrackId, SourceOpenFault> incoming)
+    {
+        if (incoming.Count != _faultCauses.Count)
+        {
+            return false;
+        }
+        foreach (var entry in incoming)
+        {
+            if (!_faultCauses.TryGetValue(entry.Key, out var cause) || cause != entry.Value)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private string BuildKey(ShowState state, ImmutableArray<Track> tracks)
@@ -649,7 +714,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         var faultedHash = 0;
         foreach (var id in _faulted)
         {
-            faultedHash ^= id.GetHashCode();
+            faultedHash ^= HashCode.Combine(id, _faultCauses.GetValueOrDefault(id, SourceOpenFault.Unknown));
         }
         sb.Append('|').Append(faultedHash).Append('|').Append(_linkedTrackId).Append('|').Append(_rowSettings);
         return sb.ToString();

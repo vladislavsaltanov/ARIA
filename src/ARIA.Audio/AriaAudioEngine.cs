@@ -17,7 +17,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly Thread _renderThread;
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<int, StreamHandle> _mixerHandles = new();
-    private readonly ConcurrentQueue<int> _faultedAtBirth = [];
+    private readonly ConcurrentQueue<BirthFault> _faultedAtBirth = [];
     private readonly MixerBus _preview;
     private readonly IAudioSink _previewSink;
     private readonly float[] _previewBlock;
@@ -76,10 +76,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public StreamHandle StartStream(TrackSource source, StreamOptions options)
     {
         var handle = new StreamHandle(Interlocked.Increment(ref _handleCounter));
-        var sample = _sourceFactory.Open(source.FilePath, source.CueIn, source.CueOut);
-        if (sample is null)
+        if (!_sourceFactory.TryOpen(source.FilePath, source.CueIn, source.CueOut, out var sample, out var fault) || sample is null)
         {
-            _faultedAtBirth.Enqueue(handle.Value);
+            _faultedAtBirth.Enqueue(new BirthFault(handle.Value, fault));
             return handle;
         }
         var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio)));
@@ -135,10 +134,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public StreamHandle StartPreview(TrackSource source, StreamOptions options)
     {
         var handle = new StreamHandle(Interlocked.Increment(ref _handleCounter));
-        var sample = _sourceFactory.Open(source.FilePath, source.CueIn, source.CueOut);
-        if (sample is null)
+        if (!_sourceFactory.TryOpen(source.FilePath, source.CueIn, source.CueOut, out var sample, out var fault) || sample is null)
         {
-            _faultedAtBirth.Enqueue(handle.Value);
+            _faultedAtBirth.Enqueue(new BirthFault(handle.Value, fault));
             return handle;
         }
         _preview.StopAll(TimeSpan.Zero);
@@ -244,6 +242,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _cts.Dispose();
     }
 
+    private sealed record BirthFault(int Handle, SourceOpenFault Cause);
+
     private void ForwardEvent(StreamEvent e) => Events?.Invoke(e);
 
     private void RenderLoop()
@@ -288,9 +288,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void EmitFaults()
     {
-        while (_faultedAtBirth.TryDequeue(out var handle))
+        while (_faultedAtBirth.TryDequeue(out var birth))
         {
-            Events?.Invoke(new StreamEvent(new StreamHandle(handle), StreamEventKind.Faulted, StreamEndReason.Faulted));
+            var detail = birth.Cause == SourceOpenFault.Unknown ? null : birth.Cause.ToString();
+            Events?.Invoke(new StreamEvent(new StreamHandle(birth.Handle), StreamEventKind.Faulted, StreamEndReason.Faulted, detail));
         }
     }
 
