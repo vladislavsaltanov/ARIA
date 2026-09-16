@@ -64,4 +64,10 @@ Risk level: Medium. Трогаем render-путь и контракт исто�
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-09-16, branch fix/2.1-file-loss-hang.
+Срез 1 (ecf0afc+d324ba2): MixerBus отдаёт Faulted при ошибке чтения mid-stream вместо смерти render-потока; genuine EOF остаётся Completed.
+Срез 2 (7fa71f8): регресс-тест ядра — mid-stream Faulted при непустой очереди даёт Stop+метка без advance, очередь цела (поведение уже было, зафиксировано тестом).
+Срез 3 (1604a9b+67659ce): типизированная причина open (Missing/Undecodable) сквозь фабрику→событие→контроллер→VM, без File.Exists-гадания.
+Срез 4 (0b6ddb8+d8b5846): open вне control-потока с таймаутом 15s, результат применяется на control-потоке; висящий open → fault, не вис.
+Tests: Audio 125, Core 245, App 303, Persistence 32, Remote 78 — полный `dotnet test` зелёный.
+Residuals (следующие итерации): SeekWithCrossfade и StartPreviewTrack открывают синхронно; поздний хендл после Dispose шины некому освободить; таймаут маппится в Unknown без отдельного Timeout.
