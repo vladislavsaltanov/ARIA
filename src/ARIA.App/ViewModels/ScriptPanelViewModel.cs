@@ -35,6 +35,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private readonly ClientId _client = new("desktop-scripts");
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly Func<TopLevel?>? _topLevel;
+    private readonly Func<ProjectId?, string?>? _projectDirSource;
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<ScriptId> _knownScripts = [];
@@ -70,12 +71,13 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedScriptChanged(ScriptVm? value) => OnPropertyChanged(nameof(ShowEmptyScript));
 
-    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null)
+    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<ProjectId?, string?>? projectDirSource = null)
     {
         _bus = bus;
         _trackSource = trackSource;
         _sync = sync;
         _topLevel = topLevel;
+        _projectDirSource = projectDirSource;
         _subscription = bus.Subscribe(Apply);
         Scripts.CollectionChanged += (_, _) =>
         {
@@ -213,7 +215,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         return JsonSerializer.Serialize(document, ScriptJsonOptions);
     }
 
-    public ScriptImportReport ImportDocument(string json)
+    public ScriptImportReport ImportDocument(string json, string? sourcePath = null)
     {
         ScriptFileDocument? document;
         try

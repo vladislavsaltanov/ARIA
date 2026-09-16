@@ -30,6 +30,8 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
+    private readonly Dictionary<ProjectId, string> _projectDirs = [];
+    private readonly List<(string Name, string Dir)> _pendingDirs = [];
     private List<StagedProjectScript>? _pendingProjectScripts;
     private readonly HashSet<(ProjectId, string)> _submittedProjectScripts = [];
     private readonly IDisposable _subscription;
@@ -260,7 +262,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         await FinishExportAsync(() => file.OpenWriteAsync(), file.Name);
     }
 
-    public async Task FinishExportAsync(Func<Task<Stream>> openWrite, string fileName)
+    public async Task FinishExportAsync(Func<Task<Stream>> openWrite, string fileName, string? fileDir = null, ProjectId? project = null)
     {
         await using var stream = await openWrite();
         await using var writer = new StreamWriter(stream);
@@ -500,7 +502,9 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         return ProjectFormat.Export(SelectedProject.Name, entries, scripts);
     }
 
-    public Task<ProjectImportReport> ImportDocumentAsync(string json)
+    public string? GetProjectDirectory(ProjectId? id) => id is { } pid ? _projectDirs.GetValueOrDefault(pid) : null;
+
+    public Task<ProjectImportReport> ImportDocumentAsync(string json, string? sourceDir = null)
     {
         ProjectFileDocument document;
         try
