@@ -19,3 +19,10 @@
   scope: audio-resource
   summary: Удалённый из проекта трек держит файл открытым, помогает только перезапуск
   file: specs/bugs/BUG-2026-09-16-file-lock.md
+- bug_id: BUG-2026-09-16-cyrillic-paths
+  date: 2026-09-16
+  severity: high
+  priority: high
+  scope: i18n-paths
+  summary: Файлы с кириллицей в пути не открываются на Windows (ANSI fopen в шиме)
+  file: specs/bugs/BUG-2026-09-16-cyrillic-paths.md
