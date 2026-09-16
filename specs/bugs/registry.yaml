@@ -5,3 +5,10 @@
   scope: audio-normalize
   summary: Normalization inaudible without track restart, LUFS meter static
   file: specs/bugs/BUG-2026-09-15-normalize-live-voice.md
+- bug_id: BUG-2026-09-16-file-loss-hang
+  date: 2026-09-16
+  severity: critical
+  priority: high
+  scope: audio-fault
+  summary: Потеря доступа к воспроизводимому файлу вешает приложение, требуется перезапуск
+  file: specs/bugs/BUG-2026-09-16-file-loss-hang.md
