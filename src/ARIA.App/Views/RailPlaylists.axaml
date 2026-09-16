@@ -9,7 +9,7 @@
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
   </UserControl.Styles>
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,*" DragDrop.AllowDrop="True" DragDrop.Drop="OnRailDropped" DragDrop.DragOver="OnRailDragOver">
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>

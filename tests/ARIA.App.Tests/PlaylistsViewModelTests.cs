@@ -416,6 +416,27 @@ public sealed class PlaylistsViewModelTests
     }
 
     [Fact]
+    public async Task ImportAudioFilesAsync_ReportsSummaryFromEngineReport()
+    {
+        var (bus, _, _) = Setup();
+        var broken = "/audio/broken.wav";
+        using var vm = new PlaylistsViewModel(
+            bus,
+            () => [TestTrack],
+            audioImport: (_, _) => Task.FromResult(new Aria.App.ImportReport(2, 1, [broken])));
+        string? dialog = null;
+        vm.AudioImportIncomplete += message => dialog = message;
+
+        var added = await vm.ImportAudioFilesAsync(["/audio/folder"]);
+
+        Assert.Empty(added);
+        Assert.Equal("импортировано: 2, пропущено: 1, ошибок: 1", vm.PlaylistIoStatus);
+        Assert.NotNull(dialog);
+        Assert.Contains(broken, dialog);
+        Assert.DoesNotContain("/audio/folder", dialog);
+    }
+
+    [Fact]
     public void SetEntryEndAction_SetsAction_AndKeepsNote()
     {
         var (bus, _, _) = Setup();

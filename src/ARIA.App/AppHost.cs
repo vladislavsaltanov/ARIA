@@ -23,14 +23,6 @@ public sealed class AppHost : IAsyncDisposable
     private readonly Func<IAudioSink>? _sinkFactory;
     private readonly Func<ISourceFactory>? _sourceFactory;
 
-    private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".wav",
-        ".flac",
-        ".mp3",
-        ".ogg",
-    };
-
     private CommandBus? _ownedBus;
     private SqliteLibraryStore? _library;
     private SqliteWaveformStore? _waveforms;
@@ -163,6 +155,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             throw new InvalidOperationException("AppHost is not started");
         }
+        Func<string, ImportedTrack?> import = ImportOverride ?? (path => _importer.Import(path));
         var (tracks, playlists) = _library.Load();
         var current = tracks;
         var added = 0;
@@ -171,7 +164,16 @@ public sealed class AppHost : IAsyncDisposable
         foreach (var filePath in ExpandAudioFiles(paths))
         {
             progress?.Report(Path.GetFileName(filePath));
-            var imported = await Task.Run(() => _importer.Import(filePath));
+            ImportedTrack? imported;
+            try
+            {
+                imported = await Task.Run(() => import(filePath));
+            }
+            catch (Exception)
+            {
+                failed.Add(filePath);
+                continue;
+            }
             if (imported is null)
             {
                 failed.Add(filePath);
@@ -196,6 +198,8 @@ public sealed class AppHost : IAsyncDisposable
         }
         return new ImportReport(added, skipped, failed.ToImmutable());
     }
+
+    internal Func<string, ImportedTrack?>? ImportOverride { get; set; }
 
     public async Task<bool> RelinkTrackAsync(TrackId trackId, string newPath)
     {
@@ -283,32 +287,83 @@ public sealed class AppHost : IAsyncDisposable
         return false;
     }
 
+    private const int MaxImportDepth = 64;
+
     private static IEnumerable<string> ExpandAudioFiles(IEnumerable<string> paths)
     {
+        var visited = new HashSet<string>(StringComparer.Ordinal);
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
             {
-                string[] files;
-                try
+                foreach (var file in EnumerateAudioFiles(path, visited))
                 {
-                    files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    continue;
-                }
-                foreach (var file in files.Order(StringComparer.Ordinal))
-                {
-                    if (AudioExtensions.Contains(Path.GetExtension(file)))
-                    {
-                        yield return file;
-                    }
+                    yield return file;
                 }
             }
             else if (File.Exists(path))
             {
                 yield return path;
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateAudioFiles(string root, HashSet<string> visited)
+    {
+        var pending = new Stack<(string Directory, int Depth)>();
+        pending.Push((root, 0));
+        while (pending.Count > 0)
+        {
+            var (directory, depth) = pending.Pop();
+            string full;
+            try
+            {
+                full = Path.GetFullPath(directory);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+            if (!visited.Add(full) || depth > MaxImportDepth)
+            {
+                continue;
+            }
+            string[] entries;
+            try
+            {
+                entries = Directory.GetFileSystemEntries(directory);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+            var subdirectories = new List<string>();
+            var files = new List<string>();
+            foreach (var entry in entries.Order(StringComparer.Ordinal))
+            {
+                if (Directory.Exists(entry))
+                {
+                    subdirectories.Add(entry);
+                }
+                else if (File.Exists(entry))
+                {
+                    if (AudioFileTypes.Extensions.Contains(Path.GetExtension(entry), StringComparer.OrdinalIgnoreCase))
+                    {
+                        files.Add(entry);
+                    }
+                }
+                else if (AudioFileTypes.Extensions.Contains(Path.GetExtension(entry), StringComparer.OrdinalIgnoreCase))
+                {
+                    files.Add(entry);
+                }
+            }
+            for (var index = subdirectories.Count - 1; index >= 0; index--)
+            {
+                pending.Push((subdirectories[index], depth + 1));
+            }
+            foreach (var file in files)
+            {
+                yield return file;
             }
         }
     }

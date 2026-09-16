@@ -133,7 +133,7 @@ public partial class PlaylistCenter : UserControl
             AllowMultiple = true,
             FileTypeFilter =
             [
-                new FilePickerFileType("Аудио") { Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"] },
+                AudioFileTypes.Filter,
             ],
         });
         if (files.Count == 0)
@@ -335,7 +335,7 @@ public partial class PlaylistCenter : UserControl
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("Аудио") { Patterns = ["*.wav", "*.flac", "*.mp3", "*.ogg"] },
+                AudioFileTypes.Filter,
             ],
         });
         if (files.Count == 0)

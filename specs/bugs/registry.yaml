@@ -26,3 +26,17 @@
   scope: i18n-paths
   summary: Файлы с кириллицей в пути не открываются на Windows (ANSI fopen в шиме)
   file: specs/bugs/BUG-2026-09-16-cyrillic-paths.md
+- bug_id: BUG-2026-09-16-folder-import
+  date: 2026-09-16
+  severity: medium
+  priority: high
+  scope: import
+  summary: Импорт папки без выбора папки, отчёт теряется, битый файл валит батч
+  file: specs/bugs/BUG-2026-09-16-folder-import.md
+- bug_id: BUG-2026-09-16-rail-drop-no-playlist
+  date: 2026-09-16
+  severity: medium
+  priority: high
+  scope: dnd-import
+  summary: Дроп папки на боковое меню не создаёт плейлист
+  file: specs/bugs/BUG-2026-09-16-rail-drop-no-playlist.md
