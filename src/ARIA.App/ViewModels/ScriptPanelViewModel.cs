@@ -38,6 +38,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<ScriptId> _knownScripts = [];
+    private readonly HashSet<TrackId> _playlistTracks = [];
     private readonly HashSet<ScriptLineId> _knownLines = [];
     private string? _lastScriptKey;
     private bool _editNextArrival;
@@ -384,8 +385,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         Submit(new PlayTrack(mention.Track));
     }
 
-    private bool IsKnownTrack(TrackId track) =>
-        (_trackSource?.Invoke() ?? []).Any(t => t.Id == track);
+    private bool IsKnownTrack(TrackId track) => _playlistTracks.Contains(track);
 
     public void InsertMention(ScriptLineVm line, TrackId track)
     {
@@ -488,6 +488,15 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     {
         _elapsed = state.Clock.Elapsed;
         _clockRunning = state.Clock.Running;
+        _playlistTracks.Clear();
+        if (state.ActiveId is { } activeId
+            && state.Playlists.FirstOrDefault(p => p.Id == activeId) is { } active)
+        {
+            foreach (var entry in active.Entries)
+            {
+                _playlistTracks.Add(entry.TrackId);
+            }
+        }
         var tracks = _trackSource?.Invoke() ?? [];
         SyncScripts(state);
         SyncLines(state, tracks);

@@ -14,14 +14,18 @@ public sealed class MentionPlayTests : IDisposable
     private static readonly Track PlainTrack = new(
         TrackId.New(), "/audio/plain.flac", "обычный трек", TimeSpan.FromMinutes(4), new TrackDefaults());
 
+    private static readonly Track OrphanTrack = new(
+        TrackId.New(), "/audio/orphan.flac", "сирота", TimeSpan.FromMinutes(2), new TrackDefaults());
+
     private readonly CommandBus _bus;
     private readonly ScriptPanelViewModel _viewModel;
 
     public MentionPlayTests()
     {
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        _bus.Submit(new ClientId("setup"), 1, new LoadShow([LiveTrack, PlainTrack], [], null));
-        _viewModel = new ScriptPanelViewModel(_bus, () => [LiveTrack, PlainTrack]);
+        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), LiveTrack.Id, null), new PlaylistEntry(EntryId.New(), PlainTrack.Id, null)]);
+        _bus.Submit(new ClientId("setup"), 1, new LoadShow([LiveTrack, PlainTrack, OrphanTrack], [playlist], playlist.Id));
+        _viewModel = new ScriptPanelViewModel(_bus, () => [LiveTrack, PlainTrack, OrphanTrack]);
     }
 
     public void Dispose()
@@ -82,6 +86,25 @@ public sealed class MentionPlayTests : IDisposable
 
         Assert.Equal(PlainTrack.Id, _bus.Snapshot().Transport.Current!.TrackId);
         Assert.False(line.CandidatesVisible);
+    }
+
+    [Fact]
+    public void ExecuteMention_TrackOutsidePlaylist_DoesNothing()
+    {
+        var rejections = new List<Rejected>();
+        using var subscription = _bus.Subscribe(e =>
+        {
+            if (e is Rejected rejected)
+            {
+                rejections.Add(rejected);
+            }
+        });
+        var mention = new ScriptPanelViewModel.MentionVm(OrphanTrack.Id, "сирота", false, "02:00");
+
+        _viewModel.ExecuteMention(mention);
+
+        Assert.NotEqual(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Empty(rejections);
     }
 
     [Fact]
