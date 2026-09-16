@@ -68,12 +68,8 @@ static void data_callback(ma_device* device, void* output, const void* input, ma
     atomic_fetch_add_explicit(&engine->tail, playable, memory_order_release);
 }
 
-ARIA_EXPORT int aria_engine_create(int sample_rate, int channels, int block_size_frames, int backend, aria_engine** out_engine)
+static int engine_create_impl(int sample_rate, int channels, int block_size_frames, int backend, const ma_device_id* device_id, aria_engine** out_engine)
 {
-    if (out_engine == NULL || sample_rate <= 0 || channels <= 0 || block_size_frames <= 0)
-    {
-        return -1;
-    }
     *out_engine = NULL;
     aria_engine* engine = (aria_engine*)calloc(1, sizeof(aria_engine));
     if (engine == NULL)
@@ -104,6 +100,7 @@ ARIA_EXPORT int aria_engine_create(int sample_rate, int channels, int block_size
     atomic_init(&engine->master_gain, 1.0f);
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.playback.pDeviceID = device_id;
     config.playback.format = ma_format_f32;
     config.playback.channels = (ma_uint32)channels;
     config.sampleRate = (ma_uint32)sample_rate;
@@ -143,6 +140,90 @@ ARIA_EXPORT int aria_engine_create(int sample_rate, int channels, int block_size
     }
     *out_engine = engine;
     return 0;
+}
+
+ARIA_EXPORT int aria_engine_create(int sample_rate, int channels, int block_size_frames, int backend, aria_engine** out_engine)
+{
+    if (out_engine == NULL || sample_rate <= 0 || channels <= 0 || block_size_frames <= 0)
+    {
+        return -1;
+    }
+    return engine_create_impl(sample_rate, channels, block_size_frames, backend, NULL, out_engine);
+}
+
+ARIA_EXPORT int aria_engine_create_on_device(int sample_rate, int channels, int block_size_frames, int backend, const unsigned char* device_id, int device_id_len, aria_engine** out_engine)
+{
+    if (out_engine == NULL || sample_rate <= 0 || channels <= 0 || block_size_frames <= 0)
+    {
+        return -1;
+    }
+    if (device_id == NULL || device_id_len != (int)sizeof(ma_device_id))
+    {
+        return -1;
+    }
+    ma_device_id id;
+    memcpy(&id, device_id, sizeof(id));
+    return engine_create_impl(sample_rate, channels, block_size_frames, backend, &id, out_engine);
+}
+
+ARIA_EXPORT int aria_device_id_size(void)
+{
+    return (int)sizeof(ma_device_id);
+}
+
+ARIA_EXPORT int aria_output_count(void)
+{
+    ma_context context;
+    if (ma_context_init(NULL, 0, NULL, &context) != MA_SUCCESS)
+    {
+        return -1;
+    }
+    ma_device_info* infos = NULL;
+    ma_uint32 count = 0;
+    int result = -1;
+    if (ma_context_get_devices(&context, &infos, &count, NULL, NULL) == MA_SUCCESS)
+    {
+        result = (int)count;
+    }
+    ma_context_uninit(&context);
+    return result;
+}
+
+ARIA_EXPORT int aria_output_info(int index, char* out_name, int name_capacity, unsigned char* out_id, int id_len, int* out_default)
+{
+    if (index < 0 || out_name == NULL || name_capacity <= 0 || out_id == NULL || out_default == NULL)
+    {
+        return -1;
+    }
+    if (id_len != (int)sizeof(ma_device_id))
+    {
+        return -1;
+    }
+    ma_context context;
+    if (ma_context_init(NULL, 0, NULL, &context) != MA_SUCCESS)
+    {
+        return -1;
+    }
+    ma_device_info* infos = NULL;
+    ma_uint32 count = 0;
+    int result = -1;
+    if (ma_context_get_devices(&context, &infos, &count, NULL, NULL) == MA_SUCCESS
+        && infos != NULL
+        && (ma_uint32)index < count)
+    {
+        size_t i = 0;
+        while (i + 1 < (size_t)name_capacity && infos[index].name[i] != '\0')
+        {
+            out_name[i] = infos[index].name[i];
+            i++;
+        }
+        out_name[i] = '\0';
+        memcpy(out_id, &infos[index].id, sizeof(ma_device_id));
+        *out_default = infos[index].isDefault ? 1 : 0;
+        result = 0;
+    }
+    ma_context_uninit(&context);
+    return result;
 }
 
 ARIA_EXPORT int aria_engine_start(aria_engine* engine)

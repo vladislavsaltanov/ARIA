@@ -7,6 +7,10 @@
 #endif
 typedef struct aria_engine aria_engine;
 ARIA_EXPORT int aria_engine_create(int sample_rate, int channels, int block_size_frames, int backend, aria_engine** out_engine);
+ARIA_EXPORT int aria_engine_create_on_device(int sample_rate, int channels, int block_size_frames, int backend, const unsigned char* device_id, int device_id_len, aria_engine** out_engine);
+ARIA_EXPORT int aria_device_id_size(void);
+ARIA_EXPORT int aria_output_count(void);
+ARIA_EXPORT int aria_output_info(int index, char* out_name, int name_capacity, unsigned char* out_id, int id_len, int* out_default);
 ARIA_EXPORT int aria_engine_start(aria_engine* engine);
 ARIA_EXPORT int aria_engine_stop(aria_engine* engine);
 ARIA_EXPORT void aria_engine_destroy(aria_engine* engine);
