@@ -21,8 +21,8 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     public ScriptPanelViewModelTests()
     {
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), FirstTrack.Id, null), new PlaylistEntry(EntryId.New(), SecondTrack.Id, null)]);
-        _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, SecondTrack], [playlist], playlist.Id));
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), FirstTrack.Id, null), new ProjectEntry(EntryId.New(), SecondTrack.Id, null)]);
+        _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, SecondTrack], [project], project.Id));
         _viewModel = new ScriptPanelViewModel(_bus, () => [FirstTrack, SecondTrack]);
     }
 

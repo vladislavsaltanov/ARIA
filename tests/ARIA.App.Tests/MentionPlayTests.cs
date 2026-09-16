@@ -23,8 +23,8 @@ public sealed class MentionPlayTests : IDisposable
     public MentionPlayTests()
     {
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), LiveTrack.Id, null), new PlaylistEntry(EntryId.New(), PlainTrack.Id, null)]);
-        _bus.Submit(new ClientId("setup"), 1, new LoadShow([LiveTrack, PlainTrack, OrphanTrack], [playlist], playlist.Id));
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), LiveTrack.Id, null), new ProjectEntry(EntryId.New(), PlainTrack.Id, null)]);
+        _bus.Submit(new ClientId("setup"), 1, new LoadShow([LiveTrack, PlainTrack, OrphanTrack], [project], project.Id));
         _viewModel = new ScriptPanelViewModel(_bus, () => [LiveTrack, PlainTrack, OrphanTrack]);
     }
 
