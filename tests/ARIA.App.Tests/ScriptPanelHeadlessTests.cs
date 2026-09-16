@@ -232,7 +232,7 @@ public sealed class ScriptPanelHeadlessTests
     }
 
     [Fact]
-    public async Task LightDismiss_ClosesDrawer_AndLeavesFocus()
+    public async Task ClickOutside_KeepsDrawerOpen()
     {
         await _session.Dispatch(async () =>
         {
@@ -242,8 +242,6 @@ public sealed class ScriptPanelHeadlessTests
             window.Show();
             var drawer = window.FindControl<SplitView>("ScriptDrawer");
             Assert.NotNull(drawer);
-            var sink = window.FindControl<Border>("FocusSink");
-            Assert.NotNull(sink);
             window.ToggleScriptPane();
             Assert.True(drawer.IsPaneOpen);
 
@@ -251,13 +249,9 @@ public sealed class ScriptPanelHeadlessTests
             Assert.NotNull(center);
             var point = center.TranslatePoint(new Point(60, 200), window) ?? new Point(500, 400);
             window.MouseDown(point, MouseButton.Left);
-            for (var attempt = 0; attempt < 20 && drawer.IsPaneOpen; attempt++)
-            {
-                await Task.Delay(50);
-            }
+            await Task.Delay(200);
 
-            Assert.False(drawer.IsPaneOpen);
-            Assert.True(sink.IsFocused);
+            Assert.True(drawer.IsPaneOpen);
 
             window.Close();
             return 0;

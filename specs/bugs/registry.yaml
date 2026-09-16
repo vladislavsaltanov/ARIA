@@ -54,3 +54,10 @@
   scope: project-selection
   summary: Выбор проекта в списке не активирует его, сценарии и гарды висят на stale ActiveId
   file: specs/bugs/BUG-2026-09-17-selection-activates.md
+- bug_id: BUG-2026-09-17-drawer-light-dismiss
+  date: 2026-09-17
+  severity: medium
+  priority: high
+  scope: script-panel
+  summary: Клик мимо панели сценариев сразу закрывает её
+  file: specs/bugs/BUG-2026-09-17-drawer-light-dismiss.md
