@@ -24,6 +24,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<TopLevel?>? _topLevel;
     private readonly Func<Task<IReadOnlyList<string>>>? _folderPicker;
+    private readonly Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? _scriptExporter;
     private Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? _audioImport;
     private readonly Func<TrackId, TrackAudioSettings?>? _trackAudio;
     private readonly SynchronizationContext? _sync;
@@ -154,7 +155,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null)
+    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null, Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? scriptExporter = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -164,6 +165,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         _sync = sync;
         _topLevel = topLevel;
         _folderPicker = folderPicker;
+        _scriptExporter = scriptExporter;
         _audioImport = audioImport;
         _trackAudio = trackAudio;
         _subscription = bus.Subscribe(Apply);
@@ -363,6 +365,12 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         return ImportIntoAsync(paths, silent, SelectedProject);
     }
+
+    public void SaveProjectToFolder(string dir, ProjectVm target)
+    {
+    }
+
+    public Task<ProjectImportReport?> OpenProjectFolderAsync(string dir) => Task.FromResult<ProjectImportReport?>(null);
 
     public async Task ImportDroppedPathsAsync(IEnumerable<string> paths)
     {

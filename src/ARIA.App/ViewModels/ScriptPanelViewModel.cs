@@ -196,6 +196,8 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         ImportDocument(await reader.ReadToEndAsync(), files[0].Path.LocalPath);
     }
 
+    public IReadOnlyList<(string Name, string Json)> ExportProjectScripts(ProjectId project) => [];
+
     public string ExportSelectedDocument()
     {
         var state = _bus.Snapshot().Show;
