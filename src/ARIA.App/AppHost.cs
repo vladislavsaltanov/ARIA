@@ -295,32 +295,83 @@ public sealed class AppHost : IAsyncDisposable
         return false;
     }
 
+    private const int MaxImportDepth = 64;
+
     private static IEnumerable<string> ExpandAudioFiles(IEnumerable<string> paths)
     {
+        var visited = new HashSet<string>(StringComparer.Ordinal);
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
             {
-                string[] files;
-                try
+                foreach (var file in EnumerateAudioFiles(path, visited))
                 {
-                    files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    continue;
-                }
-                foreach (var file in files.Order(StringComparer.Ordinal))
-                {
-                    if (AudioExtensions.Contains(Path.GetExtension(file)))
-                    {
-                        yield return file;
-                    }
+                    yield return file;
                 }
             }
             else if (File.Exists(path))
             {
                 yield return path;
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateAudioFiles(string root, HashSet<string> visited)
+    {
+        var pending = new Stack<(string Directory, int Depth)>();
+        pending.Push((root, 0));
+        while (pending.Count > 0)
+        {
+            var (directory, depth) = pending.Pop();
+            string full;
+            try
+            {
+                full = Path.GetFullPath(directory);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+            if (!visited.Add(full) || depth > MaxImportDepth)
+            {
+                continue;
+            }
+            string[] entries;
+            try
+            {
+                entries = Directory.GetFileSystemEntries(directory);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+            var subdirectories = new List<string>();
+            var files = new List<string>();
+            foreach (var entry in entries.Order(StringComparer.Ordinal))
+            {
+                if (Directory.Exists(entry))
+                {
+                    subdirectories.Add(entry);
+                }
+                else if (File.Exists(entry))
+                {
+                    if (AudioExtensions.Contains(Path.GetExtension(entry)))
+                    {
+                        files.Add(entry);
+                    }
+                }
+                else if (AudioExtensions.Contains(Path.GetExtension(entry)))
+                {
+                    files.Add(entry);
+                }
+            }
+            for (var index = subdirectories.Count - 1; index >= 0; index--)
+            {
+                pending.Push((subdirectories[index], depth + 1));
+            }
+            foreach (var file in files)
+            {
+                yield return file;
             }
         }
     }
