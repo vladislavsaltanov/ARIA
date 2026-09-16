@@ -39,7 +39,7 @@
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
         </Button>
       </Grid>
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="0,4,10,0">
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,4,10,0">
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="{Binding EntryCountText}" FontSize="12" Foreground="{StaticResource BrushDim}"
                      VerticalAlignment="Center"/>
@@ -69,12 +69,20 @@
           <TextBlock Text="+ Папка" FontSize="12" VerticalAlignment="Center"/>
         </Button>
         <Button Grid.Column="5" x:Name="ImportProjectButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Command="{Binding ImportProjectCommand}" ToolTip.Tip="Импорт проекта из .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
+                Command="{Binding ImportProjectCommand}" ToolTip.Tip="Импорт проекта из .aria-project.json" VerticalAlignment="Center" Margin="6,0,0,0">
           <TextBlock Text="+ Проект" FontSize="12" VerticalAlignment="Center"/>
         </Button>
         <Button Grid.Column="6" x:Name="ExportProjectButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Command="{Binding ExportProjectCommand}" ToolTip.Tip="Экспорт проекта в .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
+                Command="{Binding ExportProjectCommand}" ToolTip.Tip="Экспорт проекта в .aria-project.json" VerticalAlignment="Center" Margin="6,0,0,0">
           <TextBlock Text="Экспорт" FontSize="12" VerticalAlignment="Center"/>
+        </Button>
+        <Button Grid.Column="7" x:Name="ImportZipButton" Classes="ghost" MinHeight="32" Padding="10,0"
+                Command="{Binding ImportZipCommand}" ToolTip.Tip="Импорт проекта из .aria.zip" VerticalAlignment="Center" Margin="6,0,0,0">
+          <TextBlock Text="+ ZIP" FontSize="12" VerticalAlignment="Center"/>
+        </Button>
+        <Button Grid.Column="8" x:Name="ExportZipButton" Classes="ghost" MinHeight="32" Padding="10,0"
+                Command="{Binding ExportZipCommand}" ToolTip.Tip="Экспорт проекта в .aria.zip со звуком" VerticalAlignment="Center" Margin="6,0,0,0">
+          <TextBlock Text="ZIP" FontSize="12" VerticalAlignment="Center"/>
         </Button>
       </Grid>
     </Grid>

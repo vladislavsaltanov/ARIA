@@ -24,12 +24,14 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly WaveformThumbs? _thumbs;
     private readonly Func<TopLevel?>? _topLevel;
     private readonly Func<Task<IReadOnlyList<string>>>? _folderPicker;
+    private readonly Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? _scriptExporter;
     private Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? _audioImport;
     private readonly Func<TrackId, TrackAudioSettings?>? _trackAudio;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
+    private bool _syncingSelection;
     private readonly Dictionary<ProjectId, string> _projectDirs = [];
     private readonly List<(string Name, string Dir)> _pendingDirs = [];
     private List<StagedProjectScript>? _pendingProjectScripts;
@@ -154,7 +156,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null)
+    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null, Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? scriptExporter = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -164,6 +166,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         _sync = sync;
         _topLevel = topLevel;
         _folderPicker = folderPicker;
+        _scriptExporter = scriptExporter;
         _audioImport = audioImport;
         _trackAudio = trackAudio;
         _subscription = bus.Subscribe(Apply);
@@ -277,6 +280,68 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private async Task ExportZipAsync()
+    {
+        var topLevel = _topLevel?.Invoke();
+        if (topLevel is null)
+        {
+            SetTransientStatus("экспорт недоступен");
+            return;
+        }
+        if (SelectedProject is null)
+        {
+            SetTransientStatus("нет проекта для экспорта");
+            return;
+        }
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Экспорт проекта в ZIP",
+            SuggestedFileName = SelectedProject.Name + ".aria.zip",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("ARIA-проект (ZIP)") { Patterns = ["*.aria.zip"] },
+            ],
+        });
+        if (file is null)
+        {
+            return;
+        }
+        var target = SelectedProject;
+        await Task.Run(() => ExportZipToFile(file.Path.LocalPath, target));
+        ExportSucceeded?.Invoke(file.Name, $"Сохранено: {file.Name}\nТреков: {target.Entries.Count}");
+    }
+
+    [RelayCommand]
+    private async Task ImportZipAsync()
+    {
+        var topLevel = _topLevel?.Invoke();
+        if (topLevel is null)
+        {
+            SetTransientStatus("импорт недоступен");
+            return;
+        }
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Импорт проекта из ZIP",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("ARIA-проект (ZIP)") { Patterns = ["*.aria.zip"] },
+            ],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+        var folders = await (_folderPicker ?? PickAudioFolderAsync)();
+        if (folders.Count == 0)
+        {
+            return;
+        }
+        await ImportZipFile(files[0].Path.LocalPath, folders[0]);
+    }
+
+    [RelayCommand]
     private async Task ImportProjectAsync()
     {
         var topLevel = _topLevel?.Invoke();
@@ -364,6 +429,86 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         return ImportIntoAsync(paths, silent, SelectedProject);
     }
 
+    public void SaveProjectToFolder(string dir, ProjectVm target)
+    {
+        Directory.CreateDirectory(ProjectFolder.ScriptsPath(dir));
+        File.WriteAllText(ProjectFolder.ProjectPath(dir), ExportDocument(target));
+        foreach (var (name, json) in _scriptExporter?.Invoke(target.Id) ?? [])
+        {
+            File.WriteAllText(
+                Path.Combine(ProjectFolder.ScriptsPath(dir), ProjectFolder.SafeFileName(name) + ScriptPanelViewModel.ScriptFileExtension),
+                json);
+        }
+        _projectDirs[target.Id] = dir;
+    }
+
+    public async Task<ProjectImportReport?> OpenProjectFolderAsync(string dir)
+    {
+        if (!ProjectFolder.HasProject(dir))
+        {
+            return null;
+        }
+        string json;
+        try
+        {
+            json = await File.ReadAllTextAsync(ProjectFolder.ProjectPath(dir));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            SetTransientStatus("проект не открылся");
+            return null;
+        }
+        return await ImportDocumentAsync(json, dir);
+    }
+
+    public void ExportZipToFile(string zipPath, ProjectVm target)
+    {
+        var (entries, scripts) = CollectExportModel(target, path => path);
+        var audio = new List<string>();
+        var rel = new Dictionary<string, string>(StringComparer.Ordinal);
+        var mappedEntries = new List<ProjectExportEntry>();
+        foreach (var entry in entries)
+        {
+            if (File.Exists(entry.File))
+            {
+                var relative = ProjectFolder.ZipAudioDir + "/" + Path.GetFileName(entry.File);
+                rel[entry.File] = relative;
+                audio.Add(entry.File);
+                mappedEntries.Add(entry with { File = relative });
+            }
+            else
+            {
+                mappedEntries.Add(entry);
+            }
+        }
+        var mappedScripts = scripts
+            .Select(script => new ProjectExportScript(
+                script.Name,
+                script.Lines.Select(line => line with { Tracks = MapRefs(line.Tracks, path => rel.GetValueOrDefault(path, path)) })))
+            .ToList();
+        ProjectFolder.BuildZip(zipPath, ProjectFormat.Export(target.Name, mappedEntries, mappedScripts), audio);
+    }
+
+    public async Task<ProjectImportReport?> ImportZipFile(string zipPath, string destDir)
+    {
+        string json;
+        try
+        {
+            json = await Task.Run(() => ProjectFolder.ExtractProject(zipPath, destDir));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            SetTransientStatus("архив не открылся");
+            return null;
+        }
+        if (_audioImport is not null)
+        {
+            IProgress<string>? progress = new Progress<string>(name => ProjectIoStatus = $"импорт: {name}");
+            await _audioImport([Path.Combine(destDir, ProjectFolder.ZipAudioDir)], progress);
+        }
+        return await ImportDocumentAsync(json, destDir);
+    }
+
     public async Task ImportDroppedPathsAsync(IEnumerable<string> paths)
     {
         var inputs = paths.ToArray();
@@ -374,6 +519,11 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         foreach (var folder in inputs.Where(Directory.Exists))
         {
+            if (ProjectFolder.HasProject(folder))
+            {
+                await OpenDroppedFolderAsync(folder);
+                continue;
+            }
             var name = UniqueProjectName(FolderProjectName(folder));
             _awaitedProjectName = name;
             Submit(new CreateProject(name));
@@ -384,6 +534,29 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                 continue;
             }
             await ImportIntoAsync([folder], false, target);
+            SaveProjectToFolder(folder, target);
+            Submit(new SetActiveProject(target.Id));
+        }
+    }
+
+    private async Task OpenDroppedFolderAsync(string folder)
+    {
+        var known = Projects.FirstOrDefault(pr => string.Equals(GetProjectDirectory(pr.Id), folder, StringComparison.OrdinalIgnoreCase));
+        if (known is not null)
+        {
+            Submit(new SetActiveProject(known.Id));
+            return;
+        }
+        var opened = await OpenProjectFolderAsync(folder);
+        if (opened is null)
+        {
+            return;
+        }
+        var imported = Projects.FirstOrDefault(pr => pr.Name == opened.ProjectName && string.Equals(GetProjectDirectory(pr.Id), folder, StringComparison.OrdinalIgnoreCase))
+            ?? await WaitForProjectAsync(opened.ProjectName);
+        if (imported is not null)
+        {
+            Submit(new SetActiveProject(imported.Id));
         }
     }
 
@@ -489,22 +662,36 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             throw new InvalidOperationException("Нет выбранного проекта");
         }
+        return ExportDocument(SelectedProject);
+    }
+
+    private string ExportDocument(ProjectVm target)
+    {
+        var (entries, scripts) = CollectExportModel(target, path => path);
+        return ProjectFormat.Export(target.Name, entries, scripts);
+    }
+
+    private (List<ProjectExportEntry> Entries, List<ProjectExportScript> Scripts) CollectExportModel(ProjectVm target, Func<string, string> mapPath)
+    {
         var tracks = _trackSource?.Invoke() ?? [];
         var files = tracks.ToDictionary(t => t.Id, t => t.FilePath);
-        var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
-            files.GetValueOrDefault(entry.TrackId, entry.DisplayName),
-            entry.Overrides));
+        var entries = target.Entries.Select(entry => new ProjectExportEntry(
+            mapPath(files.GetValueOrDefault(entry.TrackId, entry.DisplayName)),
+            entry.Overrides)).ToList();
         var show = _bus.Snapshot().Show;
         var scripts = show.Scripts
-            .Where(s => s.Project == SelectedProject.Id || (s.Project is null && SelectedProject.Id == show.ActiveId))
+            .Where(s => s.Project == target.Id || (s.Project is null && target.Id == show.ActiveId))
             .Select(script => new ProjectExportScript(
             script.Name,
             script.Lines.Select(line => new ProjectExportScriptLine(
                 ScriptPanelViewModel.FormatLineTime(line.AtElapsed),
                 line.Text,
-                ScriptPanelViewModel.TrackPaths(line.Mentions, tracks)))));
-        return ProjectFormat.Export(SelectedProject.Name, entries, scripts);
+                MapRefs(ScriptPanelViewModel.TrackPaths(line.Mentions, tracks), mapPath))))).ToList();
+        return (entries, scripts);
     }
+
+    private static string[]? MapRefs(string[]? refs, Func<string, string> mapPath) =>
+        refs is null ? null : [.. refs.Select(mapPath)];
 
     public string? GetProjectDirectory(ProjectId? id) => id is { } pid ? _projectDirs.GetValueOrDefault(pid) : null;
 
@@ -529,8 +716,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var pendingTransitions = 0;
         foreach (var entry in document.Entries)
         {
-            if (!byPath.TryGetValue(UnicodePaths.Key(entry.File), out var trackId)
-                && !byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(entry.File)), out trackId))
+            if (!TryResolveTrack(entry.File, sourceDir, byPath, byName, out var trackId))
             {
                 missing.Add(entry.File);
                 continue;
@@ -552,7 +738,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                 {
                     return FailDocumentImport($"bad-script: {scriptName}: неверное время: {line.At}");
                 }
-                stagedLines.Add(new StagedProjectScriptLine(at, line.Text ?? string.Empty, ResolveScriptRefs(line.Tracks, byPath, byName)));
+                stagedLines.Add(new StagedProjectScriptLine(at, line.Text ?? string.Empty, ResolveScriptRefs(line.Tracks, sourceDir, byPath, byName)));
             }
             stagedScripts.Add(new StagedProjectScript(scriptName, stagedLines));
         }
@@ -595,7 +781,28 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         return Task.FromResult(new ProjectImportReport(string.Empty, 0, [], 0, error));
     }
 
-    private static ImmutableArray<TrackId> ResolveScriptRefs(string[]? refs, Dictionary<string, TrackId> byPath, Dictionary<string, TrackId> byName)
+    private static bool TryResolveTrack(string file, string? sourceDir, Dictionary<string, TrackId> byPath, Dictionary<string, TrackId> byName, out TrackId trackId)
+    {
+        if (byPath.TryGetValue(UnicodePaths.Key(file), out trackId))
+        {
+            return true;
+        }
+        if (sourceDir is not null)
+        {
+            var combined = Path.Combine(sourceDir, file);
+            if (byPath.TryGetValue(UnicodePaths.Key(combined), out trackId))
+            {
+                return true;
+            }
+            if (byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(combined)), out trackId))
+            {
+                return true;
+            }
+        }
+        return byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(file)), out trackId);
+    }
+
+    private static ImmutableArray<TrackId> ResolveScriptRefs(string[]? refs, string? sourceDir, Dictionary<string, TrackId> byPath, Dictionary<string, TrackId> byName)
     {
         if (refs is null || refs.Length == 0)
         {
@@ -604,15 +811,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var result = new List<TrackId>(refs.Length);
         foreach (var file in refs)
         {
-            if (byPath.TryGetValue(UnicodePaths.Key(file), out var id)
-                || byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(file)), out id))
-            {
-                result.Add(id);
-            }
-            else
-            {
-                result.Add(TrackId.New());
-            }
+            result.Add(TryResolveTrack(file, sourceDir, byPath, byName, out var id) ? id : TrackId.New());
         }
         return [.. result];
     }
@@ -636,7 +835,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var remaining = new List<(string Name, string Dir)>();
         foreach (var (name, dir) in _pendingDirs)
         {
-            var project = state.Projects.FirstOrDefault(pr => pr.Name == name);
+            var project = state.Projects.LastOrDefault(pr => pr.Name == name);
             if (project is null)
             {
                 remaining.Add((name, dir));
@@ -1037,7 +1236,9 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                 _awaitedProjectName = null;
             }
         }
+        _syncingSelection = true;
         SelectedProject = awaited ?? Projects.FirstOrDefault(p => p.Id == selectedProjectId) ?? Projects.FirstOrDefault();
+        _syncingSelection = false;
         SelectedEntry = SelectedProject?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedProject?.Entries.FirstOrDefault();
         RefreshVisible();
         RefreshCenterHeader();
@@ -1066,6 +1267,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     {
         RefreshVisible();
         RefreshCenterHeader();
+        if (!_syncingSelection && value is { } project && _bus.Snapshot().Show.ActiveId != project.Id)
+        {
+            Submit(new SetActiveProject(project.Id));
+        }
     }
 
     partial void OnCenterSearchTextChanged(string value)

@@ -13,6 +13,7 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Controls.Shapes;
 
 public partial class MainWindow : Window
 {
@@ -22,6 +23,7 @@ public partial class MainWindow : Window
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
     private bool _paneResizing;
+    private bool _explicitPaneClose;
     private double _paneResizeStartX;
     private double _paneResizeStartWidth;
     private const double PaneKeyboardStep = 20.0;
@@ -55,6 +57,7 @@ public partial class MainWindow : Window
         {
             ScriptPanel.DataContext = scriptViewModel;
             ScriptPanel.CloseRequested += (_, _) => ToggleScriptPane();
+            ScriptDrawer.PaneClosing += OnScriptPaneClosing;
             scriptViewModel.PropertyChanged += OnScriptPropertyChanged;
         }
         ProjectCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
@@ -76,12 +79,37 @@ public partial class MainWindow : Window
         if (ScriptDrawer.IsPaneOpen)
         {
             ScriptPanel.CommitOpenEdit();
-            ScriptDrawer.IsPaneOpen = false;
+            _explicitPaneClose = true;
+            try
+            {
+                ScriptDrawer.IsPaneOpen = false;
+            }
+            finally
+            {
+                _explicitPaneClose = false;
+            }
             FocusSink.Focus();
         }
         else
         {
             ScriptDrawer.IsPaneOpen = true;
+            HideDismissLayer();
+        }
+    }
+
+    private void HideDismissLayer()
+    {
+        foreach (var layer in ScriptDrawer.GetVisualDescendants().OfType<Rectangle>().Where(r => r.Name == "LightDismissLayer"))
+        {
+            layer.IsVisible = false;
+        }
+    }
+
+    private void OnScriptPaneClosing(object? sender, CancelRoutedEventArgs e)
+    {
+        if (!_explicitPaneClose)
+        {
+            e.Cancel = true;
         }
     }
 
@@ -187,32 +215,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!ScriptDrawer.IsPaneOpen)
-        {
-            return;
-        }
-        var current = e.Source as Control;
-        while (current is not null)
-        {
-            if (current == ScriptPanel || current == PaneResizer || current.Name == "ScenarioButton")
-            {
-                return;
-            }
-            current = current.Parent as Control;
-        }
-        ScriptPanel.CommitOpenEdit();
-        ScriptDrawer.IsPaneOpen = false;
-        FocusSink.Focus();
-    }
-
     private void OnOpened(object? sender, EventArgs e)
     {
         Opened -= OnOpened;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(InputElement.KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
-        AddHandler(InputElement.PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
         PaneResizer.AddHandler(InputElement.PointerPressedEvent, OnGripPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(InputElement.PointerPressedEvent, OnResizeTunnelPressed, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerMovedEvent, OnResizeTunnelMoved, RoutingStrategies.Tunnel);
