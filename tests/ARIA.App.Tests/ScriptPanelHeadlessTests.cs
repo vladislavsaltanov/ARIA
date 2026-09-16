@@ -249,6 +249,7 @@ public sealed class ScriptPanelHeadlessTests
             Assert.NotNull(center);
             var point = center.TranslatePoint(new Point(60, 200), window) ?? new Point(500, 400);
             window.MouseDown(point, MouseButton.Left);
+            window.MouseUp(point, MouseButton.Left);
             await Task.Delay(200);
 
             Assert.True(drawer.IsPaneOpen);
