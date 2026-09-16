@@ -35,6 +35,7 @@ public sealed class ShowController : IShowHandler
     private DeckInstance? _current;
     private readonly HashSet<StreamHandle> _retired = [];
     private readonly HashSet<TrackId> _faulted = [];
+    private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private bool _atEndBoundary;
     private bool _panicked;
 
@@ -408,6 +409,7 @@ public sealed class ShowController : IShowHandler
                     _tracks = _tracks.Replace(existing, track);
                     _trackMap[track.Id] = track;
                     faultCleared |= _faulted.Remove(track.Id);
+                    _faultCauses.Remove(track.Id);
                     added = true;
                 }
                 continue;
@@ -1558,6 +1560,7 @@ public sealed class ShowController : IShowHandler
             if (_current is { } failed)
             {
                 _faulted.Add(failed.Track.Id);
+                _faultCauses[failed.Track.Id] = ParseFaultCause(e.Detail);
             }
             DisposeCurrentHandle();
             _status = TransportStatus.Stopped;
@@ -1697,6 +1700,7 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(previous);
         }
         _faulted.Remove(deck.Track.Id);
+        _faultCauses.Remove(deck.Track.Id);
         var settings = deck.Settings;
         var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut, settings.Audio);
         var options = new StreamOptions(
@@ -1779,7 +1783,7 @@ public sealed class ShowController : IShowHandler
     private TransportState BuildTransport()
     {
         var current = _current is null ? null : Content(_current);
-        return new TransportState(_status, current, PeekNext(), [.. _faulted]);
+        return new TransportState(_status, current, PeekNext(), [.. _faulted], [.. _faulted.Select(id => new FaultCause(id, _faultCauses.GetValueOrDefault(id, SourceOpenFault.Unknown)))]);
     }
 
     private static DeckContent Content(DeckInstance deck) => new(
@@ -1894,6 +1898,9 @@ public sealed class ShowController : IShowHandler
     }
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));
+
+    private static SourceOpenFault ParseFaultCause(string? detail) =>
+        Enum.TryParse<SourceOpenFault>(detail, out var cause) ? cause : SourceOpenFault.Unknown;
 
     private void EmitQueue() => Emit(new QueueDelta(++_queueVersion, new QueueState([.. _queue])));
 

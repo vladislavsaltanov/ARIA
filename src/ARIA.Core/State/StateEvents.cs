@@ -3,6 +3,7 @@ namespace Aria.Core.State;
 using System.Collections.Immutable;
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 
 public enum StatePartition
 {
@@ -34,7 +35,8 @@ public sealed record TransportState(
     TransportStatus Status,
     DeckContent? Current,
     DeckContent? Next,
-    ImmutableArray<TrackId> Faulted);
+    ImmutableArray<TrackId> Faulted,
+    ImmutableArray<FaultCause> FaultCauses = default);
 
 public sealed record QueueItem(
     EntryId? EntryId,

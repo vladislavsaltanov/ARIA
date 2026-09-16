@@ -2,6 +2,7 @@ namespace Aria.Audio;
 
 using System.Runtime.InteropServices;
 using Aria.Audio.Native;
+using Aria.Core.Playback;
 
 public sealed class MiniaudioSourceFactory : ISourceFactory
 {
@@ -24,6 +25,20 @@ public sealed class MiniaudioSourceFactory : ISourceFactory
             return null;
         }
         return new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn, cueOut);
+    }
+
+    public bool TryOpen(string filePath, TimeSpan cueIn, TimeSpan? cueOut, out ISampleSource? source, out SourceOpenFault fault)
+    {
+        source = null;
+        fault = SourceOpenFault.Undecodable;
+        if (AriaShim.DecoderOpen(filePath, _outputSampleRate, _outputChannels, out var decoder) != 0)
+        {
+            fault = File.Exists(filePath) ? SourceOpenFault.Undecodable : SourceOpenFault.Missing;
+            return false;
+        }
+        source = new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn, cueOut);
+        fault = SourceOpenFault.Unknown;
+        return true;
     }
 
     private sealed class DecoderSource : ISampleSource, IDisposable
