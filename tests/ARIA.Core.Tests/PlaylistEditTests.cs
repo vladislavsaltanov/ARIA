@@ -72,7 +72,7 @@ public sealed class PlaylistEditTests
     }
 
     [Fact]
-    public void DeletePlaylist_KeepsQueueSnapshots_QueueStartFallsBackToTrack()
+    public void DeletePlaylist_DropsQueueSnapshots()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("queued");
@@ -82,14 +82,12 @@ public sealed class PlaylistEditTests
 
         h.Submit(new DeletePlaylist(p1.Id));
 
-        var item = Assert.Single(h.Snapshot.Queue.Items);
-        Assert.Equal(t1.Id, item.TrackId);
+        Assert.Empty(h.Snapshot.Queue.Items);
 
-        h.Submit(new Play());
+        var seq = h.Submit(new Play());
 
-        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
-        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
-        Assert.Equal(t1.DefaultName, h.Transport.Current.DisplayName);
+        Assert.Equal("nothing-to-play", h.RejectionOf(seq)?.Reason);
+        Assert.Equal(TransportStatus.Stopped, h.Transport.Status);
     }
 
     [Fact]
@@ -277,7 +275,7 @@ public sealed class PlaylistEditTests
     }
 
     [Fact]
-    public void RemoveEntry_PlayingEntry_DeckFinishes_AdvanceFollowsCursor()
+    public void RemoveEntry_PlayingEntry_StopsAndDisposes()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
@@ -293,15 +291,11 @@ public sealed class PlaylistEditTests
         h.Submit(new RemoveEntry(e1.Id));
 
         Assert.Equal("unknown-entry", h.RejectionOf(h.Submit(new RemoveEntry(EntryId.New())))?.Reason);
-        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+        Assert.Equal(TransportStatus.Stopped, h.Transport.Status);
+        Assert.Null(h.Transport.Current);
+        Assert.Contains(handle, h.Engine.Disposed);
         Assert.Single(h.Engine.Created);
         Assert.Equal(2, h.Snapshot.Show.Playlists.Single().Entries.Length);
-
-        h.Engine.End(handle, StreamEndReason.Completed);
-
-        Assert.Equal(2, h.Engine.Created.Count);
-        Assert.Equal(t3.Id, h.Transport.Current!.TrackId);
-        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
     }
 
     [Fact]

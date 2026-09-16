@@ -873,14 +873,25 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
+        var removed = _playlists[index];
         _playlists = _playlists.RemoveAt(index);
         if (_activePlaylistId == command.Id)
         {
             _activePlaylistId = null;
             _cursor = 0;
         }
+        var gone = removed.Entries.Select(entry => entry.Id).ToHashSet();
+        if (_current?.Entry is { } currentEntry && gone.Contains(currentEntry))
+        {
+            DropCurrentPlayback();
+        }
+        var queueChanged = _queue.RemoveAll(item => item.EntryId is { } entryId && gone.Contains(entryId)) > 0;
         RebuildEntryMap();
         EmitShow();
+        if (queueChanged)
+        {
+            EmitQueue();
+        }
         EmitTransport();
     }
 
@@ -962,8 +973,17 @@ public sealed class ShowController : IShowHandler
         }
         var playlist = location.Playlist;
         _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = playlist.Entries.RemoveAt(location.Index) });
+        if (_current?.Entry == command.Entry)
+        {
+            DropCurrentPlayback();
+        }
+        var queueChanged = _queue.RemoveAll(item => item.EntryId == command.Entry) > 0;
         RebuildEntryMap();
         EmitShow();
+        if (queueChanged)
+        {
+            EmitQueue();
+        }
         EmitTransport();
     }
 
@@ -1824,6 +1844,19 @@ public sealed class ShowController : IShowHandler
             _engine.DisposeStream(handle);
             _monitor?.Unbind(handle);
         }
+    }
+
+    private void DropCurrentPlayback()
+    {
+        if (_current is { Handle: { } handle })
+        {
+            _engine.Transport(handle, TransportCommand.Stop);
+            _engine.DisposeStream(handle);
+            _retired.Remove(handle);
+            _monitor?.Unbind(handle);
+        }
+        _current = null;
+        _status = TransportStatus.Stopped;
     }
 
     private void DisposeCurrentHandle()
