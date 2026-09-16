@@ -1,6 +1,7 @@
 namespace Aria.Audio.Tests;
 
 using System.Runtime.InteropServices;
+using System.Text;
 using Aria.Audio.Native;
 
 public sealed class UnicodePathDecoderTests : IDisposable
@@ -43,6 +44,37 @@ public sealed class UnicodePathDecoderTests : IDisposable
     }
 
     [Fact]
+    public void WideExport_OpensCyrillicFile()
+    {
+        var path = TestWav.WriteSine(_directory, "Трек №2.wav", SampleRate, 2, 0.5, 440.0, 0.5);
+        var library = LoadShimHandle();
+        try
+        {
+            Assert.True(NativeLibrary.TryGetExport(library, "aria_decoder_open_w", out var openPtr), "wide export missing");
+            Assert.True(NativeLibrary.TryGetExport(library, "aria_decoder_close", out var closePtr), "close export missing");
+            var open = Marshal.GetDelegateForFunctionPointer<WideOpenDelegate>(openPtr);
+            var close = Marshal.GetDelegateForFunctionPointer<RawCloseDelegate>(closePtr);
+            var encoded = (OperatingSystem.IsWindows() ? Encoding.Unicode : Encoding.UTF32).GetBytes(path + "\0");
+            var nativePath = Marshal.AllocHGlobal(encoded.Length);
+            try
+            {
+                Marshal.Copy(encoded, 0, nativePath, encoded.Length);
+                Assert.Equal(0, open(nativePath, SampleRate, 2, out var decoder));
+                Assert.NotEqual(IntPtr.Zero, decoder);
+                close(decoder);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(nativePath);
+            }
+        }
+        finally
+        {
+            NativeLibrary.Free(library);
+        }
+    }
+
+    [Fact]
     public void DecoderOpen_ExplicitNarrow_OpensCyrillicFile()
     {
         var path = TestWav.WriteSine(_directory, "Маршрут-narrow.wav", SampleRate, 2, 0.5, 440.0, 0.5);
@@ -51,4 +83,18 @@ public sealed class UnicodePathDecoderTests : IDisposable
         Assert.NotEqual(IntPtr.Zero, decoder);
         AriaShim.DecoderClose(decoder);
     }
+
+    private static IntPtr LoadShimHandle()
+    {
+        var assemblyDirectory = Path.GetDirectoryName(typeof(MiniaudioSourceFactory).Assembly.Location);
+        Assert.NotNull(assemblyDirectory);
+        var fileName = OperatingSystem.IsWindows() ? "aria_shim.dll" : OperatingSystem.IsMacOS() ? "libaria_shim.dylib" : "libaria_shim.so";
+        return NativeLibrary.Load(Path.Combine(assemblyDirectory, "runtimes", RuntimeInformation.RuntimeIdentifier, "native", fileName));
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int WideOpenDelegate(IntPtr path, int sampleRate, int channels, out IntPtr decoder);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void RawCloseDelegate(IntPtr decoder);
 }
