@@ -85,6 +85,25 @@ public sealed class MentionPlayTests : IDisposable
     }
 
     [Fact]
+    public void ExecuteMention_TrackOutsidePlaylist_DoesNothing()
+    {
+        var rejections = new List<Rejected>();
+        using var subscription = _bus.Subscribe(e =>
+        {
+            if (e is Rejected rejected)
+            {
+                rejections.Add(rejected);
+            }
+        });
+        var mention = new ScriptPanelViewModel.MentionVm(LiveTrack.Id, "трек (лайв)", false, "03:00");
+
+        _viewModel.ExecuteMention(mention);
+
+        Assert.NotEqual(TransportStatus.Playing, _bus.Snapshot().Transport.Status);
+        Assert.Empty(rejections);
+    }
+
+    [Fact]
     public void ExecuteMention_Dangling_DoesNothing()
     {
         var mention = new ScriptPanelViewModel.MentionVm(TrackId.New(), "—", true, "--:--");
