@@ -52,7 +52,7 @@ public sealed class ProjectSchemaMigrationTests : IDisposable
         {
             store.Load();
         }
-        Assert.Equal(["projects", "project_entries", "tracks"], TableNames().Order().ToArray());
+        Assert.Equal(["project_entries", "projects", "tracks"], TableNames().Order().ToArray());
 
         using (var store = new SqliteLibraryStore(_dbPath))
         {
@@ -61,7 +61,7 @@ public sealed class ProjectSchemaMigrationTests : IDisposable
             Assert.Equal(track.Id, Assert.Single(tracks).Id);
             Assert.Single(projects);
         }
-        Assert.Equal(["projects", "project_entries", "tracks"], TableNames().Order().ToArray());
+        Assert.Equal(["project_entries", "projects", "tracks"], TableNames().Order().ToArray());
     }
 
     [Fact]
