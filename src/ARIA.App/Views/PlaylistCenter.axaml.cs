@@ -49,7 +49,7 @@ public partial class ProjectCenter : UserControl
 
     private async void OnImportFailed(string message)
     {
-        await ShowInfoDialog("Импорт плейлиста не удался", message);
+        await ShowInfoDialog("Импорт проекта не удался", message);
     }
 
     private async void OnAudioImportIncomplete(string message)
@@ -99,7 +99,7 @@ public partial class ProjectCenter : UserControl
                         HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
                         Content = new TextBlock
                         {
-                            Text = $"В плейлисте «{report.ProjectName}» не хватает файлов: {report.MissingFiles.Length}\n{listed}",
+                            Text = $"В проекте «{report.ProjectName}» не хватает файлов: {report.MissingFiles.Length}\n{listed}",
                             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                         },
                     },
@@ -150,7 +150,7 @@ public partial class ProjectCenter : UserControl
 
     private async void OnExportSucceeded(string fileName, string message)
     {
-        await ShowInfoDialog("Плейлист экспортирован", message);
+        await ShowInfoDialog("Проект экспортирован", message);
     }
 
     private async Task ShowInfoDialog(string title, string message)
@@ -293,7 +293,7 @@ public partial class ProjectCenter : UserControl
         if (missing)
         {
             var find = new Button { Content = "Найти…" };
-            var remove = new Button { Content = "Убрать из плейлиста" };
+            var remove = new Button { Content = "Убрать из проекта" };
             var ignore = new Button { Content = "Игнорировать" };
             find.Click += (_, _) => dialog.Close("find");
             remove.Click += (_, _) => dialog.Close("remove");

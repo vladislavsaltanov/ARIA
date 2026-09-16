@@ -175,7 +175,7 @@ public sealed class ProjectsViewModelTests
 
         vm.CreateProjectCommand.Execute(null);
 
-        Assert.Equal("Новый плейлист 2", vm.SelectedProject?.Name);
+        Assert.Equal("Новый проект 2", vm.SelectedProject?.Name);
     }
 
     [Fact]

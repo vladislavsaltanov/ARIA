@@ -41,7 +41,7 @@
                      HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
         </Button>
         <Button Grid.Column="3" Classes="ghost" Width="32" Height="32"
-                Click="OnDeleteProjectClick" ToolTip.Tip="Удалить плейлист" VerticalAlignment="Center" Margin="6,0,10,0">
+                Click="OnDeleteProjectClick" ToolTip.Tip="Удалить проект" VerticalAlignment="Center" Margin="6,0,10,0">
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
         </Button>
       </Grid>
@@ -67,19 +67,19 @@
           </Button>
         </Grid>
         <Button Grid.Column="3" x:Name="ImportAudioButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Command="{Binding ImportAudioCommand}" ToolTip.Tip="Добавить аудиофайлы в выбранный плейлист" VerticalAlignment="Center">
+                Command="{Binding ImportAudioCommand}" ToolTip.Tip="Добавить аудиофайлы в выбранный проект" VerticalAlignment="Center">
           <TextBlock Text="+ Аудио" FontSize="12" VerticalAlignment="Center"/>
         </Button>
         <Button Grid.Column="4" x:Name="ImportFolderButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Command="{Binding ImportAudioFolderCommand}" ToolTip.Tip="Добавить папку с аудио в выбранный плейлист" VerticalAlignment="Center" Margin="6,0,0,0">
+                Command="{Binding ImportAudioFolderCommand}" ToolTip.Tip="Добавить папку с аудио в выбранный проект" VerticalAlignment="Center" Margin="6,0,0,0">
           <TextBlock Text="+ Папка" FontSize="12" VerticalAlignment="Center"/>
         </Button>
         <Button Grid.Column="5" x:Name="ImportProjectButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Command="{Binding ImportProjectCommand}" ToolTip.Tip="Импорт плейлиста из .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
-          <TextBlock Text="+ Плейлист" FontSize="12" VerticalAlignment="Center"/>
+                Command="{Binding ImportProjectCommand}" ToolTip.Tip="Импорт проекта из .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
+          <TextBlock Text="+ Проект" FontSize="12" VerticalAlignment="Center"/>
         </Button>
         <Button Grid.Column="6" x:Name="ExportProjectButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Command="{Binding ExportProjectCommand}" ToolTip.Tip="Экспорт плейлиста в .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
+                Command="{Binding ExportProjectCommand}" ToolTip.Tip="Экспорт проекта в .aria-playlist.json" VerticalAlignment="Center" Margin="6,0,0,0">
           <TextBlock Text="Экспорт" FontSize="12" VerticalAlignment="Center"/>
         </Button>
       </Grid>
@@ -102,7 +102,7 @@
                   <MenuItem Header="Повтор" Tag="replay" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
                   <MenuItem Header="Далее" Tag="advance" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
                 </MenuItem>
-                <MenuItem Header="Убрать из плейлиста" Click="OnRemoveClick"/>
+                <MenuItem Header="Убрать из проекта" Click="OnRemoveClick"/>
                 <MenuItem Header="Звук…" Click="OnAudioClick"/>
               </ContextMenu>
             </Border.ContextMenu>
@@ -127,7 +127,7 @@
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
-    <TextBlock Text="Плейлистов нет — создайте кнопкой «+» в рейле «Плейлисты»"
+    <TextBlock Text="Проектов нет — создайте кнопкой «+» в рейле «Проекты»"
                FontSize="13" Foreground="{StaticResource BrushFaint}"
                HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-30,0,0"
                IsVisible="{Binding SelectedProject, Converter={x:Static ObjectConverters.IsNull}}"/>

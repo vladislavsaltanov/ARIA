@@ -184,7 +184,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void CreateProject()
     {
-        _awaitedProjectName = $"Новый плейлист {++_newProjectCounter}";
+        _awaitedProjectName = $"Новый проект {++_newProjectCounter}";
         Submit(new CreateProject(_awaitedProjectName));
     }
 
@@ -239,16 +239,16 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         if (SelectedProject is null)
         {
-            SetTransientStatus("нет плейлиста для экспорта");
+            SetTransientStatus("нет проекта для экспорта");
             return;
         }
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Экспорт плейлиста",
+            Title = "Экспорт проекта",
             SuggestedFileName = SelectedProject.Name + ProjectFormat.FileExtension,
             FileTypeChoices =
             [
-                new FilePickerFileType("ARIA-плейлист") { Patterns = [$"*{ProjectFormat.FileExtension}"] },
+                new FilePickerFileType("ARIA-проект") { Patterns = [$"*{ProjectFormat.FileExtension}"] },
             ],
         });
         if (file is null)
@@ -279,11 +279,11 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Импорт плейлиста",
+            Title = "Импорт проекта",
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("ARIA-плейлист") { Patterns = [$"*{ProjectFormat.FileExtension}", "*.json"] },
+                new FilePickerFileType("ARIA-проект") { Patterns = [$"*{ProjectFormat.FileExtension}", "*.json"] },
             ],
         });
         if (files.Count == 0)
@@ -306,7 +306,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Импорт аудио в плейлист",
+            Title = "Импорт аудио в проект",
             AllowMultiple = true,
             FileTypeFilter =
             [
@@ -350,7 +350,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     {
         if (SelectedProject is null)
         {
-            SetTransientStatus("нет плейлиста для импорта");
+            SetTransientStatus("нет проекта для импорта");
             return Task.FromResult<IReadOnlyList<TrackId>>([]);
         }
         return ImportIntoAsync(paths, silent, SelectedProject);
@@ -372,7 +372,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             var target = await WaitForProjectAsync(name);
             if (target is null)
             {
-                SetTransientStatus($"не удалось создать плейлист: {name}");
+                SetTransientStatus($"не удалось создать проект: {name}");
                 continue;
             }
             await ImportIntoAsync([folder], false, target);
@@ -479,7 +479,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     {
         if (SelectedProject is null)
         {
-            throw new InvalidOperationException("Нет выбранного плейлиста");
+            throw new InvalidOperationException("Нет выбранного проекта");
         }
         var files = (_trackSource?.Invoke() ?? []).ToDictionary(t => t.Id, t => t.FilePath);
         var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
