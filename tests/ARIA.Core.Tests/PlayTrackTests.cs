@@ -78,7 +78,7 @@ public sealed class PlayTrackTests : IDisposable
     {
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         _harness.Submit(new LoadShow([t1, t2], [p], p.Id));
 
         var seq = _harness.Submit(new PlayTrack(t2.Id));
