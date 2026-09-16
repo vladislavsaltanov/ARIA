@@ -310,7 +310,7 @@ public sealed class ShowController : IShowHandler
         _panicked = false;
         _clockElapsed = TimeSpan.Zero;
         _clockRunning = false;
-        _scripts = load.Scripts.IsDefault ? [] : [.. load.Scripts.Select(s => s.Project is null ? s with { Project = load.Active } : s)];
+        _scripts = MigrateScripts(load.Scripts, load.Projects, _activeProjectId);
 
         EmitShow();
         EmitQueue();
@@ -374,7 +374,7 @@ public sealed class ShowController : IShowHandler
         _panicFade = restore.PanicFade;
         _clockElapsed = TimeSpan.Zero;
         _clockRunning = false;
-        _scripts = restore.Scripts.IsDefault ? [] : [.. restore.Scripts.Select(s => s.Project is null ? s with { Project = restore.Active } : s)];
+        _scripts = MigrateScripts(restore.Scripts, restore.Projects, _activeProjectId);
         _engine.SetMasterGain(restore.MasterGainDb);
         _current = null;
         _atEndBoundary = false;
@@ -1300,6 +1300,16 @@ public sealed class ShowController : IShowHandler
             PushCurrentAudio();
         }
         EmitShow();
+    }
+
+    private static ImmutableArray<Script> MigrateScripts(ImmutableArray<Script> scripts, ImmutableArray<Project> projects, ProjectId? active)
+    {
+        if (scripts.IsDefault)
+        {
+            return [];
+        }
+        var known = projects.Select(p => p.Id).ToHashSet();
+        return [.. scripts.Select(s => s.Project is null || !known.Contains(s.Project.Value) ? s with { Project = active } : s)];
     }
 
     private int IndexOfScript(ScriptId id)

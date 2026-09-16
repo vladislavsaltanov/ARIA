@@ -528,7 +528,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         }
         _lastScriptKey = key;
         Scripts.Clear();
-        foreach (var script in state.Scripts)
+        foreach (var script in state.Scripts.Where(s => s.Project == state.ActiveId))
         {
             Scripts.Add(new ScriptVm(script.Id, script.Name));
         }
@@ -565,6 +565,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     {
         var sb = new StringBuilder();
         sb.Append(selectedId);
+        sb.Append(state.ActiveId);
         foreach (var script in state.Scripts)
         {
             sb.Append('|').Append(script.Id).Append(':').Append(script.Name);
@@ -697,7 +698,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        var target = state.Scripts.FirstOrDefault(s => s.Name == awaited);
+        var target = state.Scripts.FirstOrDefault(s => s.Name == awaited && s.Project == state.ActiveId);
         if (target is null)
         {
             return;

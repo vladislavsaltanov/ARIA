@@ -31,7 +31,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
     private List<StagedProjectScript>? _pendingProjectScripts;
-    private readonly HashSet<string> _submittedProjectScripts = new(StringComparer.Ordinal);
+    private readonly HashSet<(ProjectId, string)> _submittedProjectScripts = [];
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
@@ -488,7 +488,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
             files.GetValueOrDefault(entry.TrackId, entry.DisplayName),
             entry.Overrides));
-        var scripts = _bus.Snapshot().Show.Scripts.Select(script => new ProjectExportScript(
+        var show = _bus.Snapshot().Show;
+        var scripts = show.Scripts
+            .Where(s => s.Project == SelectedProject.Id || (s.Project is null && SelectedProject.Id == show.ActiveId))
+            .Select(script => new ProjectExportScript(
             script.Name,
             script.Lines.Select(line => new ProjectExportScriptLine(
                 ScriptPanelViewModel.FormatLineTime(line.AtElapsed),
@@ -545,10 +548,16 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             }
             stagedScripts.Add(new StagedProjectScript(scriptName, stagedLines));
         }
-        MergeProjectScripts(stagedScripts);
         if (imports.Count == 0)
         {
             var empty = new ProjectImportReport(document.Name, 0, [.. missing], 0, "нет известных треков");
+            if (stagedScripts.Count > 0)
+            {
+                var shellName = UniqueProjectName(document.Name);
+                _awaitedProjectName = shellName;
+                Submit(new CreateProject(shellName));
+                MergeProjectScripts(stagedScripts, shellName);
+            }
             if (empty.MissingFiles.Length > 0)
             {
                 ProjectImportMissing?.Invoke(empty);
@@ -557,6 +566,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         _awaitedProjectName = document.Name;
         Submit(new ImportProject(document.Name, [.. imports]));
+        MergeProjectScripts(stagedScripts, document.Name);
         LastImportError = string.Empty;
         var report = new ProjectImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
         SetTransientStatus(Describe(report));
@@ -597,24 +607,15 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         return [.. result];
     }
 
-    private void MergeProjectScripts(List<StagedProjectScript> staged)
+    private void MergeProjectScripts(List<StagedProjectScript> staged, string projectName)
     {
         if (staged.Count == 0)
         {
             return;
         }
-        (_pendingProjectScripts ??= []).AddRange(staged);
-        var state = _bus.Snapshot().Show;
         foreach (var script in staged)
         {
-            if (state.Scripts.Any(s => s.Name == script.Name))
-            {
-                continue;
-            }
-            if (_submittedProjectScripts.Add(script.Name))
-            {
-                Submit(new CreateScript(script.Name));
-            }
+            (_pendingProjectScripts ??= []).Add(script with { ProjectName = projectName });
         }
         FlushProjectScripts(_bus.Snapshot().Show);
     }
@@ -626,11 +627,23 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             return;
         }
         var remaining = new List<StagedProjectScript>();
+        var created = false;
         foreach (var staged in _pendingProjectScripts)
         {
-            var target = state.Scripts.FirstOrDefault(s => s.Name == staged.Name);
+            var project = state.Projects.FirstOrDefault(pr => pr.Name == staged.ProjectName);
+            if (project is null)
+            {
+                remaining.Add(staged);
+                continue;
+            }
+            var target = state.Scripts.FirstOrDefault(s => s.Name == staged.Name && s.Project == project.Id);
             if (target is null)
             {
+                if (_submittedProjectScripts.Add((project.Id, staged.Name)))
+                {
+                    Submit(new CreateScript(staged.Name, project.Id));
+                    created = true;
+                }
                 remaining.Add(staged);
                 continue;
             }
@@ -646,11 +659,15 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             }
         }
         _pendingProjectScripts = remaining.Count == 0 ? null : remaining;
+        if (created)
+        {
+            FlushProjectScripts(_bus.Snapshot().Show);
+        }
     }
 
     private sealed record StagedProjectScriptLine(TimeSpan At, string Text, ImmutableArray<TrackId> Mentions);
 
-    private sealed record StagedProjectScript(string Name, List<StagedProjectScriptLine> Lines);
+    private sealed record StagedProjectScript(string Name, List<StagedProjectScriptLine> Lines, string ProjectName = "");
 
     private static string Describe(ProjectImportReport report)
     {
