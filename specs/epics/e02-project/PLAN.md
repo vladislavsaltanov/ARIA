@@ -27,6 +27,8 @@ E. Формат v2 `aria-project` + авто-миграция v1 без поте
    verify: Core.Tests + App.Tests (импорт/экспорт round-trip).
 F. Папка `.aria/` (project.json + scripts/*.json) + экспорт оба варианта (ссылки + ZIP) + создание дропом папки.
    verify: App.Tests + ручной сценарий ТЗ 3.3.
+   DONE 2026-09-17 (ветка feat/project-phase-f-folder): Save/Open .aria, ZIP туда-обратно,
+   дроп открывает существующий и активирует созданный. Ручной пульт/сценарий — за пользователем.
 
 ## Правила фаз
 
