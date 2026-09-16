@@ -368,9 +368,35 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public void SaveProjectToFolder(string dir, ProjectVm target)
     {
+        Directory.CreateDirectory(ProjectFolder.ScriptsPath(dir));
+        File.WriteAllText(ProjectFolder.ProjectPath(dir), ExportDocument(target));
+        foreach (var (name, json) in _scriptExporter?.Invoke(target.Id) ?? [])
+        {
+            File.WriteAllText(
+                Path.Combine(ProjectFolder.ScriptsPath(dir), ProjectFolder.SafeFileName(name) + ScriptPanelViewModel.ScriptFileExtension),
+                json);
+        }
+        _projectDirs[target.Id] = dir;
     }
 
-    public Task<ProjectImportReport?> OpenProjectFolderAsync(string dir) => Task.FromResult<ProjectImportReport?>(null);
+    public async Task<ProjectImportReport?> OpenProjectFolderAsync(string dir)
+    {
+        if (!ProjectFolder.HasProject(dir))
+        {
+            return null;
+        }
+        string json;
+        try
+        {
+            json = await File.ReadAllTextAsync(ProjectFolder.ProjectPath(dir));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            SetTransientStatus("проект не открылся");
+            return null;
+        }
+        return await ImportDocumentAsync(json, dir);
+    }
 
     public async Task ImportDroppedPathsAsync(IEnumerable<string> paths)
     {
@@ -497,21 +523,26 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             throw new InvalidOperationException("Нет выбранного проекта");
         }
+        return ExportDocument(SelectedProject);
+    }
+
+    private string ExportDocument(ProjectVm target)
+    {
         var tracks = _trackSource?.Invoke() ?? [];
         var files = tracks.ToDictionary(t => t.Id, t => t.FilePath);
-        var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
+        var entries = target.Entries.Select(entry => new ProjectExportEntry(
             files.GetValueOrDefault(entry.TrackId, entry.DisplayName),
             entry.Overrides));
         var show = _bus.Snapshot().Show;
         var scripts = show.Scripts
-            .Where(s => s.Project == SelectedProject.Id || (s.Project is null && SelectedProject.Id == show.ActiveId))
+            .Where(s => s.Project == target.Id || (s.Project is null && target.Id == show.ActiveId))
             .Select(script => new ProjectExportScript(
             script.Name,
             script.Lines.Select(line => new ProjectExportScriptLine(
                 ScriptPanelViewModel.FormatLineTime(line.AtElapsed),
                 line.Text,
                 ScriptPanelViewModel.TrackPaths(line.Mentions, tracks)))));
-        return ProjectFormat.Export(SelectedProject.Name, entries, scripts);
+        return ProjectFormat.Export(target.Name, entries, scripts);
     }
 
     public string? GetProjectDirectory(ProjectId? id) => id is { } pid ? _projectDirs.GetValueOrDefault(pid) : null;
@@ -644,7 +675,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var remaining = new List<(string Name, string Dir)>();
         foreach (var (name, dir) in _pendingDirs)
         {
-            var project = state.Projects.FirstOrDefault(pr => pr.Name == name);
+            var project = state.Projects.LastOrDefault(pr => pr.Name == name);
             if (project is null)
             {
                 remaining.Add((name, dir));

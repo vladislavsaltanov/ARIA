@@ -53,24 +53,28 @@ public sealed class ProjectFolderTests : IDisposable
     {
         var seed = new Project(ProjectId.New(), "Seed", [new ProjectEntry(EntryId.New(), FirstTrack.Id)]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack], [seed], seed.Id));
+        _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", seed.Id));
         using var scripts = new ScriptPanelViewModel(_bus, () => [FirstTrack]);
         using var projects = new ProjectsViewModel(_bus, () => [FirstTrack], scriptExporter: scripts.ExportProjectScripts);
         var dir = Path.Combine(_root, "band");
         Directory.CreateDirectory(dir);
-        projects.SelectedProject = projects.Projects.Single(p => p.Name == "Seed");
+        projects.SelectedProject = projects.Projects.Single(pr => pr.Name == "Seed");
         projects.SaveProjectToFolder(dir, projects.SelectedProject!);
 
-        var report = await projects.OpenProjectFolderAsync(Path.Combine(_root, "fresh"));
+        using var freshBus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        freshBus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack], [], null));
+        using var freshScripts = new ScriptPanelViewModel(freshBus, () => [FirstTrack]);
+        using var freshProjects = new ProjectsViewModel(freshBus, () => [FirstTrack], scriptExporter: freshScripts.ExportProjectScripts);
 
-        Assert.Null(report);
-        Directory.CreateDirectory(Path.Combine(_root, "fresh"));
-        report = await projects.OpenProjectFolderAsync(dir);
+        var report = await freshProjects.OpenProjectFolderAsync(dir);
 
         Assert.NotNull(report);
         Assert.Null(report.Error);
-        var imported = _bus.Snapshot().Show.Projects.Single(p => p.Name == "Seed");
-        Assert.Equal(dir, projects.GetProjectDirectory(imported.Id));
-        Assert.Contains(_bus.Snapshot().Show.Scripts, s => s.Project == imported.Id);
+        var imported = freshBus.Snapshot().Show.Projects.Single(pr => pr.Name == "Seed");
+        Assert.Equal(dir, freshProjects.GetProjectDirectory(imported.Id));
+        var script = Assert.Single(freshBus.Snapshot().Show.Scripts);
+        Assert.Equal("Утро", script.Name);
+        Assert.Equal<ProjectId?>(imported.Id, script.Project);
     }
 
     [Fact]

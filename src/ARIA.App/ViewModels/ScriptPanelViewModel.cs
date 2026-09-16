@@ -196,7 +196,14 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         ImportDocument(await reader.ReadToEndAsync(), files[0].Path.LocalPath);
     }
 
-    public IReadOnlyList<(string Name, string Json)> ExportProjectScripts(ProjectId project) => [];
+    public IReadOnlyList<(string Name, string Json)> ExportProjectScripts(ProjectId project)
+    {
+        var state = _bus.Snapshot().Show;
+        var tracks = _trackSource?.Invoke() ?? [];
+        return [.. state.Scripts
+            .Where(s => s.Project == project)
+            .Select(s => (s.Name, ExportDocument(s, tracks)))];
+    }
 
     public string ExportSelectedDocument()
     {
@@ -208,7 +215,11 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             throw new InvalidOperationException("Нет выбранного сценария");
         }
-        var tracks = _trackSource?.Invoke() ?? [];
+        return ExportDocument(script, _trackSource?.Invoke() ?? []);
+    }
+
+    private string ExportDocument(Script script, ImmutableArray<Track> tracks)
+    {
         var document = new ScriptFileDocument(
             ScriptFormatId,
             ScriptFormatVersion,
