@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
     private bool _paneResizing;
+    private bool _explicitPaneClose;
     private double _paneResizeStartX;
     private double _paneResizeStartWidth;
     private const double PaneKeyboardStep = 20.0;
@@ -55,6 +56,7 @@ public partial class MainWindow : Window
         {
             ScriptPanel.DataContext = scriptViewModel;
             ScriptPanel.CloseRequested += (_, _) => ToggleScriptPane();
+            ScriptDrawer.PaneClosing += OnScriptPaneClosing;
             scriptViewModel.PropertyChanged += OnScriptPropertyChanged;
         }
         ProjectCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
@@ -76,12 +78,28 @@ public partial class MainWindow : Window
         if (ScriptDrawer.IsPaneOpen)
         {
             ScriptPanel.CommitOpenEdit();
-            ScriptDrawer.IsPaneOpen = false;
+            _explicitPaneClose = true;
+            try
+            {
+                ScriptDrawer.IsPaneOpen = false;
+            }
+            finally
+            {
+                _explicitPaneClose = false;
+            }
             FocusSink.Focus();
         }
         else
         {
             ScriptDrawer.IsPaneOpen = true;
+        }
+    }
+
+    private void OnScriptPaneClosing(object? sender, CancelRoutedEventArgs e)
+    {
+        if (!_explicitPaneClose)
+        {
+            e.Cancel = true;
         }
     }
 

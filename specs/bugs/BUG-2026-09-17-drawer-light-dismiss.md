@@ -39,6 +39,10 @@ Risk level: Low. Удаление одного хендлера; пути зак
 ## Resolution
 
 Fixed 2026-09-17, branch feat/project-phase-f-folder.
-Removed OnRootPointerPressed and its tunnel registration; drawer closes
-only via ToggleScriptPane (close button, Scenario button, Ctrl+T).
+Two closers, not one: our OnRootPointerPressed (press) plus SplitView's own
+overlay dismiss (release, TopLevel.PointerReleased subscription). Removed ours;
+theirs is cancelled via PaneClosing unless the close is explicit
+(_explicitPaneClose around ToggleScriptPane). Drawer closes only via close
+button, Scenario button, hotkey, Esc (built-in). Lesson: headless MouseDown
+alone is not a click — test does Down+Up now.
 Tests: App 337 isolated green.
