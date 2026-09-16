@@ -365,7 +365,16 @@ public sealed class MixerBus : IDisposable
                 continue;
             }
             var scratch = voice.Scratch.AsSpan(0, frames * _channels);
-            var read = voice.Source.ReadFrames(scratch);
+            int read;
+            try
+            {
+                read = voice.Source.ReadFrames(scratch);
+            }
+            catch
+            {
+                FailVoice(voice);
+                continue;
+            }
             var validSamples = read * _channels;
             var fader = voice.Fader;
             var wasCompleted = fader.HasCompleted;
@@ -457,6 +466,16 @@ public sealed class MixerBus : IDisposable
         }
         voice.Dead = true;
         Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Ended, reason));
+    }
+
+    private void FailVoice(MixerVoice voice)
+    {
+        if (voice.Dead)
+        {
+            return;
+        }
+        voice.Dead = true;
+        Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Faulted, StreamEndReason.Faulted));
     }
 
     private MixerVoice? FindVoice(StreamHandle handle)
