@@ -70,6 +70,19 @@ public sealed class ScriptTests : IDisposable
     }
 
     [Fact]
+    public void LoadShow_AdoptsOrphanScripts_ToActive()
+    {
+        var t1 = TestShow.Track();
+        var a = TestShow.Project("A", TestShow.Entry(t1));
+        var b = TestShow.Project("B", TestShow.Entry(t1));
+        var orphan = new Script(ScriptId.New(), "Сирота", [], ProjectId.New());
+        _harness.Submit(new LoadShow([t1], [a, b], b.Id, [orphan]));
+
+        var script = Assert.Single(_harness.Snapshot.Show.Scripts);
+        Assert.Equal<ProjectId?>(b.Id, script.Project);
+    }
+
+    [Fact]
     public void LoadShow_MigratesUnassignedScripts_ToActive()
     {
         var t1 = TestShow.Track();
