@@ -346,16 +346,44 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return [.. folders.Select(folder => folder.Path.LocalPath)];
     }
 
-    public async Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths, bool silent = false)
+    public Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths, bool silent = false)
+    {
+        if (SelectedPlaylist is null)
+        {
+            SetTransientStatus("нет плейлиста для импорта");
+            return Task.FromResult<IReadOnlyList<TrackId>>([]);
+        }
+        return ImportIntoAsync(paths, silent, SelectedPlaylist);
+    }
+
+    public async Task ImportDroppedPathsAsync(IEnumerable<string> paths)
+    {
+        var inputs = paths.ToArray();
+        var files = inputs.Where(input => !Directory.Exists(input)).ToArray();
+        if (files.Length > 0)
+        {
+            await ImportAudioFilesAsync(files);
+        }
+        foreach (var folder in inputs.Where(Directory.Exists))
+        {
+            var name = UniquePlaylistName(FolderPlaylistName(folder));
+            _awaitedPlaylistName = name;
+            Submit(new CreatePlaylist(name));
+            var target = await WaitForPlaylistAsync(name);
+            if (target is null)
+            {
+                SetTransientStatus($"не удалось создать плейлист: {name}");
+                continue;
+            }
+            await ImportIntoAsync([folder], false, target);
+        }
+    }
+
+    private async Task<IReadOnlyList<TrackId>> ImportIntoAsync(IEnumerable<string> paths, bool silent, PlaylistVm target)
     {
         var inputs = paths.ToArray();
         if (inputs.Length == 0)
         {
-            return [];
-        }
-        if (SelectedPlaylist is null)
-        {
-            SetTransientStatus("нет плейлиста для импорта");
             return [];
         }
         if (_audioImport is null)
@@ -379,7 +407,6 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 }
             }
         }
-        var target = SelectedPlaylist;
         _revealPlaylist = ordered.Count > 0 ? target.Id : null;
         _revealTracks = ordered.Count > 0 ? ordered : null;
         foreach (var trackId in ordered)
@@ -400,6 +427,42 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             AudioImportIncomplete?.Invoke("Не удалось распознать файлы:\n" + listed);
         }
         return ordered;
+    }
+
+    private string UniquePlaylistName(string baseName)
+    {
+        if (!Playlists.Any(p => p.Name.Equals(baseName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return baseName;
+        }
+        var suffix = 2;
+        while (Playlists.Any(p => p.Name.Equals($"{baseName} {suffix}", StringComparison.OrdinalIgnoreCase)))
+        {
+            suffix++;
+        }
+        return $"{baseName} {suffix}";
+    }
+
+    private static string FolderPlaylistName(string folder)
+    {
+        var trimmed = folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var name = Path.GetFileName(trimmed);
+        return string.IsNullOrWhiteSpace(name) ? "Новая папка" : name;
+    }
+
+    private async Task<PlaylistVm?> WaitForPlaylistAsync(string name)
+    {
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline)
+        {
+            var found = Playlists.FirstOrDefault(p => p.Name == name);
+            if (found is not null)
+            {
+                return found;
+            }
+            await Task.Delay(20);
+        }
+        return Playlists.FirstOrDefault(p => p.Name == name);
     }
 
     private static bool MatchesInput(string input, string trackPath)
