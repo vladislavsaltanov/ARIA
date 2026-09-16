@@ -68,7 +68,7 @@ public sealed class ProjectFormatTests
                         "file": "/audio/one.flac", "name": "Утро", "color": "#FF0000",
                         "note": "опенер", "gainDb": 1.5, "end": "advance",
                         "in": { "seconds": 2, "curve": "exponential" },
-                        "out": { "seconds": 5, "curve": "s" },
+                        "out": { "seconds": 5, "curve": "scurve" },
                         "cueIn": 1, "cueOut": 170,
                         "transition": { "kind": "crossfade", "seconds": 4 }
                     },
@@ -126,9 +126,9 @@ public sealed class ProjectFormatTests
     }
 
     [Theory]
-    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"lines\":[]}]}}", "bad-script")]
-    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"  \",\"lines\":[]}]}}", "bad-script")]
-    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"Утро\"}]}}", "bad-script")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"lines\":[]}]}", "bad-script")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"  \",\"lines\":[]}]}", "bad-script")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"Утро\"}]}", "bad-script")]
     [InlineData("{\"format\":\"aria-project\",\"version\":1,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}]}", "bad-version")]
     public void Import_V2_InvalidDocument_Throws(string json, string prefix)
     {

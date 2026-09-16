@@ -30,6 +30,8 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
+    private List<StagedProjectScript>? _pendingProjectScripts;
+    private readonly HashSet<string> _submittedProjectScripts = new(StringComparer.Ordinal);
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
@@ -283,7 +285,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("ARIA-проект") { Patterns = [$"*{ProjectFormat.FileExtension}", "*.json"] },
+                new FilePickerFileType("ARIA-проект") { Patterns = [$"*{ProjectFormat.FileExtension}", $"*{ProjectFormat.LegacyFileExtension}", "*.json"] },
             ],
         });
         if (files.Count == 0)
@@ -481,11 +483,18 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             throw new InvalidOperationException("Нет выбранного проекта");
         }
-        var files = (_trackSource?.Invoke() ?? []).ToDictionary(t => t.Id, t => t.FilePath);
+        var tracks = _trackSource?.Invoke() ?? [];
+        var files = tracks.ToDictionary(t => t.Id, t => t.FilePath);
         var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
             files.GetValueOrDefault(entry.TrackId, entry.DisplayName),
             entry.Overrides));
-        return ProjectFormat.Export(SelectedProject.Name, entries);
+        var scripts = _bus.Snapshot().Show.Scripts.Select(script => new ProjectExportScript(
+            script.Name,
+            script.Lines.Select(line => new ProjectExportScriptLine(
+                ScriptPanelViewModel.FormatLineTime(line.AtElapsed),
+                line.Text,
+                ScriptPanelViewModel.TrackPaths(line.Mentions, tracks)))));
+        return ProjectFormat.Export(SelectedProject.Name, entries, scripts);
     }
 
     public Task<ProjectImportReport> ImportDocumentAsync(string json)
@@ -497,10 +506,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         catch (ProjectFormatException e)
         {
-            LastImportError = e.Message;
-            SetTransientStatus("импорт не удался");
-            ImportFailed?.Invoke(e.Message);
-            return Task.FromResult(new ProjectImportReport(string.Empty, 0, [], 0, e.Message));
+            return FailDocumentImport(e.Message);
         }
         var tracks = _trackSource?.Invoke() ?? [];
         var byPath = tracks.ToDictionary(t => UnicodePaths.Key(t.FilePath), t => t.Id);
@@ -524,6 +530,22 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             }
             imports.Add(new ImportProjectEntry(trackId, ProjectFormat.ToOverrides(entry)));
         }
+        var stagedScripts = new List<StagedProjectScript>();
+        foreach (var script in document.Scripts)
+        {
+            var scriptName = script.Name.Trim();
+            var stagedLines = new List<StagedProjectScriptLine>();
+            foreach (var line in script.Lines ?? [])
+            {
+                if (!ScriptPanelViewModel.TryParseLineTime(line.At, out var at))
+                {
+                    return FailDocumentImport($"bad-script: {scriptName}: неверное время: {line.At}");
+                }
+                stagedLines.Add(new StagedProjectScriptLine(at, line.Text ?? string.Empty, ResolveScriptRefs(line.Tracks, byPath, byName)));
+            }
+            stagedScripts.Add(new StagedProjectScript(scriptName, stagedLines));
+        }
+        MergeProjectScripts(stagedScripts);
         if (imports.Count == 0)
         {
             var empty = new ProjectImportReport(document.Name, 0, [.. missing], 0, "нет известных треков");
@@ -544,6 +566,91 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         return Task.FromResult(report);
     }
+
+    private Task<ProjectImportReport> FailDocumentImport(string error)
+    {
+        LastImportError = error;
+        SetTransientStatus("импорт не удался");
+        ImportFailed?.Invoke(error);
+        return Task.FromResult(new ProjectImportReport(string.Empty, 0, [], 0, error));
+    }
+
+    private static ImmutableArray<TrackId> ResolveScriptRefs(string[]? refs, Dictionary<string, TrackId> byPath, Dictionary<string, TrackId> byName)
+    {
+        if (refs is null || refs.Length == 0)
+        {
+            return [];
+        }
+        var result = new List<TrackId>(refs.Length);
+        foreach (var file in refs)
+        {
+            if (byPath.TryGetValue(UnicodePaths.Key(file), out var id)
+                || byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(file)), out id))
+            {
+                result.Add(id);
+            }
+            else
+            {
+                result.Add(TrackId.New());
+            }
+        }
+        return [.. result];
+    }
+
+    private void MergeProjectScripts(List<StagedProjectScript> staged)
+    {
+        if (staged.Count == 0)
+        {
+            return;
+        }
+        (_pendingProjectScripts ??= []).AddRange(staged);
+        var state = _bus.Snapshot().Show;
+        foreach (var script in staged)
+        {
+            if (state.Scripts.Any(s => s.Name == script.Name))
+            {
+                continue;
+            }
+            if (_submittedProjectScripts.Add(script.Name))
+            {
+                Submit(new CreateScript(script.Name));
+            }
+        }
+        FlushProjectScripts(_bus.Snapshot().Show);
+    }
+
+    private void FlushProjectScripts(ShowState state)
+    {
+        if (_pendingProjectScripts is not { Count: > 0 })
+        {
+            return;
+        }
+        var remaining = new List<StagedProjectScript>();
+        foreach (var staged in _pendingProjectScripts)
+        {
+            var target = state.Scripts.FirstOrDefault(s => s.Name == staged.Name);
+            if (target is null)
+            {
+                remaining.Add(staged);
+                continue;
+            }
+            foreach (var line in staged.Lines)
+            {
+                if (target.Lines.Any(l => l.AtElapsed == line.At
+                    && (l.Text ?? string.Empty) == line.Text
+                    && l.Mentions.Select(m => m.Track).SequenceEqual(line.Mentions)))
+                {
+                    continue;
+                }
+                Submit(new AddScriptLine(target.Id, line.At, line.Text, line.Mentions));
+            }
+        }
+        _pendingProjectScripts = remaining.Count == 0 ? null : remaining;
+    }
+
+    private sealed record StagedProjectScriptLine(TimeSpan At, string Text, ImmutableArray<TrackId> Mentions);
+
+    private sealed record StagedProjectScript(string Name, List<StagedProjectScriptLine> Lines);
 
     private static string Describe(ProjectImportReport report)
     {
@@ -717,6 +824,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             case ShowDelta delta:
                 Rebuild(delta.State, _trackSource?.Invoke() ?? []);
+                FlushProjectScripts(delta.State);
                 break;
             case TransportDelta delta:
                 var incoming = new HashSet<TrackId>(delta.State.Faulted);

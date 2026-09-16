@@ -738,7 +738,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         [property: JsonPropertyName("text")] string? Text,
         [property: JsonPropertyName("tracks")] string[]? Tracks = null);
 
-    private static string[]? TrackPaths(ImmutableArray<Mention> mentions, ImmutableArray<Track> tracks)
+    internal static string[]? TrackPaths(ImmutableArray<Mention> mentions, ImmutableArray<Track> tracks)
     {
         if (mentions.IsDefaultOrEmpty)
         {
