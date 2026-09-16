@@ -74,6 +74,20 @@ public sealed class PlayTrackTests : IDisposable
     }
 
     [Fact]
+    public void PlayTrack_TrackOutsideActivePlaylist_Rejects()
+    {
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        _harness.Submit(new LoadShow([t1, t2], [p], p.Id));
+
+        var seq = _harness.Submit(new PlayTrack(t2.Id));
+
+        Assert.Equal("track-not-in-playlist", _harness.RejectionOf(seq)?.Reason);
+        Assert.NotEqual(TransportStatus.Playing, _harness.Transport.Status);
+    }
+
+    [Fact]
     public void PlayTrack_Panicked_Rejects()
     {
         var t1 = TestShow.Track("one");
