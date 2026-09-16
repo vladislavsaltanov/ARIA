@@ -55,4 +55,9 @@ Security impact: NONE. Локальные пути, новая attack surface о
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-09-16, branch fix/3.2-cyrillic-paths.
+Срез 1-2 (0bb91b7+20c28af, 1f4480c+f096b61): шим получил aria_decoder_open_w поверх wide open декодера (narrow ABI нетронут); managed зовёт wide только на Windows, везде иначе narrow как раньше; кириллический тест + тест маршрутизации.
+Срез 3 (0b611da): пересобраны osx-arm64 dylib и win-x64 DLL (mingw), оба экспортируют wide-символ.
+Срез 4 (395eac2+fff8289): нормализация путей FormC на границах дедупа импорта и словарей (хранимый FilePath не переписывается).
+Tests: Audio 132, App 305, Core 250 — сборки изолированно зелёные.
+Матрица: рантайм Windows непроверен здесь; osx-x64/linux нативы не пересобирались; маскировка Missing→Undecodable осталась.
