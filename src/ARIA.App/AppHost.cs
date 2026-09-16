@@ -163,6 +163,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             throw new InvalidOperationException("AppHost is not started");
         }
+        Func<string, ImportedTrack?> import = ImportOverride ?? (path => _importer.Import(path));
         var (tracks, playlists) = _library.Load();
         var current = tracks;
         var added = 0;
@@ -171,7 +172,7 @@ public sealed class AppHost : IAsyncDisposable
         foreach (var filePath in ExpandAudioFiles(paths))
         {
             progress?.Report(Path.GetFileName(filePath));
-            var imported = await Task.Run(() => _importer.Import(filePath));
+            var imported = await Task.Run(() => import(filePath));
             if (imported is null)
             {
                 failed.Add(filePath);
@@ -196,6 +197,8 @@ public sealed class AppHost : IAsyncDisposable
         }
         return new ImportReport(added, skipped, failed.ToImmutable());
     }
+
+    internal Func<string, ImportedTrack?>? ImportOverride { get; set; }
 
     public async Task<bool> RelinkTrackAsync(TrackId trackId, string newPath)
     {
