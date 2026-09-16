@@ -156,6 +156,42 @@ public sealed class SnapshotStoreTests : IDisposable
     }
 
     [Fact]
+    public void RoundTrip_PreservesScriptProject()
+    {
+        var project = TestFactory.Project("Main");
+        var scripts = ImmutableArray.Create(
+            new Script(ScriptId.New(), "Вечер", [], project.Id));
+        var document = new ShowDocument([], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, scripts, DateTimeOffset.UtcNow);
+
+        using (var store = new JsonSnapshotStore(_path))
+        {
+            store.Save(document);
+        }
+
+        using (var store = new JsonSnapshotStore(_path))
+        {
+            var loaded = store.LoadLatest();
+
+            Assert.NotNull(loaded);
+            Assert.Equal<ProjectId?>(project.Id, Assert.Single(loaded.Scripts).Project);
+        }
+    }
+
+    [Fact]
+    public void LegacySnapshot_WithoutScriptProject_LoadsNull()
+    {
+        File.WriteAllText(_path, """
+            {"tracks":[],"projects":[],"queue":[],"masterGainDb":0,"panicFadeTicks":1000000,"clockElapsedTicks":0,"clockRunning":false,"savedAt":"2026-09-11T00:00:00Z","Scripts":[{"Id":"11111111-1111-1111-1111-111111111111","Name":"Старый","Lines":[]}]}
+            """);
+        using var store = new JsonSnapshotStore(_path);
+
+        var loaded = store.LoadLatest();
+
+        Assert.NotNull(loaded);
+        Assert.Null(Assert.Single(loaded.Scripts).Project);
+    }
+
+    [Fact]
     public void MissingScriptsField_LoadsEmptyScripts()
     {
         File.WriteAllText(_path, """
