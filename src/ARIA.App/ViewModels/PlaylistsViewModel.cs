@@ -518,6 +518,11 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         foreach (var folder in inputs.Where(Directory.Exists))
         {
+            if (ProjectFolder.HasProject(folder))
+            {
+                await OpenDroppedFolderAsync(folder);
+                continue;
+            }
             var name = UniqueProjectName(FolderProjectName(folder));
             _awaitedProjectName = name;
             Submit(new CreateProject(name));
@@ -528,6 +533,29 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                 continue;
             }
             await ImportIntoAsync([folder], false, target);
+            SaveProjectToFolder(folder, target);
+            Submit(new SetActiveProject(target.Id));
+        }
+    }
+
+    private async Task OpenDroppedFolderAsync(string folder)
+    {
+        var known = Projects.FirstOrDefault(pr => string.Equals(GetProjectDirectory(pr.Id), folder, StringComparison.OrdinalIgnoreCase));
+        if (known is not null)
+        {
+            Submit(new SetActiveProject(known.Id));
+            return;
+        }
+        var opened = await OpenProjectFolderAsync(folder);
+        if (opened is null)
+        {
+            return;
+        }
+        var imported = Projects.FirstOrDefault(pr => pr.Name == opened.ProjectName && string.Equals(GetProjectDirectory(pr.Id), folder, StringComparison.OrdinalIgnoreCase))
+            ?? await WaitForProjectAsync(opened.ProjectName);
+        if (imported is not null)
+        {
+            Submit(new SetActiveProject(imported.Id));
         }
     }
 
