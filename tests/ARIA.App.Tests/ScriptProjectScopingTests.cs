@@ -55,6 +55,19 @@ public sealed class ScriptProjectScopingTests : IDisposable
     }
 
     [Fact]
+    public void SelectingProject_ActivatesIt_SoPanelFollows()
+    {
+        _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", _first.Id));
+        Assert.Single(_scripts.Scripts);
+
+        _projects.SelectedProject = _projects.Projects.Single(p => p.Name == "B");
+
+        Assert.Equal(_second.Id, _bus.Snapshot().Show.ActiveId);
+        Assert.Empty(_scripts.Scripts);
+        Assert.Null(_scripts.SelectedScript);
+    }
+
+    [Fact]
     public void Export_EmbedsOnlySelectedProjectScripts()
     {
         _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", _first.Id));

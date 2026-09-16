@@ -47,3 +47,10 @@
   scope: script-playback
   summary: Упоминание сценария играет трек, удалённый из проекта
   file: specs/bugs/BUG-2026-09-16-mention-outside-project.md
+- bug_id: BUG-2026-09-17-selection-activates
+  date: 2026-09-17
+  severity: high
+  priority: high
+  scope: project-selection
+  summary: Выбор проекта в списке не активирует его, сценарии и гарды висят на stale ActiveId
+  file: specs/bugs/BUG-2026-09-17-selection-activates.md
