@@ -293,6 +293,45 @@ public sealed class ScriptPanelHeadlessTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task OutsideClick_ReachesContentWhileDrawerOpen()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+            var a = new Project(ProjectId.New(), "A", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+            var b = new Project(ProjectId.New(), "B", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+            bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [a, b], a.Id));
+            using var projects = new ViewModels.ProjectsViewModel(bus, () => [TestTrack]);
+            using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
+            var window = new MainWindow(null, projectsViewModel: projects, scriptViewModel: viewModel);
+            window.Show();
+            var drawer = window.FindControl<SplitView>("ScriptDrawer");
+            Assert.NotNull(drawer);
+            window.ToggleScriptPane();
+            Assert.True(drawer.IsPaneOpen);
+
+            var rail = window.FindControl<RailProjects>("RailProjects");
+            Assert.NotNull(rail);
+            var list = rail.FindControl<ListBox>("ProjectNames");
+            Assert.NotNull(list);
+            window.UpdateLayout();
+            var row = list.ContainerFromIndex(1) as Control;
+            Assert.NotNull(row);
+            var local = new Point(row.Bounds.Width / 2, row.Bounds.Height / 2);
+            var point = row.TranslatePoint(local, window);
+            Assert.NotNull(point);
+            window.MouseDown(point.Value, MouseButton.Left);
+            window.MouseUp(point.Value, MouseButton.Left);
+
+            Assert.Equal("B", projects.SelectedProject?.Name);
+            Assert.True(drawer.IsPaneOpen);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static CommandBus NewBus()
     {
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
