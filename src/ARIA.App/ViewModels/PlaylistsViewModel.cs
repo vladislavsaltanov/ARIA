@@ -33,6 +33,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
     private AppSettings _rowSettings = AppSettings.Default;
+    private const int MaxListedImportErrors = 30;
     private long _seq;
     private string? _lastKey;
     private readonly TimeSpan _transientStatusTtl;
@@ -335,26 +336,19 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             return [];
         }
         IProgress<string>? progress = silent ? null : new Progress<string>(name => PlaylistIoStatus = $"импорт: {name}");
-        await _audioImport(inputs, progress);
+        var report = await _audioImport(inputs, progress);
         var tracks = _trackSource?.Invoke() ?? [];
         var ordered = new List<TrackId>();
-        var unmatched = new List<string>();
         foreach (var input in inputs)
         {
-            var matched = false;
             foreach (var track in tracks
                 .Where(t => MatchesInput(input, t.FilePath))
                 .OrderBy(t => t.FilePath, StringComparer.Ordinal))
             {
-                matched = true;
                 if (!ordered.Contains(track.Id))
                 {
                     ordered.Add(track.Id);
                 }
-            }
-            if (!matched)
-            {
-                unmatched.Add(input);
             }
         }
         var target = SelectedPlaylist;
@@ -364,19 +358,18 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         {
             Submit(new AddEntry(target.Id, trackId, null));
         }
-        if (unmatched.Count == 0)
+        if (!silent)
         {
-            if (!silent)
-            {
-                SetTransientStatus($"в плейлист добавлено: {ordered.Count}");
-            }
+            SetTransientStatus($"импортировано: {report.Added}, пропущено: {report.Skipped}, ошибок: {report.Failed.Length}");
         }
-        else
+        if (report.Failed.Length > 0)
         {
-            SetTransientStatus(ordered.Count > 0
-                ? $"в плейлист добавлено: {ordered.Count}, не распознано: {unmatched.Count}"
-                : "файлы не распознаны");
-            AudioImportIncomplete?.Invoke("Не удалось распознать файлы:\n" + string.Join("\n", unmatched));
+            var listed = string.Join("\n", report.Failed.Take(MaxListedImportErrors));
+            if (report.Failed.Length > MaxListedImportErrors)
+            {
+                listed += $"\n…и ещё {report.Failed.Length - MaxListedImportErrors}";
+            }
+            AudioImportIncomplete?.Invoke("Не удалось распознать файлы:\n" + listed);
         }
         return ordered;
     }
