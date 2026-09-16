@@ -3,6 +3,9 @@
     <RootNamespace>Aria.Audio</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="ARIA.Audio.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\ARIA.Core\ARIA.Core.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">

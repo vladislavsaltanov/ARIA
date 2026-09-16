@@ -201,6 +201,24 @@ public sealed class AppHostTests : IDisposable
         await PollAsync(() => host.Bus.Snapshot().Transport.Faulted.Contains(lost.Id));
     }
 
+    [Fact]
+    public async Task AppHost_ImportTracks_NfcNfdSameFile_NoDuplicate()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        var nfc = TestWav.Write(_directory, "трек-café-№1.wav");
+        var nfd = nfc.Normalize(System.Text.NormalizationForm.FormD);
+        Assert.NotEqual(nfc, nfd);
+
+        var first = await host.ImportTracksAsync([nfc]);
+        Assert.Equal(1, first.Added);
+
+        var second = await host.ImportTracksAsync([nfd]);
+        Assert.Equal(0, second.Added);
+        Assert.Equal(1, second.Skipped);
+        Assert.Single(host.Library!.Load().Tracks);
+    }
+
     private static async Task PollAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);

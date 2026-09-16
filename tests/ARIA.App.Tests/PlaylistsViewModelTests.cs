@@ -80,6 +80,24 @@ public sealed class PlaylistsViewModelTests
         Assert.Equal("Измерено -10.0 LUFS, поправка -6.0 дБ", editor.NormalizeStatus);
     }
 
+    [Fact]
+    public async Task ImportDocument_NfdReference_MatchesNfcTrack()
+    {
+        var nfc = "/audio/трек-café-№1.flac";
+        var nfd = nfc.Normalize(System.Text.NormalizationForm.FormD);
+        Assert.NotEqual(nfc, nfd);
+        var track = new Track(TrackId.New(), nfc, "трек-café-№1", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        using var vm = new PlaylistsViewModel(bus, () => [track]);
+
+        var report = await vm.ImportDocumentAsync(PlaylistFormat.Export("Doc", [new PlaylistExportEntry(nfd)]));
+
+        Assert.Equal(1, report.Added);
+        Assert.Empty(report.MissingFiles);
+    }
+
     private static (CommandBus Bus, Playlist Playlist, PlaylistEntry Entry1) Setup()
     {
         var entry1 = new PlaylistEntry(EntryId.New(), TestTrack.Id);

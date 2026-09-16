@@ -419,17 +419,17 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             return Task.FromResult(new PlaylistImportReport(string.Empty, 0, [], 0, e.Message));
         }
         var tracks = _trackSource?.Invoke() ?? [];
-        var byPath = tracks.ToDictionary(t => t.FilePath, t => t.Id);
+        var byPath = tracks.ToDictionary(t => UnicodePaths.Key(t.FilePath), t => t.Id);
         var byName = tracks
-            .GroupBy(t => Path.GetFileName(t.FilePath), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(t => UnicodePaths.Key(Path.GetFileName(t.FilePath)), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
         var imports = new List<ImportPlaylistEntry>();
         var missing = new List<string>();
         var pendingTransitions = 0;
         foreach (var entry in document.Entries)
         {
-            if (!byPath.TryGetValue(entry.File, out var trackId)
-                && !byName.TryGetValue(Path.GetFileName(entry.File), out trackId))
+            if (!byPath.TryGetValue(UnicodePaths.Key(entry.File), out var trackId)
+                && !byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(entry.File)), out trackId))
             {
                 missing.Add(entry.File);
                 continue;
