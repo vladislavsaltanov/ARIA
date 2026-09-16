@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-09-16
+
 ### Добавлено
 
 - **Эквалайзер на 7 полос.** Работает и на весь звук
@@ -134,6 +136,7 @@
 - Горячие клавиши, часы шоу, сценарии.
 - Настройки воспроизведения, движка и формата строк.
 
+[0.2.2]: https://github.com/vladislavsaltanov/ARIA/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/vladislavsaltanov/ARIA/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/vladislavsaltanov/ARIA/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/vladislavsaltanov/ARIA/releases/tag/v0.1.0
