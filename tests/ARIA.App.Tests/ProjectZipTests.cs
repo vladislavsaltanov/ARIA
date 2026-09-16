@@ -42,9 +42,9 @@ public sealed class ProjectZipTests : IDisposable
 
         using var archive = ZipFile.OpenRead(zip);
         var names = archive.Entries.Select(e => e.FullName).ToArray();
-        Assert.Contains("project.json", names);
+        Assert.Contains(".aria/project.json", names);
         Assert.Contains("audio/one.wav", names);
-        var jsonEntry = archive.Entries.Single(e => e.FullName == "project.json");
+        var jsonEntry = archive.Entries.Single(e => e.FullName == ".aria/project.json");
         using var reader = new StreamReader(jsonEntry.Open());
         var document = ProjectFormat.Import(reader.ReadToEnd());
         Assert.Equal("Band", document.Name);

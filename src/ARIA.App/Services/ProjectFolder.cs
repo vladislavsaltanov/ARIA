@@ -1,5 +1,7 @@
 namespace Aria.App.Services;
 
+using System.IO.Compression;
+
 public static class ProjectFolder
 {
     public const string FolderName = ".aria";
@@ -18,12 +20,38 @@ public static class ProjectFolder
 
     public static void BuildZip(string zipPath, string projectJson, IEnumerable<string> audioFiles)
     {
-        throw new NotImplementedException();
+        if (File.Exists(zipPath))
+        {
+            File.Delete(zipPath);
+        }
+        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        var jsonEntry = archive.CreateEntry(FolderName + "/" + ProjectFileName);
+        using (var writer = new StreamWriter(jsonEntry.Open()))
+        {
+            writer.Write(projectJson);
+        }
+        foreach (var file in audioFiles.Distinct(StringComparer.Ordinal))
+        {
+            archive.CreateEntryFromFile(file, ZipAudioDir + "/" + Path.GetFileName(file));
+        }
     }
 
     public static string ExtractProject(string zipPath, string destDir)
     {
-        throw new NotImplementedException();
+        Directory.CreateDirectory(destDir);
+        using var archive = ZipFile.OpenRead(zipPath);
+        foreach (var entry in archive.Entries)
+        {
+            var name = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+            if (entry.FullName.EndsWith('/') || Path.IsPathRooted(name) || name.Split(Path.DirectorySeparatorChar).Contains(".."))
+            {
+                continue;
+            }
+            var dest = Path.Combine(destDir, name);
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            entry.ExtractToFile(dest, overwrite: true);
+        }
+        return File.ReadAllText(ProjectPath(destDir));
     }
 
     public static string SafeFileName(string name)
