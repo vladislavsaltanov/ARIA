@@ -283,6 +283,7 @@ internal static class ScriptMapper
     {
         Id = script.Id.Value,
         Name = script.Name,
+        ProjectId = script.Project?.Value,
         Lines = [.. script.Lines.Select(line => new ScriptLineDto
         {
             Id = line.Id.Value,
@@ -299,5 +300,6 @@ internal static class ScriptMapper
             new ScriptLineId(line.Id),
             new TimeSpan(line.AtElapsedTicks),
             line.Text,
-            [.. line.Mentions.Select(id => new Mention(new TrackId(id)))]))]);
+            [.. line.Mentions.Select(id => new Mention(new TrackId(id)))]))],
+        dto.ProjectId is null ? null : new ProjectId(dto.ProjectId.Value));
 }
