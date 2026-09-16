@@ -332,6 +332,30 @@ public sealed class ScriptPanelHeadlessTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task NoScripts_ShowsSingleCreateButton()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var bus = NewBus();
+            using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
+            var window = new Window { Width = 500, Height = 700, Content = new ScriptPanel { DataContext = viewModel } };
+            window.Show();
+
+            var panel = (ScriptPanel)window.Content!;
+            Assert.False(viewModel.HasScripts);
+            var create = panel.FindControl<Button>("NewScriptButton");
+            Assert.NotNull(create);
+            Assert.False(create.IsVisible);
+            var import = panel.FindControl<Button>("ImportScriptButton");
+            Assert.NotNull(import);
+            Assert.True(import.IsVisible);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static CommandBus NewBus()
     {
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
