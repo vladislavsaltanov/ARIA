@@ -601,7 +601,7 @@ struct aria_decoder
     ma_decoder decoder;
 };
 
-ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channels, aria_decoder** out_decoder)
+static int aria_decoder_open_impl(const void* path, int wide, int sample_rate, int channels, aria_decoder** out_decoder)
 {
     if (out_decoder == NULL || path == NULL)
     {
@@ -617,7 +617,9 @@ ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channel
     config.ppCustomBackendVTables = (ma_decoding_backend_vtable**)g_aria_vorbis_backends;
     config.customBackendCount = 1;
     config.pCustomBackendUserData = NULL;
-    ma_result result = ma_decoder_init_file(path, &config, &decoder->decoder);
+    ma_result result = wide
+        ? ma_decoder_init_file_w((const wchar_t*)path, &config, &decoder->decoder)
+        : ma_decoder_init_file((const char*)path, &config, &decoder->decoder);
     if (result != MA_SUCCESS)
     {
         free(decoder);
@@ -625,6 +627,16 @@ ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channel
     }
     *out_decoder = decoder;
     return 0;
+}
+
+ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channels, aria_decoder** out_decoder)
+{
+    return aria_decoder_open_impl(path, 0, sample_rate, channels, out_decoder);
+}
+
+ARIA_EXPORT int aria_decoder_open_w(const wchar_t* path, int sample_rate, int channels, aria_decoder** out_decoder)
+{
+    return aria_decoder_open_impl(path, 1, sample_rate, channels, out_decoder);
 }
 
 ARIA_EXPORT int aria_decoder_read(aria_decoder* decoder, float* out, int frame_count)

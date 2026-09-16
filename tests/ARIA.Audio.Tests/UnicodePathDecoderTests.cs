@@ -46,7 +46,8 @@ public sealed class UnicodePathDecoderTests : IDisposable
     [Fact]
     public void WideExport_OpensCyrillicFile()
     {
-        var path = TestWav.WriteSine(_directory, "Трек №2.wav", SampleRate, 2, 0.5, 440.0, 0.5);
+        var name = OperatingSystem.IsWindows() ? "Трек №2.wav" : "wide-entry.wav";
+        var path = TestWav.WriteSine(_directory, name, SampleRate, 2, 0.5, 440.0, 0.5);
         var library = LoadShimHandle();
         try
         {
