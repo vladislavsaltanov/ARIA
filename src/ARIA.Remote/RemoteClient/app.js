@@ -981,7 +981,7 @@
     ok.addEventListener("click", () => {
       var name = input.value.trim();
       if (name && name !== pl.name)
-        send("rename_playlist", { id: pl.id, name: name });
+        send("rename_project", { id: pl.id, name: name });
       refresh();
     });
     var cancel = document.createElement("button");
@@ -1003,7 +1003,7 @@
     yes.className = "mini danger";
     yes.textContent = "Удалить";
     yes.addEventListener("click", () => {
-      send("delete_playlist", { id: pl.id });
+      send("delete_project", { id: pl.id });
       if (openProjectId === pl.id) openProjectId = null;
       refresh();
     });
@@ -1215,7 +1215,7 @@
     ok.textContent = "Создать";
     ok.addEventListener("click", () => {
       var name = input.value.trim();
-      if (name) send("create_playlist", { name: name });
+      if (name) send("create_project", { name: name });
       creatingProject = false;
       refresh();
     });
@@ -1279,7 +1279,7 @@
       if (state.show.activeId !== pl.id) {
         head.appendChild(
           smallButton("активировать", () => {
-            send("set_active_playlist", { id: pl.id });
+            send("set_active_project", { id: pl.id });
           }),
         );
       }
