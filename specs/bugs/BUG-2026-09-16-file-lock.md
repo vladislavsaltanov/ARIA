@@ -55,4 +55,9 @@ Security impact: NONE. Локальные файловые дескриптор�
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-09-16, branch fix/2.2-file-lock.
+Срез 1 (592a242+850961c): MixerBus закрывает источник голоса в Compact и Dispose — fd освобождается на render-пути.
+Срез 2 (f6ed9a1+bcecb62): retired-голос с Faulted освобождает хендл как Ended.
+Срез 3 (6fcb49e+5eb9d82): удаление текущей записи останавливает воспроизведение и освобождает хендл; entry-привязки очереди чистятся; два legacy-теста переписаны под новую семантику (deck-finish и queue-snapshot удалены осознанно).
+Tests: Audio 128, Core 250, App 303, Persistence 32, Remote 78 — все сборки изолированно зелёные; полный прогон солюшеном флакает timing-тестами под нагрузкой песочницы (известное, см. память).
+Residual: latest-value хендл после естественного конца (не утечка fd).
