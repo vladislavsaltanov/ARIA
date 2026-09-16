@@ -51,4 +51,8 @@ Risk level: Low. Одна точка входа (хендлер выбора), �
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-09-17, branch feat/project-phase-f-folder.
+OnSelectedProjectChanged submits SetActiveProject when selection differs
+from ActiveId; Rebuild sets selection under suppression flag (fresh instances
+keep entries current, no activation storms). Queue/preview left global per
+existing tests. Tests: App 337 isolated green.

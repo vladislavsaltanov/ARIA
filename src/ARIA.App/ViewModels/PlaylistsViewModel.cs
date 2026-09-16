@@ -31,6 +31,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
+    private bool _syncingSelection;
     private readonly Dictionary<ProjectId, string> _projectDirs = [];
     private readonly List<(string Name, string Dir)> _pendingDirs = [];
     private List<StagedProjectScript>? _pendingProjectScripts;
@@ -1235,7 +1236,9 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                 _awaitedProjectName = null;
             }
         }
+        _syncingSelection = true;
         SelectedProject = awaited ?? Projects.FirstOrDefault(p => p.Id == selectedProjectId) ?? Projects.FirstOrDefault();
+        _syncingSelection = false;
         SelectedEntry = SelectedProject?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedProject?.Entries.FirstOrDefault();
         RefreshVisible();
         RefreshCenterHeader();
@@ -1264,6 +1267,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     {
         RefreshVisible();
         RefreshCenterHeader();
+        if (!_syncingSelection && value is { } project && _bus.Snapshot().Show.ActiveId != project.Id)
+        {
+            Submit(new SetActiveProject(project.Id));
+        }
     }
 
     partial void OnCenterSearchTextChanged(string value)
