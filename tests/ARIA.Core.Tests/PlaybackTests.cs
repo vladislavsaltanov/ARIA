@@ -333,6 +333,31 @@ public sealed class PlaybackTests
     }
 
     [Fact]
+    public void MidStreamFault_WithQueuedItem_StopsWithoutAdvanceAndKeepsQueue()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var t3 = TestShow.Track("three");
+        var t4 = TestShow.Track("four");
+        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2, t3, t4], [p], p.Id));
+        h.Submit(new EnqueueTrack(t3.Id));
+        h.Submit(new EnqueueTrack(t4.Id));
+        h.Submit(new Play());
+
+        Assert.Equal(t3.Id, h.Transport.Current!.TrackId);
+
+        h.Engine.Fault(h.Engine.Last!.Handle);
+
+        Assert.Single(h.Engine.Created);
+        Assert.Null(h.Transport.Current);
+        Assert.Equal(TransportStatus.Stopped, h.Transport.Status);
+        Assert.Contains(t3.Id, h.Transport.Faulted);
+        Assert.Equal(t4.Id, Assert.Single(h.Snapshot.Queue.Items).TrackId);
+    }
+
+    [Fact]
     public void JumpTo_StartsEntry_AndAdvancesAfterIt()
     {
         using var h = new Harness();
