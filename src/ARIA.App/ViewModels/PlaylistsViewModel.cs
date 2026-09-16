@@ -398,6 +398,16 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         return await ImportDocumentAsync(json, dir);
     }
 
+    public void ExportZipToFile(string zipPath, ProjectVm target)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ProjectImportReport?> ImportZipFile(string zipPath, string destDir)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task ImportDroppedPathsAsync(IEnumerable<string> paths)
     {
         var inputs = paths.ToArray();
