@@ -170,6 +170,10 @@ public sealed class MixerBus : IDisposable
 
     public void Dispose()
     {
+        for (var index = 0; index < _voices.Count; index++)
+        {
+            CloseSource(_voices[index]);
+        }
         _voices.Clear();
         while (_commands.TryDequeue(out _))
         {
@@ -504,8 +508,23 @@ public sealed class MixerBus : IDisposable
                 }
                 writeIndex++;
             }
+            else
+            {
+                CloseSource(voice);
+            }
         }
         _voices.RemoveRange(writeIndex, _voices.Count - writeIndex);
+    }
+
+    private static void CloseSource(MixerVoice voice)
+    {
+        try
+        {
+            (voice.Source as IDisposable)?.Dispose();
+        }
+        catch
+        {
+        }
     }
 
     private void ComputePeak(ReadOnlySpan<float> output)
