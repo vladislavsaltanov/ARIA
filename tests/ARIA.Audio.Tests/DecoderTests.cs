@@ -288,11 +288,11 @@ public sealed class DecoderTests : IDisposable
 
         var client = new ClientId("decoder-e2e");
         long seq = 0;
-        var playlist = new Playlist(
-            PlaylistId.New(),
+        var project = new Project(
+            ProjectId.New(),
             "Main",
-            [new PlaylistEntry(EntryId.New(), first.Id), new PlaylistEntry(EntryId.New(), second.Id)]);
-        bus.Submit(client, ++seq, new LoadShow([first, second], [playlist], playlist.Id));
+            [new ProjectEntry(EntryId.New(), first.Id), new ProjectEntry(EntryId.New(), second.Id)]);
+        bus.Submit(client, ++seq, new LoadShow([first, second], [project], project.Id));
         bus.Submit(client, ++seq, new Play());
 
         await Poll(() => sink.PlayedFrames > SampleRate / 2, "sink never received decoded audio");

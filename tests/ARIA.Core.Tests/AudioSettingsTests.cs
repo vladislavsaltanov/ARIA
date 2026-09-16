@@ -39,7 +39,7 @@ public sealed class AudioSettingsTests
         var trackAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);
         var entryAudio = new TrackAudioSettings(2, -0.5, AudioEq.Flat);
         var track = TestShow.Track("a") with { Defaults = TestShow.Track("a").Defaults with { Audio = trackAudio } };
-        var entry = TestShow.Entry(track, new PlaylistOverrides(Audio: entryAudio));
+        var entry = TestShow.Entry(track, new ProjectOverrides(Audio: entryAudio));
 
         var settings = EffectiveSettings.Resolve(entry, track);
 
@@ -168,15 +168,15 @@ public sealed class AudioSettingsTests
     {
         using var h = new Harness();
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         var audio = new TrackAudioSettings(-4, 0.5, AudioEq.Flat);
 
         var seq = h.Submit(new SetTrackAudio(track.Id, audio));
 
         Assert.Null(h.RejectionOf(seq));
         Assert.NotEmpty(h.Events.OfType<ShowDelta>());
-        var resolved = EffectiveSettings.ForTrack(h.Snapshot.Show.Playlists[0].Entries[0].TrackId == track.Id ? track with { Defaults = track.Defaults with { Audio = audio } } : track);
+        var resolved = EffectiveSettings.ForTrack(h.Snapshot.Show.Projects[0].Entries[0].TrackId == track.Id ? track with { Defaults = track.Defaults with { Audio = audio } } : track);
         Assert.Equal(audio, resolved.Audio);
     }
 
@@ -195,8 +195,8 @@ public sealed class AudioSettingsTests
     {
         using var h = new Harness();
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
 
         var seq = h.Submit(new SetTrackAudio(track.Id, new TrackAudioSettings(-70, 0, AudioEq.Flat)));
 
@@ -210,14 +210,14 @@ public sealed class AudioSettingsTests
         var trackAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);
         var track = TestShow.Track("a") with { Defaults = TestShow.Track("a").Defaults with { Audio = trackAudio } };
         var entry = TestShow.Entry(track);
-        var playlist = TestShow.Playlist("Main", entry);
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", entry);
+        h.Submit(new LoadShow([track], [project], project.Id));
         var entryAudio = new TrackAudioSettings(2, -0.5, AudioEq.Flat);
 
         var seq = h.Submit(new SetEntryAudio(entry.Id, entryAudio));
 
         Assert.Null(h.RejectionOf(seq));
-        var stored = h.Snapshot.Show.Playlists[0].Entries[0];
+        var stored = h.Snapshot.Show.Projects[0].Entries[0];
         Assert.Equal(entryAudio, stored.Overrides!.Audio);
         Assert.Equal(entryAudio, EffectiveSettings.Resolve(stored, track with { Defaults = track.Defaults }).Audio);
     }
@@ -228,14 +228,14 @@ public sealed class AudioSettingsTests
         using var h = new Harness();
         var trackAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);
         var track = TestShow.Track("a") with { Defaults = TestShow.Track("a").Defaults with { Audio = trackAudio } };
-        var entry = TestShow.Entry(track, new PlaylistOverrides(Audio: new TrackAudioSettings(2, 0, AudioEq.Flat)));
-        var playlist = TestShow.Playlist("Main", entry);
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var entry = TestShow.Entry(track, new ProjectOverrides(Audio: new TrackAudioSettings(2, 0, AudioEq.Flat)));
+        var project = TestShow.Project("Main", entry);
+        h.Submit(new LoadShow([track], [project], project.Id));
 
         var seq = h.Submit(new SetEntryAudio(entry.Id, null));
 
         Assert.Null(h.RejectionOf(seq));
-        var stored = h.Snapshot.Show.Playlists[0].Entries[0];
+        var stored = h.Snapshot.Show.Projects[0].Entries[0];
         Assert.Null(stored.Overrides?.Audio);
         Assert.Equal(trackAudio, EffectiveSettings.Resolve(stored, track).Audio);
     }
@@ -256,8 +256,8 @@ public sealed class AudioSettingsTests
         using var h = new Harness();
         var track = TestShow.Track("a");
         var entry = TestShow.Entry(track);
-        var playlist = TestShow.Playlist("Main", entry);
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", entry);
+        h.Submit(new LoadShow([track], [project], project.Id));
 
         var seq = h.Submit(new SetEntryAudio(entry.Id, new TrackAudioSettings(0, 2, AudioEq.Flat)));
 

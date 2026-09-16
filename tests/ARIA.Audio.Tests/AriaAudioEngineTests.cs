@@ -235,7 +235,7 @@ public sealed class AriaAudioEngineTests
         private long _seq;
 
         public Stack(params Track[] tracks)
-            : this((tracks, [.. tracks.Select(t => new PlaylistEntry(EntryId.New(), t.Id))]))
+            : this((tracks, [.. tracks.Select(t => new ProjectEntry(EntryId.New(), t.Id))]))
         {
         }
 
@@ -244,13 +244,13 @@ public sealed class AriaAudioEngineTests
         {
         }
 
-        private static (Track[] Tracks, ImmutableArray<PlaylistEntry> Entries) BuildShow(string[] files)
+        private static (Track[] Tracks, ImmutableArray<ProjectEntry> Entries) BuildShow(string[] files)
         {
             var tracks = files.Select(f => TestTracks.Track(f)).ToArray();
-            return (tracks, [.. tracks.Select(t => new PlaylistEntry(EntryId.New(), t.Id))]);
+            return (tracks, [.. tracks.Select(t => new ProjectEntry(EntryId.New(), t.Id))]);
         }
 
-        private Stack((Track[] Tracks, ImmutableArray<PlaylistEntry> Entries) show)
+        private Stack((Track[] Tracks, ImmutableArray<ProjectEntry> Entries) show)
         {
             Tracks = [.. show.Tracks];
             Sink = new CapturingSink(8000, 2);
@@ -261,8 +261,8 @@ public sealed class AriaAudioEngineTests
             Bus = new CommandBus(controller, BusMode.Pumped);
             _busHolder.Value = Bus;
 
-            var playlist = new Playlist(PlaylistId.New(), "Main", show.Entries);
-            Bus.Submit(Client, NextSeq(), new LoadShow(Tracks, [playlist], playlist.Id));
+            var project = new Project(ProjectId.New(), "Main", show.Entries);
+            Bus.Submit(Client, NextSeq(), new LoadShow(Tracks, [project], project.Id));
         }
 
         public void Submit(Command command) => Bus.Submit(Client, NextSeq(), command);

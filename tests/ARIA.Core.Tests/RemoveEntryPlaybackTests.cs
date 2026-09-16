@@ -11,7 +11,7 @@ public sealed class RemoveEntryPlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var e1 = TestShow.Entry(t1);
-        var p = TestShow.Playlist("Main", e1);
+        var p = TestShow.Project("Main", e1);
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         var handle = h.Engine.Last!.Handle;
@@ -31,7 +31,7 @@ public sealed class RemoveEntryPlaybackTests
         var t2 = TestShow.Track("two");
         var e1 = TestShow.Entry(t1);
         var e2 = TestShow.Entry(t2);
-        var p = TestShow.Playlist("Main", e1, e2);
+        var p = TestShow.Project("Main", e1, e2);
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new EnqueueEntry(e2.Id));
@@ -45,17 +45,17 @@ public sealed class RemoveEntryPlaybackTests
     }
 
     [Fact]
-    public void DeletePlaylist_WithCurrent_StopsAndDisposesHandle()
+    public void DeleteProject_WithCurrent_StopsAndDisposesHandle()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var e1 = TestShow.Entry(t1);
-        var p = TestShow.Playlist("Main", e1);
+        var p = TestShow.Project("Main", e1);
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         var handle = h.Engine.Last!.Handle;
 
-        h.Submit(new DeletePlaylist(p.Id));
+        h.Submit(new DeleteProject(p.Id));
 
         Assert.Equal(TransportStatus.Stopped, h.Transport.Status);
         Assert.Null(h.Transport.Current);
@@ -63,20 +63,20 @@ public sealed class RemoveEntryPlaybackTests
     }
 
     [Fact]
-    public void DeletePlaylist_DropsItsQueuedItemsKeepsPlaying()
+    public void DeleteProject_DropsItsQueuedItemsKeepsPlaying()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var e1 = TestShow.Entry(t1);
         var e2 = TestShow.Entry(t2);
-        var p1 = TestShow.Playlist("One", e1);
-        var p2 = TestShow.Playlist("Two", e2);
+        var p1 = TestShow.Project("One", e1);
+        var p2 = TestShow.Project("Two", e2);
         h.Submit(new LoadShow([t1, t2], [p1, p2], p1.Id));
         h.Submit(new Play());
         h.Submit(new EnqueueEntry(e2.Id));
 
-        h.Submit(new DeletePlaylist(p2.Id));
+        h.Submit(new DeleteProject(p2.Id));
 
         Assert.Empty(h.Snapshot.Queue.Items);
         Assert.Equal(TransportStatus.Playing, h.Transport.Status);

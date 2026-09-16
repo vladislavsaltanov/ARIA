@@ -77,7 +77,7 @@ public sealed class ShowAutosaver : IDisposable
         var snapshot = _bus.Snapshot();
         var document = new ShowDocument(
             _tracksSource?.Invoke() ?? [],
-            snapshot.Show.Playlists,
+            snapshot.Show.Projects,
             snapshot.Show.ActiveId,
             snapshot.Queue.Items,
             snapshot.Mixer.MasterGainDb,

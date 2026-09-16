@@ -104,7 +104,7 @@ public sealed class AppHost : IAsyncDisposable
         var document = _snapshots.LoadLatest();
         if (document is { } saved)
         {
-            Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
+            Submit(new RestoreShow(saved.Tracks, saved.Projects, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
             Submit(new SetGlobalAudio(saved.EffectiveGlobal));
         }
         RepairTrackNames();
@@ -156,7 +156,7 @@ public sealed class AppHost : IAsyncDisposable
             throw new InvalidOperationException("AppHost is not started");
         }
         Func<string, ImportedTrack?> import = ImportOverride ?? (path => _importer.Import(path));
-        var (tracks, playlists) = _library.Load();
+        var (tracks, projects) = _library.Load();
         var current = tracks;
         var added = 0;
         var skipped = 0;
@@ -193,7 +193,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         if (added > 0)
         {
-            _library.Upsert(current, playlists);
+            _library.Upsert(current, projects);
             SyncShowState(current);
         }
         return new ImportReport(added, skipped, failed.ToImmutable());
@@ -216,7 +216,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             return false;
         }
-        var (tracks, playlists) = _library.Load();
+        var (tracks, projects) = _library.Load();
         var index = -1;
         for (var i = 0; i < tracks.Length; i++)
         {
@@ -231,7 +231,7 @@ public sealed class AppHost : IAsyncDisposable
             return false;
         }
         var relinked = imported.Track with { Id = trackId };
-        _library.Upsert(tracks.SetItem(index, relinked), playlists);
+        _library.Upsert(tracks.SetItem(index, relinked), projects);
         if (imported.Peaks is { } peaks)
         {
             _waveforms.Save(peaks with { TrackId = trackId });
@@ -265,11 +265,11 @@ public sealed class AppHost : IAsyncDisposable
         {
             return;
         }
-        var (tracks, playlists) = _library.Load();
+        var (tracks, projects) = _library.Load();
         var repaired = tracks.Select(t => _importer.RefreshDisplayName(t)).ToImmutableArray();
         if (!repaired.SequenceEqual(tracks))
         {
-            _library.Upsert(repaired, playlists);
+            _library.Upsert(repaired, projects);
             SyncShowState(repaired);
         }
         File.WriteAllText(marker, DateTimeOffset.UtcNow.ToString("o"));

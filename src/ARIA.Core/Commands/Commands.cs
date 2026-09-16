@@ -34,25 +34,25 @@ public sealed record RemoveFromQueue(int Index) : Command;
 
 public sealed record ClearQueue : Command;
 
-public sealed record CreatePlaylist(string Name) : Command;
+public sealed record CreateProject(string Name) : Command;
 
-public sealed record RenamePlaylist(PlaylistId Id, string Name) : Command;
+public sealed record RenameProject(ProjectId Id, string Name) : Command;
 
-public sealed record DeletePlaylist(PlaylistId Id) : Command;
+public sealed record DeleteProject(ProjectId Id) : Command;
 
-public sealed record SetActivePlaylist(PlaylistId Id) : Command;
+public sealed record SetActiveProject(ProjectId Id) : Command;
 
-public sealed record AddEntry(PlaylistId Playlist, TrackId Track, int? Index = null) : Command;
+public sealed record AddEntry(ProjectId Project, TrackId Track, int? Index = null) : Command;
 
-public sealed record ImportPlaylistEntry(TrackId Track, PlaylistOverrides? Overrides = null);
+public sealed record ImportProjectEntry(TrackId Track, ProjectOverrides? Overrides = null);
 
-public sealed record ImportPlaylist(string Name, ImmutableArray<ImportPlaylistEntry> Entries) : Command;
+public sealed record ImportProject(string Name, ImmutableArray<ImportProjectEntry> Entries) : Command;
 
 public sealed record RemoveEntry(EntryId Entry) : Command;
 
 public sealed record MoveEntry(EntryId Entry, int NewIndex) : Command;
 
-public sealed record SetEntryOverrides(EntryId Entry, PlaylistOverrides? Overrides) : Command;
+public sealed record SetEntryOverrides(EntryId Entry, ProjectOverrides? Overrides) : Command;
 
 public sealed record MoveQueueItem(int From, int To) : Command;
 
@@ -78,7 +78,7 @@ public sealed record SetPreviewMuted(bool Muted) : Command;
 
 public sealed record NormalizeTrack(TrackId Track) : Command;
 
-public sealed record NormalizePlaylist(PlaylistId Playlist) : Command;
+public sealed record NormalizeProject(ProjectId Project) : Command;
 
 public sealed record CreateScript(string Name) : Command;
 
@@ -110,14 +110,14 @@ public sealed record SetDefaultEndAction(EndAction Action) : Command;
 
 public sealed record LoadShow(
     ImmutableArray<Track> Tracks,
-    ImmutableArray<Playlist> Playlists,
-    PlaylistId? Active,
+    ImmutableArray<Project> Projects,
+    ProjectId? Active,
     ImmutableArray<Script> Scripts = default) : Command;
 
 public sealed record RestoreShow(
     ImmutableArray<Track> Tracks,
-    ImmutableArray<Playlist> Playlists,
-    PlaylistId? Active,
+    ImmutableArray<Project> Projects,
+    ProjectId? Active,
     ImmutableArray<QueueItem> Queue,
     double MasterGainDb,
     TimeSpan PanicFade,

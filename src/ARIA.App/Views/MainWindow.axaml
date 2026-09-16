@@ -63,7 +63,7 @@
       <Grid x:Name="ContentGrid" ColumnDefinitions="260,*,300">
       <Border Grid.Column="0" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="*,Auto">
-          <views:RailPlaylists Grid.Row="0" x:Name="RailPlaylists" />
+          <views:RailProjects Grid.Row="0" x:Name="RailProjects" />
           <Button Grid.Row="1" x:Name="QueueButton" Classes="railAction" Margin="8,6,8,10" Click="OnQueueJumpClick">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" VerticalAlignment="Center"/>
@@ -72,27 +72,11 @@
           </Button>
         </Grid>
       </Border>
-      <views:PlaylistCenter Grid.Column="1" x:Name="PlaylistCenter" />
+      <views:ProjectCenter Grid.Column="1" x:Name="ProjectCenter" />
       <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
       </Grid>
     </SplitView>
     <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="124" Margin="-24,12,-24,-24" />
     <Border x:Name="FocusSink" Grid.RowSpan="3" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
-    <Border x:Name="HelpOverlay" Grid.RowSpan="3" IsVisible="False" Background="#D90F0F0F"
-            PointerPressed="OnHelpOverlayClick">
-      <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource BrushSurface}"
-              BorderBrush="{StaticResource BrushLine}" BorderThickness="1" CornerRadius="10" Padding="28,22" MinWidth="470">
-        <StackPanel>
-          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
-            <TextBlock Text="Горячие клавиши" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource BrushFg}"/>
-            <TextBlock Grid.Column="1" Text="F1 или клик — закрыть" FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-          </Grid>
-          <Grid x:Name="HotkeyTable" ColumnDefinitions="*,130" Margin="0,10,0,0">
-            <TextBlock Text="Действие" FontSize="11" Foreground="{StaticResource BrushFaint}"/>
-            <TextBlock Grid.Column="1" Text="Жест" FontSize="11" Foreground="{StaticResource BrushFaint}" TextAlignment="Right"/>
-          </Grid>
-        </StackPanel>
-      </Border>
-    </Border>
   </Grid>
 </Window>

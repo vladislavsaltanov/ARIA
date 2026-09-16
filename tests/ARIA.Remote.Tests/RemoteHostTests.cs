@@ -75,7 +75,7 @@ public sealed class RemoteHostTests : IAsyncLifetime
         Assert.Equal(1, ack.GetProperty("seq").GetInt64());
         var delta = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "delta" && e.GetProperty("partition").GetString() == "show", TimeSpan.FromSeconds(5));
         Assert.Equal(1, delta.GetProperty("version").GetInt64());
-        Assert.Single(_bus.Snapshot().Show.Playlists);
+        Assert.Single(_bus.Snapshot().Show.Projects);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public sealed class RemoteHostTests : IAsyncLifetime
         await client.SendAsync(frame);
 
         Assert.True(await client.WaitSilenceAsync(TimeSpan.FromMilliseconds(700)), "duplicate produced frames");
-        Assert.Single(_bus.Snapshot().Show.Playlists);
+        Assert.Single(_bus.Snapshot().Show.Projects);
         Assert.Equal(1, _bus.Snapshot().ShowVersion);
     }
 

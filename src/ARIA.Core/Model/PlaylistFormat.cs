@@ -4,41 +4,41 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-public sealed record PlaylistFileFade(
+public sealed record ProjectFileFade(
     [property: JsonPropertyName("seconds")] double Seconds,
     [property: JsonPropertyName("curve")] string Curve = "linear");
 
-public sealed record PlaylistFileTransition(
+public sealed record ProjectFileTransition(
     [property: JsonPropertyName("kind")] string Kind = "cut",
     [property: JsonPropertyName("seconds")] double? Seconds = null);
 
-public sealed record PlaylistFileEntry(
+public sealed record ProjectFileEntry(
     [property: JsonPropertyName("file")] string File,
     [property: JsonPropertyName("name")] string? Name = null,
     [property: JsonPropertyName("color")] string? Color = null,
     [property: JsonPropertyName("note")] string? Note = null,
     [property: JsonPropertyName("gainDb")] double? GainDb = null,
     [property: JsonPropertyName("end")] string? End = null,
-    [property: JsonPropertyName("in")] PlaylistFileFade? In = null,
-    [property: JsonPropertyName("out")] PlaylistFileFade? Out = null,
+    [property: JsonPropertyName("in")] ProjectFileFade? In = null,
+    [property: JsonPropertyName("out")] ProjectFileFade? Out = null,
     [property: JsonPropertyName("cueIn")] double? CueIn = null,
     [property: JsonPropertyName("cueOut")] double? CueOut = null,
-    [property: JsonPropertyName("transition")] PlaylistFileTransition? Transition = null);
+    [property: JsonPropertyName("transition")] ProjectFileTransition? Transition = null);
 
-public sealed record PlaylistExportEntry(
+public sealed record ProjectExportEntry(
     string File,
-    PlaylistOverrides? Overrides = null,
-    PlaylistFileTransition? Transition = null);
+    ProjectOverrides? Overrides = null,
+    ProjectFileTransition? Transition = null);
 
-public sealed record PlaylistFileDocument(
+public sealed record ProjectFileDocument(
     [property: JsonPropertyName("format")] string Format,
     [property: JsonPropertyName("version")] int Version,
     [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("entries")] ImmutableArray<PlaylistFileEntry> Entries);
+    [property: JsonPropertyName("entries")] ImmutableArray<ProjectFileEntry> Entries);
 
-public sealed class PlaylistFormatException(string reason) : Exception(reason);
+public sealed class ProjectFormatException(string reason) : Exception(reason);
 
-public static class PlaylistFormat
+public static class ProjectFormat
 {
     public const string FormatId = "aria-playlist";
 
@@ -61,9 +61,9 @@ public static class PlaylistFormat
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static string Export(string name, IEnumerable<PlaylistExportEntry> entries)
+    public static string Export(string name, IEnumerable<ProjectExportEntry> entries)
     {
-        var document = new PlaylistFileDocument(
+        var document = new ProjectFileDocument(
             FormatId,
             CurrentVersion,
             name,
@@ -71,36 +71,36 @@ public static class PlaylistFormat
         return JsonSerializer.Serialize(document, Options);
     }
 
-    public static PlaylistFileDocument Import(string json)
+    public static ProjectFileDocument Import(string json)
     {
-        PlaylistFileDocument? document;
+        ProjectFileDocument? document;
         try
         {
-            document = JsonSerializer.Deserialize<PlaylistFileDocument>(json, Options);
+            document = JsonSerializer.Deserialize<ProjectFileDocument>(json, Options);
         }
         catch (JsonException e)
         {
-            throw new PlaylistFormatException($"bad-json: {e.Message}");
+            throw new ProjectFormatException($"bad-json: {e.Message}");
         }
         if (document is null)
         {
-            throw new PlaylistFormatException("bad-json: пустой документ");
+            throw new ProjectFormatException("bad-json: пустой документ");
         }
         if (!string.Equals(document.Format, FormatId, StringComparison.Ordinal))
         {
-            throw new PlaylistFormatException($"bad-format: {document.Format}");
+            throw new ProjectFormatException($"bad-format: {document.Format}");
         }
         if (document.Version != CurrentVersion)
         {
-            throw new PlaylistFormatException($"bad-version: {document.Version}");
+            throw new ProjectFormatException($"bad-version: {document.Version}");
         }
         if (string.IsNullOrWhiteSpace(document.Name))
         {
-            throw new PlaylistFormatException("bad-name: пустое имя плейлиста");
+            throw new ProjectFormatException("bad-name: пустое имя плейлиста");
         }
         if (document.Entries.IsDefaultOrEmpty)
         {
-            throw new PlaylistFormatException("bad-entries: плейлист пуст");
+            throw new ProjectFormatException("bad-entries: плейлист пуст");
         }
         foreach (var entry in document.Entries)
         {
@@ -109,7 +109,7 @@ public static class PlaylistFormat
         return document;
     }
 
-    public static PlaylistOverrides? ToOverrides(PlaylistFileEntry entry)
+    public static ProjectOverrides? ToOverrides(ProjectFileEntry entry)
     {
         if (entry.Name is null
             && entry.Color is null
@@ -123,7 +123,7 @@ public static class PlaylistFormat
         {
             return null;
         }
-        return new PlaylistOverrides(
+        return new ProjectOverrides(
             entry.Name,
             entry.Color,
             entry.Note,
@@ -135,7 +135,7 @@ public static class PlaylistFormat
             entry.CueOut is null ? null : TimeSpan.FromSeconds(entry.CueOut.Value));
     }
 
-    private static PlaylistFileEntry ToFileEntry(PlaylistExportEntry entry) => new(
+    private static ProjectFileEntry ToFileEntry(ProjectExportEntry entry) => new(
         entry.File,
         entry.Overrides?.Name,
         entry.Overrides?.Color,
@@ -148,18 +148,18 @@ public static class PlaylistFormat
         entry.Overrides?.CueOut?.TotalSeconds,
         entry.Transition);
 
-    private static PlaylistFileFade ToFileFade(Fade fade) =>
+    private static ProjectFileFade ToFileFade(Fade fade) =>
         new(fade.Duration.TotalSeconds, fade.Curve.ToString().ToLowerInvariant());
 
-    private static void ValidateEntry(PlaylistFileEntry entry)
+    private static void ValidateEntry(ProjectFileEntry entry)
     {
         if (string.IsNullOrWhiteSpace(entry.File))
         {
-            throw new PlaylistFormatException("bad-entry: пустой путь к файлу");
+            throw new ProjectFormatException("bad-entry: пустой путь к файлу");
         }
         if (entry.GainDb is < -80 or > 12)
         {
-            throw new PlaylistFormatException($"bad-entry: gainDb вне диапазона: {entry.File}");
+            throw new ProjectFormatException($"bad-entry: gainDb вне диапазона: {entry.File}");
         }
         if (entry.End is not null)
         {
@@ -175,15 +175,15 @@ public static class PlaylistFormat
         }
         if (entry.CueIn is < 0 || entry.CueOut is < 0)
         {
-            throw new PlaylistFormatException($"bad-entry: cue отрицательный: {entry.File}");
+            throw new ProjectFormatException($"bad-entry: cue отрицательный: {entry.File}");
         }
         if (entry.Transition is not null && !TransitionKinds.Contains(entry.Transition.Kind))
         {
-            throw new PlaylistFormatException($"bad-entry: неизвестный переход: {entry.Transition.Kind}");
+            throw new ProjectFormatException($"bad-entry: неизвестный переход: {entry.Transition.Kind}");
         }
         if (entry.Transition?.Seconds is < 0)
         {
-            throw new PlaylistFormatException($"bad-entry: переход отрицательный: {entry.File}");
+            throw new ProjectFormatException($"bad-entry: переход отрицательный: {entry.File}");
         }
     }
 
@@ -193,18 +193,18 @@ public static class PlaylistFormat
         {
             return end;
         }
-        throw new PlaylistFormatException($"bad-entry: неизвестное end: {value}");
+        throw new ProjectFormatException($"bad-entry: неизвестное end: {value}");
     }
 
-    private static Fade ParseFade(PlaylistFileFade value)
+    private static Fade ParseFade(ProjectFileFade value)
     {
         if (value.Seconds < 0)
         {
-            throw new PlaylistFormatException("bad-entry: fade отрицательный");
+            throw new ProjectFormatException("bad-entry: fade отрицательный");
         }
         if (!Enum.TryParse<FadeCurve>(value.Curve, ignoreCase: true, out var curve))
         {
-            throw new PlaylistFormatException($"bad-entry: неизвестная кривая: {value.Curve}");
+            throw new ProjectFormatException($"bad-entry: неизвестная кривая: {value.Curve}");
         }
         return new Fade(TimeSpan.FromSeconds(value.Seconds), curve);
     }

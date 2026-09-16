@@ -34,41 +34,41 @@ public sealed class OsDropReproTests : IDisposable
         var wav = TestWav.Write(_directory, "os-drop.wav");
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 1), () => new MiniaudioSourceFactory(8000, 1));
         await host.StartAsync();
-        host.Submit(new CreatePlaylist("OsDropTarget"));
+        host.Submit(new CreateProject("OsDropTarget"));
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (DateTime.UtcNow < deadline && host.Bus.Snapshot().Show.Playlists.Length == 0)
+        while (DateTime.UtcNow < deadline && host.Bus.Snapshot().Show.Projects.Length == 0)
         {
             await Task.Delay(25);
         }
         var primer = TestWav.Write(_directory, "primer.wav");
         await host.ImportTracksAsync([primer]);
         Window? window = null;
-        PlaylistsViewModel? vm = null;
+        ProjectsViewModel? vm = null;
         await _session.Dispatch(() =>
         {
             var sync = SynchronizationContext.Current;
-            var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, sync: sync)
+            var projects = new ProjectsViewModel(host.Bus, () => host.Library!.Load().Tracks, sync: sync)
             {
                 AudioImport = host.ImportTracksAsync,
             };
             var queue = new QueueViewModel(host.Bus, sync);
-            window = new Views.MainWindow(null, playlistsViewModel: playlists, queueViewModel: queue);
+            window = new Views.MainWindow(null, projectsViewModel: projects, queueViewModel: queue);
             window.Show();
             window.UpdateLayout();
-            vm = playlists;
+            vm = projects;
             return 0;
         }, CancellationToken.None);
         deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (DateTime.UtcNow < deadline && vm!.SelectedPlaylist is null)
+        while (DateTime.UtcNow < deadline && vm!.SelectedProject is null)
         {
             await Task.Delay(25);
         }
-        Assert.NotNull(vm!.SelectedPlaylist);
+        Assert.NotNull(vm!.SelectedProject);
 
         await _session.Dispatch(() =>
         {
             window!.UpdateLayout();
-            var entryList = window.FindControl<Views.PlaylistCenter>("PlaylistCenter")!.EntryListBox;
+            var entryList = window.FindControl<Views.ProjectCenter>("ProjectCenter")!.EntryListBox;
             var topLevel = TopLevel.GetTopLevel(entryList);
             Assert.NotNull(topLevel?.StorageProvider);
             var file = topLevel!.StorageProvider.TryGetFileFromPathAsync(new Uri(wav)).GetAwaiter().GetResult();
@@ -83,14 +83,14 @@ public sealed class OsDropReproTests : IDisposable
         var count = 0;
         while (DateTime.UtcNow < deadline && count == 0)
         {
-            count = host.Bus.Snapshot().Show.Playlists[0].Entries.Length;
+            count = host.Bus.Snapshot().Show.Projects[0].Entries.Length;
             await Task.Delay(50);
         }
         var status = string.Empty;
         var trackCount = 0;
         await _session.Dispatch(() =>
         {
-            status = vm!.PlaylistIoStatus;
+            status = vm!.ProjectIoStatus;
             trackCount = host.Library!.Load().Tracks.Length;
             return 0;
         }, CancellationToken.None);

@@ -33,28 +33,28 @@ public sealed class PlaybackChannelTests : IAsyncLifetime
         return client;
     }
 
-    private async Task LoadShowWithPlaylistAsync()
+    private async Task LoadShowWithProjectAsync()
     {
         var trackId = TrackId.New();
-        var playlist = new Playlist(
-            PlaylistId.New(),
+        var project = new Project(
+            ProjectId.New(),
             "Main",
-            [new PlaylistEntry(EntryId.New(), trackId)]);
+            [new ProjectEntry(EntryId.New(), trackId)]);
         var track = new Track(trackId, "a.wav", "Track", TimeSpan.FromSeconds(10), new TrackDefaults());
-        _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
-        _bus.Submit(new ClientId("setup"), 2, new CreatePlaylist("Second"));
+        _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
+        _bus.Submit(new ClientId("setup"), 2, new CreateProject("Second"));
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (_bus.Snapshot().Show.Playlists.Length < 2 && DateTime.UtcNow < deadline)
+        while (_bus.Snapshot().Show.Projects.Length < 2 && DateTime.UtcNow < deadline)
         {
             await Task.Delay(20);
         }
-        Assert.Equal(2, _bus.Snapshot().Show.Playlists.Length);
+        Assert.Equal(2, _bus.Snapshot().Show.Projects.Length);
     }
 
     [Fact]
     public async Task SnapshotOnConnect()
     {
-        await LoadShowWithPlaylistAsync();
+        await LoadShowWithProjectAsync();
         using var client = Connected();
 
         var snapshot = await client.WaitForAsync(
@@ -65,7 +65,7 @@ public sealed class PlaybackChannelTests : IAsyncLifetime
         Assert.Equal(JsonValueKind.Number, snapshot.GetProperty("transport").GetProperty("version").ValueKind);
         Assert.Equal(JsonValueKind.Number, snapshot.GetProperty("queue").GetProperty("version").ValueKind);
         Assert.Equal(JsonValueKind.Number, snapshot.GetProperty("mixer").GetProperty("version").ValueKind);
-        Assert.Equal(2, snapshot.GetProperty("show").GetProperty("state").GetProperty("playlists").GetArrayLength());
+        Assert.Equal(2, snapshot.GetProperty("show").GetProperty("state").GetProperty("projects").GetArrayLength());
         Assert.Equal("Stopped", snapshot.GetProperty("transport").GetProperty("state").GetProperty("status").GetString());
     }
 

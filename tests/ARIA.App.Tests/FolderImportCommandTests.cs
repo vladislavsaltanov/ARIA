@@ -13,10 +13,10 @@ public sealed class FolderImportCommandTests
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", []);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        var project = new Project(ProjectId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         IReadOnlyList<string>? received = null;
-        using var vm = new PlaylistsViewModel(bus, () => [track],
+        using var vm = new ProjectsViewModel(bus, () => [track],
             audioImport: (inputs, _) =>
             {
                 received = inputs;
@@ -35,10 +35,10 @@ public sealed class FolderImportCommandTests
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", []);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        var project = new Project(ProjectId.New(), "Main", []);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         var called = false;
-        using var vm = new PlaylistsViewModel(bus, () => [track],
+        using var vm = new ProjectsViewModel(bus, () => [track],
             audioImport: (_, _) =>
             {
                 called = true;
@@ -49,7 +49,7 @@ public sealed class FolderImportCommandTests
         await vm.ImportAudioFolderCommand.ExecuteAsync(null);
 
         Assert.False(called);
-        Assert.Equal(string.Empty, vm.PlaylistIoStatus);
+        Assert.Equal(string.Empty, vm.ProjectIoStatus);
     }
 
     [Fact]

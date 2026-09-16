@@ -59,10 +59,10 @@ internal static class CommandCodec
                 "enqueue_track" => new EnqueueTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "play_track" => new PlayTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "remove_from_queue" => new RemoveFromQueue(IntOf(commandElement, "index")),
-                "create_playlist" => new CreatePlaylist(StringOf(commandElement, "name")),
-                "rename_playlist" => new RenamePlaylist(new PlaylistId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),
-                "delete_playlist" => new DeletePlaylist(new PlaylistId(GuidOf(commandElement, "id"))),
-                "set_active_playlist" => new SetActivePlaylist(new PlaylistId(GuidOf(commandElement, "id"))),
+                "create_playlist" => new CreateProject(StringOf(commandElement, "name")),
+                "rename_playlist" => new RenameProject(new ProjectId(GuidOf(commandElement, "id")), StringOf(commandElement, "name")),
+                "delete_playlist" => new DeleteProject(new ProjectId(GuidOf(commandElement, "id"))),
+                "set_active_playlist" => new SetActiveProject(new ProjectId(GuidOf(commandElement, "id"))),
                 "add_entry" => ParseAddEntry(commandElement),
                 "remove_entry" => new RemoveEntry(new EntryId(GuidOf(commandElement, "entry"))),
                 "move_entry" => new MoveEntry(new EntryId(GuidOf(commandElement, "entry")), IntOf(commandElement, "new_index")),
@@ -78,7 +78,7 @@ internal static class CommandCodec
                 "set_preview_gain" => new SetPreviewGain(DoubleOf(commandElement, "gain_db")),
                 "set_preview_muted" => new SetPreviewMuted(BoolOf(commandElement, "muted")),
                 "normalize_track" => new NormalizeTrack(new TrackId(GuidOf(commandElement, "track"))),
-                "normalize_playlist" => new NormalizePlaylist(new PlaylistId(GuidOf(commandElement, "playlist"))),
+                "normalize_playlist" => new NormalizeProject(new ProjectId(GuidOf(commandElement, "playlist"))),
                 "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
                 "set_panic_fade" => new SetPanicFade(TimeSpan.FromMilliseconds(IntOf(commandElement, "duration_ms"))),
                 "set_default_end_action" => new SetDefaultEndAction(EndActionOf(commandElement, "end_action")),
@@ -213,14 +213,14 @@ internal static class CommandCodec
             index = indexElement.GetInt32();
         }
         return new AddEntry(
-            new PlaylistId(GuidOf(element, "playlist")),
+            new ProjectId(GuidOf(element, "playlist")),
             new TrackId(GuidOf(element, "track")),
             index);
     }
 
     private static SetEntryOverrides ParseSetEntryOverrides(JsonElement element)
     {
-        PlaylistOverrides? overrides = null;
+        ProjectOverrides? overrides = null;
         if (element.TryGetProperty("overrides", out var overridesElement) && overridesElement.ValueKind == JsonValueKind.Object)
         {
             overrides = ParseOverrides(overridesElement);
@@ -228,7 +228,7 @@ internal static class CommandCodec
         return new SetEntryOverrides(new EntryId(GuidOf(element, "entry")), overrides);
     }
 
-    private static PlaylistOverrides ParseOverrides(JsonElement element)
+    private static ProjectOverrides ParseOverrides(JsonElement element)
     {
         Fade? fadeIn = null;
         if (TicksOf(element, "in_ticks") is { } inTicks)
@@ -245,7 +245,7 @@ internal static class CommandCodec
         {
             endAction = Enum.TryParse<EndAction>(endActionElement.GetString(), ignoreCase: true, out var parsed) ? parsed : null;
         }
-        return new PlaylistOverrides(
+        return new ProjectOverrides(
             Name: StringOrNullOf(element, "name"),
             Color: StringOrNullOf(element, "color"),
             Note: StringOrNullOf(element, "note"),

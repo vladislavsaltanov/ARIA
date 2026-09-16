@@ -33,7 +33,7 @@ public sealed class SnapshotStoreTests : IDisposable
     {
         var t1 = TestFactory.Track("one", EndAction.Pause);
         var e1 = TestFactory.Entry(t1);
-        var p1 = TestFactory.Playlist("Main", e1);
+        var p1 = TestFactory.Project("Main", e1);
         var queue = ImmutableArray.Create(
             new QueueItem(e1.Id, t1.Id, "из очереди", "amber"),
             new QueueItem(null, t1.Id, "без вхождения", null));
@@ -53,9 +53,9 @@ public sealed class SnapshotStoreTests : IDisposable
             var track = Assert.Single(loaded.Tracks);
             Assert.Equal(t1.Id, track.Id);
             Assert.Equal(EndAction.Pause, track.Defaults.EndAction);
-            var playlist = Assert.Single(loaded.Playlists);
-            Assert.Equal(p1.Id, playlist.Id);
-            Assert.Equal(p1.Entries[0].Id, playlist.Entries[0].Id);
+            var project = Assert.Single(loaded.Projects);
+            Assert.Equal(p1.Id, project.Id);
+            Assert.Equal(p1.Entries[0].Id, project.Entries[0].Id);
             Assert.Equal(p1.Id, loaded.ActiveId);
             Assert.Equal(2, loaded.Queue.Length);
             Assert.Equal(e1.Id, loaded.Queue[0].EntryId);
@@ -159,7 +159,7 @@ public sealed class SnapshotStoreTests : IDisposable
     public void MissingScriptsField_LoadsEmptyScripts()
     {
         File.WriteAllText(_path, """
-            {"tracks":[],"playlists":[],"queue":[],"masterGainDb":0,"panicFadeTicks":1000000,"clockElapsedTicks":0,"clockRunning":false,"savedAt":"2026-09-11T00:00:00Z"}
+            {"tracks":[],"projects":[],"queue":[],"masterGainDb":0,"panicFadeTicks":1000000,"clockElapsedTicks":0,"clockRunning":false,"savedAt":"2026-09-11T00:00:00Z"}
             """);
         using var store = new JsonSnapshotStore(_path);
 

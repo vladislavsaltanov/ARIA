@@ -12,14 +12,14 @@ public sealed class PlaybackTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t1));
 
         h.Submit(new LoadShow([t1], [p], p.Id));
 
         var snap = h.Snapshot;
         Assert.Equal(TransportStatus.Stopped, snap.Transport.Status);
         Assert.Equal(p.Id, snap.Show.ActiveId);
-        Assert.Single(snap.Show.Playlists);
+        Assert.Single(snap.Show.Projects);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public sealed class PlaybackTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
@@ -53,7 +53,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
 
         h.Submit(new Play());
@@ -73,7 +73,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         var first = h.Engine.Created[0];
@@ -96,7 +96,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Pause);
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
 
@@ -116,7 +116,7 @@ public sealed class PlaybackTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Replay);
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
@@ -133,7 +133,7 @@ public sealed class PlaybackTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Stop);
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
@@ -155,7 +155,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Pause);
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new EnqueueTrack(t2.Id));
@@ -173,7 +173,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Stop);
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new EnqueueTrack(t2.Id));
@@ -191,7 +191,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Replay);
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new EnqueueTrack(t2.Id));
@@ -204,13 +204,13 @@ public sealed class PlaybackTests
     }
 
     [Fact]
-    public void Queue_PlaysFirst_ThenPlaylistContinuesFromCursor()
+    public void Queue_PlaysFirst_ThenProjectContinuesFromCursor()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
         h.Submit(new LoadShow([t1, t2, t3], [p], p.Id));
 
         var e3 = p.Entries[2];
@@ -236,7 +236,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one", fadeOut: new Fade(TimeSpan.FromSeconds(2), FadeCurve.SCurve));
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         var first = h.Engine.Created[0];
@@ -260,7 +260,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         var first = h.Engine.Created[0];
@@ -290,14 +290,14 @@ public sealed class PlaybackTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p1 = TestShow.Playlist("First", TestShow.Entry(t1));
-        var p2 = TestShow.Playlist("Second", TestShow.Entry(t1));
+        var p1 = TestShow.Project("First", TestShow.Entry(t1));
+        var p2 = TestShow.Project("Second", TestShow.Entry(t1));
 
         h.Bus.Submit(Harness.Client, 1, new LoadShow([t1], [p1], p1.Id));
         h.Bus.Submit(Harness.Client, 1, new LoadShow([t1], [p2], p2.Id));
 
         Assert.Equal(p1.Id, h.Snapshot.Show.ActiveId);
-        Assert.Single(h.Snapshot.Show.Playlists);
+        Assert.Single(h.Snapshot.Show.Projects);
     }
 
     [Fact]
@@ -320,7 +320,7 @@ public sealed class PlaybackTests
         using var h = new Harness();
         var t1 = TestShow.Track("broken");
         var t2 = TestShow.Track("good");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
 
@@ -340,7 +340,7 @@ public sealed class PlaybackTests
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
         var t4 = TestShow.Track("four");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2, t3, t4], [p], p.Id));
         h.Submit(new EnqueueTrack(t3.Id));
         h.Submit(new EnqueueTrack(t4.Id));
@@ -364,7 +364,7 @@ public sealed class PlaybackTests
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
         h.Submit(new LoadShow([t1, t2, t3], [p], p.Id));
         h.Submit(new Play());
 
@@ -386,7 +386,7 @@ public sealed class PlaybackTests
         var marker = new Marker("storm-end", TimeSpan.FromSeconds(90), MarkerAction.Stop);
         var t1 = TestShow.Track("storm", markers: [marker]);
         var t2 = TestShow.Track("calm");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         var first = h.Engine.Created[0];
@@ -404,13 +404,13 @@ public sealed class PlaybackTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("original", gainDb: -3);
-        var overrides = new PlaylistOverrides(
+        var overrides = new ProjectOverrides(
             Name: "Буря, акт 2",
             Color: "amber",
             GainDb: -6,
             EndAction: EndAction.Pause,
             CueIn: TimeSpan.FromSeconds(10));
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1, overrides));
+        var p = TestShow.Project("Main", TestShow.Entry(t1, overrides));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 

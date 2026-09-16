@@ -31,12 +31,12 @@ public sealed class ShowAutosaverTests : IDisposable
         using var bus = NewBus();
         using var autosaver = new ShowAutosaver(bus, store, TimeSpan.FromMilliseconds(150));
 
-        bus.Submit(Client, 1, new CreatePlaylist("Main"));
+        bus.Submit(Client, 1, new CreateProject("Main"));
 
         var document = WaitForDocument(store, TimeSpan.FromSeconds(5));
         Assert.NotNull(document);
-        Assert.Single(document.Playlists);
-        Assert.Equal("Main", document.Playlists[0].Name);
+        Assert.Single(document.Projects);
+        Assert.Equal("Main", document.Projects[0].Name);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class ShowAutosaverTests : IDisposable
 
         for (var i = 1; i <= 5; i++)
         {
-            bus.Submit(Client, i, new CreatePlaylist($"p{i}"));
+            bus.Submit(Client, i, new CreateProject($"p{i}"));
         }
 
         ShowDocument? document = null;
@@ -56,7 +56,7 @@ public sealed class ShowAutosaverTests : IDisposable
         while (Environment.TickCount64 < deadline)
         {
             document = store.LoadLatest();
-            if (document is { } found && found.Playlists.Length == 5)
+            if (document is { } found && found.Projects.Length == 5)
             {
                 break;
             }
@@ -64,7 +64,7 @@ public sealed class ShowAutosaverTests : IDisposable
         }
 
         Assert.NotNull(document);
-        Assert.Equal(5, document.Playlists.Length);
+        Assert.Equal(5, document.Projects.Length);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed class ShowAutosaverTests : IDisposable
         using var bus = NewBus();
         using var autosaver = new ShowAutosaver(bus, store, TimeSpan.FromMilliseconds(150));
 
-        bus.Submit(Client, 1, new CreatePlaylist("Main"));
+        bus.Submit(Client, 1, new CreateProject("Main"));
         autosaver.FlushNow();
 
         var deadline = Environment.TickCount64 + 2000;
@@ -123,15 +123,15 @@ public sealed class ShowAutosaverTests : IDisposable
             using var bus = NewBus();
             using var autosaver = new ShowAutosaver(bus, store, TimeSpan.FromMilliseconds(50));
 
-            bus.Submit(Client, 1, new CreatePlaylist("Main"));
+            bus.Submit(Client, 1, new CreateProject("Main"));
             Directory.Delete(dir, recursive: true);
             Thread.Sleep(400);
             Directory.CreateDirectory(dir);
-            bus.Submit(Client, 2, new CreatePlaylist("Spare"));
+            bus.Submit(Client, 2, new CreateProject("Spare"));
 
             var document = WaitForDocument(store, TimeSpan.FromSeconds(5));
             Assert.NotNull(document);
-            Assert.Equal(2, document.Playlists.Length);
+            Assert.Equal(2, document.Projects.Length);
         }
         finally
         {

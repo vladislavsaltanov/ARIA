@@ -10,25 +10,25 @@ using Avalonia.VisualTree;
 
 internal sealed class DragCoordinator
 {
-    private readonly ListBox _playlist;
+    private readonly ListBox _project;
     private readonly ListBox _queue;
     private ListBox? _source;
     private Point _pressPos;
     private bool _dragging;
-    private PlaylistsViewModel.EntryVm? _entry;
+    private ProjectsViewModel.EntryVm? _entry;
     private QueueViewModel.QueueItemVm? _queueItem;
     private Border? _rowHighlight;
     private ListBox? _listHighlight;
     private ListBoxItem? _dropContainer;
     private bool _dropAfter;
 
-    public DragCoordinator(ListBox playlist, ListBox queue)
+    public DragCoordinator(ListBox project, ListBox queue)
     {
-        _playlist = playlist;
+        _project = project;
         _queue = queue;
-        playlist.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
-        playlist.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
-        playlist.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
+        project.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
+        project.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
+        project.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
         queue.AddHandler(InputElement.PointerPressedEvent, OnPress, RoutingStrategies.Bubble, handledEventsToo: true);
         queue.AddHandler(InputElement.PointerMovedEvent, OnMove, RoutingStrategies.Bubble, handledEventsToo: true);
         queue.AddHandler(InputElement.PointerReleasedEvent, OnRelease, RoutingStrategies.Bubble, handledEventsToo: true);
@@ -46,7 +46,7 @@ internal sealed class DragCoordinator
         {
             return;
         }
-        if (ReferenceEquals(list, _playlist) && row is PlaylistsViewModel.EntryVm entry)
+        if (ReferenceEquals(list, _project) && row is ProjectsViewModel.EntryVm entry)
         {
             _entry = entry;
         }
@@ -81,7 +81,7 @@ internal sealed class DragCoordinator
         ClearHighlight();
         if (_entry is not null)
         {
-            ShowInsertion(_playlist, e.GetPosition(_playlist));
+            ShowInsertion(_project, e.GetPosition(_project));
         }
         else if (_queueItem is not null)
         {
@@ -100,22 +100,22 @@ internal sealed class DragCoordinator
         {
             return;
         }
-        if (ReferenceEquals(source, _playlist) && entry is not null
-            && source.DataContext is PlaylistsViewModel playlists
-            && IsInside(_playlist, e.GetPosition(_playlist)))
+        if (ReferenceEquals(source, _project) && entry is not null
+            && source.DataContext is ProjectsViewModel projects
+            && IsInside(_project, e.GetPosition(_project)))
         {
-            var visible = playlists.VisibleEntries;
-            var visual = DropIndex(_playlist, e.GetPosition(_playlist), visible.Count);
+            var visible = projects.VisibleEntries;
+            var visual = DropIndex(_project, e.GetPosition(_project), visible.Count);
             var model = visual >= visible.Count
-                ? playlists.SelectedPlaylist?.Entries.Count ?? 0
-                : playlists.EntryIndex(visible[visual].Id);
-            var old = playlists.EntryIndex(entry.Id);
+                ? projects.SelectedProject?.Entries.Count ?? 0
+                : projects.EntryIndex(visible[visual].Id);
+            var old = projects.EntryIndex(entry.Id);
             if (old >= 0 && model >= 0)
             {
                 var to = old < model ? model - 1 : model;
                 if (to != old)
                 {
-                    playlists.MoveEntry(entry.Id, to);
+                    projects.MoveEntry(entry.Id, to);
                 }
             }
         }
@@ -241,7 +241,7 @@ internal sealed class DragCoordinator
     {
         var container = ContainerAt(list, e.GetPosition(list));
         if (container?.DataContext is { } item
-            && (item is PlaylistsViewModel.EntryVm || item is QueueViewModel.QueueItemVm))
+            && (item is ProjectsViewModel.EntryVm || item is QueueViewModel.QueueItemVm))
         {
             return item;
         }

@@ -147,18 +147,18 @@ public sealed class AudioPersistenceTests : IDisposable
     {
         var audio = NonFlatAudio();
         var track = TestFactory.Track("base");
-        var entry = TestFactory.Entry(track, new PlaylistOverrides(Name: "override", Audio: audio));
-        var playlist = TestFactory.Playlist("Main", entry);
+        var entry = TestFactory.Entry(track, new ProjectOverrides(Name: "override", Audio: audio));
+        var project = TestFactory.Project("Main", entry);
         using (var store = new SqliteLibraryStore(_dbPath))
         {
-            store.Upsert([track], [playlist]);
+            store.Upsert([track], [project]);
         }
 
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             var loaded = store.Load();
 
-            var reloaded = Assert.Single(loaded.Playlists).Entries[0];
+            var reloaded = Assert.Single(loaded.Projects).Entries[0];
             Assert.NotNull(reloaded.Overrides);
             AssertAudioEqual(audio, reloaded.Overrides.Audio);
         }
@@ -168,18 +168,18 @@ public sealed class AudioPersistenceTests : IDisposable
     public void Library_EntryOverrideAudio_Null_RoundTripsAsNull()
     {
         var track = TestFactory.Track("base");
-        var entry = TestFactory.Entry(track, new PlaylistOverrides(Name: "plain"));
-        var playlist = TestFactory.Playlist("Main", entry);
+        var entry = TestFactory.Entry(track, new ProjectOverrides(Name: "plain"));
+        var project = TestFactory.Project("Main", entry);
         using (var store = new SqliteLibraryStore(_dbPath))
         {
-            store.Upsert([track], [playlist]);
+            store.Upsert([track], [project]);
         }
 
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             var loaded = store.Load();
 
-            var reloaded = Assert.Single(loaded.Playlists).Entries[0];
+            var reloaded = Assert.Single(loaded.Projects).Entries[0];
             Assert.NotNull(reloaded.Overrides);
             Assert.Null(reloaded.Overrides.Audio);
         }
@@ -190,7 +190,7 @@ public sealed class AudioPersistenceTests : IDisposable
     {
         var track = TestFactory.Track("base");
         var entryId = Guid.NewGuid();
-        var playlistId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             store.Upsert([track], []);
@@ -200,13 +200,13 @@ public sealed class AudioPersistenceTests : IDisposable
             connection.Open();
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = $"INSERT INTO playlists(id, name, position) VALUES('{playlistId}', 'Old', 0)";
+                command.CommandText = $"INSERT INTO playlists(id, name, position) VALUES('{projectId}', 'Old', 0)";
                 command.ExecuteNonQuery();
             }
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = "INSERT INTO playlist_entries(id, playlist_id, track_id, position, overrides_json) " +
-                    $"VALUES('{entryId}', '{playlistId}', '{track.Id.Value}', 0, '{{\"Name\":\"legacy\"}}')";
+                    $"VALUES('{entryId}', '{projectId}', '{track.Id.Value}', 0, '{{\"Name\":\"legacy\"}}')";
                 command.ExecuteNonQuery();
             }
         }
@@ -215,7 +215,7 @@ public sealed class AudioPersistenceTests : IDisposable
         {
             var loaded = store.Load();
 
-            var reloaded = Assert.Single(loaded.Playlists).Entries[0];
+            var reloaded = Assert.Single(loaded.Projects).Entries[0];
             Assert.NotNull(reloaded.Overrides);
             Assert.Equal("legacy", reloaded.Overrides.Name);
             Assert.Null(reloaded.Overrides.Audio);
@@ -256,7 +256,7 @@ public sealed class AudioPersistenceTests : IDisposable
     public void Snapshot_MissingGlobalNode_LoadsDefault()
     {
         File.WriteAllText(_snapPath, """
-            {"Tracks":[],"Playlists":[],"Queue":[],"MasterGainDb":0,"PanicFadeTicks":1000000,"ClockElapsedTicks":0,"ClockRunning":false,"Scripts":[],"SavedAt":"2026-09-11T00:00:00Z"}
+            {"Tracks":[],"Projects":[],"Queue":[],"MasterGainDb":0,"PanicFadeTicks":1000000,"ClockElapsedTicks":0,"ClockRunning":false,"Scripts":[],"SavedAt":"2026-09-11T00:00:00Z"}
             """);
         using var store = new JsonSnapshotStore(_snapPath);
 
@@ -271,9 +271,9 @@ public sealed class AudioPersistenceTests : IDisposable
     {
         var audio = NonFlatAudio();
         var track = TestFactory.Track("snap") with { Defaults = TestFactory.Track("snap").Defaults with { Audio = audio } };
-        var entry = TestFactory.Entry(track, new PlaylistOverrides(Audio: audio));
-        var playlist = TestFactory.Playlist("Main", entry);
-        var document = new ShowDocument([track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
+        var entry = TestFactory.Entry(track, new ProjectOverrides(Audio: audio));
+        var project = TestFactory.Project("Main", entry);
+        var document = new ShowDocument([track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
         using (var store = new JsonSnapshotStore(_snapPath))
         {
             store.Save(document);
@@ -285,7 +285,7 @@ public sealed class AudioPersistenceTests : IDisposable
 
             Assert.NotNull(loaded);
             AssertAudioEqual(audio, Assert.Single(loaded.Tracks).Defaults.Audio);
-            AssertAudioEqual(audio, Assert.Single(loaded.Playlists).Entries[0].Overrides!.Audio);
+            AssertAudioEqual(audio, Assert.Single(loaded.Projects).Entries[0].Overrides!.Audio);
         }
     }
 
@@ -293,7 +293,7 @@ public sealed class AudioPersistenceTests : IDisposable
     public void Snapshot_LegacyTrackWithoutAudio_LoadsNullAudio()
     {
         File.WriteAllText(_snapPath, """
-            {"Tracks":[{"Id":"11111111-1111-1111-1111-111111111111","FilePath":"/audio/old.flac","DefaultName":"old","DurationTicks":10000000,"GainDb":0,"EndAction":3}],"Playlists":[],"Queue":[],"MasterGainDb":0,"PanicFadeTicks":1000000,"ClockElapsedTicks":0,"ClockRunning":false,"Scripts":[],"SavedAt":"2026-09-11T00:00:00Z"}
+            {"Tracks":[{"Id":"11111111-1111-1111-1111-111111111111","FilePath":"/audio/old.flac","DefaultName":"old","DurationTicks":10000000,"GainDb":0,"EndAction":3}],"Projects":[],"Queue":[],"MasterGainDb":0,"PanicFadeTicks":1000000,"ClockElapsedTicks":0,"ClockRunning":false,"Scripts":[],"SavedAt":"2026-09-11T00:00:00Z"}
             """);
         using var store = new JsonSnapshotStore(_snapPath);
 

@@ -11,7 +11,7 @@ public sealed class FaultedTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         var handle = h.Engine.Last!.Handle;
@@ -29,7 +29,7 @@ public sealed class FaultedTests
         var t2 = TestShow.Track("two");
         var e1 = TestShow.Entry(t1);
         var e2 = TestShow.Entry(t2);
-        var p = TestShow.Playlist("Main", e1, e2);
+        var p = TestShow.Project("Main", e1, e2);
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Engine.Fault(h.Engine.Last!.Handle);
@@ -46,7 +46,7 @@ public sealed class FaultedTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
 
         h.Submit(new MarkMissing([t1.Id, TrackId.New()]));
@@ -67,7 +67,7 @@ public sealed class FaultedTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Engine.Fault(h.Engine.Last!.Handle);
@@ -83,7 +83,7 @@ public sealed class FaultedTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Engine.Fault(h.Engine.Last!.Handle);

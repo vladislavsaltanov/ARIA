@@ -43,7 +43,7 @@ public sealed class LockTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetLocked(true));
 
@@ -58,11 +58,11 @@ public sealed class LockTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetLocked(true));
 
-        Assert.Equal("locked", h.RejectionOf(h.Submit(new CreatePlaylist("x")))?.Reason);
+        Assert.Equal("locked", h.RejectionOf(h.Submit(new CreateProject("x")))?.Reason);
         Assert.Equal("locked", h.RejectionOf(h.Submit(new SetMasterGain(-3)))?.Reason);
         Assert.Equal("locked", h.RejectionOf(h.Submit(new SetMuted(true)))?.Reason);
         Assert.Equal("locked", h.RejectionOf(h.Submit(new ClearQueue()))?.Reason);
@@ -74,7 +74,7 @@ public sealed class LockTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetLocked(true));
@@ -90,7 +90,7 @@ public sealed class LockTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetLocked(true));
         h.Submit(new SetLocked(false));

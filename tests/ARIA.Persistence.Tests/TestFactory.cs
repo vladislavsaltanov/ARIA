@@ -11,9 +11,9 @@ public static class TestFactory
         TimeSpan.FromMinutes(3),
         new TrackDefaults(EndAction: end));
 
-    public static PlaylistEntry Entry(Track track, PlaylistOverrides? overrides = null) =>
+    public static ProjectEntry Entry(Track track, ProjectOverrides? overrides = null) =>
         new(EntryId.New(), track.Id, overrides);
 
-    public static Playlist Playlist(string name, params PlaylistEntry[] entries) =>
-        new(PlaylistId.New(), name, [.. entries]);
+    public static Project Project(string name, params ProjectEntry[] entries) =>
+        new(ProjectId.New(), name, [.. entries]);
 }

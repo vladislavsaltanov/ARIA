@@ -20,7 +20,7 @@ public sealed class LibraryStoreTests : IDisposable
     }
 
     [Fact]
-    public void RoundTrip_PreservesTracksPlaylistsAndOverrides()
+    public void RoundTrip_PreservesTracksProjectsAndOverrides()
     {
         var marker = new Marker("storm-end", TimeSpan.FromSeconds(90), MarkerAction.Stop);
         var t1 = new Track(
@@ -30,15 +30,15 @@ public sealed class LibraryStoreTests : IDisposable
                 Out: new Fade(TimeSpan.FromSeconds(2), FadeCurve.SCurve),
                 Markers: [marker]));
         var t2 = new Track(TrackId.New(), "/audio/two.wav", "two", TimeSpan.FromSeconds(45), new TrackDefaults());
-        var overrides = new PlaylistOverrides(
+        var overrides = new ProjectOverrides(
             Name: "Буря, акт 2", Color: "amber", Note: "примечание",
             GainDb: -6, EndAction: EndAction.Replay,
             In: new Fade(TimeSpan.FromSeconds(1), FadeCurve.Logarithmic),
             CueIn: TimeSpan.FromSeconds(10), CueOut: TimeSpan.FromMinutes(1));
-        var e1 = new PlaylistEntry(EntryId.New(), t1.Id, overrides);
-        var e2 = new PlaylistEntry(EntryId.New(), t2.Id);
-        var p1 = new Playlist(PlaylistId.New(), "Спектакль", [e1, e2]);
-        var p2 = new Playlist(PlaylistId.New(), "Антракт", []);
+        var e1 = new ProjectEntry(EntryId.New(), t1.Id, overrides);
+        var e2 = new ProjectEntry(EntryId.New(), t2.Id);
+        var p1 = new Project(ProjectId.New(), "Спектакль", [e1, e2]);
+        var p2 = new Project(ProjectId.New(), "Антракт", []);
 
         using (var store = new SqliteLibraryStore(_path))
         {
@@ -47,7 +47,7 @@ public sealed class LibraryStoreTests : IDisposable
 
         using (var store = new SqliteLibraryStore(_path))
         {
-            var (tracks, playlists) = store.Load();
+            var (tracks, projects) = store.Load();
 
             Assert.Equal(2, tracks.Length);
             var loaded1 = tracks.Single(t => t.Id == t1.Id);
@@ -69,11 +69,11 @@ public sealed class LibraryStoreTests : IDisposable
             Assert.Equal(0, t2defaults.GainDb);
             Assert.Null(t2defaults.Markers);
 
-            Assert.Equal(2, playlists.Length);
-            Assert.Equal("Спектакль", playlists[0].Name);
-            Assert.Equal(2, playlists[0].Entries.Length);
+            Assert.Equal(2, projects.Length);
+            Assert.Equal("Спектакль", projects[0].Name);
+            Assert.Equal(2, projects[0].Entries.Length);
 
-            var loadedE1 = playlists[0].Entries[0];
+            var loadedE1 = projects[0].Entries[0];
             Assert.Equal(e1.Id, loadedE1.Id);
             Assert.Equal(t1.Id, loadedE1.TrackId);
             Assert.NotNull(loadedE1.Overrides);
@@ -86,21 +86,21 @@ public sealed class LibraryStoreTests : IDisposable
             Assert.Equal(TimeSpan.FromSeconds(10), loadedE1.Overrides.CueIn);
             Assert.Equal(TimeSpan.FromMinutes(1), loadedE1.Overrides.CueOut);
 
-            var loadedE2 = playlists[0].Entries[1];
+            var loadedE2 = projects[0].Entries[1];
             Assert.Equal(e2.Id, loadedE2.Id);
             Assert.Null(loadedE2.Overrides);
 
-            Assert.Equal("Антракт", playlists[1].Name);
-            Assert.Empty(playlists[1].Entries);
+            Assert.Equal("Антракт", projects[1].Name);
+            Assert.Empty(projects[1].Entries);
         }
     }
 
     [Fact]
-    public void Upsert_RemovesMissingPlaylistsAndOrphanEntries()
+    public void Upsert_RemovesMissingProjectsAndOrphanEntries()
     {
         var t1 = TestFactory.Track("one");
-        var p1 = TestFactory.Playlist("First", TestFactory.Entry(t1));
-        var p2 = TestFactory.Playlist("Second", TestFactory.Entry(t1));
+        var p1 = TestFactory.Project("First", TestFactory.Entry(t1));
+        var p2 = TestFactory.Project("Second", TestFactory.Entry(t1));
 
         using (var store = new SqliteLibraryStore(_path))
         {
@@ -112,11 +112,11 @@ public sealed class LibraryStoreTests : IDisposable
         }
         using (var store = new SqliteLibraryStore(_path))
         {
-            var (_, playlists) = store.Load();
+            var (_, projects) = store.Load();
 
-            var playlist = Assert.Single(playlists);
-            Assert.Equal(p1.Id, playlist.Id);
-            var entry = Assert.Single(playlist.Entries);
+            var project = Assert.Single(projects);
+            Assert.Equal(p1.Id, project.Id);
+            var entry = Assert.Single(project.Entries);
             Assert.Equal(p1.Entries[0].Id, entry.Id);
         }
     }
@@ -126,7 +126,7 @@ public sealed class LibraryStoreTests : IDisposable
     {
         var t1 = TestFactory.Track("one");
         var t2 = TestFactory.Track("two");
-        var p1 = TestFactory.Playlist("Main", TestFactory.Entry(t1));
+        var p1 = TestFactory.Project("Main", TestFactory.Entry(t1));
 
         using (var store = new SqliteLibraryStore(_path))
         {
@@ -151,9 +151,9 @@ public sealed class LibraryStoreTests : IDisposable
         using var store = new SqliteLibraryStore(_path);
         store.Upsert([], []);
 
-        var (tracks, playlists) = store.Load();
+        var (tracks, projects) = store.Load();
 
         Assert.Empty(tracks);
-        Assert.Empty(playlists);
+        Assert.Empty(projects);
     }
 }

@@ -122,30 +122,30 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
-    public void AudioSection_MeasurePlaylist_SubmitsActiveId()
+    public void AudioSection_MeasureProject_SubmitsActiveId()
     {
         var submitted = new List<Command>();
-        var id = PlaylistId.New();
+        var id = ProjectId.New();
         var section = new AudioSectionVm(submitted.Add, () => id);
 
-        section.MeasurePlaylistCommand.Execute(null);
+        section.MeasureProjectCommand.Execute(null);
 
-        var command = Assert.IsType<NormalizePlaylist>(Assert.Single(submitted));
-        Assert.Equal(id, command.Playlist);
-        Assert.Equal("Замер выполняется…", section.NormalizePlaylistStatus);
+        var command = Assert.IsType<NormalizeProject>(Assert.Single(submitted));
+        Assert.Equal(id, command.Project);
+        Assert.Equal("Замер выполняется…", section.NormalizeProjectStatus);
 
         section.OnShow();
 
-        Assert.Equal("Готово", section.NormalizePlaylistStatus);
+        Assert.Equal("Готово", section.NormalizeProjectStatus);
     }
 
     [Fact]
-    public void AudioSection_MeasurePlaylist_WithoutActive_SubmitsNothing()
+    public void AudioSection_MeasureProject_WithoutActive_SubmitsNothing()
     {
         var submitted = new List<Command>();
         var section = new AudioSectionVm(submitted.Add, () => null);
 
-        section.MeasurePlaylistCommand.Execute(null);
+        section.MeasureProjectCommand.Execute(null);
 
         Assert.Empty(submitted);
     }

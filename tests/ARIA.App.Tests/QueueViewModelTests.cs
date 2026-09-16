@@ -14,10 +14,10 @@ public sealed class QueueViewModelTests
 
     private static CommandBus LoadedBus()
     {
-        var entry = new PlaylistEntry(EntryId.New(), TestTrack.Id);
-        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+        var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         return bus;
     }
 
@@ -60,10 +60,10 @@ public sealed class QueueViewModelTests
     public void IsCurrent_MarkedForRemainingDuplicate()
     {
         var track = TestTrack;
-        var entry = new PlaylistEntry(EntryId.New(), track.Id);
-        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        var entry = new ProjectEntry(EntryId.New(), track.Id);
+        var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         bus.Submit(new ClientId("setup"), 2, new EnqueueEntry(entry.Id));
         bus.Submit(new ClientId("setup"), 3, new EnqueueEntry(entry.Id));
         bus.Submit(new ClientId("setup"), 4, new Play());
@@ -104,10 +104,10 @@ public sealed class QueueViewModelTests
     public void PlayItem_WithEntry_JumpsToIt()
     {
         var track = TestTrack;
-        var entry = new PlaylistEntry(EntryId.New(), track.Id);
-        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        var entry = new ProjectEntry(EntryId.New(), track.Id);
+        var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         bus.Submit(new ClientId("setup"), 2, new EnqueueEntry(entry.Id));
         using var vm = new QueueViewModel(bus);
 
@@ -123,9 +123,9 @@ public sealed class QueueViewModelTests
     {
         var first = new Track(TrackId.New(), "/audio/a.flac", "a", TimeSpan.FromMinutes(3), new TrackDefaults());
         var second = new Track(TrackId.New(), "/audio/b.flac", "b", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", []);
+        var project = new Project(ProjectId.New(), "Main", []);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([first, second], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([first, second], [project], project.Id));
         bus.Submit(new ClientId("setup"), 2, new EnqueueTrack(first.Id));
         bus.Submit(new ClientId("setup"), 3, new EnqueueTrack(second.Id));
         using var vm = new QueueViewModel(bus);
@@ -141,10 +141,10 @@ public sealed class QueueViewModelTests
     public void FocusPlaying_SelectsCurrent()
     {
         var track = TestTrack;
-        var entry = new PlaylistEntry(EntryId.New(), track.Id);
-        var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+        var entry = new ProjectEntry(EntryId.New(), track.Id);
+        var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         bus.Submit(new ClientId("setup"), 2, new EnqueueEntry(entry.Id));
         bus.Submit(new ClientId("setup"), 3, new EnqueueEntry(entry.Id));
         bus.Submit(new ClientId("setup"), 4, new Play());

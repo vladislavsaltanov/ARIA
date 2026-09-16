@@ -36,18 +36,18 @@ internal static class Program
             await using var host = new AppHost(dataDirectory);
             await host.StartAsync();
 
-            host.Submit(new CreatePlaylist("SelfTest"));
+            host.Submit(new CreateProject("SelfTest"));
             var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-            while (host.Bus.Snapshot().Show.Playlists.Length == 0)
+            while (host.Bus.Snapshot().Show.Projects.Length == 0)
             {
                 if (DateTime.UtcNow > deadline)
                 {
-                    Console.Error.WriteLine("SELFTEST FAIL: playlist not applied");
+                    Console.Error.WriteLine("SELFTEST FAIL: project not applied");
                     return 1;
                 }
                 await Task.Delay(50);
             }
-            Console.WriteLine($"aria selftest: bus ok, playlists={host.Bus.Snapshot().Show.Playlists.Length}");
+            Console.WriteLine($"aria selftest: bus ok, projects={host.Bus.Snapshot().Show.Projects.Length}");
 
             Console.WriteLine("aria selftest: playback smoke");
             var track = new Aria.Core.Model.Track(
@@ -56,10 +56,10 @@ internal static class Program
                 "smoke",
                 TimeSpan.FromSeconds(10),
                 new Aria.Core.Model.TrackDefaults());
-            var playlist = new Aria.Core.Model.Playlist(
-                Aria.Core.Model.PlaylistId.New(), "Selftest", ImmutableArray.Create(
-                    new Aria.Core.Model.PlaylistEntry(Aria.Core.Model.EntryId.New(), track.Id)));
-            host.Submit(new LoadShow([track], ImmutableArray.Create(playlist), playlist.Id));
+            var project = new Aria.Core.Model.Project(
+                Aria.Core.Model.ProjectId.New(), "Selftest", ImmutableArray.Create(
+                    new Aria.Core.Model.ProjectEntry(Aria.Core.Model.EntryId.New(), track.Id)));
+            host.Submit(new LoadShow([track], ImmutableArray.Create(project), project.Id));
             host.Submit(new Play());
             await Task.Delay(2000);
             var status = host.Bus.Snapshot().Transport.Status;

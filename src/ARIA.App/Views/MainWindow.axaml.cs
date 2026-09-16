@@ -18,7 +18,7 @@ public partial class MainWindow : Window
 {
     private readonly HotkeyService? _hotkeys;
     private readonly Func<Window>? _settingsDialogFactory;
-    private PlaylistsViewModel? _playlists;
+    private ProjectsViewModel? _projects;
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
     private bool _paneResizing;
@@ -32,7 +32,7 @@ public partial class MainWindow : Window
 
     public MainWindow(
         HotkeyService? hotkeys,
-        PlaylistsViewModel? playlistsViewModel = null,
+        ProjectsViewModel? projectsViewModel = null,
         QueueViewModel? queueViewModel = null,
         Func<Window>? settingsDialogFactory = null,
         ScriptPanelViewModel? scriptViewModel = null)
@@ -40,11 +40,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         _hotkeys = hotkeys;
         _settingsDialogFactory = settingsDialogFactory;
-        if (playlistsViewModel is not null)
+        if (projectsViewModel is not null)
         {
-            _playlists = playlistsViewModel;
-            RailPlaylists.DataContext = playlistsViewModel;
-            PlaylistCenter.DataContext = playlistsViewModel;
+            _projects = projectsViewModel;
+            RailProjects.DataContext = projectsViewModel;
+            ProjectCenter.DataContext = projectsViewModel;
         }
         if (queueViewModel is not null)
         {
@@ -57,8 +57,7 @@ public partial class MainWindow : Window
             ScriptPanel.CloseRequested += (_, _) => ToggleScriptPane();
             scriptViewModel.PropertyChanged += OnScriptPropertyChanged;
         }
-        PlaylistCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
-        PlaylistCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
+        ProjectCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
         QueueColumn.CloseRequested += (_, _) => SetQueueOpen(false);
         TransportBar.SettingsRequested += OnSettingsRequested;
         Opened += OnOpened;
@@ -184,7 +183,7 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(ScriptPanelViewModel.HighlightedTrack)
             && sender is ScriptPanelViewModel viewModel)
         {
-            _playlists?.SetLinkedTrack(viewModel.HighlightedTrack);
+            _projects?.SetLinkedTrack(viewModel.HighlightedTrack);
         }
     }
 
@@ -221,11 +220,10 @@ public partial class MainWindow : Window
         if (_hotkeys is not null)
         {
             TransportBar.ApplyGestures(_hotkeys);
-            PlaylistCenter.ApplyGestures(_hotkeys);
-            BuildHotkeyTable();
+            ProjectCenter.ApplyGestures(_hotkeys);
         }
         _drag = new DragCoordinator(
-            PlaylistCenter.EntryListBox,
+            ProjectCenter.EntryListBox,
             QueueColumn.QueueListBox);
     }
 
@@ -259,18 +257,6 @@ public partial class MainWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (HelpOverlay.IsVisible)
-        {
-            HelpOverlay.IsVisible = false;
-            e.Handled = true;
-            return;
-        }
-        if (e.Key == Key.F1)
-        {
-            HelpOverlay.IsVisible = true;
-            e.Handled = true;
-            return;
-        }
         if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
         {
             if (!IsTextInput(e.Source)
@@ -320,46 +306,5 @@ public partial class MainWindow : Window
             current = current.Parent as Control;
         }
         return false;
-    }
-
-    private void OnHelpOverlayClick(object? sender, PointerPressedEventArgs e) => HelpOverlay.IsVisible = false;
-
-    private void BuildHotkeyTable()
-    {
-        if (_hotkeys is null)
-        {
-            return;
-        }
-        string[] actions = ["play", "pause", "panic", "next", "replay", "lock", "toggle-script", "reset-clock"];
-        for (var row = 0; row < actions.Length; row++)
-        {
-            var action = new TextBlock
-            {
-                Text = HotkeyLabels.Label(actions[row]),
-                FontSize = 13,
-                Foreground = Avalonia.Media.Brushes.Gainsboro,
-                Margin = new Avalonia.Thickness(0, 9, 0, 0),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            };
-            Grid.SetRow(action, row + 1);
-            var gesture = new TextBlock
-            {
-                Text = _hotkeys.GestureFor(actions[row]),
-                FontFamily = new FontFamily("Consolas, Menlo"),
-                FontSize = 12,
-                Foreground = Avalonia.Media.Brushes.DimGray,
-                TextAlignment = TextAlignment.Right,
-                Margin = new Avalonia.Thickness(0, 9, 0, 0),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            };
-            Grid.SetRow(gesture, row + 1);
-            Grid.SetColumn(gesture, 1);
-            HotkeyTable.Children.Add(action);
-            HotkeyTable.Children.Add(gesture);
-        }
-        for (var row = 0; row <= actions.Length; row++)
-        {
-            HotkeyTable.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        }
     }
 }

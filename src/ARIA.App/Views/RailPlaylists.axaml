@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Aria.App.ViewModels"
-             x:Class="Aria.App.Views.RailPlaylists"
-             x:DataType="vm:PlaylistsViewModel">
+             x:Class="Aria.App.Views.RailProjects"
+             x:DataType="vm:ProjectsViewModel">
   <UserControl.Styles>
     <Style Selector="ListBoxItem:selected TextBlock">
       <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
@@ -13,21 +13,21 @@
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-        <TextBlock Text="Плейлисты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <TextBlock Text="Проекты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
       </StackPanel>
-      <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Command="{Binding CreatePlaylistCommand}" ToolTip.Tip="Новый плейлист">
+      <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Command="{Binding CreateProjectCommand}" ToolTip.Tip="Новый проект">
         <PathIcon Data="{StaticResource icon_plus}" Width="13" Height="13"/>
       </Button>
     </Grid>
-    <ListBox Grid.Row="1" x:Name="PlaylistNames" ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist}"
+    <ListBox Grid.Row="1" x:Name="ProjectNames" ItemsSource="{Binding Projects}" SelectedItem="{Binding SelectedProject}"
              Background="Transparent" BorderThickness="0" Margin="8,0,8,4"
              ItemContainerTheme="{StaticResource PlainRowItem}">
       <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:PlaylistsViewModel+PlaylistVm">
+        <DataTemplate x:DataType="vm:ProjectsViewModel+ProjectVm">
           <Border Height="30" CornerRadius="6" Padding="12,0" Background="Transparent">
             <Border.ContextMenu>
               <ContextMenu>
-                <MenuItem Header="Удалить плейлист" Click="OnDeleteClick"/>
+                <MenuItem Header="Удалить проект" Click="OnDeleteClick"/>
               </ContextMenu>
             </Border.ContextMenu>
             <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>

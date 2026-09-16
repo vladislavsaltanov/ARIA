@@ -28,8 +28,8 @@ public sealed class RestoreShowTests : IDisposable
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
-        var p1 = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
-        var p2 = TestShow.Playlist("Spare", TestShow.Entry(t3));
+        var p1 = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p2 = TestShow.Project("Spare", TestShow.Entry(t3));
 
         ShowDocument saved;
         using (var store = new JsonSnapshotStore(_path))
@@ -47,16 +47,16 @@ public sealed class RestoreShowTests : IDisposable
         }
 
         using var h = new Harness();
-        var restoreSeq = h.Submit(new RestoreShow(saved.Tracks, saved.Playlists, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning));
+        var restoreSeq = h.Submit(new RestoreShow(saved.Tracks, saved.Projects, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning));
 
         Assert.Null(h.RejectionOf(restoreSeq));
         var snap = h.Snapshot;
-        Assert.Equal(2, snap.Show.Playlists.Length);
-        Assert.Equal(p1.Id, snap.Show.Playlists[0].Id);
-        Assert.Equal("Main", snap.Show.Playlists[0].Name);
-        Assert.Equal(p1.Entries[0].Id, snap.Show.Playlists[0].Entries[0].Id);
-        Assert.Equal(p2.Id, snap.Show.Playlists[1].Id);
-        Assert.Equal("Spare", snap.Show.Playlists[1].Name);
+        Assert.Equal(2, snap.Show.Projects.Length);
+        Assert.Equal(p1.Id, snap.Show.Projects[0].Id);
+        Assert.Equal("Main", snap.Show.Projects[0].Name);
+        Assert.Equal(p1.Entries[0].Id, snap.Show.Projects[0].Entries[0].Id);
+        Assert.Equal(p2.Id, snap.Show.Projects[1].Id);
+        Assert.Equal("Spare", snap.Show.Projects[1].Name);
         Assert.Equal(p1.Id, snap.Show.ActiveId);
         Assert.Equal(2, snap.Queue.Items.Length);
         Assert.Null(snap.Queue.Items[0].EntryId);
@@ -80,7 +80,7 @@ public sealed class RestoreShowTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
@@ -95,7 +95,7 @@ public sealed class RestoreShowTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         var before = h.Snapshot;
         var ghost = TestShow.Track("ghost");
@@ -112,7 +112,7 @@ public sealed class RestoreShowTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
         var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [new QueueItem(EntryId.New(), t1.Id, "one", null)], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
@@ -121,14 +121,14 @@ public sealed class RestoreShowTests : IDisposable
     }
 
     [Fact]
-    public void Restore_UnknownActivePlaylist_Rejected()
+    public void Restore_UnknownActiveProject_Rejected()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
-        var seq = h.Submit(new RestoreShow([t1], [p], PlaylistId.New(), [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
+        var seq = h.Submit(new RestoreShow([t1], [p], ProjectId.New(), [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
 
         Assert.Equal("unknown-active-playlist", h.RejectionOf(seq)?.Reason);
     }
@@ -138,7 +138,7 @@ public sealed class RestoreShowTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
         var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 50, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false));
@@ -152,7 +152,7 @@ public sealed class RestoreShowTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
         var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromSeconds(3), TimeSpan.Zero, false));
@@ -167,8 +167,8 @@ public sealed class RestoreShowTests : IDisposable
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
-        var p1 = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
-        var p2 = TestShow.Playlist("Spare", TestShow.Entry(t3));
+        var p1 = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p2 = TestShow.Project("Spare", TestShow.Entry(t3));
         h.Submit(new LoadShow([t1, t2, t3], [p1, p2], p1.Id));
         h.Submit(new EnqueueTrack(t3.Id));
         var queue = h.Snapshot.Queue.Items;
@@ -185,7 +185,7 @@ public sealed class RestoreShowTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
 
         var seq = h.Submit(new RestoreShow([t1], [p], p.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.FromMinutes(12), true));
 

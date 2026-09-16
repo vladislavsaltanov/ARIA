@@ -67,8 +67,8 @@ public partial class App : Application
         var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
         var rowSettings = settingsStore.Load();
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
-        var playlists = new PlaylistsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio);
-        playlists.TrackRelink = (id, path) => host.RelinkTrackAsync(id, path);
+        var projects = new ProjectsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio);
+        projects.TrackRelink = (id, path) => host.RelinkTrackAsync(id, path);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
         var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow);
@@ -89,11 +89,11 @@ public partial class App : Application
             settingsStore,
             updated =>
             {
-                playlists.UpdateRowSettings(updated);
+                projects.UpdateRowSettings(updated);
                 transport.UpdateRowSettings(updated);
             },
             sync);
-        window = new MainWindow(hotkeys, playlists, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
+        window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
 

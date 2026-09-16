@@ -81,8 +81,8 @@ public sealed class PreviewCommandTests : IDisposable
     public void Stop_StopsPreview()
     {
         var track = TestShow.Track("one");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        _harness.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        _harness.Submit(new LoadShow([track], [project], project.Id));
         _harness.Submit(new PlayTrack(track.Id));
 
         _harness.Submit(new Stop());
@@ -105,8 +105,8 @@ public sealed class PreviewCommandTests : IDisposable
     {
         var audio = new TrackAudioSettings(-6, 0.5, AudioEq.Flat);
         var track = TestShow.Track("one") with { Defaults = TestShow.Track("one").Defaults with { Audio = audio } };
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        _harness.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        _harness.Submit(new LoadShow([track], [project], project.Id));
 
         _harness.Submit(new PlayTrack(track.Id));
 

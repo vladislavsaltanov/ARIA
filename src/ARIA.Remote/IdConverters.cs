@@ -22,12 +22,12 @@ internal sealed class EntryIdConverter : JsonConverter<EntryId>
         writer.WriteStringValue(value.Value);
 }
 
-internal sealed class PlaylistIdConverter : JsonConverter<PlaylistId>
+internal sealed class ProjectIdConverter : JsonConverter<ProjectId>
 {
-    public override PlaylistId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+    public override ProjectId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
         new(reader.GetGuid());
 
-    public override void Write(Utf8JsonWriter writer, PlaylistId value, JsonSerializerOptions options) =>
+    public override void Write(Utf8JsonWriter writer, ProjectId value, JsonSerializerOptions options) =>
         writer.WriteStringValue(value.Value);
 }
 
