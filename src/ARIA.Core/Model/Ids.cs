@@ -10,9 +10,9 @@ public readonly record struct EntryId(Guid Value)
     public static EntryId New() => new(Guid.NewGuid());
 }
 
-public readonly record struct PlaylistId(Guid Value)
+public readonly record struct ProjectId(Guid Value)
 {
-    public static PlaylistId New() => new(Guid.NewGuid());
+    public static ProjectId New() => new(Guid.NewGuid());
 }
 
 public readonly record struct ScriptId(Guid Value)

@@ -49,7 +49,7 @@ public sealed class RemoteHost : IAsyncDisposable
             new JsonStringEnumConverter(),
             new TrackIdConverter(),
             new EntryIdConverter(),
-            new PlaylistIdConverter(),
+            new ProjectIdConverter(),
             new ScriptIdConverter(),
             new ScriptLineIdConverter(),
         },

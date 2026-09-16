@@ -61,8 +61,8 @@
                    FontSize="11" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="64"/>
       </Grid>
       <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0" VerticalAlignment="Center">
-        <Button Content="Измерить весь плейлист" Command="{Binding MeasurePlaylistCommand}" FontSize="12"/>
-        <TextBlock Text="{Binding NormalizePlaylistStatus}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <Button Content="Измерить весь плейлист" Command="{Binding MeasureProjectCommand}" FontSize="12"/>
+        <TextBlock Text="{Binding NormalizeProjectStatus}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
       </StackPanel>
       <TextBlock Text="Шкала LUFS" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,10,0,0"/>
       <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">

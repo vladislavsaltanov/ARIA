@@ -2,13 +2,14 @@ namespace Aria.Persistence;
 
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Aria.Core.Model;
 using Aria.Core.State;
 
 public sealed record ShowDocument(
     ImmutableArray<Track> Tracks,
-    ImmutableArray<Playlist> Playlists,
-    PlaylistId? ActiveId,
+    ImmutableArray<Project> Projects,
+    ProjectId? ActiveId,
     ImmutableArray<QueueItem> Queue,
     double MasterGainDb,
     TimeSpan PanicFade,
@@ -71,7 +72,7 @@ public sealed class JsonSnapshotStore : ISnapshotStore
     private static ShowDocumentDto ToDto(ShowDocument document) => new()
     {
         Tracks = [.. document.Tracks.Select(TrackMapper.ToDto)],
-        Playlists = [.. document.Playlists.Select(PlaylistMapper.ToDto)],
+        Projects = [.. document.Projects.Select(ProjectMapper.ToDto)],
         ActiveId = document.ActiveId?.Value,
         Queue = [.. document.Queue.Select(q => new QueueItemDto
         {
@@ -108,7 +109,8 @@ internal sealed class ScriptDto
 internal sealed class ShowDocumentDto
 {
     public List<TrackDto> Tracks { get; set; } = [];
-    public List<PlaylistDto> Playlists { get; set; } = [];
+    [JsonPropertyName("Playlists")]
+    public List<ProjectDto> Projects { get; set; } = [];
     public Guid? ActiveId { get; set; }
     public List<QueueItemDto> Queue { get; set; } = [];
     public double MasterGainDb { get; set; }
@@ -121,8 +123,8 @@ internal sealed class ShowDocumentDto
 
     public ShowDocument ToDomain() => new(
         [.. Tracks.Select(TrackMapper.ToDomain)],
-        [.. Playlists.Select(PlaylistMapper.ToDomain)],
-        ActiveId is null ? null : new PlaylistId(ActiveId.Value),
+        [.. Projects.Select(ProjectMapper.ToDomain)],
+        ActiveId is null ? null : new ProjectId(ActiveId.Value),
         [.. Queue.Select(q => new QueueItem(
             q.EntryId is null ? null : new EntryId(q.EntryId.Value),
             new TrackId(q.TrackId),

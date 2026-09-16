@@ -11,7 +11,7 @@ public sealed class SeekTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         var handle = h.Engine.Last!.Handle;
@@ -30,10 +30,10 @@ public sealed class SeekTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var overrides = new PlaylistOverrides(
+        var overrides = new ProjectOverrides(
             CueIn: TimeSpan.FromSeconds(10),
             CueOut: TimeSpan.FromSeconds(60));
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1, overrides));
+        var p = TestShow.Project("Main", TestShow.Entry(t1, overrides));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
@@ -50,7 +50,7 @@ public sealed class SeekTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new Pause());
@@ -76,7 +76,7 @@ public sealed class SeekTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetLocked(true));

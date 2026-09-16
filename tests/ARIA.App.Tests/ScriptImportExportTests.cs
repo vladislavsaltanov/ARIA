@@ -120,20 +120,20 @@ public sealed class ScriptImportExportTests : IDisposable
     }
 
     [Fact]
-    public async Task BadPlaylistJson_KeepsPlaylists_AndHidesTechnicalError()
+    public async Task BadProjectJson_KeepsProjects_AndHidesTechnicalError()
     {
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([], [], null));
-        using var vm = new PlaylistsViewModel(bus);
+        using var vm = new ProjectsViewModel(bus);
         var failed = new List<string>();
         vm.ImportFailed += failed.Add;
 
         var report = await vm.ImportDocumentAsync("{не json");
 
         Assert.NotNull(report.Error);
-        Assert.Empty(vm.Playlists);
-        Assert.Equal("импорт не удался", vm.PlaylistIoStatus);
-        Assert.DoesNotContain("bad-json", vm.PlaylistIoStatus, StringComparison.Ordinal);
+        Assert.Empty(vm.Projects);
+        Assert.Equal("импорт не удался", vm.ProjectIoStatus);
+        Assert.DoesNotContain("bad-json", vm.ProjectIoStatus, StringComparison.Ordinal);
         Assert.Contains("bad-json", vm.LastImportError, StringComparison.Ordinal);
         Assert.Single(failed);
         bus.Dispose();

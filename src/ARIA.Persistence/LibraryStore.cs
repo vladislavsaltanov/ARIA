@@ -6,9 +6,9 @@ using Microsoft.Data.Sqlite;
 
 public interface ILibraryStore : IDisposable
 {
-    void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists);
+    void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Project> projects);
 
-    (ImmutableArray<Track> Tracks, ImmutableArray<Playlist> Playlists) Load();
+    (ImmutableArray<Track> Tracks, ImmutableArray<Project> Projects) Load();
 }
 
 public sealed class SqliteLibraryStore : ILibraryStore
@@ -23,7 +23,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
         EnsureAudioColumn(connection);
     }
 
-    public void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists)
+    public void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Project> projects)
     {
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
@@ -57,20 +57,20 @@ public sealed class SqliteLibraryStore : ILibraryStore
             command.ExecuteNonQuery();
         }
 
-        for (var i = 0; i < playlists.Length; i++)
+        for (var i = 0; i < projects.Length; i++)
         {
-            var playlistDto = PlaylistMapper.ToDto(playlists[i]);
+            var projectDto = ProjectMapper.ToDto(projects[i]);
             var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "INSERT INTO playlists(id, name, position) VALUES($id, $name, $position)";
-            command.Parameters.AddWithValue("$id", playlistDto.Id);
-            command.Parameters.AddWithValue("$name", playlistDto.Name);
+            command.Parameters.AddWithValue("$id", projectDto.Id);
+            command.Parameters.AddWithValue("$name", projectDto.Name);
             command.Parameters.AddWithValue("$position", i);
             command.ExecuteNonQuery();
 
-            for (var j = 0; j < playlistDto.Entries.Count; j++)
+            for (var j = 0; j < projectDto.Entries.Count; j++)
             {
-                var entryDto = playlistDto.Entries[j];
+                var entryDto = projectDto.Entries[j];
                 var entryCommand = connection.CreateCommand();
                 entryCommand.Transaction = transaction;
                 entryCommand.CommandText = """
@@ -78,7 +78,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
                     VALUES($id, $playlist_id, $track_id, $position, $overrides_json)
                     """;
                 entryCommand.Parameters.AddWithValue("$id", entryDto.Id);
-                entryCommand.Parameters.AddWithValue("$playlist_id", playlistDto.Id);
+                entryCommand.Parameters.AddWithValue("$playlist_id", projectDto.Id);
                 entryCommand.Parameters.AddWithValue("$track_id", entryDto.TrackId);
                 entryCommand.Parameters.AddWithValue("$position", j);
                 entryCommand.Parameters.AddWithValue("$overrides_json", entryDto.Overrides is null ? DBNull.Value : DtoJson.Serialize(entryDto.Overrides));
@@ -88,7 +88,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
         transaction.Commit();
     }
 
-    public (ImmutableArray<Track> Tracks, ImmutableArray<Playlist> Playlists) Load()
+    public (ImmutableArray<Track> Tracks, ImmutableArray<Project> Projects) Load()
     {
         using var connection = Open();
 
@@ -118,18 +118,18 @@ public sealed class SqliteLibraryStore : ILibraryStore
             }
         }
 
-        var playlistRows = new List<(Guid Id, string Name)>();
-        var playlistCommand = connection.CreateCommand();
-        playlistCommand.CommandText = "SELECT id, name FROM playlists ORDER BY position";
-        using (var reader = playlistCommand.ExecuteReader())
+        var projectRows = new List<(Guid Id, string Name)>();
+        var projectCommand = connection.CreateCommand();
+        projectCommand.CommandText = "SELECT id, name FROM playlists ORDER BY position";
+        using (var reader = projectCommand.ExecuteReader())
         {
             while (reader.Read())
             {
-                playlistRows.Add((reader.GetGuid(0), reader.GetString(1)));
+                projectRows.Add((reader.GetGuid(0), reader.GetString(1)));
             }
         }
 
-        var entriesByPlaylist = new Dictionary<Guid, List<PlaylistEntry>>();
+        var entriesByProject = new Dictionary<Guid, List<ProjectEntry>>();
         var entryCommand = connection.CreateCommand();
         entryCommand.CommandText = "SELECT id, playlist_id, track_id, overrides_json FROM playlist_entries ORDER BY playlist_id, position";
         using (var reader = entryCommand.ExecuteReader())
@@ -142,26 +142,26 @@ public sealed class SqliteLibraryStore : ILibraryStore
                     TrackId = reader.GetGuid(2),
                     Overrides = reader.IsDBNull(3) ? null : DtoJson.Deserialize<OverridesDto>(reader.GetString(3)),
                 };
-                var playlistId = reader.GetGuid(1);
-                if (!entriesByPlaylist.TryGetValue(playlistId, out var list))
+                var projectId = reader.GetGuid(1);
+                if (!entriesByProject.TryGetValue(projectId, out var list))
                 {
                     list = [];
-                    entriesByPlaylist[playlistId] = list;
+                    entriesByProject[projectId] = list;
                 }
-                list.Add(PlaylistMapper.ToDomain(dto));
+                list.Add(ProjectMapper.ToDomain(dto));
             }
         }
 
-        var playlists = new List<Playlist>();
-        foreach (var (id, name) in playlistRows)
+        var projects = new List<Project>();
+        foreach (var (id, name) in projectRows)
         {
-            var entries = entriesByPlaylist.TryGetValue(id, out var list)
+            var entries = entriesByProject.TryGetValue(id, out var list)
                 ? list.ToImmutableArray()
-                : ImmutableArray<PlaylistEntry>.Empty;
-            playlists.Add(new Playlist(new PlaylistId(id), name, entries));
+                : ImmutableArray<ProjectEntry>.Empty;
+            projects.Add(new Project(new ProjectId(id), name, entries));
         }
 
-        return ([.. tracks], [.. playlists]);
+        return ([.. tracks], [.. projects]);
     }
 
     public void Dispose()

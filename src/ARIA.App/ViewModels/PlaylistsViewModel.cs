@@ -16,7 +16,7 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
+public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 {
     private readonly ICommandBus _bus;
     private readonly ClientId _client = new("desktop-playlists");
@@ -29,7 +29,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
-    private string? _awaitedPlaylistName;
+    private string? _awaitedProjectName;
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
@@ -41,7 +41,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _statusClear;
 
     [ObservableProperty]
-    private PlaylistVm? selectedPlaylist;
+    private ProjectVm? selectedProject;
 
     [ObservableProperty]
     private EntryVm? selectedEntry;
@@ -53,7 +53,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private string entryCountText = string.Empty;
 
     [ObservableProperty]
-    private string playlistIoStatus = string.Empty;
+    private string projectIoStatus = string.Empty;
 
     [ObservableProperty]
     private string lastImportError = string.Empty;
@@ -62,13 +62,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public event Action<string>? AudioImportIncomplete;
 
-    public event Action<PlaylistImportReport>? PlaylistImportMissing;
+    public event Action<ProjectImportReport>? ProjectImportMissing;
 
     public event Action<string, string>? ExportSucceeded;
 
     public event Action<EntryVm>? RevealRequested;
 
-    private PlaylistId? _revealPlaylist;
+    private ProjectId? _revealProject;
 
     private List<TrackId>? _revealTracks;
 
@@ -146,11 +146,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return null;
     }
 
-    public ObservableCollection<PlaylistVm> Playlists { get; } = [];
+    public ObservableCollection<ProjectVm> Projects { get; } = [];
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public PlaylistsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null)
+    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -182,40 +182,40 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void CreatePlaylist()
+    private void CreateProject()
     {
-        _awaitedPlaylistName = $"Новый плейлист {++_newPlaylistCounter}";
-        Submit(new CreatePlaylist(_awaitedPlaylistName));
+        _awaitedProjectName = $"Новый плейлист {++_newProjectCounter}";
+        Submit(new CreateProject(_awaitedProjectName));
     }
 
     [RelayCommand]
-    private void RenamePlaylist(string? name)
+    private void RenameProject(string? name)
     {
-        if (SelectedPlaylist is not { } playlist || string.IsNullOrWhiteSpace(name))
+        if (SelectedProject is not { } project || string.IsNullOrWhiteSpace(name))
         {
             return;
         }
-        Submit(new RenamePlaylist(playlist.Id, name));
+        Submit(new RenameProject(project.Id, name));
     }
 
     [RelayCommand]
-    private void DeletePlaylist()
+    private void DeleteProject()
     {
-        if (SelectedPlaylist is not { } playlist)
+        if (SelectedProject is not { } project)
         {
             return;
         }
-        Submit(new DeletePlaylist(playlist.Id));
+        Submit(new DeleteProject(project.Id));
     }
 
     [RelayCommand]
-    private void ActivatePlaylist()
+    private void ActivateProject()
     {
-        if (SelectedPlaylist is not { } playlist)
+        if (SelectedProject is not { } project)
         {
             return;
         }
-        Submit(new SetActivePlaylist(playlist.Id));
+        Submit(new SetActiveProject(project.Id));
     }
 
     [RelayCommand]
@@ -229,7 +229,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private async Task ExportPlaylistAsync()
+    private async Task ExportProjectAsync()
     {
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
@@ -237,7 +237,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             SetTransientStatus("экспорт недоступен");
             return;
         }
-        if (SelectedPlaylist is null)
+        if (SelectedProject is null)
         {
             SetTransientStatus("нет плейлиста для экспорта");
             return;
@@ -245,10 +245,10 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Экспорт плейлиста",
-            SuggestedFileName = SelectedPlaylist.Name + PlaylistFormat.FileExtension,
+            SuggestedFileName = SelectedProject.Name + ProjectFormat.FileExtension,
             FileTypeChoices =
             [
-                new FilePickerFileType("ARIA-плейлист") { Patterns = [$"*{PlaylistFormat.FileExtension}"] },
+                new FilePickerFileType("ARIA-плейлист") { Patterns = [$"*{ProjectFormat.FileExtension}"] },
             ],
         });
         if (file is null)
@@ -263,13 +263,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         await using var stream = await openWrite();
         await using var writer = new StreamWriter(stream);
         await writer.WriteAsync(ExportSelectedDocument());
-        var count = SelectedPlaylist?.Entries.Count ?? 0;
-        PlaylistIoStatus = string.Empty;
+        var count = SelectedProject?.Entries.Count ?? 0;
+        ProjectIoStatus = string.Empty;
         ExportSucceeded?.Invoke(fileName, $"Сохранено: {fileName}\nТреков: {count}");
     }
 
     [RelayCommand]
-    private async Task ImportPlaylistAsync()
+    private async Task ImportProjectAsync()
     {
         var topLevel = _topLevel?.Invoke();
         if (topLevel is null)
@@ -283,7 +283,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("ARIA-плейлист") { Patterns = [$"*{PlaylistFormat.FileExtension}", "*.json"] },
+                new FilePickerFileType("ARIA-плейлист") { Patterns = [$"*{ProjectFormat.FileExtension}", "*.json"] },
             ],
         });
         if (files.Count == 0)
@@ -348,12 +348,12 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public Task<IReadOnlyList<TrackId>> ImportAudioFilesAsync(IEnumerable<string> paths, bool silent = false)
     {
-        if (SelectedPlaylist is null)
+        if (SelectedProject is null)
         {
             SetTransientStatus("нет плейлиста для импорта");
             return Task.FromResult<IReadOnlyList<TrackId>>([]);
         }
-        return ImportIntoAsync(paths, silent, SelectedPlaylist);
+        return ImportIntoAsync(paths, silent, SelectedProject);
     }
 
     public async Task ImportDroppedPathsAsync(IEnumerable<string> paths)
@@ -366,10 +366,10 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         foreach (var folder in inputs.Where(Directory.Exists))
         {
-            var name = UniquePlaylistName(FolderPlaylistName(folder));
-            _awaitedPlaylistName = name;
-            Submit(new CreatePlaylist(name));
-            var target = await WaitForPlaylistAsync(name);
+            var name = UniqueProjectName(FolderProjectName(folder));
+            _awaitedProjectName = name;
+            Submit(new CreateProject(name));
+            var target = await WaitForProjectAsync(name);
             if (target is null)
             {
                 SetTransientStatus($"не удалось создать плейлист: {name}");
@@ -379,7 +379,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task<IReadOnlyList<TrackId>> ImportIntoAsync(IEnumerable<string> paths, bool silent, PlaylistVm target)
+    private async Task<IReadOnlyList<TrackId>> ImportIntoAsync(IEnumerable<string> paths, bool silent, ProjectVm target)
     {
         var inputs = paths.ToArray();
         if (inputs.Length == 0)
@@ -391,7 +391,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             SetTransientStatus("импорт недоступен");
             return [];
         }
-        IProgress<string>? progress = silent ? null : new Progress<string>(name => PlaylistIoStatus = $"импорт: {name}");
+        IProgress<string>? progress = silent ? null : new Progress<string>(name => ProjectIoStatus = $"импорт: {name}");
         var report = await _audioImport(inputs, progress);
         var tracks = _trackSource?.Invoke() ?? [];
         var ordered = new List<TrackId>();
@@ -407,7 +407,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 }
             }
         }
-        _revealPlaylist = ordered.Count > 0 ? target.Id : null;
+        _revealProject = ordered.Count > 0 ? target.Id : null;
         _revealTracks = ordered.Count > 0 ? ordered : null;
         foreach (var trackId in ordered)
         {
@@ -429,40 +429,40 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return ordered;
     }
 
-    private string UniquePlaylistName(string baseName)
+    private string UniqueProjectName(string baseName)
     {
-        if (!Playlists.Any(p => p.Name.Equals(baseName, StringComparison.OrdinalIgnoreCase)))
+        if (!Projects.Any(p => p.Name.Equals(baseName, StringComparison.OrdinalIgnoreCase)))
         {
             return baseName;
         }
         var suffix = 2;
-        while (Playlists.Any(p => p.Name.Equals($"{baseName} {suffix}", StringComparison.OrdinalIgnoreCase)))
+        while (Projects.Any(p => p.Name.Equals($"{baseName} {suffix}", StringComparison.OrdinalIgnoreCase)))
         {
             suffix++;
         }
         return $"{baseName} {suffix}";
     }
 
-    private static string FolderPlaylistName(string folder)
+    private static string FolderProjectName(string folder)
     {
         var trimmed = folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var name = Path.GetFileName(trimmed);
         return string.IsNullOrWhiteSpace(name) ? "Новая папка" : name;
     }
 
-    private async Task<PlaylistVm?> WaitForPlaylistAsync(string name)
+    private async Task<ProjectVm?> WaitForProjectAsync(string name)
     {
         var deadline = Environment.TickCount64 + 5000;
         while (Environment.TickCount64 < deadline)
         {
-            var found = Playlists.FirstOrDefault(p => p.Name == name);
+            var found = Projects.FirstOrDefault(p => p.Name == name);
             if (found is not null)
             {
                 return found;
             }
             await Task.Delay(20);
         }
-        return Playlists.FirstOrDefault(p => p.Name == name);
+        return Projects.FirstOrDefault(p => p.Name == name);
     }
 
     private static bool MatchesInput(string input, string trackPath)
@@ -477,37 +477,37 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public string ExportSelectedDocument()
     {
-        if (SelectedPlaylist is null)
+        if (SelectedProject is null)
         {
             throw new InvalidOperationException("Нет выбранного плейлиста");
         }
         var files = (_trackSource?.Invoke() ?? []).ToDictionary(t => t.Id, t => t.FilePath);
-        var entries = SelectedPlaylist.Entries.Select(entry => new PlaylistExportEntry(
+        var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
             files.GetValueOrDefault(entry.TrackId, entry.DisplayName),
             entry.Overrides));
-        return PlaylistFormat.Export(SelectedPlaylist.Name, entries);
+        return ProjectFormat.Export(SelectedProject.Name, entries);
     }
 
-    public Task<PlaylistImportReport> ImportDocumentAsync(string json)
+    public Task<ProjectImportReport> ImportDocumentAsync(string json)
     {
-        PlaylistFileDocument document;
+        ProjectFileDocument document;
         try
         {
-            document = PlaylistFormat.Import(json);
+            document = ProjectFormat.Import(json);
         }
-        catch (PlaylistFormatException e)
+        catch (ProjectFormatException e)
         {
             LastImportError = e.Message;
             SetTransientStatus("импорт не удался");
             ImportFailed?.Invoke(e.Message);
-            return Task.FromResult(new PlaylistImportReport(string.Empty, 0, [], 0, e.Message));
+            return Task.FromResult(new ProjectImportReport(string.Empty, 0, [], 0, e.Message));
         }
         var tracks = _trackSource?.Invoke() ?? [];
         var byPath = tracks.ToDictionary(t => UnicodePaths.Key(t.FilePath), t => t.Id);
         var byName = tracks
             .GroupBy(t => UnicodePaths.Key(Path.GetFileName(t.FilePath)), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
-        var imports = new List<ImportPlaylistEntry>();
+        var imports = new List<ImportProjectEntry>();
         var missing = new List<string>();
         var pendingTransitions = 0;
         foreach (var entry in document.Entries)
@@ -522,36 +522,36 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
             {
                 pendingTransitions++;
             }
-            imports.Add(new ImportPlaylistEntry(trackId, PlaylistFormat.ToOverrides(entry)));
+            imports.Add(new ImportProjectEntry(trackId, ProjectFormat.ToOverrides(entry)));
         }
         if (imports.Count == 0)
         {
-            var empty = new PlaylistImportReport(document.Name, 0, [.. missing], 0, "нет известных треков");
+            var empty = new ProjectImportReport(document.Name, 0, [.. missing], 0, "нет известных треков");
             if (empty.MissingFiles.Length > 0)
             {
-                PlaylistImportMissing?.Invoke(empty);
+                ProjectImportMissing?.Invoke(empty);
             }
             return Task.FromResult(empty);
         }
-        _awaitedPlaylistName = document.Name;
-        Submit(new ImportPlaylist(document.Name, [.. imports]));
+        _awaitedProjectName = document.Name;
+        Submit(new ImportProject(document.Name, [.. imports]));
         LastImportError = string.Empty;
-        var report = new PlaylistImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
+        var report = new ProjectImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
         SetTransientStatus(Describe(report));
         if (report.MissingFiles.Length > 0)
         {
-            PlaylistImportMissing?.Invoke(report);
+            ProjectImportMissing?.Invoke(report);
         }
         return Task.FromResult(report);
     }
 
-    private static string Describe(PlaylistImportReport report)
+    private static string Describe(ProjectImportReport report)
     {
         if (report.Error is not null)
         {
             return "импорт не удался";
         }
-        var text = $"импортировано: {report.PlaylistName} ({report.Added})";
+        var text = $"импортировано: {report.ProjectName} ({report.Added})";
         if (report.MissingFiles.Length > 0)
         {
             text += $", пропущено файлов: {report.MissingFiles.Length}";
@@ -567,11 +567,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public void SetEntryEndAction(EntryVm entry, EndAction? action)
     {
-        PlaylistOverrides? merged;
+        ProjectOverrides? merged;
         if (entry.Overrides is { } current)
         {
             var next = current with { EndAction = action };
-            merged = next == new PlaylistOverrides() ? null : next;
+            merged = next == new ProjectOverrides() ? null : next;
         }
         else if (action is null)
         {
@@ -579,7 +579,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         else
         {
-            merged = new PlaylistOverrides(EndAction: action);
+            merged = new ProjectOverrides(EndAction: action);
         }
         Submit(new SetEntryOverrides(entry.Id, merged));
     }
@@ -604,16 +604,16 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         return editor;
     }
 
-    public void DeletePlaylistAt(PlaylistVm playlist) => Submit(new DeletePlaylist(playlist.Id));
+    public void DeleteProjectAt(ProjectVm project) => Submit(new DeleteProject(project.Id));
 
     public void MoveEntry(EntryId id, int newIndex)
     {
-        if (SelectedPlaylist is not { } playlist)
+        if (SelectedProject is not { } project)
         {
             return;
         }
         var from = EntryIndex(id);
-        if (from < 0 || newIndex < 0 || newIndex >= playlist.Entries.Count)
+        if (from < 0 || newIndex < 0 || newIndex >= project.Entries.Count)
         {
             return;
         }
@@ -622,13 +622,13 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public int EntryIndex(EntryId id)
     {
-        if (SelectedPlaylist is not { } playlist)
+        if (SelectedProject is not { } project)
         {
             return -1;
         }
-        for (var i = 0; i < playlist.Entries.Count; i++)
+        for (var i = 0; i < project.Entries.Count; i++)
         {
-            if (playlist.Entries[i].Id == id)
+            if (project.Entries[i].Id == id)
             {
                 return i;
             }
@@ -638,11 +638,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     public void AddEntryAt(TrackId track, int index)
     {
-        if (SelectedPlaylist is not { } playlist)
+        if (SelectedProject is not { } project)
         {
             return;
         }
-        Submit(new AddEntry(playlist.Id, track, Math.Clamp(index, 0, playlist.Entries.Count)));
+        Submit(new AddEntry(project.Id, track, Math.Clamp(index, 0, project.Entries.Count)));
     }
 
     public void EnqueueEntry(EntryVm entry) => Submit(new EnqueueEntry(entry.Id));
@@ -683,7 +683,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     private void SetTransientStatus(string text)
     {
-        PlaylistIoStatus = text;
+        ProjectIoStatus = text;
         _statusClear?.Cancel();
         _statusClear?.Dispose();
         var cts = new CancellationTokenSource();
@@ -701,7 +701,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        Post(() => PlaylistIoStatus = string.Empty);
+        Post(() => ProjectIoStatus = string.Empty);
     }
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
@@ -781,11 +781,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     {
         var sb = new StringBuilder();
         sb.Append(state.ActiveId);
-        foreach (var playlist in state.Playlists)
+        foreach (var project in state.Projects)
         {
-            sb.Append('|').Append(playlist.Id).Append(':').Append(playlist.Name)
-                .Append(playlist.Id == state.ActiveId ? "*" : ".");
-            foreach (var entry in playlist.Entries)
+            sb.Append('|').Append(project.Id).Append(':').Append(project.Name)
+                .Append(project.Id == state.ActiveId ? "*" : ".");
+            foreach (var entry in project.Entries)
             {
                 sb.Append('|').Append(entry)
                     .Append(RuntimeHelpers.GetHashCode(_thumbs?.For(entry.TrackId)));
@@ -814,22 +814,22 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
         _lastKey = key;
 
-        _newPlaylistCounter = Math.Max(_newPlaylistCounter, state.Playlists.Length);
+        _newProjectCounter = Math.Max(_newProjectCounter, state.Projects.Length);
         var trackNames = tracks.ToDictionary(t => t.Id, t => t.DefaultName);
         var trackEndActions = tracks.ToDictionary(t => t.Id, t => t.Defaults.EndAction);
         var trackDurations = tracks.ToDictionary(t => t.Id, t => t.Duration);
         var trackFiles = tracks.ToDictionary(t => t.Id, t => Path.GetFileName(t.FilePath));
-        var selectedPlaylistId = SelectedPlaylist?.Id;
+        var selectedProjectId = SelectedProject?.Id;
         var selectedEntryId = SelectedEntry?.Id;
-        var awaitedName = _awaitedPlaylistName;
+        var awaitedName = _awaitedProjectName;
 
-        Playlists.Clear();
-        foreach (var playlist in state.Playlists)
+        Projects.Clear();
+        foreach (var project in state.Projects)
         {
-            var playlistVm = new PlaylistVm(playlist.Id, playlist.Name, playlist.Id == state.ActiveId);
-            for (var index = 0; index < playlist.Entries.Length; index++)
+            var projectVm = new ProjectVm(project.Id, project.Name, project.Id == state.ActiveId);
+            for (var index = 0; index < project.Entries.Length; index++)
             {
-                var entry = playlist.Entries[index];
+                var entry = project.Entries[index];
                 var displayName = entry.Overrides?.Name ?? trackNames.GetValueOrDefault(entry.TrackId, $"track {entry.TrackId.Value:N}");
                 var fileName = trackFiles.GetValueOrDefault(entry.TrackId, displayName);
                 var duration = trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero);
@@ -837,7 +837,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                 var trackEndAction = trackEndActions.GetValueOrDefault(entry.TrackId, EndAction.Advance);
                 var effectiveEndAction = entry.Overrides?.EndAction
                     ?? (trackEndAction != EndAction.Advance ? trackEndAction : _rowSettings.DefaultEndAction);
-                playlistVm.Entries.Add(new EntryVm(
+                projectVm.Entries.Add(new EntryVm(
                     entry.Id,
                     entry.TrackId,
                     displayName,
@@ -858,20 +858,20 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
                     _linkedTrackId == entry.TrackId,
                     effectiveEndAction));
             }
-            Playlists.Add(playlistVm);
+            Projects.Add(projectVm);
         }
 
-        PlaylistVm? awaited = null;
+        ProjectVm? awaited = null;
         if (awaitedName is not null)
         {
-            awaited = Playlists.FirstOrDefault(p => p.Name == awaitedName);
+            awaited = Projects.FirstOrDefault(p => p.Name == awaitedName);
             if (awaited is not null)
             {
-                _awaitedPlaylistName = null;
+                _awaitedProjectName = null;
             }
         }
-        SelectedPlaylist = awaited ?? Playlists.FirstOrDefault(p => p.Id == selectedPlaylistId) ?? Playlists.FirstOrDefault();
-        SelectedEntry = SelectedPlaylist?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedPlaylist?.Entries.FirstOrDefault();
+        SelectedProject = awaited ?? Projects.FirstOrDefault(p => p.Id == selectedProjectId) ?? Projects.FirstOrDefault();
+        SelectedEntry = SelectedProject?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedProject?.Entries.FirstOrDefault();
         RefreshVisible();
         RefreshCenterHeader();
         FireReveal();
@@ -880,14 +880,14 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private void FireReveal()
     {
         var tracks = _revealTracks;
-        var target = _revealPlaylist;
-        _revealPlaylist = null;
+        var target = _revealProject;
+        _revealProject = null;
         _revealTracks = null;
-        if (tracks is not { Count: > 0 } || target is null || SelectedPlaylist?.Id != target)
+        if (tracks is not { Count: > 0 } || target is null || SelectedProject?.Id != target)
         {
             return;
         }
-        var row = SelectedPlaylist.Entries.FirstOrDefault(e => tracks.Contains(e.TrackId));
+        var row = SelectedProject.Entries.FirstOrDefault(e => tracks.Contains(e.TrackId));
         if (row is not null)
         {
             SelectedEntry = row;
@@ -895,7 +895,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnSelectedPlaylistChanged(PlaylistVm? value)
+    partial void OnSelectedProjectChanged(ProjectVm? value)
     {
         RefreshVisible();
         RefreshCenterHeader();
@@ -912,20 +912,20 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
 
     private void RefreshCenterHeader()
     {
-        if (SelectedPlaylist is null)
+        if (SelectedProject is null)
         {
             EntryCountText = string.Empty;
             return;
         }
         var seconds = 0;
-        foreach (var entry in SelectedPlaylist.Entries)
+        foreach (var entry in SelectedProject.Entries)
         {
             seconds += (int)entry.Duration.TotalSeconds;
         }
         var total = seconds >= 3600
             ? $"{seconds / 3600}:{seconds % 3600 / 60:00}:{seconds % 60:00}"
             : $"{seconds / 60}:{seconds % 60:00}";
-        var count = SelectedPlaylist.Entries.Count;
+        var count = SelectedProject.Entries.Count;
         var shown = VisibleEntries.Count;
         EntryCountText = CenterSearchText.Length == 0 || shown == count
             ? $"{count} {TrackCountWord(count)} · {total}"
@@ -950,11 +950,11 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private void RefreshVisible()
     {
         VisibleEntries.Clear();
-        if (SelectedPlaylist is null)
+        if (SelectedProject is null)
         {
             return;
         }
-        foreach (var entry in SelectedPlaylist.Entries)
+        foreach (var entry in SelectedProject.Entries)
         {
             if (CenterSearchText.Length == 0 || entry.DisplayName.Contains(CenterSearchText, StringComparison.OrdinalIgnoreCase))
             {
@@ -963,18 +963,18 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         }
     }
 
-    private int _newPlaylistCounter;
+    private int _newProjectCounter;
 
-    public sealed record PlaylistImportReport(
-        string PlaylistName,
+    public sealed record ProjectImportReport(
+        string ProjectName,
         int Added,
         ImmutableArray<string> MissingFiles,
         int PendingTransitions,
         string? Error = null);
 
-    public sealed class PlaylistVm(PlaylistId id, string name, bool isActive)
+    public sealed class ProjectVm(ProjectId id, string name, bool isActive)
     {
-        public PlaylistId Id { get; } = id;
+        public ProjectId Id { get; } = id;
 
         public string Name { get; } = name;
 
@@ -991,7 +991,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
         string RowText,
         string? Color,
         string? Note,
-        PlaylistOverrides? Overrides,
+        ProjectOverrides? Overrides,
         StreamGeometry? Waveform,
         bool IsFaulted,
         string Position,

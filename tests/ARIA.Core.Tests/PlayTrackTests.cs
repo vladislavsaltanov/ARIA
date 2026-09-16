@@ -15,7 +15,7 @@ public sealed class PlayTrackTests : IDisposable
     {
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         _harness.Submit(new LoadShow([t1, t2], [p], p.Id));
 
         _harness.Submit(new PlayTrack(t2.Id));
@@ -30,7 +30,7 @@ public sealed class PlayTrackTests : IDisposable
     {
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         _harness.Submit(new LoadShow([t1, t2], [p], p.Id));
         _harness.Submit(new Play());
 
@@ -47,7 +47,7 @@ public sealed class PlayTrackTests : IDisposable
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
         _harness.Submit(new LoadShow([t1, t2, t3], [p], p.Id));
         _harness.Submit(new EnqueueTrack(t3.Id));
 
@@ -64,7 +64,7 @@ public sealed class PlayTrackTests : IDisposable
     public void PlayTrack_UnknownTrack_Rejects()
     {
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         _harness.Submit(new LoadShow([t1], [p], p.Id));
 
         var seq = _harness.Submit(new PlayTrack(TrackId.New()));
@@ -77,7 +77,7 @@ public sealed class PlayTrackTests : IDisposable
     public void PlayTrack_Panicked_Rejects()
     {
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         _harness.Submit(new LoadShow([t1], [p], p.Id));
         _harness.Submit(new Panic());
 

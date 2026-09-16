@@ -63,7 +63,7 @@
       <Grid x:Name="ContentGrid" ColumnDefinitions="260,*,300">
       <Border Grid.Column="0" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="*,Auto">
-          <views:RailPlaylists Grid.Row="0" x:Name="RailPlaylists" />
+          <views:RailProjects Grid.Row="0" x:Name="RailProjects" />
           <Button Grid.Row="1" x:Name="QueueButton" Classes="railAction" Margin="8,6,8,10" Click="OnQueueJumpClick">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" VerticalAlignment="Center"/>
@@ -72,7 +72,7 @@
           </Button>
         </Grid>
       </Border>
-      <views:PlaylistCenter Grid.Column="1" x:Name="PlaylistCenter" />
+      <views:ProjectCenter Grid.Column="1" x:Name="ProjectCenter" />
       <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
       </Grid>
     </SplitView>

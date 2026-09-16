@@ -127,9 +127,9 @@ public sealed class SettingsTests : IDisposable
         using var bus = NewBus();
         using var viewModel = NewSettings(bus);
         var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
         bus.Submit(new ClientId("setup"), 9, new RestoreShow(
-            [track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(100),
+            [track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100),
             TimeSpan.FromSeconds(90), true, []));
         bus.Submit(new ClientId("setup"), 10, new StartShowClock());
         Assert.True(bus.Snapshot().Show.Clock.Running);

@@ -3,23 +3,23 @@ namespace Aria.Core.Tests;
 using System.Collections.Immutable;
 using Aria.Core.Model;
 
-public sealed class PlaylistFormatTests
+public sealed class ProjectFormatTests
 {
     [Fact]
     public void ExportImport_RoundTrips_NameOverridesAndTransition()
     {
         var entries = ImmutableArray.Create(
-            new PlaylistExportEntry(
+            new ProjectExportEntry(
                 "/audio/one.flac",
-                new PlaylistOverrides("Утро", "#FF0000", "опенер", 1.5, EndAction.Advance,
+                new ProjectOverrides("Утро", "#FF0000", "опенер", 1.5, EndAction.Advance,
                     new Fade(TimeSpan.FromSeconds(2), FadeCurve.Exponential),
                     new Fade(TimeSpan.FromSeconds(5), FadeCurve.SCurve),
                     TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(170)),
-                new PlaylistFileTransition("crossfade", 4)),
-            new PlaylistExportEntry("/audio/two.flac"));
+                new ProjectFileTransition("crossfade", 4)),
+            new ProjectExportEntry("/audio/two.flac"));
 
-        var json = PlaylistFormat.Export("Вечер", entries);
-        var document = PlaylistFormat.Import(json);
+        var json = ProjectFormat.Export("Вечер", entries);
+        var document = ProjectFormat.Import(json);
 
         Assert.Equal("aria-playlist", document.Format);
         Assert.Equal(1, document.Version);
@@ -40,17 +40,17 @@ public sealed class PlaylistFormatTests
         Assert.Equal(4, first.Transition?.Seconds);
         var second = document.Entries[1];
         Assert.Equal("/audio/two.flac", second.File);
-        Assert.Null(PlaylistFormat.ToOverrides(second));
+        Assert.Null(ProjectFormat.ToOverrides(second));
     }
 
     [Fact]
     public void ToOverrides_MapsAllFields()
     {
-        var document = PlaylistFormat.Import(PlaylistFormat.Export("Шоу", ImmutableArray.Create(
-            new PlaylistExportEntry("/audio/one.flac",
-                new PlaylistOverrides(GainDb: -3, EndAction: EndAction.Replay)))));
+        var document = ProjectFormat.Import(ProjectFormat.Export("Шоу", ImmutableArray.Create(
+            new ProjectExportEntry("/audio/one.flac",
+                new ProjectOverrides(GainDb: -3, EndAction: EndAction.Replay)))));
 
-        var overrides = PlaylistFormat.ToOverrides(document.Entries[0]);
+        var overrides = ProjectFormat.ToOverrides(document.Entries[0]);
         Assert.NotNull(overrides);
         Assert.Equal(-3, overrides.GainDb);
         Assert.Equal(EndAction.Replay, overrides.EndAction);
@@ -67,13 +67,13 @@ public sealed class PlaylistFormatTests
     [InlineData("{\"format\":\"aria-playlist\",\"version\":1,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\",\"transition\":{\"kind\":\"телепорт\"}}]}", "bad-entry")]
     public void Import_InvalidDocument_Throws(string json, string prefix)
     {
-        var exception = Assert.Throws<PlaylistFormatException>(() => PlaylistFormat.Import(json));
+        var exception = Assert.Throws<ProjectFormatException>(() => ProjectFormat.Import(json));
         Assert.StartsWith(prefix, exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Import_BrokenJson_Throws()
     {
-        Assert.Throws<PlaylistFormatException>(() => PlaylistFormat.Import("не json"));
+        Assert.Throws<ProjectFormatException>(() => ProjectFormat.Import("не json"));
     }
 }

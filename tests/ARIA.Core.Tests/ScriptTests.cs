@@ -15,7 +15,7 @@ public sealed class ScriptTests : IDisposable
     public void CreateScript_AddsScriptToShow()
     {
         var t1 = TestShow.Track();
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         _harness.Submit(new LoadShow([t1], [p], p.Id));
 
         _harness.Submit(new CreateScript("Вечер"));
@@ -90,7 +90,7 @@ public sealed class ScriptTests : IDisposable
     {
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         _harness.Submit(new LoadShow([t1, t2], [p], p.Id));
         _harness.Submit(new CreateScript("Вечер"));
         var scriptId = _harness.Snapshot.Show.Scripts[0].Id;
@@ -224,7 +224,7 @@ public sealed class ScriptTests : IDisposable
     public void LoadShow_WithoutScripts_LeavesEmptyScripts()
     {
         var t1 = TestShow.Track();
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
 
         _harness.Submit(new LoadShow([t1], [p], p.Id));
 
@@ -240,7 +240,7 @@ public sealed class ScriptTests : IDisposable
             [
                 new ScriptLine(ScriptLineId.New(), TimeSpan.FromSeconds(30), "старт", [new Mention(t1.Id)]),
             ]));
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
 
         _harness.Submit(new LoadShow([t1], [p], p.Id, scripts));
 
@@ -250,14 +250,14 @@ public sealed class ScriptTests : IDisposable
     }
 
     [Fact]
-    public void TrackDigest_CoversPlaylistQueueDeckAndMentions()
+    public void TrackDigest_CoversProjectQueueDeckAndMentions()
     {
-        var playlistTrack = TestShow.Track("in-playlist");
+        var projectTrack = TestShow.Track("in-playlist");
         var libraryTrack = TestShow.Track("library-only");
         var mentionedTrack = TestShow.Track("mentioned");
-        var entry = TestShow.Entry(playlistTrack);
-        var p = TestShow.Playlist("Main", entry);
-        _harness.Submit(new LoadShow([playlistTrack, libraryTrack, mentionedTrack], [p], p.Id));
+        var entry = TestShow.Entry(projectTrack);
+        var p = TestShow.Project("Main", entry);
+        _harness.Submit(new LoadShow([projectTrack, libraryTrack, mentionedTrack], [p], p.Id));
         _harness.Submit(new CreateScript("Вечер"));
         var scriptId = _harness.Snapshot.Show.Scripts[0].Id;
         _harness.Submit(new AddScriptLine(scriptId, TimeSpan.Zero, "строка", [mentionedTrack.Id, TrackId.New()]));
@@ -265,7 +265,7 @@ public sealed class ScriptTests : IDisposable
 
         var digest = _harness.Snapshot.Show.TrackDigest.Entries.ToDictionary(e => e.Track, e => e.DisplayName);
 
-        Assert.Equal("in-playlist", digest[playlistTrack.Id]);
+        Assert.Equal("in-playlist", digest[projectTrack.Id]);
         Assert.Equal("library-only", digest[libraryTrack.Id]);
         Assert.Equal("mentioned", digest[mentionedTrack.Id]);
         Assert.Equal(3, digest.Count);
@@ -274,10 +274,10 @@ public sealed class ScriptTests : IDisposable
     [Fact]
     public void EnqueueLibraryOnlyTrack_EmitsShowDigestDelta()
     {
-        var playlistTrack = TestShow.Track("in-playlist");
+        var projectTrack = TestShow.Track("in-playlist");
         var libraryTrack = TestShow.Track("library-only");
-        var p = TestShow.Playlist("Main", TestShow.Entry(playlistTrack));
-        _harness.Submit(new LoadShow([playlistTrack, libraryTrack], [p], p.Id));
+        var p = TestShow.Project("Main", TestShow.Entry(projectTrack));
+        _harness.Submit(new LoadShow([projectTrack, libraryTrack], [p], p.Id));
         var baseline = _harness.Events.OfType<ShowDelta>().Count();
 
         _harness.Submit(new EnqueueTrack(libraryTrack.Id));
@@ -288,10 +288,10 @@ public sealed class ScriptTests : IDisposable
     }
 
     [Fact]
-    public void EnqueuePlaylistTrack_DoesNotEmitExtraShowDelta()
+    public void EnqueueProjectTrack_DoesNotEmitExtraShowDelta()
     {
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         _harness.Submit(new LoadShow([t1], [p], p.Id));
         var baseline = _harness.Events.OfType<ShowDelta>().Count();
 
@@ -305,7 +305,7 @@ public sealed class ScriptTests : IDisposable
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         var renamed = t1 with { DefaultName = "uno" };
 

@@ -6,9 +6,9 @@ using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Interactivity;
 
-public partial class RailPlaylists : UserControl
+public partial class RailProjects : UserControl
 {
-    public RailPlaylists()
+    public RailProjects()
     {
         InitializeComponent();
     }
@@ -17,7 +17,7 @@ public partial class RailPlaylists : UserControl
 
     private async void OnRailDropped(object? sender, DragEventArgs e)
     {
-        if (DataContext is not PlaylistsViewModel viewModel)
+        if (DataContext is not ProjectsViewModel viewModel)
         {
             return;
         }
@@ -47,10 +47,10 @@ public partial class RailPlaylists : UserControl
     private void OnDeleteClick(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem item
-            && item.DataContext is PlaylistsViewModel.PlaylistVm playlist
-            && DataContext is PlaylistsViewModel viewModel)
+            && item.DataContext is ProjectsViewModel.ProjectVm project
+            && DataContext is ProjectsViewModel viewModel)
         {
-            viewModel.DeletePlaylistAt(playlist);
+            viewModel.DeleteProjectAt(project);
         }
     }
 }

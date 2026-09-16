@@ -14,15 +14,15 @@ public sealed class FaultCauseMessageTests
     {
         var track = new Track(TrackId.New(), "/audio/definitely-absent.flac", "absent", TimeSpan.FromMinutes(3), new TrackDefaults());
         var engine = new StubEngine();
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
         using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
-        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
-        using var vm = new PlaylistsViewModel(bus, () => [track]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
+        using var vm = new ProjectsViewModel(bus, () => [track]);
         bus.Submit(new ClientId("setup"), 2, new Play());
 
         engine.Raise(new StreamEvent(new StreamHandle(1), StreamEventKind.Faulted, StreamEndReason.Faulted, "Undecodable"));
 
-        var entry = vm.Playlists[0].Entries[0];
+        var entry = vm.Projects[0].Entries[0];
         Assert.Contains("декодировать", vm.DescribeFault(entry));
         Assert.False(vm.IsTrackMissing(entry));
     }
@@ -35,15 +35,15 @@ public sealed class FaultCauseMessageTests
         {
             var track = new Track(TrackId.New(), path, "present", TimeSpan.FromMinutes(3), new TrackDefaults());
             var engine = new StubEngine();
-            var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+            var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
             using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
-            bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
-            using var vm = new PlaylistsViewModel(bus, () => [track]);
+            bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
+            using var vm = new ProjectsViewModel(bus, () => [track]);
             bus.Submit(new ClientId("setup"), 2, new Play());
 
             engine.Raise(new StreamEvent(new StreamHandle(1), StreamEventKind.Faulted, StreamEndReason.Faulted, "Missing"));
 
-            var entry = vm.Playlists[0].Entries[0];
+            var entry = vm.Projects[0].Entries[0];
             Assert.Contains("не найден", vm.DescribeFault(entry));
             Assert.True(vm.IsTrackMissing(entry));
         }

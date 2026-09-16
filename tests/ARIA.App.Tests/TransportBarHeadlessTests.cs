@@ -29,13 +29,13 @@ public sealed class TransportBarHeadlessTests
             Assert.NotNull(bar.FindControl<Avalonia.Controls.Button>("NextButton"));
             Assert.NotNull(bar.FindControl<Avalonia.Controls.Button>("MuteButton"));
             Assert.NotNull(bar.FindControl<Avalonia.Controls.Button>("PanicButton"));
-            Assert.NotNull(window.FindControl<Views.RailPlaylists>("RailPlaylists"));
+            Assert.NotNull(window.FindControl<Views.RailProjects>("RailProjects"));
             Assert.Null(window.FindControl<Avalonia.Controls.Control>("LibrarySection"));
-            Assert.NotNull(window.FindControl<Views.PlaylistCenter>("PlaylistCenter"));
-            var center = window.FindControl<Views.PlaylistCenter>("PlaylistCenter");
+            Assert.NotNull(window.FindControl<Views.ProjectCenter>("ProjectCenter"));
+            var center = window.FindControl<Views.ProjectCenter>("ProjectCenter");
             Assert.NotNull(center);
-            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ImportPlaylistButton"));
-            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ExportPlaylistButton"));
+            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ImportProjectButton"));
+            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ExportProjectButton"));
             Assert.NotNull(window.FindControl<Views.QueueColumn>("QueueColumn"));
             Assert.NotNull(window.FindControl<Avalonia.Controls.Border>("HelpOverlay"));
             Assert.NotNull(window.FindControl<Avalonia.Controls.Grid>("HotkeyTable"));

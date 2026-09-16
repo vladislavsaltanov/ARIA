@@ -2,12 +2,12 @@ namespace Aria.Core.Model;
 
 using System.Collections.Immutable;
 
-public sealed record PlaylistEntry(
+public sealed record ProjectEntry(
     EntryId Id,
     TrackId TrackId,
-    PlaylistOverrides? Overrides = null);
+    ProjectOverrides? Overrides = null);
 
-public sealed record PlaylistOverrides(
+public sealed record ProjectOverrides(
     string? Name = null,
     string? Color = null,
     string? Note = null,
@@ -19,4 +19,4 @@ public sealed record PlaylistOverrides(
     TimeSpan? CueOut = null,
     TrackAudioSettings? Audio = null);
 
-public sealed record Playlist(PlaylistId Id, string Name, ImmutableArray<PlaylistEntry> Entries);
+public sealed record Project(ProjectId Id, string Name, ImmutableArray<ProjectEntry> Entries);

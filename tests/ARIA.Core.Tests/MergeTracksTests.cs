@@ -7,20 +7,20 @@ using Aria.Core.State;
 public sealed class MergeTracksTests
 {
     [Fact]
-    public void Stopped_ExtendsTrackSet_KeepsPlaylistsAndQueue()
+    public void Stopped_ExtendsTrackSet_KeepsProjectsAndQueue()
     {
         using var harness = new Harness();
         var first = TestShow.Track("first");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(first));
+        var project = TestShow.Project("Main", TestShow.Entry(first));
         var second = TestShow.Track("second");
-        harness.Submit(new LoadShow([first], [playlist], playlist.Id));
+        harness.Submit(new LoadShow([first], [project], project.Id));
         harness.Submit(new EnqueueTrack(first.Id));
 
         harness.Submit(new MergeTracks([second]));
 
         var seq = harness.Submit(new EnqueueTrack(second.Id));
         Assert.Null(harness.RejectionOf(seq));
-        Assert.Single(harness.Snapshot.Show.Playlists);
+        Assert.Single(harness.Snapshot.Show.Projects);
         Assert.Equal(2, harness.Snapshot.Queue.Items.Length);
         Assert.Equal(TransportStatus.Stopped, harness.Transport.Status);
     }
@@ -30,8 +30,8 @@ public sealed class MergeTracksTests
     {
         using var harness = new Harness();
         var first = TestShow.Track("first");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(first));
-        harness.Submit(new LoadShow([first], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(first));
+        harness.Submit(new LoadShow([first], [project], project.Id));
         harness.Submit(new Play());
         var queueBefore = harness.Snapshot.Queue.Items.Length;
 
@@ -48,8 +48,8 @@ public sealed class MergeTracksTests
     {
         using var harness = new Harness();
         var first = TestShow.Track("first");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(first));
-        harness.Submit(new LoadShow([first], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(first));
+        harness.Submit(new LoadShow([first], [project], project.Id));
         harness.Submit(new Play());
 
         var second = TestShow.Track("second");

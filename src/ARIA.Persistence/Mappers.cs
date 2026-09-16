@@ -165,7 +165,7 @@ internal sealed class EntryDto
     public OverridesDto? Overrides { get; set; }
 }
 
-internal sealed class PlaylistDto
+internal sealed class ProjectDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -216,9 +216,9 @@ internal static class TrackMapper
     }
 }
 
-internal static class PlaylistMapper
+internal static class ProjectMapper
 {
-    public static OverridesDto? ToDto(PlaylistOverrides? overrides) =>
+    public static OverridesDto? ToDto(ProjectOverrides? overrides) =>
         overrides is null
             ? null
             : new OverridesDto
@@ -237,10 +237,10 @@ internal static class PlaylistMapper
                 Audio = AudioMapper.ToDto(overrides.Audio),
             };
 
-    public static PlaylistOverrides? ToDomain(OverridesDto? dto) =>
+    public static ProjectOverrides? ToDomain(OverridesDto? dto) =>
         dto is null
             ? null
-            : new PlaylistOverrides(
+            : new ProjectOverrides(
                 Name: dto.Name,
                 Color: dto.Color,
                 Note: dto.Note,
@@ -252,27 +252,27 @@ internal static class PlaylistMapper
                 CueOut: dto.CueOutTicks is null ? null : new TimeSpan(dto.CueOutTicks.Value),
                 Audio: AudioMapper.ToDomain(dto.Audio));
 
-    public static EntryDto ToDto(PlaylistEntry entry) => new()
+    public static EntryDto ToDto(ProjectEntry entry) => new()
     {
         Id = entry.Id.Value,
         TrackId = entry.TrackId.Value,
         Overrides = ToDto(entry.Overrides),
     };
 
-    public static PlaylistEntry ToDomain(EntryDto dto) => new(
+    public static ProjectEntry ToDomain(EntryDto dto) => new(
         new EntryId(dto.Id),
         new TrackId(dto.TrackId),
         ToDomain(dto.Overrides));
 
-    public static PlaylistDto ToDto(Playlist playlist) => new()
+    public static ProjectDto ToDto(Project project) => new()
     {
-        Id = playlist.Id.Value,
-        Name = playlist.Name,
-        Entries = [.. playlist.Entries.Select(ToDto)],
+        Id = project.Id.Value,
+        Name = project.Name,
+        Entries = [.. project.Entries.Select(ToDto)],
     };
 
-    public static Playlist ToDomain(PlaylistDto dto) => new(
-        new PlaylistId(dto.Id),
+    public static Project ToDomain(ProjectDto dto) => new(
+        new ProjectId(dto.Id),
         dto.Name,
         [.. dto.Entries.Select(ToDomain)]);
 }

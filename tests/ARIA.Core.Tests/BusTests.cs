@@ -28,7 +28,7 @@ public sealed class BusTests
         });
 
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         bus.Submit(Harness.Client, 1, new LoadShow([t1], [p], p.Id));
         bus.Submit(Harness.Client, 2, new Play());
         bus.Submit(Harness.Client, 2, new LoadShow([t1], [p], p.Id));
@@ -49,7 +49,7 @@ public sealed class BusTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
 
         h.Submit(new Play());

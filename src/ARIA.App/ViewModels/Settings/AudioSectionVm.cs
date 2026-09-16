@@ -22,43 +22,43 @@ public sealed partial class AudioSectionVm : ObservableObject
     private double _zoneRedDb = -5.0;
     private double _previewGainDb;
     private bool _previewMuted;
-    private readonly Func<PlaylistId?>? _activePlaylist;
-    private bool _measuringPlaylist;
-    private string _normalizePlaylistStatus = "Не измерялся";
+    private readonly Func<ProjectId?>? _activeProject;
+    private bool _measuringProject;
+    private string _normalizeProjectStatus = "Не измерялся";
 
-    public AudioSectionVm(Action<Command> submit, Func<PlaylistId?>? activePlaylist = null)
+    public AudioSectionVm(Action<Command> submit, Func<ProjectId?>? activeProject = null)
     {
         _submit = submit;
-        _activePlaylist = activePlaylist;
+        _activeProject = activeProject;
         EqBands = [.. AudioEq.DefaultFrequencies.Select((f, i) => new EqBandVm(BandLabel(i, f), f, 0, SubmitGlobal))];
     }
 
-    public string NormalizePlaylistStatus
+    public string NormalizeProjectStatus
     {
-        get => _normalizePlaylistStatus;
-        private set => SetProperty(ref _normalizePlaylistStatus, value);
+        get => _normalizeProjectStatus;
+        private set => SetProperty(ref _normalizeProjectStatus, value);
     }
 
     [RelayCommand]
-    private void MeasurePlaylist()
+    private void MeasureProject()
     {
-        if (_activePlaylist?.Invoke() is not { } id)
+        if (_activeProject?.Invoke() is not { } id)
         {
             return;
         }
-        _measuringPlaylist = true;
-        NormalizePlaylistStatus = "Замер выполняется…";
-        _submit(new NormalizePlaylist(id));
+        _measuringProject = true;
+        NormalizeProjectStatus = "Замер выполняется…";
+        _submit(new NormalizeProject(id));
     }
 
     public void OnShow()
     {
-        if (!_measuringPlaylist)
+        if (!_measuringProject)
         {
             return;
         }
-        _measuringPlaylist = false;
-        NormalizePlaylistStatus = "Готово";
+        _measuringProject = false;
+        NormalizeProjectStatus = "Готово";
     }
 
     public IReadOnlyList<EqBandVm> EqBands { get; }

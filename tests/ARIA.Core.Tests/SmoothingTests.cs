@@ -73,7 +73,7 @@ public sealed class SmoothingTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(manualMs: 400, startMs: 250)));
@@ -94,7 +94,7 @@ public sealed class SmoothingTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(seekMs: 350)));
@@ -123,7 +123,7 @@ public sealed class SmoothingTests
         var monitor = new PlaybackMonitor();
         using var h = new Harness(monitor);
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(seekMs: 350)));
@@ -139,7 +139,7 @@ public sealed class SmoothingTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(seekMs: 0)));
@@ -156,7 +156,7 @@ public sealed class SmoothingTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new Pause());
@@ -175,7 +175,7 @@ public sealed class SmoothingTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
@@ -191,7 +191,7 @@ public sealed class SmoothingTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
@@ -213,7 +213,7 @@ public sealed class SmoothingTests
         var fadeIn = new Fade(TimeSpan.FromMilliseconds(111), FadeCurve.Linear);
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two", fadeIn: fadeIn);
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
 
@@ -227,7 +227,7 @@ public sealed class SmoothingTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(stopMs: 300)));
@@ -247,7 +247,7 @@ public sealed class SmoothingTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
 
@@ -265,7 +265,7 @@ public sealed class SmoothingTests
         using var h = new Harness(monitor);
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
@@ -292,7 +292,7 @@ public sealed class SmoothingTests
         using var h = new Harness(monitor);
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
@@ -310,7 +310,7 @@ public sealed class SmoothingTests
         using var h = new Harness(monitor);
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
 
@@ -325,7 +325,7 @@ public sealed class SmoothingTests
         var monitor = new PlaybackMonitor();
         using var h = new Harness(monitor);
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
@@ -342,7 +342,7 @@ public sealed class SmoothingTests
         using var h = new Harness(monitor);
         var t1 = TestShow.Track("one", end: EndAction.Stop);
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
@@ -360,7 +360,7 @@ public sealed class SmoothingTests
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
         var t3 = TestShow.Track("three");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
         h.Submit(new LoadShow([t1, t2, t3], [p], p.Id));
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900, seekMs: 0)));

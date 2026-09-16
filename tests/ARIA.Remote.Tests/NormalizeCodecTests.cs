@@ -18,12 +18,12 @@ public sealed class NormalizeCodecTests
     }
 
     [Fact]
-    public void NormalizePlaylist_Parses()
+    public void NormalizeProject_Parses()
     {
         var id = Guid.NewGuid().ToString("N");
 
         Assert.True(CommandCodec.TryParse(Json("{\"type\":\"normalize_playlist\",\"playlist\":\"" + id + "\"}"), out _, out _, out var command));
-        Assert.Equal(id, Assert.IsType<NormalizePlaylist>(command).Playlist.Value.ToString("N"));
+        Assert.Equal(id, Assert.IsType<NormalizeProject>(command).Project.Value.ToString("N"));
     }
 
     private static string GlobalJson(string extra = "") =>

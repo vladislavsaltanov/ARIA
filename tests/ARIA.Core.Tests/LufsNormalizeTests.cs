@@ -15,8 +15,8 @@ public sealed class LufsNormalizeTests
         using var h = new Harness();
         h.Engine.ScanLufs = _ => -10.0;
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         EnableGlobal(h);
 
         var seq = h.Submit(new NormalizeTrack(track.Id));
@@ -31,8 +31,8 @@ public sealed class LufsNormalizeTests
     {
         using var h = new Harness();
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
 
         var seq = h.Submit(new NormalizeTrack(track.Id));
 
@@ -57,8 +57,8 @@ public sealed class LufsNormalizeTests
         using var h = new Harness();
         h.Engine.ScanLufs = _ => double.NaN;
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         EnableGlobal(h);
 
         var seq = h.Submit(new NormalizeTrack(track.Id));
@@ -72,8 +72,8 @@ public sealed class LufsNormalizeTests
         using var h = new Harness();
         h.Engine.ScanLufs = _ => -10.0;
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         EnableGlobal(h);
         h.Submit(new PlayTrack(track.Id));
         var handle = h.Engine.Last!.Handle;
@@ -93,8 +93,8 @@ public sealed class LufsNormalizeTests
         using var h = new Harness();
         h.Engine.ScanLufs = _ => -10.0;
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         EnableGlobal(h);
 
         var seq = h.Submit(new NormalizeTrack(track.Id));
@@ -108,8 +108,8 @@ public sealed class LufsNormalizeTests
     {
         using var h = new Harness();
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         h.Submit(new PlayTrack(track.Id));
         var handle = h.Engine.Last!.Handle;
 
@@ -127,8 +127,8 @@ public sealed class LufsNormalizeTests
     {
         using var h = new Harness();
         var track = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(track));
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
         h.Submit(new PlayTrack(track.Id));
         h.Submit(new SetTrackAudio(track.Id, new TrackAudioSettings(0, 0, AudioEq.Flat, true, -10.0)));
         h.Engine.VoiceAudios.Clear();
@@ -147,8 +147,8 @@ public sealed class LufsNormalizeTests
         using var h = new Harness();
         var track = TestShow.Track("a");
         var entry = TestShow.Entry(track);
-        var playlist = TestShow.Playlist("Main", entry);
-        h.Submit(new LoadShow([track], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", entry);
+        h.Submit(new LoadShow([track], [project], project.Id));
         h.Submit(new PlayTrack(track.Id));
 
         var seq = h.Submit(new SetEntryAudio(entry.Id, new TrackAudioSettings(-3, 0, AudioEq.Flat)));
@@ -158,93 +158,93 @@ public sealed class LufsNormalizeTests
     }
 
     [Fact]
-    public void NormalizePlaylist_MeasuresAndEnablesAll()
+    public void NormalizeProject_MeasuresAndEnablesAll()
     {
         using var h = new Harness();
         h.Engine.ScanLufs = _ => -10.0;
         var a = TestShow.Track("a");
         var b = TestShow.Track("b");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(a), TestShow.Entry(b));
-        h.Submit(new LoadShow([a, b], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(a), TestShow.Entry(b));
+        h.Submit(new LoadShow([a, b], [project], project.Id));
         EnableGlobal(h);
 
-        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+        var seq = h.Submit(new NormalizeProject(project.Id));
 
         Assert.Null(h.RejectionOf(seq));
         Assert.Equal(2, h.Engine.ScannedPaths.Count);
     }
 
     [Fact]
-    public void NormalizePlaylist_SkipsFailedScans()
+    public void NormalizeProject_SkipsFailedScans()
     {
         using var h = new Harness();
         h.Engine.ScanLufs = path => path.Contains("broken") ? double.NaN : -10.0;
         var a = TestShow.Track("a");
         var broken = TestShow.Track("broken");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(a), TestShow.Entry(broken));
-        h.Submit(new LoadShow([a, broken], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(a), TestShow.Entry(broken));
+        h.Submit(new LoadShow([a, broken], [project], project.Id));
         EnableGlobal(h);
 
-        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+        var seq = h.Submit(new NormalizeProject(project.Id));
 
         Assert.Null(h.RejectionOf(seq));
         Assert.Equal(2, h.Engine.ScannedPaths.Count);
     }
 
     [Fact]
-    public void NormalizePlaylist_AllFailed_Rejects()
+    public void NormalizeProject_AllFailed_Rejects()
     {
         using var h = new Harness();
         h.Engine.ScanLufs = _ => double.NaN;
         var a = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(a));
-        h.Submit(new LoadShow([a], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(a));
+        h.Submit(new LoadShow([a], [project], project.Id));
         EnableGlobal(h);
 
-        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+        var seq = h.Submit(new NormalizeProject(project.Id));
 
         Assert.Equal("lufs-scan-failed", h.RejectionOf(seq)!.Reason);
     }
 
     [Fact]
-    public void NormalizePlaylist_UnknownPlaylist_Rejects()
+    public void NormalizeProject_UnknownProject_Rejects()
     {
         using var h = new Harness();
         EnableGlobal(h);
 
-        var seq = h.Submit(new NormalizePlaylist(PlaylistId.New()));
+        var seq = h.Submit(new NormalizeProject(ProjectId.New()));
 
         Assert.Equal("unknown-playlist", h.RejectionOf(seq)!.Reason);
     }
 
     [Fact]
-    public void NormalizePlaylist_DisabledGlobal_Rejects()
+    public void NormalizeProject_DisabledGlobal_Rejects()
     {
         using var h = new Harness();
         var a = TestShow.Track("a");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(a));
-        h.Submit(new LoadShow([a], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(a));
+        h.Submit(new LoadShow([a], [project], project.Id));
 
-        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+        var seq = h.Submit(new NormalizeProject(project.Id));
 
         Assert.Equal("normalize-disabled", h.RejectionOf(seq)!.Reason);
         Assert.Empty(h.Engine.ScannedPaths);
     }
 
     [Fact]
-    public void NormalizePlaylist_PlayingMember_PushesLiveVoice()
+    public void NormalizeProject_PlayingMember_PushesLiveVoice()
     {
         using var h = new Harness();
         h.Engine.ScanLufs = _ => -10.0;
         var a = TestShow.Track("a");
         var b = TestShow.Track("b");
-        var playlist = TestShow.Playlist("Main", TestShow.Entry(a), TestShow.Entry(b));
-        h.Submit(new LoadShow([a, b], [playlist], playlist.Id));
+        var project = TestShow.Project("Main", TestShow.Entry(a), TestShow.Entry(b));
+        h.Submit(new LoadShow([a, b], [project], project.Id));
         EnableGlobal(h);
         h.Submit(new PlayTrack(b.Id));
         var handle = h.Engine.Last!.Handle;
 
-        var seq = h.Submit(new NormalizePlaylist(playlist.Id));
+        var seq = h.Submit(new NormalizeProject(project.Id));
 
         Assert.Null(h.RejectionOf(seq));
         var push = Assert.Single(h.Engine.VoiceAudios);

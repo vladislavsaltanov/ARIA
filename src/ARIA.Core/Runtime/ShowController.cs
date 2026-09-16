@@ -23,10 +23,10 @@ public sealed class ShowController : IShowHandler
     private readonly Action<Action>? _marshal;
 
     private ImmutableArray<Track> _tracks = [];
-    private ImmutableArray<Playlist> _playlists = [];
+    private ImmutableArray<Project> _projects = [];
     private Dictionary<TrackId, Track> _trackMap = [];
-    private Dictionary<EntryId, (Playlist Playlist, int Index)> _entryMap = [];
-    private PlaylistId? _activePlaylistId;
+    private Dictionary<EntryId, (Project Project, int Index)> _entryMap = [];
+    private ProjectId? _activeProjectId;
     private int _cursor;
 
     private readonly List<QueueItem> _queue = [];
@@ -142,23 +142,23 @@ public sealed class ShowController : IShowHandler
             case ClearQueue:
                 OnClearQueue();
                 break;
-            case CreatePlaylist createPlaylist:
-                OnCreatePlaylist(client, seq, createPlaylist);
+            case CreateProject createProject:
+                OnCreateProject(client, seq, createProject);
                 break;
-            case RenamePlaylist renamePlaylist:
-                OnRenamePlaylist(client, seq, renamePlaylist);
+            case RenameProject renameProject:
+                OnRenameProject(client, seq, renameProject);
                 break;
-            case DeletePlaylist deletePlaylist:
-                OnDeletePlaylist(client, seq, deletePlaylist);
+            case DeleteProject deleteProject:
+                OnDeleteProject(client, seq, deleteProject);
                 break;
-            case SetActivePlaylist setActivePlaylist:
-                OnSetActivePlaylist(client, seq, setActivePlaylist);
+            case SetActiveProject setActiveProject:
+                OnSetActiveProject(client, seq, setActiveProject);
                 break;
             case AddEntry addEntry:
                 OnAddEntry(client, seq, addEntry);
                 break;
-            case ImportPlaylist importPlaylist:
-                OnImportPlaylist(client, seq, importPlaylist);
+            case ImportProject importProject:
+                OnImportProject(client, seq, importProject);
                 break;
             case RemoveEntry removeEntry:
                 OnRemoveEntry(client, seq, removeEntry);
@@ -205,8 +205,8 @@ public sealed class ShowController : IShowHandler
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
                 break;
-            case NormalizePlaylist normalizePlaylist:
-                OnNormalizePlaylist(client, seq, normalizePlaylist);
+            case NormalizeProject normalizeProject:
+                OnNormalizeProject(client, seq, normalizeProject);
                 break;
             case CreateScript createScript:
                 OnCreateScript(client, seq, createScript);
@@ -261,7 +261,7 @@ public sealed class ShowController : IShowHandler
 
     public ShowSnapshot Snapshot() => new(
         _showVersion,
-        new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction),
+        new ShowState(_projects, _activeProjectId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction),
         _transportVersion,
         BuildTransport(),
         _queueVersion,
@@ -276,17 +276,17 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "show-load-requires-stopped");
             return;
         }
-        if (load.Tracks.IsDefault || load.Playlists.IsDefault)
+        if (load.Tracks.IsDefault || load.Projects.IsDefault)
         {
             Reject(client, seq, "show-data-required");
             return;
         }
-        if (!ValidateShow(load.Tracks, load.Playlists, []))
+        if (!ValidateShow(load.Tracks, load.Projects, []))
         {
             Reject(client, seq, "invalid-show");
             return;
         }
-        if (load.Active is { } active && !_playlists.Any(p => p.Id == active) && !load.Playlists.Any(p => p.Id == active))
+        if (load.Active is { } active && !_projects.Any(p => p.Id == active) && !load.Projects.Any(p => p.Id == active))
         {
             Reject(client, seq, "unknown-active-playlist");
             return;
@@ -299,10 +299,10 @@ public sealed class ShowController : IShowHandler
         }
 
         _tracks = load.Tracks;
-        _playlists = load.Playlists;
+        _projects = load.Projects;
         _trackMap = load.Tracks.ToDictionary(t => t.Id);
         RebuildEntryMap();
-        _activePlaylistId = load.Active ?? (_playlists.Length > 0 ? _playlists[0].Id : null);
+        _activeProjectId = load.Active ?? (_projects.Length > 0 ? _projects[0].Id : null);
         _cursor = 0;
         _queue.Clear();
         _current = null;
@@ -324,17 +324,17 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "show-load-requires-stopped");
             return;
         }
-        if (restore.Tracks.IsDefault || restore.Playlists.IsDefault || restore.Queue.IsDefault)
+        if (restore.Tracks.IsDefault || restore.Projects.IsDefault || restore.Queue.IsDefault)
         {
             Reject(client, seq, "show-data-required");
             return;
         }
-        if (!ValidateShow(restore.Tracks, restore.Playlists, restore.Queue))
+        if (!ValidateShow(restore.Tracks, restore.Projects, restore.Queue))
         {
             Reject(client, seq, "invalid-show");
             return;
         }
-        if (restore.Active is { } active && !restore.Playlists.Any(p => p.Id == active))
+        if (restore.Active is { } active && !restore.Projects.Any(p => p.Id == active))
         {
             Reject(client, seq, "unknown-active-playlist");
             return;
@@ -362,10 +362,10 @@ public sealed class ShowController : IShowHandler
         }
 
         _tracks = restore.Tracks;
-        _playlists = restore.Playlists;
+        _projects = restore.Projects;
         _trackMap = restore.Tracks.ToDictionary(t => t.Id);
         RebuildEntryMap();
-        _activePlaylistId = restore.Active ?? (_playlists.Length > 0 ? _playlists[0].Id : null);
+        _activeProjectId = restore.Active ?? (_projects.Length > 0 ? _projects[0].Id : null);
         _cursor = 0;
         _queue.Clear();
         _queue.AddRange(restore.Queue);
@@ -454,7 +454,7 @@ public sealed class ShowController : IShowHandler
         }
     }
 
-    private static bool ValidateShow(ImmutableArray<Track> tracks, ImmutableArray<Playlist> playlists, ImmutableArray<QueueItem> queue)
+    private static bool ValidateShow(ImmutableArray<Track> tracks, ImmutableArray<Project> projects, ImmutableArray<QueueItem> queue)
     {
         var trackIds = new HashSet<TrackId>();
         foreach (var track in tracks)
@@ -465,9 +465,9 @@ public sealed class ShowController : IShowHandler
             }
         }
         var entryIds = new HashSet<EntryId>();
-        foreach (var playlist in playlists)
+        foreach (var project in projects)
         {
-            foreach (var entry in playlist.Entries)
+            foreach (var entry in project.Entries)
             {
                 if (!entryIds.Add(entry.Id) || !trackIds.Contains(entry.TrackId))
                 {
@@ -488,20 +488,20 @@ public sealed class ShowController : IShowHandler
     private void RebuildEntryMap()
     {
         _entryMap = [];
-        foreach (var playlist in _playlists)
+        foreach (var project in _projects)
         {
-            for (var i = 0; i < playlist.Entries.Length; i++)
+            for (var i = 0; i < project.Entries.Length; i++)
             {
-                _entryMap[playlist.Entries[i].Id] = (playlist, i);
+                _entryMap[project.Entries[i].Id] = (project, i);
             }
         }
     }
 
-    private int IndexOfPlaylist(PlaylistId id)
+    private int IndexOfProject(ProjectId id)
     {
-        for (var i = 0; i < _playlists.Length; i++)
+        for (var i = 0; i < _projects.Length; i++)
         {
-            if (_playlists[i].Id == id)
+            if (_projects[i].Id == id)
             {
                 return i;
             }
@@ -519,9 +519,9 @@ public sealed class ShowController : IShowHandler
         return true;
     }
 
-    private bool RequirePlaylist(PlaylistId id, ClientId client, long seq, out int index)
+    private bool RequireProject(ProjectId id, ClientId client, long seq, out int index)
     {
-        index = IndexOfPlaylist(id);
+        index = IndexOfProject(id);
         if (index < 0)
         {
             Reject(client, seq, "unknown-playlist");
@@ -753,7 +753,7 @@ public sealed class ShowController : IShowHandler
         }
         var wasPlaying = _status == TransportStatus.Playing;
         var old = _current;
-        StartPlaylistEntry(location.Playlist, location.Index, auto: false);
+        StartProjectEntry(location.Project, location.Index, auto: false);
         ReleaseOld(old, wasPlaying, manual: true);
     }
 
@@ -764,7 +764,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
-        var entry = location.Playlist.Entries[location.Index];
+        var entry = location.Project.Entries[location.Index];
         if (!_trackMap.TryGetValue(entry.TrackId, out var track))
         {
             Reject(client, seq, "unknown-track");
@@ -840,44 +840,44 @@ public sealed class ShowController : IShowHandler
         SyncDigest();
     }
 
-    private void OnCreatePlaylist(ClientId client, long seq, CreatePlaylist command)
+    private void OnCreateProject(ClientId client, long seq, CreateProject command)
     {
         if (!RequireName(command.Name, client, seq))
         {
             return;
         }
-        _playlists = _playlists.Add(new Playlist(PlaylistId.New(), command.Name, []));
+        _projects = _projects.Add(new Project(ProjectId.New(), command.Name, []));
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
     }
 
-    private void OnRenamePlaylist(ClientId client, long seq, RenamePlaylist command)
+    private void OnRenameProject(ClientId client, long seq, RenameProject command)
     {
         if (!RequireName(command.Name, client, seq))
         {
             return;
         }
-        if (!RequirePlaylist(command.Id, client, seq, out var index))
+        if (!RequireProject(command.Id, client, seq, out var index))
         {
             return;
         }
-        _playlists = _playlists.SetItem(index, _playlists[index] with { Name = command.Name });
+        _projects = _projects.SetItem(index, _projects[index] with { Name = command.Name });
         RebuildEntryMap();
         EmitShow();
     }
 
-    private void OnDeletePlaylist(ClientId client, long seq, DeletePlaylist command)
+    private void OnDeleteProject(ClientId client, long seq, DeleteProject command)
     {
-        if (!RequirePlaylist(command.Id, client, seq, out var index))
+        if (!RequireProject(command.Id, client, seq, out var index))
         {
             return;
         }
-        var removed = _playlists[index];
-        _playlists = _playlists.RemoveAt(index);
-        if (_activePlaylistId == command.Id)
+        var removed = _projects[index];
+        _projects = _projects.RemoveAt(index);
+        if (_activeProjectId == command.Id)
         {
-            _activePlaylistId = null;
+            _activeProjectId = null;
             _cursor = 0;
         }
         var gone = removed.Entries.Select(entry => entry.Id).ToHashSet();
@@ -895,18 +895,18 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private void OnSetActivePlaylist(ClientId client, long seq, SetActivePlaylist command)
+    private void OnSetActiveProject(ClientId client, long seq, SetActiveProject command)
     {
         if (_panicked)
         {
             Reject(client, seq, "panicked");
             return;
         }
-        if (!RequirePlaylist(command.Id, client, seq, out var index))
+        if (!RequireProject(command.Id, client, seq, out var index))
         {
             return;
         }
-        _activePlaylistId = _playlists[index].Id;
+        _activeProjectId = _projects[index].Id;
         _cursor = 0;
         EmitShow();
         EmitTransport();
@@ -914,7 +914,7 @@ public sealed class ShowController : IShowHandler
 
     private void OnAddEntry(ClientId client, long seq, AddEntry command)
     {
-        if (!RequirePlaylist(command.Playlist, client, seq, out var index))
+        if (!RequireProject(command.Project, client, seq, out var index))
         {
             return;
         }
@@ -923,21 +923,21 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var playlist = _playlists[index];
-        if (command.Index is { } position && (position < 0 || position > playlist.Entries.Length))
+        var project = _projects[index];
+        if (command.Index is { } position && (position < 0 || position > project.Entries.Length))
         {
             Reject(client, seq, "bad-index");
             return;
         }
-        var entry = new PlaylistEntry(EntryId.New(), command.Track);
-        var entries = command.Index is { } at ? playlist.Entries.Insert(at, entry) : playlist.Entries.Add(entry);
-        _playlists = _playlists.SetItem(index, playlist with { Entries = entries });
+        var entry = new ProjectEntry(EntryId.New(), command.Track);
+        var entries = command.Index is { } at ? project.Entries.Insert(at, entry) : project.Entries.Add(entry);
+        _projects = _projects.SetItem(index, project with { Entries = entries });
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
     }
 
-    private void OnImportPlaylist(ClientId client, long seq, ImportPlaylist command)
+    private void OnImportProject(ClientId client, long seq, ImportProject command)
     {
         if (!RequireName(command.Name, client, seq))
         {
@@ -957,8 +957,8 @@ public sealed class ShowController : IShowHandler
             }
         }
         var entries = command.Entries.Select(imported =>
-            new PlaylistEntry(EntryId.New(), imported.Track, imported.Overrides));
-        _playlists = _playlists.Add(new Playlist(PlaylistId.New(), command.Name, [.. entries]));
+            new ProjectEntry(EntryId.New(), imported.Track, imported.Overrides));
+        _projects = _projects.Add(new Project(ProjectId.New(), command.Name, [.. entries]));
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
@@ -971,8 +971,8 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
-        var playlist = location.Playlist;
-        _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = playlist.Entries.RemoveAt(location.Index) });
+        var project = location.Project;
+        _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = project.Entries.RemoveAt(location.Index) });
         if (_current?.Entry == command.Entry)
         {
             DropCurrentPlayback();
@@ -994,15 +994,15 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
-        var playlist = location.Playlist;
-        if (command.NewIndex < 0 || command.NewIndex > playlist.Entries.Length - 1)
+        var project = location.Project;
+        if (command.NewIndex < 0 || command.NewIndex > project.Entries.Length - 1)
         {
             Reject(client, seq, "bad-index");
             return;
         }
-        var entry = playlist.Entries[location.Index];
-        var entries = playlist.Entries.RemoveAt(location.Index).Insert(command.NewIndex, entry);
-        _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = entries });
+        var entry = project.Entries[location.Index];
+        var entries = project.Entries.RemoveAt(location.Index).Insert(command.NewIndex, entry);
+        _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
@@ -1015,10 +1015,10 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
-        var playlist = location.Playlist;
-        var entry = playlist.Entries[location.Index];
-        var entries = playlist.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
-        _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = entries });
+        var project = location.Project;
+        var entry = project.Entries[location.Index];
+        var entries = project.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
+        _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
@@ -1176,20 +1176,20 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
-    private void OnNormalizePlaylist(ClientId client, long seq, NormalizePlaylist command)
+    private void OnNormalizeProject(ClientId client, long seq, NormalizeProject command)
     {
         if (!_globalAudio.NormalizeEnabled)
         {
             Reject(client, seq, "normalize-disabled");
             return;
         }
-        var index = IndexOfPlaylist(command.Playlist);
+        var index = IndexOfProject(command.Project);
         if (index < 0)
         {
             Reject(client, seq, "unknown-playlist");
             return;
         }
-        var ids = _playlists[index].Entries.Select(e => e.TrackId).Distinct().ToArray();
+        var ids = _projects[index].Entries.Select(e => e.TrackId).Distinct().ToArray();
         if (ids.Length == 0)
         {
             Reject(client, seq, "nothing-to-normalize");
@@ -1255,7 +1255,7 @@ public sealed class ShowController : IShowHandler
         }
         if (_current.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location))
         {
-            var entry = location.Playlist.Entries[location.Index];
+            var entry = location.Project.Entries[location.Index];
             return entry.Overrides?.Audio ?? track.Defaults.Audio;
         }
         return track.Defaults.Audio;
@@ -1273,11 +1273,11 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
-        var playlist = location.Playlist;
-        var entry = playlist.Entries[location.Index];
-        var overrides = (entry.Overrides ?? new PlaylistOverrides()) with { Audio = command.Audio };
-        var entries = playlist.Entries.SetItem(location.Index, entry with { Overrides = overrides });
-        _playlists = _playlists.SetItem(IndexOfPlaylist(playlist.Id), playlist with { Entries = entries });
+        var project = location.Project;
+        var entry = project.Entries[location.Index];
+        var overrides = (entry.Overrides ?? new ProjectOverrides()) with { Audio = command.Audio };
+        var entries = project.Entries.SetItem(location.Index, entry with { Overrides = overrides });
+        _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         if (_current?.Entry is { } currentEntry && currentEntry == command.Entry)
         {
@@ -1548,10 +1548,10 @@ public sealed class ShowController : IShowHandler
         {
             return true;
         }
-        if (_activePlaylistId is { } playlistId)
+        if (_activeProjectId is { } projectId)
         {
-            var playlist = _playlists.FirstOrDefault(p => p.Id == playlistId);
-            if (playlist is not null && _cursor < playlist.Entries.Length)
+            var project = _projects.FirstOrDefault(p => p.Id == projectId);
+            if (project is not null && _cursor < project.Entries.Length)
             {
                 return true;
             }
@@ -1664,7 +1664,7 @@ public sealed class ShowController : IShowHandler
             _queue.RemoveAt(0);
             var track = _trackMap[item.TrackId];
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track, _defaultEndAction)
+                ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
             StartStreamFor(_current, auto: true);
@@ -1677,24 +1677,24 @@ public sealed class ShowController : IShowHandler
             return true;
         }
 
-        if (_activePlaylistId is { } playlistId)
+        if (_activeProjectId is { } projectId)
         {
-            var playlist = _playlists.First(p => p.Id == playlistId);
-            if (_cursor < playlist.Entries.Length)
+            var project = _projects.First(p => p.Id == projectId);
+            if (_cursor < project.Entries.Length)
             {
-                StartPlaylistEntry(playlist, _cursor, auto: true);
+                StartProjectEntry(project, _cursor, auto: true);
                 return true;
             }
         }
         return false;
     }
 
-    private void StartPlaylistEntry(Playlist playlist, int index, bool auto)
+    private void StartProjectEntry(Project project, int index, bool auto)
     {
-        var entry = playlist.Entries[index];
+        var entry = project.Entries[index];
         var track = _trackMap[entry.TrackId];
         var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
-        _activePlaylistId = playlist.Id;
+        _activeProjectId = project.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
         StartStreamFor(_current, auto);
@@ -1892,17 +1892,17 @@ public sealed class ShowController : IShowHandler
             var item = _queue[0];
             var track = _trackMap[item.TrackId];
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Playlist.Entries[location.Index], track, _defaultEndAction)
+                ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
         }
 
-        if (_activePlaylistId is { } playlistId)
+        if (_activeProjectId is { } projectId)
         {
-            var playlist = _playlists.FirstOrDefault(p => p.Id == playlistId);
-            if (playlist is not null && _cursor < playlist.Entries.Length)
+            var project = _projects.FirstOrDefault(p => p.Id == projectId);
+            if (project is not null && _cursor < project.Entries.Length)
             {
-                var entry = playlist.Entries[_cursor];
+                var entry = project.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
                 var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
                 return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
@@ -1925,9 +1925,9 @@ public sealed class ShowController : IShowHandler
                 names.Add(id, EffectiveSettings.ForTrack(track, _defaultEndAction).DisplayName);
             }
         }
-        foreach (var playlist in _playlists)
+        foreach (var project in _projects)
         {
-            foreach (var entry in playlist.Entries)
+            foreach (var entry in project.Entries)
             {
                 Add(entry.TrackId);
             }
@@ -1974,7 +1974,7 @@ public sealed class ShowController : IShowHandler
     private void EmitShow()
     {
         _emittedDigest = BuildDigest();
-        Emit(new ShowDelta(++_showVersion, new ShowState(_playlists, _activePlaylistId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction)));
+        Emit(new ShowDelta(++_showVersion, new ShowState(_projects, _activeProjectId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction)));
     }
 
     private void SyncDigest()

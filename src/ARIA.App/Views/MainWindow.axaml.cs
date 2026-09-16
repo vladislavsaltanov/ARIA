@@ -18,7 +18,7 @@ public partial class MainWindow : Window
 {
     private readonly HotkeyService? _hotkeys;
     private readonly Func<Window>? _settingsDialogFactory;
-    private PlaylistsViewModel? _playlists;
+    private ProjectsViewModel? _projects;
     private QueueViewModel? _queue;
     private DragCoordinator? _drag;
     private bool _paneResizing;
@@ -32,7 +32,7 @@ public partial class MainWindow : Window
 
     public MainWindow(
         HotkeyService? hotkeys,
-        PlaylistsViewModel? playlistsViewModel = null,
+        ProjectsViewModel? projectsViewModel = null,
         QueueViewModel? queueViewModel = null,
         Func<Window>? settingsDialogFactory = null,
         ScriptPanelViewModel? scriptViewModel = null)
@@ -40,11 +40,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         _hotkeys = hotkeys;
         _settingsDialogFactory = settingsDialogFactory;
-        if (playlistsViewModel is not null)
+        if (projectsViewModel is not null)
         {
-            _playlists = playlistsViewModel;
-            RailPlaylists.DataContext = playlistsViewModel;
-            PlaylistCenter.DataContext = playlistsViewModel;
+            _projects = projectsViewModel;
+            RailProjects.DataContext = projectsViewModel;
+            ProjectCenter.DataContext = projectsViewModel;
         }
         if (queueViewModel is not null)
         {
@@ -57,8 +57,8 @@ public partial class MainWindow : Window
             ScriptPanel.CloseRequested += (_, _) => ToggleScriptPane();
             scriptViewModel.PropertyChanged += OnScriptPropertyChanged;
         }
-        PlaylistCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
-        PlaylistCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
+        ProjectCenter.ScenarioToggleRequested += (_, _) => ToggleScriptPane();
+        ProjectCenter.HelpRequested += (_, _) => HelpOverlay.IsVisible = true;
         QueueColumn.CloseRequested += (_, _) => SetQueueOpen(false);
         TransportBar.SettingsRequested += OnSettingsRequested;
         Opened += OnOpened;
@@ -184,7 +184,7 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(ScriptPanelViewModel.HighlightedTrack)
             && sender is ScriptPanelViewModel viewModel)
         {
-            _playlists?.SetLinkedTrack(viewModel.HighlightedTrack);
+            _projects?.SetLinkedTrack(viewModel.HighlightedTrack);
         }
     }
 
@@ -221,11 +221,11 @@ public partial class MainWindow : Window
         if (_hotkeys is not null)
         {
             TransportBar.ApplyGestures(_hotkeys);
-            PlaylistCenter.ApplyGestures(_hotkeys);
+            ProjectCenter.ApplyGestures(_hotkeys);
             BuildHotkeyTable();
         }
         _drag = new DragCoordinator(
-            PlaylistCenter.EntryListBox,
+            ProjectCenter.EntryListBox,
             QueueColumn.QueueListBox);
     }
 

@@ -13,7 +13,7 @@ public sealed class DefaultEndActionTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new SetDefaultEndAction(EndAction.Pause));
         h.Submit(new Play());
@@ -29,7 +29,7 @@ public sealed class DefaultEndActionTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetDefaultEndAction(EndAction.Replay));
         h.Submit(new Play());
@@ -47,7 +47,7 @@ public sealed class DefaultEndActionTests
         using var h = new Harness();
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
         h.Submit(new LoadShow([t1, t2], [p], p.Id));
         h.Submit(new SetDefaultEndAction(EndAction.Advance));
         h.Submit(new Play());
@@ -62,8 +62,8 @@ public sealed class DefaultEndActionTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var entry = new PlaylistEntry(EntryId.New(), t1.Id, new PlaylistOverrides(EndAction: EndAction.Replay));
-        var p = TestShow.Playlist("Main", entry);
+        var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(EndAction: EndAction.Replay));
+        var p = TestShow.Project("Main", entry);
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetDefaultEndAction(EndAction.Pause));
         h.Submit(new Play());
@@ -79,7 +79,7 @@ public sealed class DefaultEndActionTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Pause);
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetDefaultEndAction(EndAction.Replay));
         h.Submit(new Play());

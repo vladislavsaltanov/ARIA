@@ -30,11 +30,11 @@ public sealed class PlaybackHeaderPumpTests
         await _session.Dispatch(() =>
         {
             var track = new Track(TrackId.New(), "/audio/wire.wav", "wire", TimeSpan.FromSeconds(90), new TrackDefaults());
-            var entry = new PlaylistEntry(EntryId.New(), track.Id);
-            var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
+            var entry = new ProjectEntry(EntryId.New(), track.Id);
+            var project = new Project(ProjectId.New(), "Main", [entry]);
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
             bus.Submit(new ClientId("setup"), 1, new RestoreShow(
-                [track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(100),
+                [track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100),
                 TimeSpan.Zero, false, []));
             bus.Submit(new ClientId("setup"), 2, new MergeTracks([track]));
             using var viewModel = new TransportViewModel(bus);

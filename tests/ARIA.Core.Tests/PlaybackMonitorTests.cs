@@ -127,8 +127,8 @@ public sealed class PlaybackMonitorTests
         using var bus = new CommandBus(new ShowController(engine, monitor), BusMode.Inline);
         var t1 = TestShow.Track("one");
         var t2 = TestShow.Track("two");
-        var entry2 = TestShow.Entry(t2, new PlaylistOverrides(EndAction: EndAction.Pause));
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1), entry2);
+        var entry2 = TestShow.Entry(t2, new ProjectOverrides(EndAction: EndAction.Pause));
+        var p = TestShow.Project("Main", TestShow.Entry(t1), entry2);
         var seq = 0L;
         bus.Submit(Harness.Client, ++seq, new LoadShow([t1, t2], [p], p.Id));
         bus.Submit(Harness.Client, ++seq, new Play());
@@ -167,7 +167,7 @@ public sealed class PlaybackMonitorTests
         var monitor = new PlaybackMonitor();
         using var bus = new CommandBus(new ShowController(engine, monitor), BusMode.Inline);
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         var seq = 0L;
         bus.Submit(Harness.Client, ++seq, new LoadShow([t1], [p], p.Id));
         bus.Submit(Harness.Client, ++seq, new Play());
@@ -186,7 +186,7 @@ public sealed class PlaybackMonitorTests
         var monitor = new PlaybackMonitor();
         using var bus = new CommandBus(new ShowController(engine, monitor), BusMode.Inline);
         var t1 = TestShow.Track("one");
-        var p = TestShow.Playlist("Main", TestShow.Entry(t1));
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
         var seq = 0L;
         bus.Submit(Harness.Client, ++seq, new LoadShow([t1], [p], p.Id));
         bus.Submit(Harness.Client, ++seq, new Play());

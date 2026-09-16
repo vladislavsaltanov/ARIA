@@ -26,11 +26,11 @@ public sealed class EntryEndActionMenuTests : IDisposable
         await _session.Dispatch(() =>
         {
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-            var entry = new PlaylistEntry(EntryId.New(), TestTrack.Id);
-            var playlist = new Playlist(PlaylistId.New(), "Main", [entry]);
-            bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [playlist], playlist.Id));
-            using var vm = new PlaylistsViewModel(bus, () => [TestTrack]);
-            var center = new PlaylistCenter { DataContext = vm };
+            var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+            var project = new Project(ProjectId.New(), "Main", [entry]);
+            bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
+            using var vm = new ProjectsViewModel(bus, () => [TestTrack]);
+            var center = new ProjectCenter { DataContext = vm };
             var window = new Window { Content = center, Width = 1200, Height = 800 };
             window.Show();
             window.UpdateLayout();
@@ -55,7 +55,7 @@ public sealed class EntryEndActionMenuTests : IDisposable
 
             pause.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-            var updated = vm.Playlists[0].Entries[0];
+            var updated = vm.Projects[0].Entries[0];
             Assert.Equal(EndAction.Pause, updated.Overrides?.EndAction);
             Assert.Equal(EndAction.Pause, updated.EffectiveEndAction);
             window.Close();

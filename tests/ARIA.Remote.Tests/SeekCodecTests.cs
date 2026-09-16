@@ -33,8 +33,8 @@ public sealed class SeekCodecTests : IAsyncLifetime
     public async Task SeekTo_SeeksCurrentTrack()
     {
         var track = new Track(TrackId.New(), "/audio/live.flac", "трек", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id, null)]);
-        _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [playlist], playlist.Id));
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id, null)]);
+        _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         _bus.Submit(new ClientId("setup"), 2, new PlayTrack(track.Id));
         using var client = Connected();
 

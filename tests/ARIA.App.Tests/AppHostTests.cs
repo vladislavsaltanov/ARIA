@@ -27,9 +27,9 @@ public sealed class AppHostTests : IDisposable
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
 
         await host.StartAsync();
-        host.Submit(new CreatePlaylist("Main"));
+        host.Submit(new CreateProject("Main"));
 
-        await PollAsync(() => host.Bus.Snapshot().Show.Playlists.Length == 1);
+        await PollAsync(() => host.Bus.Snapshot().Show.Projects.Length == 1);
         Assert.True(File.Exists(Path.Combine(_directory, "library.db")));
     }
 
@@ -38,12 +38,12 @@ public sealed class AppHostTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
         var queue = ImmutableArray.Create(new QueueItem(null, track.Id, "x", null));
         var snapshotPath = Path.Combine(_directory, "show.json");
         using (var store = new JsonSnapshotStore(snapshotPath))
         {
-            store.Save(new ShowDocument([track], [playlist], playlist.Id, queue, -3, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, [], DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([track], [project], project.Id, queue, -3, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, [], DateTimeOffset.UtcNow));
         }
 
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
@@ -51,7 +51,7 @@ public sealed class AppHostTests : IDisposable
 
         await PollAsync(() => host.Bus.Snapshot().Show.ActiveId is not null);
         var snapshot = host.Bus.Snapshot();
-        Assert.Equal(playlist.Id, snapshot.Show.ActiveId);
+        Assert.Equal(project.Id, snapshot.Show.ActiveId);
         Assert.Single(snapshot.Queue.Items);
         Assert.Equal(-3, snapshot.Mixer.MasterGainDb);
         Assert.Equal(TimeSpan.FromMilliseconds(90), snapshot.Mixer.PanicFade);
@@ -64,11 +64,11 @@ public sealed class AppHostTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
         var snapshotPath = Path.Combine(_directory, "show.json");
         using (var store = new JsonSnapshotStore(snapshotPath))
         {
-            store.Save(new ShowDocument([track], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, [], DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.FromMinutes(2), true, [], DateTimeOffset.UtcNow));
         }
 
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
@@ -83,7 +83,7 @@ public sealed class AppHostTests : IDisposable
     {
         var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
         await host.StartAsync();
-        host.Submit(new CreatePlaylist("Main"));
+        host.Submit(new CreateProject("Main"));
         await Task.Delay(100);
 
         await host.DisposeAsync();
@@ -96,8 +96,8 @@ public sealed class AppHostTests : IDisposable
     {
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
         await host.StartAsync();
-        host.Submit(new CreatePlaylist("Main"));
-        await PollAsync(() => host.Bus.Snapshot().Show.Playlists.Length == 1);
+        host.Submit(new CreateProject("Main"));
+        await PollAsync(() => host.Bus.Snapshot().Show.Projects.Length == 1);
         var wav = TestWav.Write(_directory, "e2e.wav");
 
         var report = await host.ImportTracksAsync([wav]);
@@ -153,8 +153,8 @@ public sealed class AppHostTests : IDisposable
         var stored = Assert.Single(host.Library!.Load().Tracks);
         var missing = Path.Combine(_directory, "gone.flac");
         var lost = stored with { FilePath = missing };
-        var (_, playlists) = host.Library.Load();
-        host.Library.Upsert([lost], playlists);
+        var (_, projects) = host.Library.Load();
+        host.Library.Upsert([lost], projects);
 
         var ok = await host.RelinkTrackAsync(stored.Id, wav);
 
@@ -185,14 +185,14 @@ public sealed class AppHostTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var lost = new Track(TrackId.New(), Path.Combine(_directory, "ghost.wav"), "ghost", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var playlist = new Playlist(PlaylistId.New(), "Main", [new PlaylistEntry(EntryId.New(), lost.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), lost.Id)]);
         using (var library = new SqliteLibraryStore(Path.Combine(_directory, "library.db")))
         {
-            library.Upsert([lost], [playlist]);
+            library.Upsert([lost], [project]);
         }
         using (var store = new JsonSnapshotStore(Path.Combine(_directory, "show.json")))
         {
-            store.Save(new ShowDocument([lost], [playlist], playlist.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow));
+            store.Save(new ShowDocument([lost], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(90), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow));
         }
 
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());

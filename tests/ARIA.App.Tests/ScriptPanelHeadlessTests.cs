@@ -38,7 +38,7 @@ public sealed class ScriptPanelHeadlessTests
             Assert.Equal(340, drawer.OpenPaneLength);
             Assert.NotNull(window.FindControl<ScriptPanel>("ScriptPanel"));
             Assert.NotNull(window.FindControl<Border>("FocusSink"));
-            var center = window.FindControl<PlaylistCenter>("PlaylistCenter");
+            var center = window.FindControl<ProjectCenter>("ProjectCenter");
             Assert.NotNull(center);
             Assert.NotNull(center.FindControl<Button>("ScenarioButton"));
             Assert.NotNull(center.FindControl<Button>("HelpButton"));
@@ -220,7 +220,7 @@ public sealed class ScriptPanelHeadlessTests
             window.ToggleScriptPane();
             Assert.True(drawer.IsPaneOpen);
 
-            var center = window.FindControl<PlaylistCenter>("PlaylistCenter");
+            var center = window.FindControl<ProjectCenter>("ProjectCenter");
             Assert.NotNull(center);
             var point = center.TranslatePoint(new Point(60, 200), window) ?? new Point(500, 400);
             window.MouseDown(point, MouseButton.Left);

@@ -40,7 +40,7 @@
     previewGain: document.getElementById("preview-gain"),
     previewMute: document.getElementById("btn-preview-mute"),
     previewAudio: document.getElementById("preview-audio"),
-    playlists: document.getElementById("playlists"),
+    projects: document.getElementById("projects"),
     scriptSection: document.getElementById("script-section"),
     scriptTabs: document.getElementById("script-tabs"),
     scriptLines: document.getElementById("script-lines"),
@@ -245,7 +245,7 @@
     renderMixer();
     renderQueue();
     renderShowClock();
-    renderPlaylists();
+    renderProjects();
     renderScript();
     renderLock();
     renderDefaultAction();
@@ -262,7 +262,7 @@
       var prev = state.show;
       state.show = frame.state;
       renderShowClock();
-      renderPlaylists();
+      renderProjects();
       renderLock();
       renderDefaultAction();
       if (scriptContentChanged(prev, frame.state)) {
@@ -934,9 +934,9 @@
     });
   }
 
-  var openPlaylistId = null;
+  var openProjectId = null;
   var overridesEntryId = null;
-  var creatingPlaylist = false;
+  var creatingProject = false;
 
   function digestName(trackId) {
     var entries =
@@ -1004,7 +1004,7 @@
     yes.textContent = "Удалить";
     yes.addEventListener("click", () => {
       send("delete_playlist", { id: pl.id });
-      if (openPlaylistId === pl.id) openPlaylistId = null;
+      if (openProjectId === pl.id) openProjectId = null;
       refresh();
     });
     var no = document.createElement("button");
@@ -1198,7 +1198,7 @@
     add.textContent = "+ добавить";
     add.addEventListener("click", () => {
       if (select.value)
-        send("add_entry", { playlist: pl.id, track: select.value });
+        send("add_entry", { project: pl.id, track: select.value });
       refresh();
     });
     wrap.appendChild(select);
@@ -1206,7 +1206,7 @@
     return wrap;
   }
 
-  function createPlaylistRow(refresh) {
+  function createProjectRow(refresh) {
     var wrap = document.createElement("div");
     wrap.className = "inline-row";
     var input = textInput("новый плейлист");
@@ -1216,14 +1216,14 @@
     ok.addEventListener("click", () => {
       var name = input.value.trim();
       if (name) send("create_playlist", { name: name });
-      creatingPlaylist = false;
+      creatingProject = false;
       refresh();
     });
     var cancel = document.createElement("button");
     cancel.className = "mini";
     cancel.textContent = "Отмена";
     cancel.addEventListener("click", () => {
-      creatingPlaylist = false;
+      creatingProject = false;
       refresh();
     });
     wrap.appendChild(input);
@@ -1232,9 +1232,9 @@
     return wrap;
   }
 
-  function playlistBody(pl, refresh) {
+  function projectBody(pl, refresh) {
     var body = document.createElement("div");
-    body.className = "playlist-body";
+    body.className = "project-body";
     if (!pl.entries.length) {
       var empty = document.createElement("p");
       empty.className = "empty-note";
@@ -1248,31 +1248,31 @@
     return body;
   }
 
-  function renderPlaylists() {
-    var host = el.playlists;
+  function renderProjects() {
+    var host = el.projects;
     if (editingInside(host)) return;
     host.textContent = "";
     if (!state.show) return;
-    var playlists = state.show.playlists || [];
-    if (openPlaylistId && !playlists.some((pl) => pl.id === openPlaylistId)) {
-      openPlaylistId = null;
+    var projects = state.show.projects || [];
+    if (openProjectId && !projects.some((pl) => pl.id === openProjectId)) {
+      openProjectId = null;
       overridesEntryId = null;
     }
-    var refresh = () => renderPlaylists();
-    playlists.forEach((pl) => {
+    var refresh = () => renderProjects();
+    projects.forEach((pl) => {
       var row = document.createElement("div");
       row.className = "playlist";
       var active = state.show.activeId === pl.id;
       if (active) row.classList.add("active");
       var head = document.createElement("div");
-      head.className = "playlist-head";
+      head.className = "project-head";
       var name = document.createElement("span");
-      name.className = "playlist-name";
+      name.className = "project-name";
       head.appendChild(name);
       marquee(name, pl.name);
       if (active) {
         var badge = document.createElement("span");
-        badge.className = "playlist-badge";
+        badge.className = "project-badge";
         badge.textContent = "АКТИВНЫЙ";
         head.appendChild(badge);
       }
@@ -1303,26 +1303,26 @@
         ),
       );
       row.appendChild(head);
-      var isOpen = openPlaylistId === pl.id;
+      var isOpen = openProjectId === pl.id;
       if (isOpen) {
         row.classList.add("open");
-        row.appendChild(playlistBody(pl, refresh));
+        row.appendChild(projectBody(pl, refresh));
       }
       name.addEventListener("click", () => {
-        openPlaylistId = isOpen ? null : pl.id;
+        openProjectId = isOpen ? null : pl.id;
         overridesEntryId = null;
         refresh();
       });
       host.appendChild(row);
     });
     var createToggle = document.createElement("button");
-    createToggle.className = "playlist-create";
-    createToggle.textContent = creatingPlaylist ? "Отмена" : "+ новый плейлист";
+    createToggle.className = "project-create";
+    createToggle.textContent = creatingProject ? "Отмена" : "+ новый плейлист";
     createToggle.addEventListener("click", () => {
-      creatingPlaylist = !creatingPlaylist;
+      creatingProject = !creatingProject;
       refresh();
     });
-    if (creatingPlaylist) host.appendChild(createPlaylistRow(refresh));
+    if (creatingProject) host.appendChild(createProjectRow(refresh));
     host.appendChild(createToggle);
   }
 

@@ -10,15 +10,15 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
-public partial class PlaylistCenter : UserControl
+public partial class ProjectCenter : UserControl
 {
-    public PlaylistCenter()
+    public ProjectCenter()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
     }
 
-    private PlaylistsViewModel? _bound;
+    private ProjectsViewModel? _bound;
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
@@ -26,22 +26,22 @@ public partial class PlaylistCenter : UserControl
         {
             _bound.ImportFailed -= OnImportFailed;
             _bound.AudioImportIncomplete -= OnAudioImportIncomplete;
-            _bound.PlaylistImportMissing -= OnPlaylistImportMissing;
+            _bound.ProjectImportMissing -= OnProjectImportMissing;
             _bound.ExportSucceeded -= OnExportSucceeded;
             _bound.RevealRequested -= OnRevealRequested;
         }
-        _bound = DataContext as PlaylistsViewModel;
+        _bound = DataContext as ProjectsViewModel;
         if (_bound is not null)
         {
             _bound.ImportFailed += OnImportFailed;
             _bound.AudioImportIncomplete += OnAudioImportIncomplete;
-            _bound.PlaylistImportMissing += OnPlaylistImportMissing;
+            _bound.ProjectImportMissing += OnProjectImportMissing;
             _bound.ExportSucceeded += OnExportSucceeded;
             _bound.RevealRequested += OnRevealRequested;
         }
     }
 
-    private void OnRevealRequested(PlaylistsViewModel.EntryVm row)
+    private void OnRevealRequested(ProjectsViewModel.EntryVm row)
     {
         EntryList.UpdateLayout();
         EntryList.ScrollIntoView(row);
@@ -59,13 +59,13 @@ public partial class PlaylistCenter : UserControl
 
     private const int MaxListedMissing = 30;
 
-    private async void OnPlaylistImportMissing(PlaylistsViewModel.PlaylistImportReport report)
+    private async void OnProjectImportMissing(ProjectsViewModel.ProjectImportReport report)
     {
         if (TopLevel.GetTopLevel(this) is not Window owner)
         {
             return;
         }
-        if (DataContext is not PlaylistsViewModel viewModel)
+        if (DataContext is not ProjectsViewModel viewModel)
         {
             return;
         }
@@ -99,7 +99,7 @@ public partial class PlaylistCenter : UserControl
                         HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
                         Content = new TextBlock
                         {
-                            Text = $"В плейлисте «{report.PlaylistName}» не хватает файлов: {report.MissingFiles.Length}\n{listed}",
+                            Text = $"В плейлисте «{report.ProjectName}» не хватает файлов: {report.MissingFiles.Length}\n{listed}",
                             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                         },
                     },
@@ -121,7 +121,7 @@ public partial class PlaylistCenter : UserControl
         }
     }
 
-    private async Task PickMissingAsync(PlaylistsViewModel viewModel)
+    private async Task PickMissingAsync(ProjectsViewModel viewModel)
     {
         if (TopLevel.GetTopLevel(this) is not { } topLevel)
         {
@@ -203,19 +203,19 @@ public partial class PlaylistCenter : UserControl
 
     private void OnHelpClick(object? sender, RoutedEventArgs e) => HelpRequested?.Invoke(this, EventArgs.Empty);
 
-    private void OnDeletePlaylistClick(object? sender, RoutedEventArgs e)
+    private void OnDeleteProjectClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is PlaylistsViewModel viewModel)
+        if (DataContext is ProjectsViewModel viewModel)
         {
-            viewModel.DeletePlaylistCommand.Execute(null);
+            viewModel.DeleteProjectCommand.Execute(null);
         }
     }
 
     private void OnEntryDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (sender is ListBox list
-            && list.SelectedItem is PlaylistsViewModel.EntryVm entry
-            && DataContext is PlaylistsViewModel viewModel)
+            && list.SelectedItem is ProjectsViewModel.EntryVm entry
+            && DataContext is ProjectsViewModel viewModel)
         {
             if (entry.IsFaulted)
             {
@@ -229,7 +229,7 @@ public partial class PlaylistCenter : UserControl
     private void OnFaultRowTapped(object? sender, TappedEventArgs e)
     {
         if (sender is Border border
-            && border.DataContext is PlaylistsViewModel.EntryVm entry
+            && border.DataContext is ProjectsViewModel.EntryVm entry
             && entry.IsFaulted)
         {
             _ = ShowFaultDialog(entry);
@@ -239,20 +239,20 @@ public partial class PlaylistCenter : UserControl
     private void OnFaultIconTapped(object? sender, TappedEventArgs e)
     {
         if (sender is PathIcon icon
-            && icon.DataContext is PlaylistsViewModel.EntryVm entry)
+            && icon.DataContext is ProjectsViewModel.EntryVm entry)
         {
             e.Handled = true;
             _ = ShowFaultDialog(entry);
         }
     }
 
-    private async Task ShowFaultDialog(PlaylistsViewModel.EntryVm entry)
+    private async Task ShowFaultDialog(ProjectsViewModel.EntryVm entry)
     {
         if (TopLevel.GetTopLevel(this) is not Window owner)
         {
             return;
         }
-        if (DataContext is not PlaylistsViewModel viewModel)
+        if (DataContext is not ProjectsViewModel viewModel)
         {
             return;
         }
@@ -319,13 +319,13 @@ public partial class PlaylistCenter : UserControl
         }
     }
 
-    private async Task PickRelinkAsync(PlaylistsViewModel.EntryVm entry)
+    private async Task PickRelinkAsync(ProjectsViewModel.EntryVm entry)
     {
         if (TopLevel.GetTopLevel(this) is not { } topLevel)
         {
             return;
         }
-        if (DataContext is not PlaylistsViewModel viewModel)
+        if (DataContext is not ProjectsViewModel viewModel)
         {
             return;
         }
@@ -385,9 +385,9 @@ public partial class PlaylistCenter : UserControl
 
     private void CommitTitle()
     {
-        if (DataContext is PlaylistsViewModel viewModel && TitleBox.IsVisible)
+        if (DataContext is ProjectsViewModel viewModel && TitleBox.IsVisible)
         {
-            viewModel.RenamePlaylistCommand.Execute(TitleBox.Text);
+            viewModel.RenameProjectCommand.Execute(TitleBox.Text);
         }
         TitleBox.IsVisible = false;
         TitleText.IsVisible = true;
@@ -396,8 +396,8 @@ public partial class PlaylistCenter : UserControl
     private void OnEnqueueClick(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem item
-            && item.DataContext is PlaylistsViewModel.EntryVm entry
-            && DataContext is PlaylistsViewModel viewModel)
+            && item.DataContext is ProjectsViewModel.EntryVm entry
+            && DataContext is ProjectsViewModel viewModel)
         {
             viewModel.EnqueueEntry(entry);
         }
@@ -406,7 +406,7 @@ public partial class PlaylistCenter : UserControl
     private void OnEndActionMenuOpened(object? sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem menu
-            || menu.DataContext is not PlaylistsViewModel.EntryVm entry)
+            || menu.DataContext is not ProjectsViewModel.EntryVm entry)
         {
             return;
         }
@@ -428,8 +428,8 @@ public partial class PlaylistCenter : UserControl
     private void OnEndActionClick(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem item
-            && item.DataContext is PlaylistsViewModel.EntryVm entry
-            && DataContext is PlaylistsViewModel viewModel)
+            && item.DataContext is ProjectsViewModel.EntryVm entry
+            && DataContext is ProjectsViewModel viewModel)
         {
             viewModel.SetEntryEndAction(entry, (item.Tag as string) switch
             {
@@ -445,8 +445,8 @@ public partial class PlaylistCenter : UserControl
     private async void OnAudioClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem item
-            || item.DataContext is not PlaylistsViewModel.EntryVm entry
-            || DataContext is not PlaylistsViewModel viewModel
+            || item.DataContext is not ProjectsViewModel.EntryVm entry
+            || DataContext is not ProjectsViewModel viewModel
             || TopLevel.GetTopLevel(this) is not Window owner)
         {
             return;
@@ -477,8 +477,8 @@ public partial class PlaylistCenter : UserControl
     private void OnRemoveClick(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem item
-            && item.DataContext is PlaylistsViewModel.EntryVm entry
-            && DataContext is PlaylistsViewModel viewModel)
+            && item.DataContext is ProjectsViewModel.EntryVm entry
+            && DataContext is ProjectsViewModel viewModel)
         {
             viewModel.RemoveEntryAt(entry);
         }
@@ -488,7 +488,7 @@ public partial class PlaylistCenter : UserControl
 
     private async void OnFilesDropped(object? sender, DragEventArgs e)
     {
-        if (DataContext is not PlaylistsViewModel viewModel)
+        if (DataContext is not ProjectsViewModel viewModel)
         {
             return;
         }

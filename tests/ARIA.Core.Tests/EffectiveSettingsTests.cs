@@ -33,7 +33,7 @@ public sealed class EffectiveSettingsTests
     public void Override_WinsOverDefaults()
     {
         var track = TestShow.Track("original", EndAction.Advance, gainDb: 0);
-        var overrides = new PlaylistOverrides(
+        var overrides = new ProjectOverrides(
             Name: "имя",
             Color: "red",
             Note: "заметка",
@@ -62,7 +62,7 @@ public sealed class EffectiveSettingsTests
     public void PartialOverride_MixesEntryAndTrack()
     {
         var track = TestShow.Track("track", EndAction.Stop, gainDb: -4, fadeIn: new Fade(TimeSpan.FromMilliseconds(200), FadeCurve.SCurve));
-        var overrides = new PlaylistOverrides(GainDb: -10);
+        var overrides = new ProjectOverrides(GainDb: -10);
 
         var settings = EffectiveSettings.Resolve(TestShow.Entry(track, overrides), track);
 
