@@ -41,7 +41,7 @@ public sealed class ScriptPanelHeadlessTests
             var center = window.FindControl<ProjectCenter>("ProjectCenter");
             Assert.NotNull(center);
             Assert.NotNull(center.FindControl<Button>("ScenarioButton"));
-            Assert.NotNull(center.FindControl<Button>("HelpButton"));
+            Assert.Null(center.FindControl<Button>("HelpButton"));
 
             window.Close();
             return 0;

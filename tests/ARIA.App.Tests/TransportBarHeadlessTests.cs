@@ -15,7 +15,7 @@ public sealed class TransportBarHeadlessTests
     }
 
     [Fact]
-    public async Task MainWindow_Composes_TransportBar_AndHelpOverlay()
+    public async Task MainWindow_Composes_TransportBar_WithoutHelpOverlay()
     {
         await _session.Dispatch(() =>
         {
@@ -37,8 +37,8 @@ public sealed class TransportBarHeadlessTests
             Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ImportProjectButton"));
             Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ExportProjectButton"));
             Assert.NotNull(window.FindControl<Views.QueueColumn>("QueueColumn"));
-            Assert.NotNull(window.FindControl<Avalonia.Controls.Border>("HelpOverlay"));
-            Assert.NotNull(window.FindControl<Avalonia.Controls.Grid>("HotkeyTable"));
+            Assert.Null(window.FindControl<Avalonia.Controls.Border>("HelpOverlay"));
+            Assert.Null(window.FindControl<Avalonia.Controls.Grid>("HotkeyTable"));
 
             window.Close();
             return 0;
