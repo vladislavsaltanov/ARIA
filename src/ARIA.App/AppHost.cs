@@ -172,7 +172,16 @@ public sealed class AppHost : IAsyncDisposable
         foreach (var filePath in ExpandAudioFiles(paths))
         {
             progress?.Report(Path.GetFileName(filePath));
-            var imported = await Task.Run(() => import(filePath));
+            ImportedTrack? imported;
+            try
+            {
+                imported = await Task.Run(() => import(filePath));
+            }
+            catch (Exception)
+            {
+                failed.Add(filePath);
+                continue;
+            }
             if (imported is null)
             {
                 failed.Add(filePath);
