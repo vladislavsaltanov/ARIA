@@ -1549,11 +1549,8 @@ public sealed class ShowController : IShowHandler
         if (_retired.Contains(e.Handle))
         {
             _retired.Remove(e.Handle);
-            if (e.Kind == StreamEventKind.Ended)
-            {
-                _engine.DisposeStream(e.Handle);
-                _monitor?.Unbind(e.Handle);
-            }
+            _engine.DisposeStream(e.Handle);
+            _monitor?.Unbind(e.Handle);
         }
     }
 
