@@ -38,4 +38,7 @@ Risk level: Low. Удаление одного хендлера; пути зак
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-09-17, branch feat/project-phase-f-folder.
+Removed OnRootPointerPressed and its tunnel registration; drawer closes
+only via ToggleScriptPane (close button, Scenario button, Ctrl+T).
+Tests: App 337 isolated green.

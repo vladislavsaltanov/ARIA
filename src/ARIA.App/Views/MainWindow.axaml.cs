@@ -187,32 +187,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!ScriptDrawer.IsPaneOpen)
-        {
-            return;
-        }
-        var current = e.Source as Control;
-        while (current is not null)
-        {
-            if (current == ScriptPanel || current == PaneResizer || current.Name == "ScenarioButton")
-            {
-                return;
-            }
-            current = current.Parent as Control;
-        }
-        ScriptPanel.CommitOpenEdit();
-        ScriptDrawer.IsPaneOpen = false;
-        FocusSink.Focus();
-    }
-
     private void OnOpened(object? sender, EventArgs e)
     {
         Opened -= OnOpened;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(InputElement.KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
-        AddHandler(InputElement.PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
         PaneResizer.AddHandler(InputElement.PointerPressedEvent, OnGripPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(InputElement.PointerPressedEvent, OnResizeTunnelPressed, RoutingStrategies.Tunnel);
         AddHandler(InputElement.PointerMovedEvent, OnResizeTunnelMoved, RoutingStrategies.Tunnel);
