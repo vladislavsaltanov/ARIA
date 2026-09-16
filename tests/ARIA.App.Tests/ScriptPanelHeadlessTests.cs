@@ -150,7 +150,10 @@ public sealed class ScriptPanelHeadlessTests
             Assert.False(viewModel.HasScripts);
             var import = panel.FindControl<Button>("ImportScriptButton");
             Assert.NotNull(import);
-            Assert.True(import.IsVisible);
+            Assert.False(import.IsVisible);
+            var importEmpty = panel.FindControl<Button>("ImportScriptButtonEmpty");
+            Assert.NotNull(importEmpty);
+            Assert.True(importEmpty.IsVisible);
             var create = panel.FindControl<Button>("NewScriptButton");
             Assert.NotNull(create);
             Assert.False(create.IsVisible);
