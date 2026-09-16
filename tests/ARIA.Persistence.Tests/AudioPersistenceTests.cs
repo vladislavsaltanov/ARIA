@@ -200,12 +200,12 @@ public sealed class AudioPersistenceTests : IDisposable
             connection.Open();
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = $"INSERT INTO playlists(id, name, position) VALUES('{projectId}', 'Old', 0)";
+                command.CommandText = $"INSERT INTO projects(id, name, position) VALUES('{projectId}', 'Old', 0)";
                 command.ExecuteNonQuery();
             }
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = "INSERT INTO playlist_entries(id, playlist_id, track_id, position, overrides_json) " +
+                command.CommandText = "INSERT INTO project_entries(id, project_id, track_id, position, overrides_json) " +
                     $"VALUES('{entryId}', '{projectId}', '{track.Id.Value}', 0, '{{\"Name\":\"legacy\"}}')";
                 command.ExecuteNonQuery();
             }

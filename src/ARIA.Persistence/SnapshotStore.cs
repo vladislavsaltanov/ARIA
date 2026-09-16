@@ -109,8 +109,10 @@ internal sealed class ScriptDto
 internal sealed class ShowDocumentDto
 {
     public List<TrackDto> Tracks { get; set; } = [];
-    [JsonPropertyName("Playlists")]
     public List<ProjectDto> Projects { get; set; } = [];
+    [JsonPropertyName("Playlists")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ProjectDto>? LegacyPlaylists { get; set; }
     public Guid? ActiveId { get; set; }
     public List<QueueItemDto> Queue { get; set; } = [];
     public double MasterGainDb { get; set; }
@@ -123,7 +125,7 @@ internal sealed class ShowDocumentDto
 
     public ShowDocument ToDomain() => new(
         [.. Tracks.Select(TrackMapper.ToDomain)],
-        [.. Projects.Select(ProjectMapper.ToDomain)],
+        [.. (Projects.Count > 0 ? Projects : (LegacyPlaylists ?? [])).Select(ProjectMapper.ToDomain)],
         ActiveId is null ? null : new ProjectId(ActiveId.Value),
         [.. Queue.Select(q => new QueueItem(
             q.EntryId is null ? null : new EntryId(q.EntryId.Value),

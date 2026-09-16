@@ -19,6 +19,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
     {
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
         using var connection = Open();
+        MigrateLegacySchema(connection);
         EnsureSchema(connection);
         EnsureAudioColumn(connection);
     }
@@ -27,8 +28,8 @@ public sealed class SqliteLibraryStore : ILibraryStore
     {
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
-        Execute(connection, transaction, "DELETE FROM playlist_entries");
-        Execute(connection, transaction, "DELETE FROM playlists");
+        Execute(connection, transaction, "DELETE FROM project_entries");
+        Execute(connection, transaction, "DELETE FROM projects");
         Execute(connection, transaction, "DELETE FROM tracks");
 
         foreach (var track in tracks)
@@ -62,7 +63,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
             var projectDto = ProjectMapper.ToDto(projects[i]);
             var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "INSERT INTO playlists(id, name, position) VALUES($id, $name, $position)";
+            command.CommandText = "INSERT INTO projects(id, name, position) VALUES($id, $name, $position)";
             command.Parameters.AddWithValue("$id", projectDto.Id);
             command.Parameters.AddWithValue("$name", projectDto.Name);
             command.Parameters.AddWithValue("$position", i);
@@ -74,11 +75,11 @@ public sealed class SqliteLibraryStore : ILibraryStore
                 var entryCommand = connection.CreateCommand();
                 entryCommand.Transaction = transaction;
                 entryCommand.CommandText = """
-                    INSERT INTO playlist_entries(id, playlist_id, track_id, position, overrides_json)
-                    VALUES($id, $playlist_id, $track_id, $position, $overrides_json)
+                    INSERT INTO project_entries(id, project_id, track_id, position, overrides_json)
+                    VALUES($id, $project_id, $track_id, $position, $overrides_json)
                     """;
                 entryCommand.Parameters.AddWithValue("$id", entryDto.Id);
-                entryCommand.Parameters.AddWithValue("$playlist_id", projectDto.Id);
+                entryCommand.Parameters.AddWithValue("$project_id", projectDto.Id);
                 entryCommand.Parameters.AddWithValue("$track_id", entryDto.TrackId);
                 entryCommand.Parameters.AddWithValue("$position", j);
                 entryCommand.Parameters.AddWithValue("$overrides_json", entryDto.Overrides is null ? DBNull.Value : DtoJson.Serialize(entryDto.Overrides));
@@ -120,7 +121,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
 
         var projectRows = new List<(Guid Id, string Name)>();
         var projectCommand = connection.CreateCommand();
-        projectCommand.CommandText = "SELECT id, name FROM playlists ORDER BY position";
+        projectCommand.CommandText = "SELECT id, name FROM projects ORDER BY position";
         using (var reader = projectCommand.ExecuteReader())
         {
             while (reader.Read())
@@ -131,7 +132,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
 
         var entriesByProject = new Dictionary<Guid, List<ProjectEntry>>();
         var entryCommand = connection.CreateCommand();
-        entryCommand.CommandText = "SELECT id, playlist_id, track_id, overrides_json FROM playlist_entries ORDER BY playlist_id, position";
+        entryCommand.CommandText = "SELECT id, project_id, track_id, overrides_json FROM project_entries ORDER BY project_id, position";
         using (var reader = entryCommand.ExecuteReader())
         {
             while (reader.Read())
@@ -195,19 +196,41 @@ public sealed class SqliteLibraryStore : ILibraryStore
                 audio_json TEXT)
             """);
         Execute(connection, null, """
-            CREATE TABLE IF NOT EXISTS playlists(
+            CREATE TABLE IF NOT EXISTS projects(
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 position INTEGER NOT NULL)
             """);
         Execute(connection, null, """
-            CREATE TABLE IF NOT EXISTS playlist_entries(
+            CREATE TABLE IF NOT EXISTS project_entries(
                 id TEXT PRIMARY KEY,
-                playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 track_id TEXT NOT NULL,
                 position INTEGER NOT NULL,
                 overrides_json TEXT)
             """);
+    }
+
+    private static void MigrateLegacySchema(SqliteConnection connection)
+    {
+        if (TableExists(connection, "playlists") && !TableExists(connection, "projects"))
+        {
+            Execute(connection, null, "ALTER TABLE playlists RENAME TO projects");
+        }
+        if (TableExists(connection, "playlist_entries") && !TableExists(connection, "project_entries"))
+        {
+            Execute(connection, null, "ALTER TABLE playlist_entries RENAME TO project_entries");
+            Execute(connection, null, "ALTER TABLE project_entries RENAME COLUMN playlist_id TO project_id");
+        }
+    }
+
+    private static bool TableExists(SqliteConnection connection, string name)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=$name";
+        command.Parameters.AddWithValue("$name", name);
+        using var reader = command.ExecuteReader();
+        return reader.Read();
     }
 
     private static void EnsureAudioColumn(SqliteConnection connection)
