@@ -200,10 +200,14 @@
       </Grid>
     </ScrollViewer>
     <StackPanel Grid.Row="3" Margin="0,10,0,0">
-      <StackPanel IsVisible="{Binding ShowNoScripts}" Spacing="6" Margin="0,20,0,0">
+      <StackPanel IsVisible="{Binding ShowNoScripts}" Orientation="Horizontal" Spacing="8" Margin="0,20,0,0"
+                  HorizontalAlignment="Center">
         <Button Classes="ghost scriptFooter"
                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                 Command="{Binding CreateScriptCommand}" Content="+ Новый сценарий"/>
+        <Button x:Name="ImportScriptButtonEmpty" Classes="ghost scriptFooter"
+                VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                Command="{Binding ImportScriptCommand}" ToolTip.Tip="Импорт сценария из .aria-script.json" Content="Импорт"/>
       </StackPanel>
       <StackPanel IsVisible="{Binding ShowEmptyScript}" Spacing="6" Margin="0,20,0,0">
         <TextBlock Text="Сценарий пуст" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource BrushFg}"/>
@@ -229,7 +233,7 @@
             <TextBlock Text="Удалить" FontSize="13" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
-        <Button x:Name="ImportScriptButton" Classes="ghost scriptFooter"
+        <Button x:Name="ImportScriptButton" Classes="ghost scriptFooter" IsVisible="{Binding HasScripts}"
                 Command="{Binding ImportScriptCommand}" ToolTip.Tip="Импорт сценария из .aria-script.json">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
             <TextBlock Text="Импорт" FontSize="13" VerticalAlignment="Center"/>
