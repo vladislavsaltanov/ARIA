@@ -177,7 +177,7 @@ public sealed class AppHost : IAsyncDisposable
                 failed.Add(filePath);
                 continue;
             }
-            if (current.Any(t => t.FilePath == imported.Track.FilePath))
+            if (current.Any(t => UnicodePaths.Key(t.FilePath) == UnicodePaths.Key(imported.Track.FilePath)))
             {
                 skipped++;
                 continue;
