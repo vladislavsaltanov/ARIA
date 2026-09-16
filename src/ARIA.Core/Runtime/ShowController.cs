@@ -310,7 +310,7 @@ public sealed class ShowController : IShowHandler
         _panicked = false;
         _clockElapsed = TimeSpan.Zero;
         _clockRunning = false;
-        _scripts = load.Scripts.IsDefault ? [] : load.Scripts;
+        _scripts = load.Scripts.IsDefault ? [] : [.. load.Scripts.Select(s => s.Project is null ? s with { Project = load.Active } : s)];
 
         EmitShow();
         EmitQueue();
@@ -374,7 +374,7 @@ public sealed class ShowController : IShowHandler
         _panicFade = restore.PanicFade;
         _clockElapsed = TimeSpan.Zero;
         _clockRunning = false;
-        _scripts = restore.Scripts.IsDefault ? [] : restore.Scripts;
+        _scripts = restore.Scripts.IsDefault ? [] : [.. restore.Scripts.Select(s => s.Project is null ? s with { Project = restore.Active } : s)];
         _engine.SetMasterGain(restore.MasterGainDb);
         _current = null;
         _atEndBoundary = false;
@@ -890,6 +890,7 @@ public sealed class ShowController : IShowHandler
         }
         var removed = _projects[index];
         _projects = _projects.RemoveAt(index);
+        _scripts = _scripts.RemoveAll(s => s.Project == command.Id);
         if (_activeProjectId == command.Id)
         {
             _activeProjectId = null;
@@ -1331,7 +1332,7 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
-        _scripts = _scripts.Add(new Script(ScriptId.New(), command.Name, []));
+        _scripts = _scripts.Add(new Script(ScriptId.New(), command.Name, [], command.Project ?? _activeProjectId));
         EmitShow();
     }
 
