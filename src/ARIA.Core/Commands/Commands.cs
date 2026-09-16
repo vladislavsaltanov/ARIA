@@ -80,7 +80,7 @@ public sealed record NormalizeTrack(TrackId Track) : Command;
 
 public sealed record NormalizeProject(ProjectId Project) : Command;
 
-public sealed record CreateScript(string Name) : Command;
+public sealed record CreateScript(string Name, ProjectId? Project = null) : Command;
 
 public sealed record RenameScript(ScriptId Id, string Name) : Command;
 

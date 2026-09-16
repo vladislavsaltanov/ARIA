@@ -30,21 +30,41 @@ public sealed record ProjectExportEntry(
     ProjectOverrides? Overrides = null,
     ProjectFileTransition? Transition = null);
 
+public sealed record ProjectFileScriptLine(
+    [property: JsonPropertyName("at")] string At,
+    [property: JsonPropertyName("text")] string? Text,
+    [property: JsonPropertyName("tracks")] string[]? Tracks = null);
+
+public sealed record ProjectFileScript(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("lines")] ProjectFileScriptLine[]? Lines = null);
+
+public sealed record ProjectExportScriptLine(string At, string? Text, string[]? Tracks);
+
+public sealed record ProjectExportScript(string Name, IEnumerable<ProjectExportScriptLine> Lines);
+
 public sealed record ProjectFileDocument(
     [property: JsonPropertyName("format")] string Format,
     [property: JsonPropertyName("version")] int Version,
     [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("entries")] ImmutableArray<ProjectFileEntry> Entries);
+    [property: JsonPropertyName("entries")] ImmutableArray<ProjectFileEntry> Entries,
+    [property: JsonPropertyName("scripts")] ImmutableArray<ProjectFileScript> Scripts = default);
 
 public sealed class ProjectFormatException(string reason) : Exception(reason);
 
 public static class ProjectFormat
 {
-    public const string FormatId = "aria-playlist";
+    public const string FormatId = "aria-project";
 
-    public const int CurrentVersion = 1;
+    public const string LegacyFormatId = "aria-playlist";
 
-    public const string FileExtension = ".aria-playlist.json";
+    public const int CurrentVersion = 2;
+
+    public const int LegacyVersion = 1;
+
+    public const string FileExtension = ".aria-project.json";
+
+    public const string LegacyFileExtension = ".aria-playlist.json";
 
     private static readonly HashSet<string> TransitionKinds = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -61,13 +81,19 @@ public static class ProjectFormat
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static string Export(string name, IEnumerable<ProjectExportEntry> entries)
+    public static string Export(string name, IEnumerable<ProjectExportEntry> entries) =>
+        Export(name, entries, []);
+
+    public static string Export(string name, IEnumerable<ProjectExportEntry> entries, IEnumerable<ProjectExportScript> scripts)
     {
         var document = new ProjectFileDocument(
             FormatId,
             CurrentVersion,
             name,
-            entries.Select(ToFileEntry).ToImmutableArray());
+            entries.Select(ToFileEntry).ToImmutableArray(),
+            [.. scripts.Select(s => new ProjectFileScript(
+                s.Name,
+                [.. s.Lines.Select(l => new ProjectFileScriptLine(l.At, l.Text, l.Tracks))]))]);
         return JsonSerializer.Serialize(document, Options);
     }
 
@@ -86,11 +112,12 @@ public static class ProjectFormat
         {
             throw new ProjectFormatException("bad-json: пустой документ");
         }
-        if (!string.Equals(document.Format, FormatId, StringComparison.Ordinal))
+        var legacy = string.Equals(document.Format, LegacyFormatId, StringComparison.Ordinal);
+        if (!legacy && !string.Equals(document.Format, FormatId, StringComparison.Ordinal))
         {
             throw new ProjectFormatException($"bad-format: {document.Format}");
         }
-        if (document.Version != CurrentVersion)
+        if (document.Version != (legacy ? LegacyVersion : CurrentVersion))
         {
             throw new ProjectFormatException($"bad-version: {document.Version}");
         }
@@ -106,7 +133,24 @@ public static class ProjectFormat
         {
             ValidateEntry(entry);
         }
-        return document;
+        var scripts = document.Scripts.IsDefault ? [] : document.Scripts;
+        foreach (var script in scripts)
+        {
+            ValidateScript(script);
+        }
+        return document with { Scripts = scripts };
+    }
+
+    private static void ValidateScript(ProjectFileScript script)
+    {
+        if (string.IsNullOrWhiteSpace(script.Name))
+        {
+            throw new ProjectFormatException("bad-script: пустое имя сценария");
+        }
+        if (script.Lines is null)
+        {
+            throw new ProjectFormatException($"bad-script: {script.Name.Trim()}: нет строк");
+        }
     }
 
     public static ProjectOverrides? ToOverrides(ProjectFileEntry entry)

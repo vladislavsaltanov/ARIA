@@ -35,6 +35,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     private readonly ClientId _client = new("desktop-scripts");
     private readonly Func<ImmutableArray<Track>>? _trackSource;
     private readonly Func<TopLevel?>? _topLevel;
+    private readonly Func<ProjectId?, string?>? _projectDirSource;
     private readonly IDisposable _subscription;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<ScriptId> _knownScripts = [];
@@ -70,12 +71,13 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedScriptChanged(ScriptVm? value) => OnPropertyChanged(nameof(ShowEmptyScript));
 
-    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null)
+    public ScriptPanelViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<ProjectId?, string?>? projectDirSource = null)
     {
         _bus = bus;
         _trackSource = trackSource;
         _sync = sync;
         _topLevel = topLevel;
+        _projectDirSource = projectDirSource;
         _subscription = bus.Subscribe(Apply);
         Scripts.CollectionChanged += (_, _) =>
         {
@@ -191,7 +193,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         }
         await using var stream = await files[0].OpenReadAsync();
         using var reader = new StreamReader(stream);
-        ImportDocument(await reader.ReadToEndAsync());
+        ImportDocument(await reader.ReadToEndAsync(), files[0].Path.LocalPath);
     }
 
     public string ExportSelectedDocument()
@@ -213,7 +215,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         return JsonSerializer.Serialize(document, ScriptJsonOptions);
     }
 
-    public ScriptImportReport ImportDocument(string json)
+    public ScriptImportReport ImportDocument(string json, string? sourcePath = null)
     {
         ScriptFileDocument? document;
         try
@@ -254,13 +256,37 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             }
             lines.Add((atElapsed, line.Text ?? string.Empty, ResolveFileRefs(line.Tracks, tracks)));
         }
+        var copyNote = CopyScriptBesideProject(sourcePath);
         var name = UniqueScriptName(document.Name.Trim());
         _pendingImportLines = lines;
         _awaitedScriptName = name;
         Submit(new CreateScript(name));
         LastScriptError = string.Empty;
-        ScriptIoStatus = $"импортировано: {name} ({lines.Count})";
+        ScriptIoStatus = $"импортировано: {name} ({lines.Count}){copyNote}";
         return new ScriptImportReport(name, lines.Count, null);
+    }
+
+    private string CopyScriptBesideProject(string? sourcePath)
+    {
+        if (sourcePath is null)
+        {
+            return string.Empty;
+        }
+        var destDir = _projectDirSource?.Invoke(_bus.Snapshot().Show.ActiveId);
+        if (destDir is null || destDir == Path.GetDirectoryName(sourcePath))
+        {
+            return string.Empty;
+        }
+        try
+        {
+            Directory.CreateDirectory(destDir);
+            File.Copy(sourcePath, Path.Combine(destDir, Path.GetFileName(sourcePath)), overwrite: true);
+            return string.Empty;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return " — не удалось скопировать файл рядом с проектом";
+        }
     }
 
     [RelayCommand]
@@ -528,7 +554,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         }
         _lastScriptKey = key;
         Scripts.Clear();
-        foreach (var script in state.Scripts)
+        foreach (var script in state.Scripts.Where(s => s.Project == state.ActiveId))
         {
             Scripts.Add(new ScriptVm(script.Id, script.Name));
         }
@@ -565,6 +591,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     {
         var sb = new StringBuilder();
         sb.Append(selectedId);
+        sb.Append(state.ActiveId);
         foreach (var script in state.Scripts)
         {
             sb.Append('|').Append(script.Id).Append(':').Append(script.Name);
@@ -697,7 +724,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        var target = state.Scripts.FirstOrDefault(s => s.Name == awaited);
+        var target = state.Scripts.FirstOrDefault(s => s.Name == awaited && s.Project == state.ActiveId);
         if (target is null)
         {
             return;
@@ -738,7 +765,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         [property: JsonPropertyName("text")] string? Text,
         [property: JsonPropertyName("tracks")] string[]? Tracks = null);
 
-    private static string[]? TrackPaths(ImmutableArray<Mention> mentions, ImmutableArray<Track> tracks)
+    internal static string[]? TrackPaths(ImmutableArray<Mention> mentions, ImmutableArray<Track> tracks)
     {
         if (mentions.IsDefaultOrEmpty)
         {

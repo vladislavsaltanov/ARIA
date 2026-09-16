@@ -104,6 +104,7 @@ internal sealed class ScriptDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<ScriptLineDto> Lines { get; set; } = [];
+    public Guid? ProjectId { get; set; }
 }
 
 internal sealed class ShowDocumentDto

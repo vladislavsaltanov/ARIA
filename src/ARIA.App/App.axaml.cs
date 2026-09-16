@@ -71,7 +71,7 @@ public partial class App : Application
         projects.TrackRelink = (id, path) => host.RelinkTrackAsync(id, path);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
-        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow);
+        var scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow, projectDirSource: projects.GetProjectDirectory);
         MainWindow? window = null;
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),

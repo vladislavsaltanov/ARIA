@@ -137,6 +137,33 @@ public sealed class ScriptPanelHeadlessTests
     }
 
     [Fact]
+    public async Task ScriptPanel_ImportVisible_WithoutScripts()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var bus = NewBus();
+            using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);
+            var window = new Window { Width = 500, Height = 700, Content = new ScriptPanel { DataContext = viewModel } };
+            window.Show();
+
+            var panel = (ScriptPanel)window.Content!;
+            Assert.False(viewModel.HasScripts);
+            var import = panel.FindControl<Button>("ImportScriptButton");
+            Assert.NotNull(import);
+            Assert.True(import.IsVisible);
+            var create = panel.FindControl<Button>("NewScriptButton");
+            Assert.NotNull(create);
+            Assert.True(create.IsVisible);
+            var delete = panel.FindControl<Button>("DeleteScriptButton");
+            Assert.NotNull(delete);
+            Assert.False(delete.IsVisible);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task ScriptPanel_Binds_ScriptsAndLines()
     {
         await _session.Dispatch(() =>

@@ -30,6 +30,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
+    private readonly Dictionary<ProjectId, string> _projectDirs = [];
+    private readonly List<(string Name, string Dir)> _pendingDirs = [];
+    private List<StagedProjectScript>? _pendingProjectScripts;
+    private readonly HashSet<(ProjectId, string)> _submittedProjectScripts = [];
     private readonly IDisposable _subscription;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
@@ -255,14 +259,18 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        await FinishExportAsync(() => file.OpenWriteAsync(), file.Name);
+        await FinishExportAsync(() => file.OpenWriteAsync(), file.Name, Path.GetDirectoryName(file.Path.LocalPath), SelectedProject.Id);
     }
 
-    public async Task FinishExportAsync(Func<Task<Stream>> openWrite, string fileName)
+    public async Task FinishExportAsync(Func<Task<Stream>> openWrite, string fileName, string? fileDir = null, ProjectId? project = null)
     {
         await using var stream = await openWrite();
         await using var writer = new StreamWriter(stream);
         await writer.WriteAsync(ExportSelectedDocument());
+        if (fileDir is not null && (project ?? SelectedProject?.Id) is { } pid)
+        {
+            _projectDirs[pid] = fileDir;
+        }
         var count = SelectedProject?.Entries.Count ?? 0;
         ProjectIoStatus = string.Empty;
         ExportSucceeded?.Invoke(fileName, $"Сохранено: {fileName}\nТреков: {count}");
@@ -283,7 +291,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("ARIA-проект") { Patterns = [$"*{ProjectFormat.FileExtension}", "*.json"] },
+                new FilePickerFileType("ARIA-проект") { Patterns = [$"*{ProjectFormat.FileExtension}", $"*{ProjectFormat.LegacyFileExtension}", "*.json"] },
             ],
         });
         if (files.Count == 0)
@@ -292,7 +300,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         await using var stream = await files[0].OpenReadAsync();
         using var reader = new StreamReader(stream);
-        await ImportDocumentAsync(await reader.ReadToEndAsync());
+        await ImportDocumentAsync(await reader.ReadToEndAsync(), Path.GetDirectoryName(files[0].Path.LocalPath));
     }
 
     [RelayCommand]
@@ -481,14 +489,26 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             throw new InvalidOperationException("Нет выбранного проекта");
         }
-        var files = (_trackSource?.Invoke() ?? []).ToDictionary(t => t.Id, t => t.FilePath);
+        var tracks = _trackSource?.Invoke() ?? [];
+        var files = tracks.ToDictionary(t => t.Id, t => t.FilePath);
         var entries = SelectedProject.Entries.Select(entry => new ProjectExportEntry(
             files.GetValueOrDefault(entry.TrackId, entry.DisplayName),
             entry.Overrides));
-        return ProjectFormat.Export(SelectedProject.Name, entries);
+        var show = _bus.Snapshot().Show;
+        var scripts = show.Scripts
+            .Where(s => s.Project == SelectedProject.Id || (s.Project is null && SelectedProject.Id == show.ActiveId))
+            .Select(script => new ProjectExportScript(
+            script.Name,
+            script.Lines.Select(line => new ProjectExportScriptLine(
+                ScriptPanelViewModel.FormatLineTime(line.AtElapsed),
+                line.Text,
+                ScriptPanelViewModel.TrackPaths(line.Mentions, tracks)))));
+        return ProjectFormat.Export(SelectedProject.Name, entries, scripts);
     }
 
-    public Task<ProjectImportReport> ImportDocumentAsync(string json)
+    public string? GetProjectDirectory(ProjectId? id) => id is { } pid ? _projectDirs.GetValueOrDefault(pid) : null;
+
+    public Task<ProjectImportReport> ImportDocumentAsync(string json, string? sourceDir = null)
     {
         ProjectFileDocument document;
         try
@@ -497,10 +517,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         catch (ProjectFormatException e)
         {
-            LastImportError = e.Message;
-            SetTransientStatus("импорт не удался");
-            ImportFailed?.Invoke(e.Message);
-            return Task.FromResult(new ProjectImportReport(string.Empty, 0, [], 0, e.Message));
+            return FailDocumentImport(e.Message);
         }
         var tracks = _trackSource?.Invoke() ?? [];
         var byPath = tracks.ToDictionary(t => UnicodePaths.Key(t.FilePath), t => t.Id);
@@ -524,9 +541,32 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             }
             imports.Add(new ImportProjectEntry(trackId, ProjectFormat.ToOverrides(entry)));
         }
+        var stagedScripts = new List<StagedProjectScript>();
+        foreach (var script in document.Scripts)
+        {
+            var scriptName = script.Name.Trim();
+            var stagedLines = new List<StagedProjectScriptLine>();
+            foreach (var line in script.Lines ?? [])
+            {
+                if (!ScriptPanelViewModel.TryParseLineTime(line.At, out var at))
+                {
+                    return FailDocumentImport($"bad-script: {scriptName}: неверное время: {line.At}");
+                }
+                stagedLines.Add(new StagedProjectScriptLine(at, line.Text ?? string.Empty, ResolveScriptRefs(line.Tracks, byPath, byName)));
+            }
+            stagedScripts.Add(new StagedProjectScript(scriptName, stagedLines));
+        }
         if (imports.Count == 0)
         {
             var empty = new ProjectImportReport(document.Name, 0, [.. missing], 0, "нет известных треков");
+            if (stagedScripts.Count > 0)
+            {
+                var shellName = UniqueProjectName(document.Name);
+                _awaitedProjectName = shellName;
+                Submit(new CreateProject(shellName));
+                MergeProjectScripts(stagedScripts, shellName);
+                NoteProjectDirectory(shellName, sourceDir);
+            }
             if (empty.MissingFiles.Length > 0)
             {
                 ProjectImportMissing?.Invoke(empty);
@@ -535,6 +575,8 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         _awaitedProjectName = document.Name;
         Submit(new ImportProject(document.Name, [.. imports]));
+        MergeProjectScripts(stagedScripts, document.Name);
+        NoteProjectDirectory(document.Name, sourceDir);
         LastImportError = string.Empty;
         var report = new ProjectImportReport(document.Name, imports.Count, [.. missing], pendingTransitions);
         SetTransientStatus(Describe(report));
@@ -544,6 +586,129 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         return Task.FromResult(report);
     }
+
+    private Task<ProjectImportReport> FailDocumentImport(string error)
+    {
+        LastImportError = error;
+        SetTransientStatus("импорт не удался");
+        ImportFailed?.Invoke(error);
+        return Task.FromResult(new ProjectImportReport(string.Empty, 0, [], 0, error));
+    }
+
+    private static ImmutableArray<TrackId> ResolveScriptRefs(string[]? refs, Dictionary<string, TrackId> byPath, Dictionary<string, TrackId> byName)
+    {
+        if (refs is null || refs.Length == 0)
+        {
+            return [];
+        }
+        var result = new List<TrackId>(refs.Length);
+        foreach (var file in refs)
+        {
+            if (byPath.TryGetValue(UnicodePaths.Key(file), out var id)
+                || byName.TryGetValue(UnicodePaths.Key(Path.GetFileName(file)), out id))
+            {
+                result.Add(id);
+            }
+            else
+            {
+                result.Add(TrackId.New());
+            }
+        }
+        return [.. result];
+    }
+
+    private void NoteProjectDirectory(string projectName, string? dir)
+    {
+        if (dir is null)
+        {
+            return;
+        }
+        _pendingDirs.Add((projectName, dir));
+        DrainPendingDirs(_bus.Snapshot().Show);
+    }
+
+    private void DrainPendingDirs(ShowState state)
+    {
+        if (_pendingDirs.Count == 0)
+        {
+            return;
+        }
+        var remaining = new List<(string Name, string Dir)>();
+        foreach (var (name, dir) in _pendingDirs)
+        {
+            var project = state.Projects.FirstOrDefault(pr => pr.Name == name);
+            if (project is null)
+            {
+                remaining.Add((name, dir));
+                continue;
+            }
+            _projectDirs[project.Id] = dir;
+        }
+        _pendingDirs.Clear();
+        _pendingDirs.AddRange(remaining);
+    }
+
+    private void MergeProjectScripts(List<StagedProjectScript> staged, string projectName)
+    {
+        if (staged.Count == 0)
+        {
+            return;
+        }
+        foreach (var script in staged)
+        {
+            (_pendingProjectScripts ??= []).Add(script with { ProjectName = projectName });
+        }
+        FlushProjectScripts(_bus.Snapshot().Show);
+    }
+
+    private void FlushProjectScripts(ShowState state)
+    {
+        if (_pendingProjectScripts is not { Count: > 0 })
+        {
+            return;
+        }
+        var remaining = new List<StagedProjectScript>();
+        var created = false;
+        foreach (var staged in _pendingProjectScripts)
+        {
+            var project = state.Projects.FirstOrDefault(pr => pr.Name == staged.ProjectName);
+            if (project is null)
+            {
+                remaining.Add(staged);
+                continue;
+            }
+            var target = state.Scripts.FirstOrDefault(s => s.Name == staged.Name && s.Project == project.Id);
+            if (target is null)
+            {
+                if (_submittedProjectScripts.Add((project.Id, staged.Name)))
+                {
+                    Submit(new CreateScript(staged.Name, project.Id));
+                    created = true;
+                }
+                remaining.Add(staged);
+                continue;
+            }
+            foreach (var line in staged.Lines)
+            {
+                if (target.Lines.Any(l => l.AtElapsed == line.At
+                    && (l.Text ?? string.Empty) == line.Text
+                    && l.Mentions.Select(m => m.Track).SequenceEqual(line.Mentions)))
+                {
+                    continue;
+                }
+                Submit(new AddScriptLine(target.Id, line.At, line.Text, line.Mentions));
+            }
+        }
+        _pendingProjectScripts = remaining.Count == 0 ? null : remaining;
+        if (created)
+        {
+            FlushProjectScripts(_bus.Snapshot().Show);
+        }
+    }
+
+    private sealed record StagedProjectScriptLine(TimeSpan At, string Text, ImmutableArray<TrackId> Mentions);
+
+    private sealed record StagedProjectScript(string Name, List<StagedProjectScriptLine> Lines, string ProjectName = "");
 
     private static string Describe(ProjectImportReport report)
     {
@@ -717,6 +882,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             case ShowDelta delta:
                 Rebuild(delta.State, _trackSource?.Invoke() ?? []);
+                FlushProjectScripts(delta.State);
                 break;
             case TransportDelta delta:
                 var incoming = new HashSet<TrackId>(delta.State.Faulted);
@@ -807,6 +973,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
         _lastShow = state;
+        DrainPendingDirs(state);
         var key = BuildKey(state, tracks);
         if (key == _lastKey)
         {
