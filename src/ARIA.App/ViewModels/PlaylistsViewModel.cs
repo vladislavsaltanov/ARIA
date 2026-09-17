@@ -86,6 +86,8 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public Func<TrackId, string, Task<bool>>? TrackRelink { get; set; }
 
+    public Func<ProjectVm, Task<bool>>? ConfirmDeleteProject { get; set; }
+
     public bool IsTrackMissing(EntryVm entry)
     {
         if (_faultCauses.TryGetValue(entry.TrackId, out var cause) && cause is not SourceOpenFault.Unknown)
@@ -206,13 +208,13 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void DeleteProject()
+    private async Task DeleteProjectAsync()
     {
         if (SelectedProject is not { } project)
         {
             return;
         }
-        Submit(new DeleteProject(project.Id));
+        await RequestDeleteProjectAsync(project);
     }
 
     [RelayCommand]
@@ -968,7 +970,17 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         return editor;
     }
 
-    public void DeleteProjectAt(ProjectVm project) => Submit(new DeleteProject(project.Id));
+    public async Task DeleteProjectAtAsync(ProjectVm project) => await RequestDeleteProjectAsync(project);
+
+    private async Task RequestDeleteProjectAsync(ProjectVm project)
+    {
+        var confirm = ConfirmDeleteProject;
+        if (confirm is not null && !await confirm(project))
+        {
+            return;
+        }
+        Submit(new DeleteProject(project.Id));
+    }
 
     public void MoveEntry(EntryId id, int newIndex)
     {
