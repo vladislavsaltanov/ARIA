@@ -27,6 +27,8 @@ public sealed class AppHostLoggingTests : IDisposable
         await using var host = await StartHostAsync();
 
         await PollAsync(() => HasLine("host.started"));
+
+        Assert.Equal(_directory, FindLine("host.started").GetProperty("data").GetProperty("dir").GetString());
     }
 
     [Fact]
@@ -36,6 +38,8 @@ public sealed class AppHostLoggingTests : IDisposable
         host.Submit(new CreateProject("Logged"));
         host.Submit(new TickShowClock());
         await PollAsync(() => HasData("command", "type", "CreateProject"));
+        var seq = FindData("command", "type", "CreateProject").GetProperty("data").GetProperty("seq").GetString();
+        Assert.False(string.IsNullOrEmpty(seq));
         await Task.Delay(300);
 
         Assert.False(HasData("command", "type", "TickShowClock"));
@@ -53,6 +57,8 @@ public sealed class AppHostLoggingTests : IDisposable
         var line = FindLine("command.rejected");
         Assert.Equal("locked", line.GetProperty("data").GetProperty("reason").GetString());
         Assert.Equal("warn", line.GetProperty("level").GetString());
+        var playSeq = FindData("command", "type", "Play").GetProperty("data").GetProperty("seq").GetString();
+        Assert.Equal(playSeq, line.GetProperty("data").GetProperty("seq").GetString());
     }
 
     [Fact]
@@ -131,6 +137,12 @@ public sealed class AppHostLoggingTests : IDisposable
 
     private JsonElement FindLine(string message) =>
         ReadEntries(LogPath()).First(e => e.GetProperty("msg").GetString() == message);
+
+    private JsonElement FindData(string message, string key, string value) =>
+        ReadEntries(LogPath()).First(e => e.GetProperty("msg").GetString() == message
+            && e.TryGetProperty("data", out var data)
+            && data.TryGetProperty(key, out var field)
+            && field.GetString() == value);
 
     private static IEnumerable<JsonElement> ReadEntries(string path) =>
         File.ReadAllLines(path)

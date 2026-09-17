@@ -80,6 +80,25 @@ public sealed class AppLogTests : IDisposable
     }
 
     [Fact]
+    public void Write_NonPositiveMaxBytes_DoesNotRotate()
+    {
+        using var log = OpenLog(LogLevel.Info, maxBytes: 0);
+        for (var i = 0; i < 5; i++) log.Info("steady");
+
+        Assert.Equal(5, ReadLines().Length);
+        Assert.False(File.Exists(Path.Combine(_directory, "aria.log.1")));
+    }
+
+    [Fact]
+    public void Write_UndersizedPath_DoesNotThrow()
+    {
+        using var log = new FileAppLog("");
+
+        var exception = Record.Exception(() => log.Error("nowhere"));
+        Assert.Null(exception);
+    }
+
+    [Fact]
     public void NullLog_AcceptsWritesWithoutFile()
     {
         var exception = Record.Exception(() => NullAppLog.Instance.Error("dropped"));
