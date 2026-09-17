@@ -427,6 +427,27 @@ public sealed class SmoothingTests
     }
 
     [Fact]
+    public void PreRoll_AfterSeekWithCrossfade_StillFires()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled()));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(60)));
+        Assert.Equal(2, h.Engine.Created.Count);
+
+        monitor.Publish(h.Engine.Created[1].Handle, t1.Duration - TimeSpan.FromSeconds(60) - TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(3, h.Engine.Created.Count);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
     public void PreRoll_FiresOnce()
     {
         var monitor = new PlaybackMonitor();
