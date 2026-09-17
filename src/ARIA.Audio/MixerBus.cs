@@ -75,6 +75,10 @@ public sealed class MixerBus : IDisposable
 
     public float Peak { get; private set; }
 
+    public float PeakLeft { get; private set; }
+
+    public float PeakRight { get; private set; }
+
     public event Action<StreamEvent>? Events;
 
     public StreamHandle AddVoice(VoiceConfig config)
@@ -152,6 +156,8 @@ public sealed class MixerBus : IDisposable
         if (totalFrames == 0)
         {
             Peak = 0f;
+            PeakLeft = 0f;
+            PeakRight = 0f;
             return 0;
         }
         // Drain control queue first: audio thread never blocks on producers.
@@ -531,6 +537,8 @@ public sealed class MixerBus : IDisposable
     private void ComputePeak(ReadOnlySpan<float> output)
     {
         float peak = 0;
+        float left = 0;
+        float right = 0;
         for (var index = 0; index < output.Length; index++)
         {
             var magnitude = Math.Abs(output[index]);
@@ -538,7 +546,24 @@ public sealed class MixerBus : IDisposable
             {
                 peak = magnitude;
             }
+            var channel = index % _channels;
+            if (channel == 0)
+            {
+                if (magnitude > left)
+                {
+                    left = magnitude;
+                }
+            }
+            else if (channel == 1)
+            {
+                if (magnitude > right)
+                {
+                    right = magnitude;
+                }
+            }
         }
         Peak = peak;
+        PeakLeft = left;
+        PeakRight = _channels > 1 ? right : peak;
     }
 }

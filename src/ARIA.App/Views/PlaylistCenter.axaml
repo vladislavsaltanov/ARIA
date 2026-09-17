@@ -36,7 +36,7 @@
           </StackPanel>
         </Button>
         <Button Grid.Column="2" Classes="ghost" Width="32" Height="32"
-                Click="OnDeleteProjectClick" ToolTip.Tip="Удалить проект" VerticalAlignment="Center" Margin="6,0,10,0">
+                x:Name="CloseProjectButton" Click="OnDeleteProjectClick" ToolTip.Tip="Закрыть проект" VerticalAlignment="Center" Margin="6,0,10,0">
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
         </Button>
       </Grid>

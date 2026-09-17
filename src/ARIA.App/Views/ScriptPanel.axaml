@@ -227,7 +227,7 @@
           </StackPanel>
         </Button>
         <Button x:Name="DeleteScriptButton" Classes="ghost scriptFooter" IsVisible="{Binding HasScripts}"
-                Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="Удалить текущий сценарий">
+                Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="Удалить сценарий навсегда">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
             <PathIcon Data="{StaticResource icon_x}" Width="12" Height="12" VerticalAlignment="Center"/>
             <TextBlock Text="Удалить" FontSize="13" VerticalAlignment="Center"/>

@@ -379,12 +379,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _lufs.Process(_block.AsSpan(), _mixer.Channels);
         var now = Environment.TickCount64;
-        if (now - Volatile.Read(ref _lastMeterTicks) < 100)
+        if (now - Volatile.Read(ref _lastMeterTicks) < 33)
         {
             return;
         }
         Volatile.Write(ref _lastMeterTicks, now);
-        _meters.Publish(_lufs.MomentaryLufs);
+        _meters.Publish(_lufs.MomentaryLufs, _mixer.PeakLeft, _mixer.PeakRight);
     }
 
     private void PublishPosition()

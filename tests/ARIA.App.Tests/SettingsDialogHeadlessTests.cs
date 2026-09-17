@@ -58,6 +58,12 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
             Assert.NotNull(rowFormat.FindControl<Button>("ApplyRowFormatButton"));
             Assert.NotNull(rowFormat.FindControl<CheckBox>("UseFileNameCheck"));
             Assert.NotNull(rowFormat.FindControl<TextBox>("RowFormatBox"));
+            var playback = dialog.GetVisualDescendants().OfType<PlaybackSection>().FirstOrDefault();
+            Assert.NotNull(playback);
+            var smoothCheck = playback.FindControl<CheckBox>("MeterSmoothingCheck");
+            var smoothSlider = playback.FindControl<Slider>("MeterSmoothingSlider");
+            Assert.NotNull(smoothCheck);
+            Assert.NotNull(smoothSlider);
 
             dialog.Close();
             return 0;

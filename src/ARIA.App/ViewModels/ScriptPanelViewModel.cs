@@ -65,6 +65,8 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     public event Action<string>? ScriptImportFailed;
 
+    public Func<ScriptVm, Task<bool>>? ConfirmDeleteScript { get; set; }
+
     public ObservableCollection<ScriptVm> Scripts { get; } = [];
 
     public ObservableCollection<ScriptLineVm> Lines { get; } = [];
@@ -126,10 +128,15 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public void DeleteSelected()
+    public async Task DeleteSelectedAsync()
     {
         CommitOpenEdit();
         if (SelectedScript is not { } script)
+        {
+            return;
+        }
+        var confirm = ConfirmDeleteScript;
+        if (confirm is not null && !await confirm(script))
         {
             return;
         }

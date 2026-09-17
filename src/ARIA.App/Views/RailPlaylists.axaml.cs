@@ -50,7 +50,7 @@ public partial class RailProjects : UserControl
             && item.DataContext is ProjectsViewModel.ProjectVm project
             && DataContext is ProjectsViewModel viewModel)
         {
-            viewModel.DeleteProjectAt(project);
+            _ = viewModel.DeleteProjectAtAsync(project);
         }
     }
 }

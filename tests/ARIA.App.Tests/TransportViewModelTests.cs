@@ -14,6 +14,37 @@ public sealed class TransportViewModelTests
     private static readonly Track TestTrack = new(
         TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
 
+    [Theory]
+    [InlineData(0.2, 0.8)]
+    [InlineData(0.0, 1.0)]
+    public void SmoothLevel_Attack_IsInstant(double shown, double target)
+    {
+        Assert.Equal(target, TransportViewModel.SmoothLevel(shown, target, 33.0, 250, true));
+    }
+
+    [Fact]
+    public void SmoothLevel_Release_GlidesTowardTarget()
+    {
+        var once = TransportViewModel.SmoothLevel(0.8, 0.2, 33.0, 250, true);
+
+        Assert.True(once < 0.8 && once > 0.2);
+
+        var converged = 0.8;
+        for (var step = 0; step < 100; step++)
+        {
+            converged = TransportViewModel.SmoothLevel(converged, 0.2, 33.0, 250, true);
+        }
+
+        Assert.Equal(0.2, converged, 3);
+    }
+
+    [Fact]
+    public void SmoothLevel_Disabled_PassesThrough()
+    {
+        Assert.Equal(0.2, TransportViewModel.SmoothLevel(0.8, 0.2, 33.0, 250, false));
+        Assert.Equal(0.2, TransportViewModel.SmoothLevel(0.8, 0.2, 33.0, 0, true));
+    }
+
     [Fact]
     public void PlayCommand_SubmitsThroughBus()
     {
@@ -152,6 +183,31 @@ public sealed class TransportViewModelTests
         meters.Publish(-3.0);
 
         Assert.True(vm.LufsHot);
+    }
+
+    [Fact]
+    public void Levels_PublishChannelPeaksAndClip()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var meters = new MeterMonitor();
+        using var vm = new TransportViewModel(bus, null, null, meters);
+
+        Assert.Equal(0, vm.LevelLeft);
+        Assert.Equal(0, vm.LevelRight);
+        Assert.False(vm.LevelHot);
+
+        meters.Publish(-20.0, 0.8f, 0.3f);
+
+        Assert.Equal(0.8, vm.LevelLeft, 3);
+        Assert.Equal(0.3, vm.LevelRight, 3);
+        Assert.False(vm.LevelHot);
+
+        Assert.Equal("#FFECECEC", ((SolidColorBrush)vm.LevelBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
+
+        meters.Publish(-20.0, 0.5f, 1.0f);
+
+        Assert.True(vm.LevelHot);
+        Assert.Equal("#FFE5484D", ((SolidColorBrush)vm.LevelBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
     }
 
     [Theory]

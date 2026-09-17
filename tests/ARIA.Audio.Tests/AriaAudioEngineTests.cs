@@ -122,6 +122,32 @@ public sealed class AriaAudioEngineTests
     }
 
     [Fact]
+    public async Task Meter_PublishesStereoPeaks_WhilePlaying()
+    {
+        var sink = new CapturingSink(8000, 2);
+        var meters = new MeterMonitor();
+        using var engine = new AriaAudioEngine(new SyntheticSourceFactory(8000, 2), null, 8000, 2, 128, sink, meters);
+        var handle = engine.StartStream(
+            new TrackSource("/audio/sine.flac", TimeSpan.Zero, null),
+            new StreamOptions(StreamBus.Main, []));
+        engine.Transport(handle, TransportCommand.Play);
+
+        var deadline = Environment.TickCount64 + 10_000;
+        while (meters.Latest is not { } snapshot || snapshot.PeakLeft <= 0.1)
+        {
+            if (Environment.TickCount64 > deadline)
+            {
+                throw new TimeoutException("meter never published channel peaks");
+            }
+            await Task.Delay(10);
+        }
+
+        Assert.InRange(meters.Latest.PeakLeft, 0.3, 0.7);
+        Assert.InRange(meters.Latest.PeakRight, 0.3, 0.7);
+        engine.DisposeStream(handle);
+    }
+
+    [Fact]
     public async Task FiniteTrack_EndsWithAdvance()
     {
         using var stack = new Stack("finite.flac", "sine.flac");
