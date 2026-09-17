@@ -18,11 +18,11 @@
 
 ## Точки врезки
 
-1. `Program.Main`: `AppDomain.UnhandledException` + `TaskScheduler.UnobservedTaskException` → error fatal (логгер создаётся до старта Avalonia).
+1. `AppHost.StartAsync`: `AppDomain.UnhandledException` + `TaskScheduler.UnobservedTaskException` → error fatal (логгер уже на data dir); `DisposeAsync` снимает хендлеры.
 2. `AppHost.StartAsync/DisposeAsync`: info `host.started` (version, data dir — без секретов) / `host.stopped`.
 3. `AppHost.Submit`: info `command` (`{type, client}`), кроме `TickShowClock`.
 4. `AppHost` подписка на Bus: warn `command.rejected` (`{type?, reason}` из `Rejected`).
-5. `ImportTracksAsync` / `RelinkTrackAsync`: warn `import.failed` / `relink.failed` (`{path}`), успех импорта — info суммарно (`{added, skipped, failed}`).
+5. `ImportTracksAsync` / `RelinkTrackAsync`: warn `import.failed` / `relink.failed` (`{path}`).
 6. Remote: info `remote.started` (`{endpoint}`), warn `remote.port_fallback`.
 7. Output: warn `output.device_fault` (текст, что уже показывается в UI).
 

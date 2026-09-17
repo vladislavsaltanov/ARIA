@@ -87,6 +87,17 @@ public sealed class AppLogTests : IDisposable
         Assert.False(Directory.Exists(_directory));
     }
 
+    [Theory]
+    [InlineData(null, LogLevel.Info)]
+    [InlineData("", LogLevel.Info)]
+    [InlineData("debug", LogLevel.Debug)]
+    [InlineData("DEBUG", LogLevel.Debug)]
+    [InlineData("warn", LogLevel.Warn)]
+    [InlineData("error", LogLevel.Error)]
+    [InlineData("verbose", LogLevel.Info)]
+    public void ReadMinLevel_MapsNameToLevel(string? raw, LogLevel expected) =>
+        Assert.Equal(expected, AppLogConfig.ReadMinLevel(raw));
+
     private FileAppLog OpenLog(LogLevel minLevel = LogLevel.Info, long maxBytes = 5 * 1024 * 1024) =>
         new(Path.Combine(_directory, "aria.log"), minLevel, maxBytes);
 
