@@ -90,17 +90,14 @@ public sealed class AppHost : IAsyncDisposable
         }
         _started = true;
         Directory.CreateDirectory(DataDirectory);
-        _log = new FileAppLog(
-            Path.Combine(DataDirectory, "logs", "aria.log"),
-            Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL") is { } env
-                ? AppLogConfig.ReadMinLevel(env)
-                : SettingsStore.Load().LogLevel);
-        InstallFatalHandlers();
-        _log.Info("host.started", new Dictionary<string, string>
+        var stored = SettingsStore.Load();
+        var env = Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL");
+        if (env is not null || stored.LogEnabled)
         {
-            ["version"] = typeof(AppHost).Assembly.GetName().Version?.ToString() ?? "dev",
-            ["dir"] = DataDirectory,
-        });
+            _log = new FileAppLog(LogPath, env is null ? stored.LogLevel : AppLogConfig.ReadMinLevel(env));
+            InstallFatalHandlers();
+            LogStarted();
+        }
 
         Outputs = CreateOutputService();
         Outputs.Changed += OnOutputChanged;
@@ -258,6 +255,29 @@ public sealed class AppHost : IAsyncDisposable
             file.SetMinLevel(level);
         }
     }
+
+    public void SetLogEnabled(bool enabled)
+    {
+        if (enabled && _log is NullAppLog)
+        {
+            _log = new FileAppLog(LogPath, SettingsStore.Load().LogLevel);
+            InstallFatalHandlers();
+            LogStarted();
+        }
+        else if (!enabled && _log is FileAppLog file)
+        {
+            _log.Info("host.stopped");
+            RemoveFatalHandlers();
+            file.Dispose();
+            _log = NullAppLog.Instance;
+        }
+    }
+
+    private void LogStarted() => _log.Info("host.started", new Dictionary<string, string>
+    {
+        ["version"] = typeof(AppHost).Assembly.GetName().Version?.ToString() ?? "dev",
+        ["dir"] = DataDirectory,
+    });
 
     public void Submit(Command command)
     {

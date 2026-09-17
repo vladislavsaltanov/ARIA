@@ -9,19 +9,33 @@ public sealed partial class LogSectionVm : ObservableObject
 {
     private readonly Func<AppSettings> _snapshot;
     private readonly Action<AppSettings> _save;
-    private readonly Action<LogLevel>? _applied;
+    private readonly Action<AppSettings>? _applied;
     private LogLevel _level;
+    private bool _enabled;
 
-    public LogSectionVm(Func<AppSettings> snapshot, Action<AppSettings> save, LogLevel initial, string logPath, Action<LogLevel>? applied = null)
+    public LogSectionVm(Func<AppSettings> snapshot, Action<AppSettings> save, LogLevel initial, bool enabled, string logPath, Action<AppSettings>? applied = null)
     {
         _snapshot = snapshot;
         _save = save;
         _level = initial;
+        _enabled = enabled;
         LogPath = logPath;
         _applied = applied;
     }
 
     public string LogPath { get; }
+
+    public bool LogEnabled
+    {
+        get => _enabled;
+        set
+        {
+            if (SetProperty(ref _enabled, value))
+            {
+                Update(_snapshot() with { LogEnabled = value });
+            }
+        }
+    }
 
     public int LogLevelIndex
     {
@@ -43,8 +57,7 @@ public sealed partial class LogSectionVm : ObservableObject
             };
             if (SetProperty(ref _level, level))
             {
-                _save(_snapshot() with { LogLevel = level });
-                _applied?.Invoke(level);
+                Update(_snapshot() with { LogLevel = level });
             }
         }
     }
@@ -63,5 +76,11 @@ public sealed partial class LogSectionVm : ObservableObject
         catch (Exception)
         {
         }
+    }
+
+    private void Update(AppSettings next)
+    {
+        _save(next);
+        _applied?.Invoke(next);
     }
 }

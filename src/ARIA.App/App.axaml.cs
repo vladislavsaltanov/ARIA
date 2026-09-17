@@ -96,7 +96,11 @@ public partial class App : Application
             sync,
             host.Outputs,
             host.LogPath,
-            host.SetLogLevel);
+            updated =>
+            {
+                host.SetLogEnabled(updated.LogEnabled);
+                host.SetLogLevel(updated.LogLevel);
+            });
         window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();

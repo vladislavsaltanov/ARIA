@@ -7,7 +7,9 @@
   <Border Classes="section" x:DataType="vms:LogSectionVm" DataContext="{Binding Logging}">
     <StackPanel>
       <TextBlock Text="Журнал" Classes="sectionTitle"/>
-      <Grid ColumnDefinitions="Auto,*">
+      <CheckBox x:Name="LogEnabledCheck" Content="вести журнал" IsChecked="{Binding LogEnabled, Mode=TwoWay}"
+                FontSize="12" Margin="0,0,0,4"/>
+      <Grid ColumnDefinitions="Auto,*" IsEnabled="{Binding LogEnabled}">
         <TextBlock Text="уровень" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
         <ComboBox Grid.Column="1" x:Name="LogLevelBox" SelectedIndex="{Binding LogLevelIndex, Mode=TwoWay}"
                   VerticalAlignment="Center" Margin="14,0,0,0" MinWidth="160">

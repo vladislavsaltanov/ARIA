@@ -147,12 +147,12 @@ public sealed class AppHostLoggingTests : IDisposable
         await using var host = await StartHostAsync();
         host.SetLogEnabled(true);
         host.Submit(new CreateProject("Logged"));
-        await PollAsync(() => HasData("command", "type", "Logged"));
+        await PollAsync(() => HasData("command", "type", "CreateProject"));
         host.SetLogEnabled(false);
         host.Submit(new CreateProject("Quiet"));
         await Task.Delay(300);
 
-        Assert.Single(ReadEntries(LogPath()).Where(e => e.GetProperty("msg").GetString() == "command"));
+        Assert.Single(ReadEntries(LogPath()), e => e.GetProperty("msg").GetString() == "command");
     }
 
     [Fact]
