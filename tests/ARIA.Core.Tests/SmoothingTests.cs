@@ -186,7 +186,7 @@ public sealed class SmoothingTests
     }
 
     [Fact]
-    public void AutoAdvance_FadesOutLinear_InLogarithmic()
+    public void AutoAdvance_FadesOutEqualPower_InLogarithmic()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
@@ -199,7 +199,7 @@ public sealed class SmoothingTests
         h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
 
         var old = h.Engine.Created[0];
-        Assert.Equal(FadeCurve.Linear, Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Curve);
+        Assert.Equal(FadeCurve.Logarithmic, Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Curve);
         Assert.Equal(FadeCurve.Logarithmic, h.Engine.Last!.Mixes[0].Fade!.Curve);
     }
 
