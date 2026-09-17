@@ -435,6 +435,20 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void AudioSection_SelectPreviewOutput_RoutesToService()
+    {
+        var service = new AudioOutputService(
+            new OutputStubLister(() => [new OutputDevice("a", "Speakers", true), new OutputDevice("b", "Headphones", false)]),
+            new AppSettingsStore(_settingsPath));
+        var section = new AudioSectionVm(_ => { }, () => null, service);
+
+        section.SelectedPreviewOutputId = "b";
+
+        Assert.Equal("b", service.SelectedPreviewId);
+        Assert.Equal(AudioOutputService.SystemDefaultId, service.SelectedId);
+    }
+
+    [Fact]
     public void SettingsViewModel_ExposesAudio_AndSyncsFromMixer()
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);

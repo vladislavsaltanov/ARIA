@@ -59,6 +59,32 @@ public sealed class AudioOutputServiceTests : IDisposable
         Assert.DoesNotContain(service.Devices, d => d.Id == "b");
     }
 
+    [Fact]
+    public void SelectPreview_KnownDevice_PersistsWithoutTouchingMain()
+    {
+        var store = Store();
+        var selecting = new AudioOutputService(new StubLister(Devices), store);
+        Assert.True(selecting.SelectPreview("b"));
+
+        var restored = new AudioOutputService(new StubLister(Devices), store);
+
+        Assert.Equal("b", restored.SelectedPreviewId);
+        Assert.Equal(AudioOutputService.SystemDefaultId, restored.SelectedId);
+    }
+
+    [Fact]
+    public void Refresh_VanishedPreviewDevice_FallsBackToSystem()
+    {
+        var current = Devices();
+        var service = new AudioOutputService(new StubLister(() => current), Store());
+        Assert.True(service.SelectPreview("b"));
+        current = [new OutputDevice("a", "Speakers", true)];
+
+        service.Refresh();
+
+        Assert.Equal(AudioOutputService.SystemDefaultId, service.SelectedPreviewId);
+    }
+
     private static IReadOnlyList<OutputDevice> Devices() =>
         [new OutputDevice("a", "Speakers", true), new OutputDevice("b", "Headphones", false)];
 
