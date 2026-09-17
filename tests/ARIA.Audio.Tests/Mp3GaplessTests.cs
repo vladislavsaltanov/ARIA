@@ -52,6 +52,31 @@ public sealed class Mp3GaplessTests
         Assert.Equal(2112, info.DelaySamples);
     }
 
+    [Fact]
+    public void FirstAudibleFrame_AllSilent_ReturnsMinusOne()
+    {
+        Assert.Equal(-1, Mp3Gapless.FirstAudibleFrame(new float[1024], 2));
+    }
+
+    [Fact]
+    public void FirstAudibleFrame_FindsOffset()
+    {
+        var samples = new float[1024];
+        samples[100 * 2] = 0.5f;
+
+        Assert.Equal(100, Mp3Gapless.FirstAudibleFrame(samples, 2));
+    }
+
+    [Fact]
+    public void FirstAudibleFrame_IgnoresSubThresholdNoise()
+    {
+        var samples = new float[1024];
+        samples[10] = 1e-9f;
+        samples[500 * 2 + 1] = 0.25f;
+
+        Assert.Equal(500, Mp3Gapless.FirstAudibleFrame(samples, 2));
+    }
+
     private static Mp3GapInfo AssertRead(byte[] data)
     {
         Assert.True(Mp3Gapless.TryRead(data, out var info));
