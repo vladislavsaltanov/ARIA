@@ -55,7 +55,7 @@
                    BorderThickness="0" CornerRadius="0" Margin="0,0,0,16"/>
       <StackPanel Grid.Row="1" Margin="14,0,10,8">
         <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-        <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
       </StackPanel>
       <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,16">
         <Button Grid.Column="0" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
@@ -98,7 +98,7 @@
             </Panel>
           </Button>
           <Slider Width="120" Minimum="0" Maximum="125" Value="{Binding VolumePercent, Mode=TwoWay}"
-                  ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center" Margin="0,-2,0,2"/>
+                  ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center" Margin="0,-4,0,4"/>
           <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
                      Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>
         </StackPanel>
