@@ -1581,8 +1581,9 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
+        var lead = TimeSpan.FromTicks(Math.Max(0, Math.Min(_smoothing.AutoCrossfade.Ticks, snapshot.Remaining.Ticks)));
         _preRolled = true;
-        AdvanceWithCrossfade();
+        AdvanceWithCrossfade(lead);
     }
 
     private bool HasNext()
@@ -1673,9 +1674,9 @@ public sealed class ShowController : IShowHandler
         }
     }
 
-    private void AdvanceFromBoundary()
+    private void AdvanceFromBoundary(TimeSpan? lead = null)
     {
-        if (!StartFromOrder())
+        if (!StartFromOrder(lead))
         {
             _status = TransportStatus.Stopped;
             _atEndBoundary = false;
@@ -1685,21 +1686,21 @@ public sealed class ShowController : IShowHandler
         }
     }
 
-    private void AdvanceWithCrossfade()
+    private void AdvanceWithCrossfade(TimeSpan? lead = null)
     {
         var old = _current!;
         var handle = old.Handle;
         old.Handle = null;
-        AdvanceFromBoundary();
+        AdvanceFromBoundary(lead);
         if (handle is { } faded)
         {
-            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(_smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(lead ?? _smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
             _retired.Add(faded);
             _monitor?.Unbind(faded);
         }
     }
 
-    private bool StartFromOrder()
+    private bool StartFromOrder(TimeSpan? lead = null)
     {
         if (_queue.Count > 0)
         {
@@ -1710,7 +1711,7 @@ public sealed class ShowController : IShowHandler
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
-            StartStreamFor(_current, auto: true);
+            StartStreamFor(_current, auto: true, lead);
             _status = TransportStatus.Playing;
             _atEndBoundary = false;
             _panicked = false;
@@ -1725,14 +1726,14 @@ public sealed class ShowController : IShowHandler
             var project = _projects.First(p => p.Id == projectId);
             if (_cursor < project.Entries.Length)
             {
-                StartProjectEntry(project, _cursor, auto: true);
+                StartProjectEntry(project, _cursor, auto: true, lead);
                 return true;
             }
         }
         return false;
     }
 
-    private void StartProjectEntry(Project project, int index, bool auto)
+    private void StartProjectEntry(Project project, int index, bool auto, TimeSpan? lead = null)
     {
         var entry = project.Entries[index];
         var track = _trackMap[entry.TrackId];
@@ -1740,7 +1741,7 @@ public sealed class ShowController : IShowHandler
         _activeProjectId = project.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
-        StartStreamFor(_current, auto);
+        StartStreamFor(_current, auto, lead);
         _status = TransportStatus.Playing;
         _atEndBoundary = false;
         _panicked = false;
@@ -1761,7 +1762,7 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private void StartStreamFor(DeckInstance deck, bool auto)
+    private void StartStreamFor(DeckInstance deck, bool auto, TimeSpan? lead = null)
     {
         _preRolled = false;
         if (deck.Handle is { } previous)
@@ -1778,25 +1779,25 @@ public sealed class ShowController : IShowHandler
         var engine = _engine;
         if (_marshal is not { } marshal)
         {
-            FinishOpen(deck, engine.StartStream(source, options), auto);
+            FinishOpen(deck, engine.StartStream(source, options), auto, lead);
             return;
         }
         var seq = ++_openSeq;
         _pendingOpen = (seq, deck);
         _ = Task.Run(() => engine.StartStream(source, options)).ContinueWith(
-            task => marshal(() => CompleteOpen(seq, deck, auto, task)),
+            task => marshal(() => CompleteOpen(seq, deck, auto, task, lead)),
             TaskScheduler.Default);
         _ = Task.Delay(_openTimeout).ContinueWith(
             _ => marshal(() => OpenExpired(seq, deck)),
             TaskScheduler.Default);
     }
 
-    private void FinishOpen(DeckInstance deck, StreamHandle handle, bool auto)
+    private void FinishOpen(DeckInstance deck, StreamHandle handle, bool auto, TimeSpan? lead = null)
     {
         deck.Handle = handle;
         _monitor?.Bind(handle, Content(deck));
         var settings = deck.Settings;
-        var fadeIn = ResolveFadeIn(settings.In, auto);
+        var fadeIn = ResolveFadeIn(settings.In, auto, lead);
         var mix = fadeIn.Duration > TimeSpan.Zero
             ? new MixParameters(settings.GainDb, new FadeSpec(fadeIn.Duration, fadeIn.Curve, settings.GainDb, StopWhenDone: false))
             : new MixParameters(settings.GainDb, null);
@@ -1804,7 +1805,7 @@ public sealed class ShowController : IShowHandler
         _engine.Transport(handle, TransportCommand.Play);
     }
 
-    private void CompleteOpen(long seq, DeckInstance deck, bool auto, Task<StreamHandle> task)
+    private void CompleteOpen(long seq, DeckInstance deck, bool auto, Task<StreamHandle> task, TimeSpan? lead = null)
     {
         if (_pendingOpen is not { } pending || pending.Seq != seq || !ReferenceEquals(_current, deck))
         {
@@ -1824,7 +1825,7 @@ public sealed class ShowController : IShowHandler
             FaultCurrent(SourceOpenFault.Unknown.ToString());
             return;
         }
-        FinishOpen(deck, task.Result, auto);
+        FinishOpen(deck, task.Result, auto, lead);
     }
 
     private void OpenExpired(long seq, DeckInstance deck)
@@ -1854,13 +1855,13 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private Fade ResolveFadeIn(Fade trackFade, bool auto)
+    private Fade ResolveFadeIn(Fade trackFade, bool auto, TimeSpan? lead = null)
     {
         if (!_smoothing.Enabled)
         {
             return trackFade;
         }
-        var duration = auto ? _smoothing.AutoCrossfade : _smoothing.StartFade;
+        var duration = auto ? (lead ?? _smoothing.AutoCrossfade) : _smoothing.StartFade;
         var curve = auto ? FadeCurve.Logarithmic : trackFade.Curve;
         return duration > TimeSpan.Zero ? new Fade(duration, curve) : Fade.None;
     }

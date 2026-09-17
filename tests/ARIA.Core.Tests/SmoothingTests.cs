@@ -294,10 +294,10 @@ public sealed class SmoothingTests
         Assert.Empty(h.Engine.Disposed);
         var old = h.Engine.Created[0];
         var fadeOut = Assert.Single(old.Mixes, m => m.Fade is not null);
-        Assert.Equal(TimeSpan.FromMilliseconds(900), fadeOut.Fade!.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(500), fadeOut.Fade!.Duration);
         Assert.True(fadeOut.Fade!.StopWhenDone);
         var fresh = h.Engine.Last!;
-        Assert.Equal(TimeSpan.FromMilliseconds(900), fresh.Mixes[0].Fade!.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(500), fresh.Mixes[0].Fade!.Duration);
         Assert.False(fresh.Mixes[0].Fade!.StopWhenDone);
         Assert.Equal(TransportStatus.Playing, h.Transport.Status);
         Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
