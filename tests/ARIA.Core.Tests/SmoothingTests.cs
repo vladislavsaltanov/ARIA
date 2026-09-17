@@ -304,6 +304,25 @@ public sealed class SmoothingTests
     }
 
     [Fact]
+    public void PreRollLate_ClampsFadesToRemaining()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var pr = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [pr], pr.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        var old = h.Engine.Created[0];
+        Assert.Equal(TimeSpan.FromMilliseconds(300), Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(300), h.Engine.Last!.Mixes[0].Fade!.Duration);
+    }
+
+    [Fact]
     public void PreRoll_FiresOnce()
     {
         var monitor = new PlaybackMonitor();
