@@ -8,7 +8,7 @@ using Aria.Core.Playback;
 public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 {
     private readonly MixerBus _mixer;
-    private readonly IAudioSink _sink;
+    private IAudioSink _sink;
     private readonly ISourceFactory _sourceFactory;
     private readonly PlaybackMonitor? _monitor;
     private readonly MeterMonitor? _meters;
@@ -17,9 +17,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly Thread _renderThread;
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<int, StreamHandle> _mixerHandles = new();
+    private readonly ConcurrentQueue<(IAudioSink Sink, bool Preview)> _pendingSinks = [];
     private readonly ConcurrentQueue<BirthFault> _faultedAtBirth = [];
     private readonly MixerBus _preview;
-    private readonly IAudioSink _previewSink;
+    private IAudioSink _previewSink;
     private readonly float[] _previewBlock;
     private readonly ConcurrentDictionary<int, StreamHandle> _previewHandles = new();
     private long _previewGainBits = BitConverter.DoubleToInt64Bits(1.0);
@@ -109,7 +110,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         {
             var frames = (long)Math.Round(position.TotalSeconds * _mixer.SampleRate);
             _mixer.Seek(mixerHandle, Math.Max(0, frames));
-            _sink.Flush();
+            Volatile.Read(ref _sink).Flush();
         }
     }
 
@@ -128,7 +129,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _preview.StopAll(spec.FadeDuration);
         _previewHandles.Clear();
         Volatile.Write(ref _currentHandle, 0);
-        _sink.Flush();
+        Volatile.Read(ref _sink).Flush();
     }
 
     public StreamHandle StartPreview(TrackSource source, StreamOptions options)
@@ -150,7 +151,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         _preview.StopAll(TimeSpan.Zero);
         _previewHandles.Clear();
-        _previewSink.Flush();
+        Volatile.Read(ref _previewSink).Flush();
     }
 
     public void SetPreviewGain(double gainDb)
@@ -161,10 +162,14 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     public void ReplaceSink(IAudioSink sink)
     {
+        ArgumentNullException.ThrowIfNull(sink);
+        _pendingSinks.Enqueue((sink, false));
     }
 
     public void ReplacePreviewSink(IAudioSink sink)
     {
+        ArgumentNullException.ThrowIfNull(sink);
+        _pendingSinks.Enqueue((sink, true));
     }
 
     public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio)
@@ -247,6 +252,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _renderThread.Join(TimeSpan.FromSeconds(2));
         _mixer.Dispose();
         _preview.Dispose();
+        (_sink as IDisposable)?.Dispose();
+        (_previewSink as IDisposable)?.Dispose();
         _cts.Dispose();
     }
 
@@ -258,6 +265,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         while (!_cts.Token.IsCancellationRequested)
         {
+            DrainPendingSinks();
             EmitFaults();
             _mixer.Render(_block);
             ApplyMasterChain();
@@ -292,6 +300,23 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _previewSink.Write(_previewBlock);
         _previewTap?.Write(_previewBlock);
+    }
+
+    private void DrainPendingSinks()
+    {
+        while (_pendingSinks.TryDequeue(out var pending))
+        {
+            if (pending.Preview)
+            {
+                var old = Interlocked.Exchange(ref _previewSink, pending.Sink);
+                (old as IDisposable)?.Dispose();
+            }
+            else
+            {
+                var old = Interlocked.Exchange(ref _sink, pending.Sink);
+                (old as IDisposable)?.Dispose();
+            }
+        }
     }
 
     private void EmitFaults()

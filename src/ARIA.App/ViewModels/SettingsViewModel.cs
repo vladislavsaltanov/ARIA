@@ -66,7 +66,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 
-    public AppSettings SnapshotSettings() => new(RowFormat.UseFileName, RowFormat.RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction);
+    public AppSettings SnapshotSettings()
+    {
+        var stored = _settingsStore.Load();
+        return new(RowFormat.UseFileName, RowFormat.RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction, stored.OutputDeviceId, stored.OutputDeviceName);
+    }
 
     public void SaveSettings(AppSettings settings) => _settingsStore.Save(settings);
 

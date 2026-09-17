@@ -58,6 +58,10 @@ public sealed class AppHost : IAsyncDisposable
 
     public string DataDirectory { get; }
 
+    public AppSettingsStore SettingsStore { get; }
+
+    public AudioOutputService Outputs { get; private set; } = null!;
+
     public SampleRing PreviewTap { get; private set; } = null!;
 
     public AppHost(
@@ -67,6 +71,7 @@ public sealed class AppHost : IAsyncDisposable
         Func<ISourceFactory>? sourceFactory = null)
     {
         DataDirectory = dataDirectory;
+        SettingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
         _remoteOptions = remoteOptions;
         _sinkFactory = sinkFactory;
         _sourceFactory = sourceFactory;
@@ -81,7 +86,9 @@ public sealed class AppHost : IAsyncDisposable
         _started = true;
         Directory.CreateDirectory(DataDirectory);
 
-        var sink = _sinkFactory?.Invoke() ?? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames);
+        Outputs = CreateOutputService();
+        Outputs.Changed += OnOutputChanged;
+        var sink = _sinkFactory?.Invoke() ?? CreateMainSink();
         var factory = _sourceFactory?.Invoke() ?? new MiniaudioSourceFactory(SampleRate, Channels);
         SourceFactory = factory;
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
@@ -133,16 +140,91 @@ public sealed class AppHost : IAsyncDisposable
 
     private void MarshalEngineEvent(Action work) => _busRef?.Post(work);
 
-    private static IAudioSink CreatePreviewSink()
+    private AudioOutputService CreateOutputService()
     {
         try
         {
+            return new AudioOutputService(new MiniaudioOutputLister(), SettingsStore);
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException or InvalidOperationException)
+        {
+            return new AudioOutputService(new EmptyLister(), SettingsStore);
+        }
+    }
+
+    private void OnOutputChanged()
+    {
+        if (_engine is null || _rebuildingSink)
+        {
+            return;
+        }
+        _rebuildingSink = true;
+        try
+        {
+            _engine.ReplaceSink(CreateMainSink());
+            _engine.ReplacePreviewSink(CreatePreviewSink());
+        }
+        finally
+        {
+            _rebuildingSink = false;
+        }
+    }
+
+    private bool _rebuildingSink;
+
+    private byte[]? SavedDeviceBytes()
+    {
+        var id = Outputs.SelectedId;
+        if (string.IsNullOrEmpty(id))
+        {
+            return null;
+        }
+        try
+        {
+            return Convert.FromBase64String(id);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private IAudioSink CreateMainSink()
+    {
+        var deviceId = SavedDeviceBytes();
+        if (deviceId is null)
+        {
             return new MiniaudioSink(SampleRate, Channels, BlockSizeFrames);
+        }
+        try
+        {
+            return new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId);
+        }
+        catch (Exception e) when (e is InvalidOperationException or DllNotFoundException)
+        {
+            Outputs.NotifyDeviceFault("Устройство недоступно, используется системное");
+            return new MiniaudioSink(SampleRate, Channels, BlockSizeFrames);
+        }
+    }
+
+    private IAudioSink CreatePreviewSink()
+    {
+        try
+        {
+            var deviceId = SavedDeviceBytes();
+            return deviceId is null
+                ? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames)
+                : new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId);
         }
         catch (Exception e) when (e is InvalidOperationException or DllNotFoundException)
         {
             return new NullSink(SampleRate, Channels);
         }
+    }
+
+    private sealed class EmptyLister : IAudioOutputLister
+    {
+        public IReadOnlyList<OutputDevice> ListPlaybackDevices() => [];
     }
 
     public void Submit(Command command) => Bus.Submit(new ClientId("app"), Interlocked.Increment(ref _seq), command);

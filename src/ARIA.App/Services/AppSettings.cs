@@ -3,7 +3,7 @@ namespace Aria.App.Services;
 using System.Text.Json;
 using Aria.Core.Model;
 
-public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance)
+public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance, string OutputDeviceId = "", string OutputDeviceName = "")
 {
     public static AppSettings Default { get; } = new(false, "{name}", Smoothing.Default, EndAction.Advance);
 }
@@ -34,7 +34,9 @@ public sealed class AppSettingsStore(string path)
                 dto.UseFileName,
                 string.IsNullOrWhiteSpace(dto.RowFormat) ? AppSettings.Default.RowFormat : dto.RowFormat,
                 dto.Smoothing?.ToModel() ?? Smoothing.Default,
-                dto.DefaultEndAction ?? EndAction.Advance);
+                dto.DefaultEndAction ?? EndAction.Advance,
+                dto.OutputDeviceId ?? string.Empty,
+                dto.OutputDeviceName ?? string.Empty);
         }
         catch (Exception e) when (e is JsonException or IOException)
         {
@@ -56,13 +58,17 @@ public sealed class AppSettingsStore(string path)
         bool UseFileName,
         string RowFormat,
         SmoothingDto? Smoothing,
-        EndAction? DefaultEndAction)
+        EndAction? DefaultEndAction,
+        string? OutputDeviceId = null,
+        string? OutputDeviceName = null)
     {
         public static AppSettingsDto FromModel(AppSettings settings) => new(
             settings.UseFileName,
             settings.RowFormat,
             SmoothingDto.FromModel(settings.Smoothing),
-            settings.DefaultEndAction);
+            settings.DefaultEndAction,
+            settings.OutputDeviceId,
+            settings.OutputDeviceName);
 
         public Smoothing ToModel()
         {

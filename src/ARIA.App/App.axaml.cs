@@ -64,7 +64,7 @@ public partial class App : Application
     {
         var sync = SynchronizationContext.Current;
         var thumbs = new WaveformThumbs(host.Waveforms!);
-        var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
+        var settingsStore = host.SettingsStore;
         var rowSettings = settingsStore.Load();
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
         ScriptPanelViewModel? scripts = null;
