@@ -154,6 +154,37 @@ public sealed class ProjectsViewModelTests
     }
 
     [Fact]
+    public async Task DeleteProject_Denied_KeepsProject()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new ProjectsViewModel(bus, () => [TestTrack]);
+        vm.CreateProjectCommand.Execute(null);
+        Assert.Equal(2, vm.Projects.Count);
+        vm.SelectedProject = vm.Projects[1];
+        vm.ConfirmDeleteProject = _ => Task.FromResult(false);
+
+        vm.DeleteProjectCommand.Execute(null);
+        await Task.Delay(50);
+
+        Assert.Equal(2, vm.Projects.Count);
+    }
+
+    [Fact]
+    public async Task DeleteProject_Confirmed_RemovesProject()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new ProjectsViewModel(bus, () => [TestTrack]);
+        vm.CreateProjectCommand.Execute(null);
+        vm.SelectedProject = vm.Projects[1];
+        vm.ConfirmDeleteProject = _ => Task.FromResult(true);
+
+        vm.DeleteProjectCommand.Execute(null);
+        await Task.Delay(50);
+
+        Assert.Single(vm.Projects);
+    }
+
+    [Fact]
     public void Activate_MarksActiveProject()
     {
         var (bus, _, _) = Setup();
