@@ -13,7 +13,7 @@
 
 - `LogLevel { Debug, Info, Warn, Error }`
 - `IAppLog { void Write(LogLevel, string message, IReadOnlyDictionary<string,string>? data); }` + расширения `Info/Warn/Error/Debug`
-- `FileAppLog : IAppLog, IDisposable` — lock, fsync нет, flush на Dispose; `NullAppLog` для тестов/выключенного состояния
+- `FileAppLog : IAppLog, IDisposable` — lock, flush каждый write (краш переживает), ротация 5 МБ с одним бэкапом, `maxBytes <= 0` → дефолт; `NullAppLog` для тестов/выключенного состояния
 - Запрет секретов: пароли/токены/credentials не пишутся никогда (только факты: `remote.auth_failed`, без значений)
 
 ## Точки врезки

@@ -93,11 +93,12 @@ public sealed class AppHost : IAsyncDisposable
         _log = new FileAppLog(
             Path.Combine(DataDirectory, "logs", "aria.log"),
             AppLogConfig.ReadMinLevel(Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL")));
+        InstallFatalHandlers();
         _log.Info("host.started", new Dictionary<string, string>
         {
             ["version"] = typeof(AppHost).Assembly.GetName().Version?.ToString() ?? "dev",
+            ["dir"] = DataDirectory,
         });
-        InstallFatalHandlers();
 
         Outputs = CreateOutputService();
         Outputs.Changed += OnOutputChanged;
@@ -255,6 +256,7 @@ public sealed class AppHost : IAsyncDisposable
             {
                 ["type"] = command.GetType().Name,
                 ["client"] = "app",
+                ["seq"] = seq.ToString(),
             });
         }
         Bus.Submit(new ClientId("app"), seq, command);
@@ -264,7 +266,11 @@ public sealed class AppHost : IAsyncDisposable
     {
         if (e is Rejected rejected)
         {
-            _log.Warn("command.rejected", new Dictionary<string, string> { ["reason"] = rejected.Reason });
+            _log.Warn("command.rejected", new Dictionary<string, string>
+            {
+                ["reason"] = rejected.Reason,
+                ["seq"] = rejected.Seq.ToString(),
+            });
         }
     }
 

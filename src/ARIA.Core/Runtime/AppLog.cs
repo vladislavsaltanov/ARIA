@@ -45,6 +45,7 @@ public sealed class NullAppLog : IAppLog
 
 public sealed class FileAppLog : IAppLog, IDisposable
 {
+    private const long DefaultMaxBytes = 5 * 1024 * 1024;
     private readonly string _path;
     private readonly LogLevel _minLevel;
     private readonly long _maxBytes;
@@ -52,11 +53,11 @@ public sealed class FileAppLog : IAppLog, IDisposable
     private StreamWriter? _writer;
     private bool _disposed;
 
-    public FileAppLog(string path, LogLevel minLevel = LogLevel.Info, long maxBytes = 5 * 1024 * 1024)
+    public FileAppLog(string path, LogLevel minLevel = LogLevel.Info, long maxBytes = DefaultMaxBytes)
     {
         _path = path;
         _minLevel = minLevel;
-        _maxBytes = maxBytes;
+        _maxBytes = maxBytes <= 0 ? DefaultMaxBytes : maxBytes;
     }
 
     public void Write(LogLevel level, string message, IReadOnlyDictionary<string, string>? data = null)
@@ -81,7 +82,7 @@ public sealed class FileAppLog : IAppLog, IDisposable
                 _writer.WriteLine(Render(level, message, data));
                 _writer.Flush();
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ObjectDisposedException)
+            catch (Exception)
             {
                 CloseWriter();
             }
