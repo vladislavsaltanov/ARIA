@@ -2,8 +2,8 @@ namespace Aria.App.Tests;
 
 using Aria.App.ViewModels;
 using Aria.App.Views;
-using Aria.Core.Model;
 using Aria.Core.Runtime;
+using Aria.Core.Model;
 using Avalonia.Controls;
 using Avalonia.Headless;
 
@@ -33,6 +33,28 @@ public sealed class DeleteConfirmHeadlessTests : IDisposable
             center.DataContext = null;
 
             Assert.Null(vm.ConfirmDeleteProject);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ScriptPanel_BindsDeleteConfirm()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+            using var vm = new ScriptPanelViewModel(bus, () => [TestTrack]);
+            var panel = new ScriptPanel { DataContext = vm };
+            var window = new Window { Content = panel, Width = 500, Height = 700 };
+            window.Show();
+
+            Assert.NotNull(vm.ConfirmDeleteScript);
+
+            panel.DataContext = null;
+
+            Assert.Null(vm.ConfirmDeleteScript);
 
             window.Close();
             return 0;

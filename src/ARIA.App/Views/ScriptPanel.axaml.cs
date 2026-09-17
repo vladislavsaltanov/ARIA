@@ -31,12 +31,58 @@ public partial class ScriptPanel : UserControl
         if (_bound is not null)
         {
             _bound.ScriptImportFailed -= OnScriptImportFailed;
+            _bound.ConfirmDeleteScript = null;
         }
         _bound = DataContext as ScriptPanelViewModel;
         if (_bound is not null)
         {
             _bound.ScriptImportFailed += OnScriptImportFailed;
+            _bound.ConfirmDeleteScript = ConfirmDeleteScriptAsync;
         }
+    }
+
+    private async Task<bool> ConfirmDeleteScriptAsync(ScriptPanelViewModel.ScriptVm script)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return false;
+        }
+        var remove = new Button { Content = "Удалить" };
+        var cancel = new Button { Content = "Отмена" };
+        var dialog = new Window
+        {
+            Title = $"Удалить сценарий «{script.Name}»?",
+            Width = 440,
+            MinWidth = 360,
+            MinHeight = 120,
+            MaxWidth = 600,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Это действие нельзя отменить.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
+                    new StackPanel
+                    {
+                        Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        Spacing = 8,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                        Children = { remove, cancel },
+                    },
+                },
+            },
+        };
+        remove.Click += (_, _) => dialog.Close(true);
+        cancel.Click += (_, _) => dialog.Close(false);
+        return await dialog.ShowDialog<bool>(owner);
     }
 
     private async void OnScriptImportFailed(string message)
