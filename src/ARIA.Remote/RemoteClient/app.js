@@ -974,7 +974,7 @@
   function renameRow(pl, refresh) {
     var wrap = document.createElement("div");
     wrap.className = "inline-row";
-    var input = textInput("имя плейлиста", pl.name);
+    var input = textInput("имя проекта", pl.name);
     var ok = document.createElement("button");
     ok.className = "mini ok";
     ok.textContent = "ОК";
@@ -1209,7 +1209,7 @@
   function createProjectRow(refresh) {
     var wrap = document.createElement("div");
     wrap.className = "inline-row";
-    var input = textInput("новый плейлист");
+    var input = textInput("новый проект");
     var ok = document.createElement("button");
     ok.className = "mini ok";
     ok.textContent = "Создать";
@@ -1238,7 +1238,7 @@
     if (!pl.entries.length) {
       var empty = document.createElement("p");
       empty.className = "empty-note";
-      empty.textContent = "пустой плейлист";
+      empty.textContent = "пустой проект";
       body.appendChild(empty);
     }
     pl.entries.forEach((entry, index) => {
@@ -1317,7 +1317,7 @@
     });
     var createToggle = document.createElement("button");
     createToggle.className = "project-create";
-    createToggle.textContent = creatingProject ? "Отмена" : "+ новый плейлист";
+    createToggle.textContent = creatingProject ? "Отмена" : "+ новый проект";
     createToggle.addEventListener("click", () => {
       creatingProject = !creatingProject;
       refresh();
