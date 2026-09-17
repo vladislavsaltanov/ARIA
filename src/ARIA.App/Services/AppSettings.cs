@@ -3,7 +3,7 @@ namespace Aria.App.Services;
 using System.Text.Json;
 using Aria.Core.Model;
 
-public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance, string OutputDeviceId = "", string OutputDeviceName = "")
+public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance, string OutputDeviceId = "", string OutputDeviceName = "", string PreviewOutputDeviceId = "", string PreviewOutputDeviceName = "")
 {
     public static AppSettings Default { get; } = new(false, "{name}", Smoothing.Default, EndAction.Advance);
 }
@@ -36,7 +36,9 @@ public sealed class AppSettingsStore(string path)
                 dto.Smoothing?.ToModel() ?? Smoothing.Default,
                 dto.DefaultEndAction ?? EndAction.Advance,
                 dto.OutputDeviceId ?? string.Empty,
-                dto.OutputDeviceName ?? string.Empty);
+                dto.OutputDeviceName ?? string.Empty,
+                dto.PreviewOutputDeviceId ?? string.Empty,
+                dto.PreviewOutputDeviceName ?? string.Empty);
         }
         catch (Exception e) when (e is JsonException or IOException)
         {
@@ -60,7 +62,9 @@ public sealed class AppSettingsStore(string path)
         SmoothingDto? Smoothing,
         EndAction? DefaultEndAction,
         string? OutputDeviceId = null,
-        string? OutputDeviceName = null)
+        string? OutputDeviceName = null,
+        string? PreviewOutputDeviceId = null,
+        string? PreviewOutputDeviceName = null)
     {
         public static AppSettingsDto FromModel(AppSettings settings) => new(
             settings.UseFileName,
@@ -68,7 +72,9 @@ public sealed class AppSettingsStore(string path)
             SmoothingDto.FromModel(settings.Smoothing),
             settings.DefaultEndAction,
             settings.OutputDeviceId,
-            settings.OutputDeviceName);
+            settings.OutputDeviceName,
+            settings.PreviewOutputDeviceId,
+            settings.PreviewOutputDeviceName);
 
         public Smoothing ToModel()
         {

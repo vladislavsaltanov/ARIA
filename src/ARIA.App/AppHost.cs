@@ -172,9 +172,8 @@ public sealed class AppHost : IAsyncDisposable
 
     private bool _rebuildingSink;
 
-    private byte[]? SavedDeviceBytes()
+    private byte[]? SavedDeviceBytes(string id)
     {
-        var id = Outputs.SelectedId;
         if (string.IsNullOrEmpty(id))
         {
             return null;
@@ -191,7 +190,7 @@ public sealed class AppHost : IAsyncDisposable
 
     private IAudioSink CreateMainSink()
     {
-        var deviceId = SavedDeviceBytes();
+        var deviceId = SavedDeviceBytes(Outputs.SelectedId);
         if (deviceId is null)
         {
             return new MiniaudioSink(SampleRate, Channels, BlockSizeFrames);
@@ -211,13 +210,14 @@ public sealed class AppHost : IAsyncDisposable
     {
         try
         {
-            var deviceId = SavedDeviceBytes();
+            var deviceId = SavedDeviceBytes(Outputs.SelectedPreviewId);
             return deviceId is null
                 ? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames)
                 : new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId);
         }
         catch (Exception e) when (e is InvalidOperationException or DllNotFoundException)
         {
+            Outputs.NotifyPreviewFault("Прослушка недоступна, используется системное");
             return new NullSink(SampleRate, Channels);
         }
     }

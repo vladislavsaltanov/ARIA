@@ -66,11 +66,28 @@ public sealed partial class AudioSectionVm : ObservableObject
 
     public string OutputStatus => _outputs?.Status ?? string.Empty;
 
+    public string SelectedPreviewOutputId
+    {
+        get => _outputs?.SelectedPreviewId ?? string.Empty;
+        set
+        {
+            if (_outputs?.SelectPreview(value) == true)
+            {
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PreviewOutputStatus));
+            }
+        }
+    }
+
+    public string PreviewOutputStatus => _outputs?.PreviewStatus ?? string.Empty;
+
     private void OnOutputsChanged()
     {
         OnPropertyChanged(nameof(Outputs));
         OnPropertyChanged(nameof(SelectedOutputId));
         OnPropertyChanged(nameof(OutputStatus));
+        OnPropertyChanged(nameof(SelectedPreviewOutputId));
+        OnPropertyChanged(nameof(PreviewOutputStatus));
     }
 
     public string NormalizeProjectStatus
