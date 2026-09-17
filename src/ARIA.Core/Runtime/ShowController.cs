@@ -713,7 +713,8 @@ public sealed class ShowController : IShowHandler
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
-        _monitor?.Bind(handle, Content(deck) with { CueIn = filePosition });
+        deck.Settings = settings with { CueIn = filePosition };
+        _monitor?.Bind(handle, Content(deck));
         _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
         _engine.Transport(handle, TransportCommand.Play);
         _preRolled = false;
@@ -2049,7 +2050,7 @@ public sealed class ShowController : IShowHandler
     {
         public required EntryId? Entry { get; init; }
         public required Track Track { get; init; }
-        public required PlaybackSettings Settings { get; init; }
+        public required PlaybackSettings Settings { get; set; }
         public StreamHandle? Handle { get; set; }
     }
 }
