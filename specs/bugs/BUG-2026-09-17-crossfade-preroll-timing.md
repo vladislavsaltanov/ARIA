@@ -43,3 +43,11 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 ## Resolution
 
 <!-- filled in by validate-fix -->
+
+## Follow-up (2026-09-17): transition DSP verified clean
+
+- A paced realtime probe (production-like bus, marshal, monitor, mixer) with two different tones shows a clean swell (0.50 → 0.60 → 0.50), no hole.
+- A same-tone probe shows a deep dip, but the math proves it is phase cancellation between the two identical tones (a ~1ms start offset lands near opposite phase at 440Hz), not a product defect. Uncorrelated material cannot cancel this way.
+- Real-file open latency measured in milliseconds; imported durations decode-exact.
+- Side finding (minor, untouched): initial Play ramps the first track over the full auto window instead of the short start fade. Audibly a gentle swell-in, not a defect in transitions.
+- Remaining suspects are environmental (GC/device dropout) or file-specific; next step is on-device transition timing diagnostics, not more fade changes.
