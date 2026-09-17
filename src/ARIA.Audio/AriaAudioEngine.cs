@@ -82,7 +82,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             _faultedAtBirth.Enqueue(new BirthFault(handle.Value, fault));
             return handle;
         }
-        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio)));
+        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio), StartInactive: true));
         _mixerHandles[handle.Value] = mixerHandle;
         Volatile.Write(ref _currentHandle, handle.Value);
         return handle;

@@ -44,7 +44,8 @@ public sealed record VoiceConfig(
     ImmutableArray<MarkerSpec> Markers,
     TimeSpan CueIn,
     TimeSpan? CueOut,
-    TrackAudioSettings? Audio = null);
+    TrackAudioSettings? Audio = null,
+    bool StartInactive = false);
 
 public sealed class MixerBus : IDisposable
 {
@@ -206,7 +207,7 @@ public sealed class MixerBus : IDisposable
             CueInSeconds = config.CueIn.TotalSeconds,
             HasCueOut = config.CueOut is not null,
             CueOutSeconds = config.CueOut?.TotalSeconds ?? 0.0,
-            Active = true,
+            Active = !config.StartInactive,
         };
     }
 

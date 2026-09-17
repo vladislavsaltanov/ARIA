@@ -1801,8 +1801,8 @@ public sealed class ShowController : IShowHandler
         var mix = fadeIn.Duration > TimeSpan.Zero
             ? new MixParameters(settings.GainDb, new FadeSpec(fadeIn.Duration, fadeIn.Curve, settings.GainDb, StopWhenDone: false))
             : new MixParameters(settings.GainDb, null);
-        _engine.SetMix(handle, mix);
         _engine.Transport(handle, TransportCommand.Play);
+        _engine.SetMix(handle, mix);
     }
 
     private void CompleteOpen(long seq, DeckInstance deck, bool auto, Task<StreamHandle> task, TimeSpan? lead = null)
