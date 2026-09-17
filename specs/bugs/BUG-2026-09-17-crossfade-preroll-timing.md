@@ -44,6 +44,13 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 
 <!-- filled in by validate-fix -->
 
+## Diagnosis log (diagnose-root)
+
+- Reproduce: consistent in production (MP3, wired output, smoothing on, auto window up to 3s); manual mid-track switches stay smooth. Not reproduced in paced realtime probes with synthetic tones, WAV files, or a real MP3 through the full production-like stack (pumped bus, marshal, monitor, mixer): overlap envelope clean, open latency milliseconds, imported durations decode-exact.
+- Isolate: auto-transition timing path (early trigger on remaining time vs window, async next-stream open, retire-on-end). Manual path needs no prediction and always overlaps; boundary path without early trigger hard-cuts the old voice and swells the new one from silence.
+- Hypothesize (ranked): early trigger never fires in production (position snapshots stall or mismatch) leaving only the boundary path; trigger fires late so the old voice is retired mid-fade; next-stream open is slow (MP3 decode, silence scan, seek, marshal, pump backlog) leaving a gap the fade-in cannot cover.
+- Verify: pending production timeline (early-trigger fire with remaining/lead values, fade durations issued, open latency, end-event arrival order). Temporary env-gated timeline log added for one instrumented run, to be removed after.
+
 ## Follow-up (2026-09-17): transition DSP verified clean
 
 - A paced realtime probe (production-like bus, marshal, monitor, mixer) with two different tones shows a clean swell (0.50 → 0.60 → 0.50), no hole.
