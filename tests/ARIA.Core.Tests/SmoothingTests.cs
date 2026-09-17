@@ -186,7 +186,7 @@ public sealed class SmoothingTests
     }
 
     [Fact]
-    public void AutoAdvance_FadesOutEqualPower_InLogarithmic()
+    public void AutoAdvance_FadesOutGentleStart_InLogarithmic()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
@@ -199,7 +199,7 @@ public sealed class SmoothingTests
         h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
 
         var old = h.Engine.Created[0];
-        Assert.Equal(FadeCurve.Logarithmic, Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Curve);
+        Assert.Equal(FadeCurve.Exponential, Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Curve);
         Assert.Equal(FadeCurve.Logarithmic, h.Engine.Last!.Mixes[0].Fade!.Curve);
     }
 
@@ -323,7 +323,7 @@ public sealed class SmoothingTests
     }
 
     [Fact]
-    public void AutoCrossfade_UsesEqualPowerCurves()
+    public void AutoCrossfade_UsesExponentialOutLogarithmicIn()
     {
         var monitor = new PlaybackMonitor();
         using var h = new Harness(monitor);
@@ -340,12 +340,12 @@ public sealed class SmoothingTests
         var fadeIn = h.Engine.Last!.Mixes[0].Fade!;
         Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Duration);
         Assert.Equal(TimeSpan.FromMilliseconds(400), fadeIn.Duration);
-        Assert.Equal(FadeCurve.Logarithmic, fadeOut.Curve);
+        Assert.Equal(FadeCurve.Exponential, fadeOut.Curve);
         Assert.Equal(FadeCurve.Logarithmic, fadeIn.Curve);
     }
 
     [Fact]
-    public void ManualCrossfade_UsesEqualPowerOutCurve()
+    public void ManualCrossfade_UsesGentleStartOutCurve()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
@@ -359,7 +359,7 @@ public sealed class SmoothingTests
 
         var manual = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
         Assert.Equal(TimeSpan.FromMilliseconds(400), manual.Duration);
-        Assert.Equal(FadeCurve.Logarithmic, manual.Curve);
+        Assert.Equal(FadeCurve.Exponential, manual.Curve);
     }
 
     [Fact]
@@ -398,7 +398,7 @@ public sealed class SmoothingTests
         Assert.Empty(h.Engine.Disposed);
         var fadeOut = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
         Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Duration);
-        Assert.Equal(FadeCurve.Logarithmic, fadeOut.Curve);
+        Assert.Equal(FadeCurve.Exponential, fadeOut.Curve);
         Assert.True(fadeOut.StopWhenDone);
         var fadeIn = h.Engine.Last!.Mixes[0].Fade!;
         Assert.Equal(TimeSpan.FromMilliseconds(400), fadeIn.Duration);

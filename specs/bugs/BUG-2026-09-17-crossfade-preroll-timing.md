@@ -44,6 +44,14 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 
 Equal-power smoothing crossfades shipped (Option A, sqrt/sqrt): fade-out forced to Logarithmic on smoothing crossfade override paths (auto AdvanceWithCrossfade, manual ReleaseOld), pairing with existing sqrt fade-in. Power sum 1.0 constant, removing the -1.25 dB construction dip of the Linear-out/sqrt-in pair. Solo Start/Stop/Seek fades and smoothing-off behavior unchanged. Tests: AutoCrossfade_UsesEqualPowerCurves + manual-path test RED then GREEN; boundary expectation updated as intended consequence. Suites: Audio 144, Core 268, App 349, all green. Temp probe files deleted.
 
+## Follow-up (2026-09-17, wave 4): fade-out ducked 6 dB in first quarter
+
+- User feeling ("first track fades wrong") confirmed against engine math: `FaderNode` interpolates `from + (to-from)*Evaluate(curve,t)`, so Logarithmic fade-out is `1-sqrt(t)`, not `sqrt(1-t)` — minus 6 dB at quarter fade, pair power minus 3 dB. Wave-2 "constant power" claim used the wrong model of our own engine.
+- Fix: crossfade fade-outs (boundary `AdvanceWithCrossfade`, manual `ReleaseOld` override) use `Exponential` (`1-t^2`, minus 0.5 dB at quarter); pair with sqrt fade-in stays within +-0.5 dB. Solo stop/seek/track fades untouched.
+- A/B on user's real pair (Overcompensate -> Tear, 600/600 ms, boundary at 28.7 s): old curve ducked to -17.8 dB on fade attack vs -14.7 around; new curve flat -14.0..-14.9 through overlap, zone avg -15.1 vs edge -17.0.
+- Material note (same pair, solo decode): A outro loud (-10 dB), B intro starts -13.5 and decays to -22 by +3 s. Post-handoff slide is the song, no mixer fixes physics — same on any player.
+- Suites: Core 271, Audio 144, App 349, all green. Temp probes deleted.
+
 ## Follow-up (2026-09-17, wave 3): manual logic at track end
 
 - Done literally: auto transition now runs the manual sequence (`StartFromOrder` + `ReleaseOld(manual: true)`) from `CheckPreRoll`, no lead clamp, no separate auto path.
