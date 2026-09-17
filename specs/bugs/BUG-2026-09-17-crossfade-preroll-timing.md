@@ -44,6 +44,12 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 
 Equal-power smoothing crossfades shipped (Option A, sqrt/sqrt): fade-out forced to Logarithmic on smoothing crossfade override paths (auto AdvanceWithCrossfade, manual ReleaseOld), pairing with existing sqrt fade-in. Power sum 1.0 constant, removing the -1.25 dB construction dip of the Linear-out/sqrt-in pair. Solo Start/Stop/Seek fades and smoothing-off behavior unchanged. Tests: AutoCrossfade_UsesEqualPowerCurves + manual-path test RED then GREEN; boundary expectation updated as intended consequence. Suites: Audio 144, Core 268, App 349, all green. Temp probe files deleted.
 
+## Follow-up (2026-09-17, wave 5): preroll blind after seek
+
+- Production log caught it: both auto transitions went through `boundary-fallback`, zero `preroll-fire` lines. Root cause: `SeekWithCrossfade` rebound the monitor with a new `CueIn` but left `deck.Settings` stale, so `Content(current).Equals(snapshot.Deck)` never matched after any seek — preroll silently dead until next fresh start. Any seek-to-near-end test routine (the natural way to audition transitions) guaranteed the ugly path.
+- Fix: `DeckInstance.Settings` settable, seek syncs `CueIn` into settings, bind uses plain `Content(deck)`. Test `PreRoll_AfterSeekWithCrossfade_StillFires` RED then GREEN.
+- Suites: Core 272, Audio 144 green. Temp XFADE logging added for one instrumented run, fully removed after.
+
 ## Follow-up (2026-09-17, wave 4): fade-out ducked 6 dB in first quarter
 
 - User feeling ("first track fades wrong") confirmed against engine math: `FaderNode` interpolates `from + (to-from)*Evaluate(curve,t)`, so Logarithmic fade-out is `1-sqrt(t)`, not `sqrt(1-t)` — minus 6 dB at quarter fade, pair power minus 3 dB. Wave-2 "constant power" claim used the wrong model of our own engine.
