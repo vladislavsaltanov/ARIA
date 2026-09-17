@@ -165,7 +165,7 @@ public partial class ProjectCenter : UserControl
         var cancel = new Button { Content = "Отмена" };
         var dialog = new Window
         {
-            Title = $"Удалить проект «{project.Name}»?",
+            Title = $"Закрыть проект «{project.Name}»?",
             Width = 440,
             MinWidth = 360,
             MinHeight = 120,
@@ -181,7 +181,7 @@ public partial class ProjectCenter : UserControl
                 {
                     new TextBlock
                     {
-                        Text = "Проект будет удалён из списка. Аудиофайлы на диске останутся.",
+                        Text = "Проект будет закрыт и убран из списка. Файлы и папка проекта на диске останутся — его можно открыть заново.",
                         TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                     },
                     new StackPanel

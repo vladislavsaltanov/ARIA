@@ -27,7 +27,7 @@
           <Border Height="30" CornerRadius="6" Padding="12,0" Background="Transparent">
             <Border.ContextMenu>
               <ContextMenu>
-                <MenuItem Header="Удалить проект" Click="OnDeleteClick"/>
+                <MenuItem Header="Закрыть проект" Click="OnDeleteClick"/>
               </ContextMenu>
             </Border.ContextMenu>
             <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>

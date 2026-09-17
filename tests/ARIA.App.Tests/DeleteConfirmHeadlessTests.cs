@@ -2,10 +2,12 @@ namespace Aria.App.Tests;
 
 using Aria.App.ViewModels;
 using Aria.App.Views;
+using Aria.Core.Commands;
 using Aria.Core.Runtime;
 using Aria.Core.Model;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.VisualTree;
 
 [Collection("headless")]
 public sealed class DeleteConfirmHeadlessTests : IDisposable
@@ -65,6 +67,9 @@ public sealed class DeleteConfirmHeadlessTests : IDisposable
         await _session.Dispatch(() =>
         {
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+            var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+            var project = new Project(ProjectId.New(), "Main", [entry]);
+            bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
             using var vm = new ProjectsViewModel(bus, () => [TestTrack]);
             var rail = new RailProjects { DataContext = vm };
             var window = new Window { Content = rail, Width = 300, Height = 600 };
@@ -76,7 +81,9 @@ public sealed class DeleteConfirmHeadlessTests : IDisposable
             list.UpdateLayout();
             var row = list.ContainerFromIndex(0) as Control;
             Assert.NotNull(row);
-            var menu = row.ContextMenu;
+            var cell = row.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.ContextMenu is not null);
+            Assert.NotNull(cell);
+            var menu = cell.ContextMenu;
             Assert.NotNull(menu);
             var item = menu.Items.OfType<MenuItem>().FirstOrDefault();
             Assert.NotNull(item);
