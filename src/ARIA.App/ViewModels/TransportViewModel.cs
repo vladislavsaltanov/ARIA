@@ -42,7 +42,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private double _shownLufsLevel;
     private double _shownLeft;
     private double _shownRight;
-    private MeterSmoothing _meterSmoothing = MeterSmoothing.Default;
+    private MeterSmoothing _meterSmoothing;
     private LufsMeterZones _zones = LufsMeterZones.Default;
     private string _trackElapsedText = "--:--";
     private string _timeOfDayText = "--:--:--";
@@ -124,6 +124,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         _bus = bus;
         _trackSource = trackSource;
         _rowSettings = rowSettings ?? AppSettings.Default;
+        _meterSmoothing = _rowSettings.EffectiveMeterSmoothing;
         _sync = sync;
         _subscription = bus.Subscribe(ApplyEvent);
         if (monitor is not null)
@@ -259,6 +260,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     public void UpdateRowSettings(AppSettings settings)
     {
         _rowSettings = settings;
+        _meterSmoothing = settings.EffectiveMeterSmoothing;
         if (_lastTransport is { } state)
         {
             Apply(state);
