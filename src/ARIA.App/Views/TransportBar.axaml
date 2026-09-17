@@ -79,6 +79,16 @@
           <ProgressBar Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Width="44" Height="4"
                        Background="{StaticResource BrushLine}" Foreground="{Binding LufsBarBrush}"
                        VerticalAlignment="Center" BorderThickness="0"/>
+          <TextBlock Text="L" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+          <ProgressBar x:Name="LevelLeftBar" Minimum="0" Maximum="1" Value="{Binding LevelLeft}" Width="30" Height="4"
+                       Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
+                       VerticalAlignment="Center" BorderThickness="0"/>
+          <TextBlock Text="R" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+          <ProgressBar x:Name="LevelRightBar" Minimum="0" Maximum="1" Value="{Binding LevelRight}" Width="30" Height="4"
+                       Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
+                       VerticalAlignment="Center" BorderThickness="0"/>
         </StackPanel>
         <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
           <Button x:Name="MuteButton" Classes="bar" Width="30" Height="30" Command="{Binding ToggleMuteCommand}">

@@ -59,6 +59,15 @@ public sealed class TransportBarHeadlessTests
             Assert.NotNull(bar);
             Assert.Same(viewModel, bar.DataContext);
 
+            var left = bar.FindControl<ProgressBar>("LevelLeftBar");
+            var right = bar.FindControl<ProgressBar>("LevelRightBar");
+            Assert.NotNull(left);
+            Assert.NotNull(right);
+            viewModel.LevelLeft = 0.8;
+            viewModel.LevelRight = 0.3;
+            Assert.Equal(0.8, left.Value);
+            Assert.Equal(0.3, right.Value);
+
             window.Close();
             return 0;
         }, CancellationToken.None);
