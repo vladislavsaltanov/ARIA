@@ -154,6 +154,28 @@ public sealed class TransportViewModelTests
         Assert.True(vm.LufsHot);
     }
 
+    [Fact]
+    public void Levels_PublishChannelPeaksAndClip()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var meters = new MeterMonitor();
+        using var vm = new TransportViewModel(bus, null, null, meters);
+
+        Assert.Equal(0, vm.LevelLeft);
+        Assert.Equal(0, vm.LevelRight);
+        Assert.False(vm.LevelHot);
+
+        meters.Publish(-20.0, 0.8f, 0.3f);
+
+        Assert.Equal(0.8, vm.LevelLeft, 3);
+        Assert.Equal(0.3, vm.LevelRight, 3);
+        Assert.False(vm.LevelHot);
+
+        meters.Publish(-20.0, 0.5f, 1.0f);
+
+        Assert.True(vm.LevelHot);
+    }
+
     [Theory]
     [InlineData(-30.0, "#FFECECEC")]
     [InlineData(-15.0, "#FF3FB950")]
