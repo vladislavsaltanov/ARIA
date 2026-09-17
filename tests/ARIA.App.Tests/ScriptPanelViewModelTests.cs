@@ -44,6 +44,31 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task DeleteSelected_Denied_KeepsScript()
+    {
+        _viewModel.CreateScriptCommand.Execute(null);
+        Assert.Single(_viewModel.Scripts);
+        _viewModel.ConfirmDeleteScript = _ => Task.FromResult(false);
+
+        _viewModel.DeleteSelectedCommand.Execute(null);
+        await Task.Delay(50);
+
+        Assert.Single(_viewModel.Scripts);
+    }
+
+    [Fact]
+    public async Task DeleteSelected_Confirmed_RemovesScript()
+    {
+        _viewModel.CreateScriptCommand.Execute(null);
+        _viewModel.ConfirmDeleteScript = _ => Task.FromResult(true);
+
+        _viewModel.DeleteSelectedCommand.Execute(null);
+        await Task.Delay(50);
+
+        Assert.Empty(_viewModel.Scripts);
+    }
+
+    [Fact]
     public void RenameSelected_UpdatesTabName()
     {
         _viewModel.CreateScriptCommand.Execute(null);
