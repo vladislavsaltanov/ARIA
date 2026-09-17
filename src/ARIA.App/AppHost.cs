@@ -568,6 +568,11 @@ public sealed class AppHost : IAsyncDisposable
     private void SyncShowState(ImmutableArray<Track> tracks)
     {
         Submit(new MergeTracks(tracks));
+        var missing = tracks.Where(t => !File.Exists(t.FilePath)).Select(t => t.Id).ToImmutableArray();
+        if (!missing.IsEmpty)
+        {
+            Submit(new MarkMissing(missing));
+        }
     }
 
     public async ValueTask DisposeAsync()

@@ -763,6 +763,14 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         _awaitedProjectName = document.Name;
         Submit(new ImportProject(document.Name, [.. imports]));
+        var pathsByTrack = tracks.ToDictionary(t => t.Id, t => t.FilePath);
+        var missingIds = imports.Select(i => i.Track).Distinct()
+            .Where(id => pathsByTrack.TryGetValue(id, out var path) && !File.Exists(path))
+            .ToImmutableArray();
+        if (!missingIds.IsEmpty)
+        {
+            Submit(new MarkMissing(missingIds));
+        }
         MergeProjectScripts(stagedScripts, document.Name);
         NoteProjectDirectory(document.Name, sourceDir);
         LastImportError = string.Empty;

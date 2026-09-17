@@ -48,3 +48,15 @@ constructor. Tests: Core 178, App 252, Persistence 21, Audio 70,
 Remote 59.
 
 Status: CLOSED 2026-09-15.
+
+## Follow-up 2026-09-18: badge missing on project open and merge
+
+Symptom: tracks resolved or merged after boot showed no badge until a play attempt.
+Root cause: fault flags were set only by the one-shot boot scan plus engine open
+failures. Tracks entering the show later — project document import resolving to
+ghost library files, tracks merged via SyncShowState — were never checked.
+Fix: the boundary that introduces the tracks submits MarkMissing too —
+ImportDocumentAsync for resolved-but-missing files, AppHost.SyncShowState for
+merged ghosts. Engine-open path untouched.
+Tests: ImportDocumentAsync_ResolvedGhostFile_MarksFaulted,
+ImportTracks_MergedGhostFile_MarksFaulted. Suites: App 393, Core 288 green.
