@@ -40,6 +40,25 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Roundtrip_PreservesMeterSmoothing()
+    {
+        var store = new AppSettingsStore(_path);
+        store.Save(new AppSettings(true, "{name}", Smoothing.Default, EndAction.Advance, "", "", "", "", new MeterSmoothing(false, 500)));
+
+        var loaded = store.Load();
+
+        Assert.Equal(new MeterSmoothing(false, 500), loaded.MeterSmoothing);
+        Assert.Equal(new MeterSmoothing(false, 500), loaded.EffectiveMeterSmoothing);
+    }
+
+    [Fact]
+    public void EffectiveMeterSmoothing_FallsBackToDefault()
+    {
+        Assert.Equal(MeterSmoothing.Default, AppSettings.Default.EffectiveMeterSmoothing);
+        Assert.Equal(MeterSmoothing.Default, new AppSettings(true, "{name}", Smoothing.Default).EffectiveMeterSmoothing);
+    }
+
+    [Fact]
     public void Load_CorruptFile_ReturnsDefault()
     {
         File.WriteAllText(_path, "{ nope");
