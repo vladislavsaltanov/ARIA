@@ -1577,13 +1577,18 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
-        if (snapshot.Remaining > _smoothing.AutoCrossfade || !HasNext())
+        if (snapshot.Remaining > _smoothing.ManualCrossfade || !HasNext())
         {
             return;
         }
-        var lead = TimeSpan.FromTicks(Math.Max(0, Math.Min(_smoothing.AutoCrossfade.Ticks, snapshot.Remaining.Ticks)));
+        var wasPlaying = _status == TransportStatus.Playing;
+        var old = _current;
+        if (!StartFromOrder(_smoothing.ManualCrossfade))
+        {
+            return;
+        }
         _preRolled = true;
-        AdvanceWithCrossfade(lead);
+        ReleaseOld(old, wasPlaying, manual: true);
     }
 
     private bool HasNext()
