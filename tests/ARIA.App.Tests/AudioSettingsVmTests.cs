@@ -1,6 +1,7 @@
 namespace Aria.App.Tests;
 
 using Aria.App.Services;
+using Aria.Audio;
 using Aria.App.ViewModels;
 using Aria.App.ViewModels.Settings;
 using Aria.Core.Commands;
@@ -409,6 +410,31 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void AudioSection_Outputs_ListsDevicesAndSelection()
+    {
+        var service = new AudioOutputService(
+            new OutputStubLister(() => [new OutputDevice("a", "Speakers", true), new OutputDevice("b", "Headphones", false)]),
+            new AppSettingsStore(_settingsPath));
+        var section = new AudioSectionVm(_ => { }, () => null, service);
+
+        Assert.Equal(["", "a", "b"], section.Outputs.Select(d => d.Id));
+        Assert.Equal(service.SelectedId, section.SelectedOutputId);
+    }
+
+    [Fact]
+    public void AudioSection_SelectOutput_RoutesToService()
+    {
+        var service = new AudioOutputService(
+            new OutputStubLister(() => [new OutputDevice("a", "Speakers", true), new OutputDevice("b", "Headphones", false)]),
+            new AppSettingsStore(_settingsPath));
+        var section = new AudioSectionVm(_ => { }, () => null, service);
+
+        section.SelectedOutputId = "b";
+
+        Assert.Equal("b", service.SelectedId);
+    }
+
+    [Fact]
     public void SettingsViewModel_ExposesAudio_AndSyncsFromMixer()
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
@@ -421,5 +447,10 @@ public sealed class AudioSettingsVmTests : IDisposable
 
         Assert.Equal(-0.5, viewModel.Audio.Pan);
         Assert.Equal(80, viewModel.Audio.HpfHz);
+    }
+
+    private sealed class OutputStubLister(Func<IReadOnlyList<OutputDevice>> list) : IAudioOutputLister
+    {
+        public IReadOnlyList<OutputDevice> ListPlaybackDevices() => list();
     }
 }
