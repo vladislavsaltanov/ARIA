@@ -363,6 +363,52 @@ public sealed class SmoothingTests
     }
 
     [Fact]
+    public void PreRoll_ManualStyle_WaitsForManualFadeWindow()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(manualMs: 400, autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(500));
+
+        Assert.Single(h.Engine.Created);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
+    public void PreRoll_ManualStyle_UsesFullFades()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(manualMs: 400, autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Empty(h.Engine.Disposed);
+        var fadeOut = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Duration);
+        Assert.Equal(FadeCurve.Logarithmic, fadeOut.Curve);
+        Assert.True(fadeOut.StopWhenDone);
+        var fadeIn = h.Engine.Last!.Mixes[0].Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(900), fadeIn.Duration);
+        Assert.Equal(FadeCurve.Logarithmic, fadeIn.Curve);
+        Assert.False(fadeIn.StopWhenDone);
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
     public void PreRoll_FiresOnce()
     {
         var monitor = new PlaybackMonitor();
