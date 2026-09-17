@@ -28,8 +28,9 @@
                    IsVisible="False" MinWidth="200" KeyDown="OnTitleKeyDown" LostFocus="OnTitleCommit"/>
         </StackPanel>
         <Button Grid.Column="1" x:Name="ScenarioButton" Classes="ghost" MinHeight="32" Padding="10,0"
-                Click="OnScenarioClick" ToolTip.Tip="Сценарий — Ctrl+T" VerticalAlignment="Center">
-          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                Click="OnScenarioClick" ToolTip.Tip="Сценарий — Ctrl+T" VerticalAlignment="Center"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" HorizontalAlignment="Center">
             <PathIcon Data="{StaticResource icon_script}" Width="14" Height="14" VerticalAlignment="Center"/>
             <TextBlock Text="Сценарий" FontSize="12" VerticalAlignment="Center"/>
           </StackPanel>
@@ -39,7 +40,8 @@
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
         </Button>
       </Grid>
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,4,10,0">
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,4,10,0">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="{Binding EntryCountText}" FontSize="12" Foreground="{StaticResource BrushDim}"
                      VerticalAlignment="Center"/>
@@ -85,6 +87,7 @@
           <TextBlock Text="ZIP" FontSize="12" VerticalAlignment="Center"/>
         </Button>
       </Grid>
+      </ScrollViewer>
     </Grid>
     <Panel Grid.Row="1">
     <ListBox Grid.Row="1" x:Name="EntryList" ItemsSource="{Binding VisibleEntries}" SelectedItem="{Binding SelectedEntry}"
