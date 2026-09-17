@@ -171,9 +171,12 @@ public sealed class TransportViewModelTests
         Assert.Equal(0.3, vm.LevelRight, 3);
         Assert.False(vm.LevelHot);
 
+        Assert.Equal("#FFECECEC", ((SolidColorBrush)vm.LevelBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
+
         meters.Publish(-20.0, 0.5f, 1.0f);
 
         Assert.True(vm.LevelHot);
+        Assert.Equal("#FFE5484D", ((SolidColorBrush)vm.LevelBarBrush).Color.ToString(), StringComparer.OrdinalIgnoreCase);
     }
 
     [Theory]
