@@ -13,12 +13,14 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 
 - The manual switch runs while the old track has plenty of audio left, so both fades always complete.
 - The auto transition fires early on a predicted time budget (remaining time vs the crossfade window) and always issues full-window fades. When the early trigger arrives late, the old voice is retired at its natural end mid-fade, cutting it at partial volume, while the new voice is already loud — exactly the reported cut plus abrupt entry.
-- Contributing factors: MP3 edge silence framed a quiet hole at every handoff (fixed separately via first-frame tag delay skip and leading-silence scan); the fade pair is now linear out with fast-attack logarithmic in.
+- Contributing factors: MP3 edge silence framed a quiet hole at every handoff (fixed separately via first-frame tag delay skip and leading-silence scan); the final fade pair is Exponential out (`1-t^2`) with Logarithmic (`sqrt`) in (see waves 3-4 below; intermediate linear-out/sqrt-in and sqrt/sqrt stages superseded).
 - The cold-start crackle is a separate, unreproduced observation, likely a device-start transient; tracked as a watch item, not part of this fix.
 - This is related to, not a recurrence of, the earlier crossfade curve work: same scope (audio-crossfade), new mechanism (timing, not curves).
 - Risk level: Medium (touches the shared stream-open chain, but all callers keep default behavior).
 
 ## TDD Fix Plan
+
+> Superseded by wave 3 below: lead clamp never shipped, auto transition runs the manual sequence. Kept as investigation log.
 
 1. **RED**: preroll arriving with 300ms remaining against a 900ms window fades both voices 300ms.
    **GREEN**: thread the measured lead (min of window and actual remaining) from the early trigger through stream open into both fade specs.
@@ -34,15 +36,15 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 
 ## Acceptance Criteria
 
-- [x] Late preroll completes both fades exactly at the boundary (300/300 test)
-- [x] On-time preroll behavior unchanged (full window when remaining covers it)
+- [x] Auto transition runs the manual sequence (`StartFromOrder` + `ReleaseOld(manual: true)`), trigger at `ManualCrossfade`, no lead clamp (wave 3)
+- [x] Crossfade pair Exponential-out + Logarithmic-in, overlap within +-0.5 dB (wave 4)
+- [x] Preroll fires after seek (deck `CueIn` sync, wave 5)
 - [x] Boundary path without early trigger unchanged
-- [x] All new tests pass
-- [x] Existing tests still pass (Core 266/266, App 349/349, Audio 143/143)
+- [x] Existing tests still pass (Core 272, Audio 144, App 349)
 
 ## Resolution
 
-Equal-power smoothing crossfades shipped (Option A, sqrt/sqrt): fade-out forced to Logarithmic on smoothing crossfade override paths (auto AdvanceWithCrossfade, manual ReleaseOld), pairing with existing sqrt fade-in. Power sum 1.0 constant, removing the -1.25 dB construction dip of the Linear-out/sqrt-in pair. Solo Start/Stop/Seek fades and smoothing-off behavior unchanged. Tests: AutoCrossfade_UsesEqualPowerCurves + manual-path test RED then GREEN; boundary expectation updated as intended consequence. Suites: Audio 144, Core 268, App 349, all green. Temp probe files deleted.
+Shipped: auto transition runs the manual sequence from `CheckPreRoll` (`StartFromOrder` + `ReleaseOld(manual: true)`, trigger at `ManualCrossfade`, no lead clamp — wave 3); crossfade fade-outs (boundary `AdvanceWithCrossfade`, manual `ReleaseOld` override) use `Exponential` (`1-t^2`), fade-in uses `Logarithmic` (`sqrt`), pair stays within +-0.5 dB (wave 4, supersedes the sqrt/sqrt equal-power stage which ducked -6 dB on fade attack under actual `FaderNode` math); preroll fires after seek via deck `CueIn` sync (wave 5); MP3 edge silence fixed via tag-delay skip + leading-silence scan. Solo Start/Stop/Seek fades and smoothing-off behavior unchanged. Tests: `AutoCrossfade_UsesExponentialOutLogarithmicIn`, `ManualCrossfade_UsesGentleStartOutCurve`, `PreRoll_AfterSeekWithCrossfade_StillFires`, `FirstAudibleFrame_*` RED then GREEN. Suites: Audio 144, Core 272, App 349, all green. Temp probe files deleted.
 
 ## Follow-up (2026-09-17, wave 5): preroll blind after seek
 
@@ -62,7 +64,7 @@ Equal-power smoothing crossfades shipped (Option A, sqrt/sqrt): fade-out forced 
 
 - Done literally: auto transition now runs the manual sequence (`StartFromOrder` + `ReleaseOld(manual: true)`) from `CheckPreRoll`, no lead clamp, no separate auto path.
 - Two measured corrections on the way: trigger at `ManualCrossfade`, not window/2 (window/2 with a 0.4 s manual fade cuts 1.1 s of tail; trigger at manual-fade length = zero cut), and symmetric fades out+in = `ManualCrossfade` sqrt/sqrt (out 0.4 / in 3.0 gives a hole by construction: old dead, new at 0.37 gain — probed at -25.1 dB zone).
-- Probe numbers (same rig, loud material): 3 s-lead overlap -1.2 dB avg; asymmetric manual -25.1 dB hole; symmetric manual -1.0 dB avg, min -19.5 single window, no hole. `AutoCrossfade` now serves only the boundary fallback swell.
+- Probe numbers (same rig, loud material): 3 s-lead overlap -1.2 dB avg; asymmetric manual -25.1 dB hole; symmetric manual -1.0 dB avg, min -19.5 single window, no hole. `AutoCrossfade` now serves only the boundary fallback swell. (Fade-out curve later corrected to Exponential by wave 4; Resolution states final behavior.)
 - Suites: Core 270, Audio 144, App 349, all green. Temp probes deleted.
 
 ## Follow-up (2026-09-17, wave 2): envelope vs mixer separated, half-window answered
