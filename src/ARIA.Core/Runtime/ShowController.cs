@@ -1693,7 +1693,7 @@ public sealed class ShowController : IShowHandler
         AdvanceFromBoundary();
         if (handle is { } faded)
         {
-            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(_smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(_smoothing.AutoCrossfade, FadeCurve.Exponential, SilenceDb, StopWhenDone: true)));
             _retired.Add(faded);
             _monitor?.Unbind(faded);
         }
@@ -1861,7 +1861,8 @@ public sealed class ShowController : IShowHandler
             return trackFade;
         }
         var duration = auto ? _smoothing.AutoCrossfade : _smoothing.StartFade;
-        return duration > TimeSpan.Zero ? new Fade(duration, trackFade.Curve) : Fade.None;
+        var curve = auto ? FadeCurve.Logarithmic : trackFade.Curve;
+        return duration > TimeSpan.Zero ? new Fade(duration, curve) : Fade.None;
     }
 
     private void ReleaseOld(DeckInstance? old, bool wasPlaying, bool manual)
