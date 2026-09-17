@@ -22,8 +22,19 @@ public sealed class AppHostLoggingTests : IDisposable
     }
 
     [Fact]
+    public async Task Start_ByDefault_CreatesNoLogFile()
+    {
+        await using var host = await StartHostAsync();
+        host.Submit(new CreateProject("Quiet"));
+        await Task.Delay(300);
+
+        Assert.False(File.Exists(LogPath()));
+    }
+
+    [Fact]
     public async Task Start_WritesHostStarted_ToDataDirLog()
     {
+        EnableLogging();
         await using var host = await StartHostAsync();
 
         await PollAsync(() => HasLine("host.started"));
@@ -34,6 +45,7 @@ public sealed class AppHostLoggingTests : IDisposable
     [Fact]
     public async Task Submit_LogsCommandType_AndSkipsClockTicks()
     {
+        EnableLogging();
         await using var host = await StartHostAsync();
         host.Submit(new CreateProject("Logged"));
         host.Submit(new TickShowClock());
@@ -48,6 +60,7 @@ public sealed class AppHostLoggingTests : IDisposable
     [Fact]
     public async Task RejectedCommand_LogsWarningWithReason()
     {
+        EnableLogging();
         await using var host = await StartHostAsync();
         host.Submit(new SetLocked(true));
         await PollAsync(() => host.Bus.Snapshot().Show.Locked);
@@ -64,6 +77,7 @@ public sealed class AppHostLoggingTests : IDisposable
     [Fact]
     public async Task ImportOverrideNull_LogsImportFailedWithPath()
     {
+        EnableLogging();
         await using var host = await StartHostAsync();
         host.ImportOverride = _ => null;
         var broken = Path.Combine(_directory, "a.flac");
@@ -79,6 +93,7 @@ public sealed class AppHostLoggingTests : IDisposable
     [Fact]
     public async Task RelinkMissingFile_LogsRelinkFailed()
     {
+        EnableLogging();
         await using var host = await StartHostAsync();
 
         var relinked = await host.RelinkTrackAsync(TrackId.New(), "/nonexistent/x.flac");
@@ -91,7 +106,7 @@ public sealed class AppHostLoggingTests : IDisposable
     public async Task Start_AppliesStoredLogLevel()
     {
         Directory.CreateDirectory(_directory);
-        new AppSettingsStore(Path.Combine(_directory, "settings.json")).Save(AppSettings.Default with { LogLevel = LogLevel.Error });
+        new AppSettingsStore(Path.Combine(_directory, "settings.json")).Save(AppSettings.Default with { LogLevel = LogLevel.Error, LogEnabled = true });
         await using var host = await StartHostAsync();
         host.Submit(new CreateProject("Quiet"));
         await Task.Delay(300);
@@ -102,6 +117,7 @@ public sealed class AppHostLoggingTests : IDisposable
     [Fact]
     public async Task RemoteStart_LogsEndpoint_WithoutToken()
     {
+        EnableLogging();
         await using var host = new AppHost(
             _directory,
             new RemoteOptions("test-token-secret"),
@@ -116,12 +132,27 @@ public sealed class AppHostLoggingTests : IDisposable
     [Fact]
     public async Task SetLogLevel_AppliesLive()
     {
+        EnableLogging();
         await using var host = await StartHostAsync();
         host.SetLogLevel(LogLevel.Error);
         host.Submit(new CreateProject("Quiet"));
         await Task.Delay(300);
 
         Assert.False(HasData("command", "type", "CreateProject"));
+    }
+
+    [Fact]
+    public async Task SetLogEnabled_TogglesLive()
+    {
+        await using var host = await StartHostAsync();
+        host.SetLogEnabled(true);
+        host.Submit(new CreateProject("Logged"));
+        await PollAsync(() => HasData("command", "type", "Logged"));
+        host.SetLogEnabled(false);
+        host.Submit(new CreateProject("Quiet"));
+        await Task.Delay(300);
+
+        Assert.Single(ReadEntries(LogPath()).Where(e => e.GetProperty("msg").GetString() == "command"));
     }
 
     [Fact]
@@ -142,6 +173,9 @@ public sealed class AppHostLoggingTests : IDisposable
         await host.StartAsync();
         return host;
     }
+
+    private void EnableLogging() =>
+        new AppSettingsStore(Path.Combine(_directory, "settings.json")).Save(AppSettings.Default with { LogEnabled = true });
 
     private string LogPath() => Path.Combine(_directory, "logs", "aria.log");
 

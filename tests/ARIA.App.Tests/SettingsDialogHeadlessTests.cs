@@ -67,6 +67,7 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
             var log = dialog.GetVisualDescendants().OfType<LogSection>().FirstOrDefault();
             Assert.NotNull(log);
             Assert.NotNull(log.FindControl<ComboBox>("LogLevelBox"));
+            Assert.NotNull(log.FindControl<CheckBox>("LogEnabledCheck"));
             Assert.NotNull(log.FindControl<Button>("ShowLogButton"));
 
             dialog.Close();
