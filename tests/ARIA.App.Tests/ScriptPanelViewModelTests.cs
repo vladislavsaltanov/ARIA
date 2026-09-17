@@ -87,10 +87,10 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
-    public void DeleteSelected_RemovesScript()
+    public async Task DeleteSelected_RemovesScript()
     {
         _viewModel.CreateScriptCommand.Execute(null);
-        _viewModel.DeleteSelected();
+        await _viewModel.DeleteSelectedAsync();
 
         Assert.Empty(_viewModel.Scripts);
         Assert.Null(_viewModel.SelectedScript);
