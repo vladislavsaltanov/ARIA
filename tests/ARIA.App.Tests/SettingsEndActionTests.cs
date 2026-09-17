@@ -59,6 +59,46 @@ public sealed class SettingsEndActionTests : IDisposable
         Assert.Equal(EndAction.Advance, new AppSettingsStore(_path).Load().DefaultEndAction);
     }
 
+    [Fact]
+    public void MeterSmoothing_DefaultsToEnabled250ms()
+    {
+        using var bus = NewBus();
+        using var viewModel = NewSettings(bus);
+
+        Assert.True(viewModel.Playback.MeterSmoothingEnabled);
+        Assert.Equal(250, viewModel.Playback.MeterSmoothingReleaseMs);
+    }
+
+    [Fact]
+    public void MeterSmoothing_Change_PersistsAndNotifies()
+    {
+        using var bus = NewBus();
+        AppSettings? applied = null;
+        using var viewModel = new SettingsViewModel(
+            bus,
+            new HotkeyService(HotkeyConfig.Default, _ => { }),
+            Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
+            new AppSettingsStore(_path),
+            s => applied = s);
+
+        viewModel.Playback.MeterSmoothingEnabled = false;
+        viewModel.Playback.MeterSmoothingReleaseMs = 500;
+
+        Assert.Equal(new MeterSmoothing(false, 500), new AppSettingsStore(_path).Load().MeterSmoothing);
+        Assert.Equal(new MeterSmoothing(false, 500), applied?.MeterSmoothing);
+    }
+
+    [Fact]
+    public void MeterSmoothing_LegacyFileWithoutField_FallsBackToDefault()
+    {
+        File.WriteAllText(_path, """{"useFileName":false,"rowFormat":"{name}","smoothing":null}""");
+        using var bus = NewBus();
+        using var viewModel = NewSettings(bus);
+
+        Assert.True(viewModel.Playback.MeterSmoothingEnabled);
+        Assert.Equal(250, viewModel.Playback.MeterSmoothingReleaseMs);
+    }
+
     private static CommandBus NewBus() => new(new ShowController(new StubEngine()), BusMode.Inline);
 
     private SettingsViewModel NewSettings(CommandBus bus) => new(
