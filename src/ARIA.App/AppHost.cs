@@ -8,6 +8,7 @@ using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
+using Aria.Core.State;
 using Aria.Persistence;
 using Aria.Remote;
 
@@ -32,6 +33,10 @@ public sealed class AppHost : IAsyncDisposable
     private ShowAutosaver? _autosaver;
     private AriaAudioEngine? _engine;
     private CommandBus? _busRef;
+    private IAppLog _log = NullAppLog.Instance;
+    private IDisposable? _busEvents;
+    private EventHandler<UnobservedTaskExceptionEventArgs>? _unobserved;
+    private UnhandledExceptionEventHandler? _unhandled;
     private ShowController? _controller;
     private System.Threading.Timer? _clockTimer;
     private long _seq;
@@ -85,6 +90,14 @@ public sealed class AppHost : IAsyncDisposable
         }
         _started = true;
         Directory.CreateDirectory(DataDirectory);
+        _log = new FileAppLog(
+            Path.Combine(DataDirectory, "logs", "aria.log"),
+            AppLogConfig.ReadMinLevel(Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL")));
+        _log.Info("host.started", new Dictionary<string, string>
+        {
+            ["version"] = typeof(AppHost).Assembly.GetName().Version?.ToString() ?? "dev",
+        });
+        InstallFatalHandlers();
 
         Outputs = CreateOutputService();
         Outputs.Changed += OnOutputChanged;
@@ -102,6 +115,7 @@ public sealed class AppHost : IAsyncDisposable
 
         Bus = _ownedBus = new CommandBus(controller, BusMode.Pumped);
         _busRef = _ownedBus;
+        _busEvents = Bus.Subscribe(OnBusEvent);
 
         _library = new SqliteLibraryStore(Path.Combine(DataDirectory, "library.db"));
         _waveforms = new SqliteWaveformStore(Path.Combine(DataDirectory, "waveforms.db"));
@@ -126,8 +140,13 @@ public sealed class AppHost : IAsyncDisposable
             }
             catch (Exception e) when (options.Port != 0 && IsPortBusy(e))
             {
+                _log.Warn("remote.port_fallback", new Dictionary<string, string> { ["port"] = options.Port.ToString() });
                 Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap);
                 await Remote.StartAsync(cancellationToken);
+            }
+            if (Remote is { } remote)
+            {
+                _log.Info("remote.started", new Dictionary<string, string> { ["endpoint"] = remote.HttpEndpoint.ToString() });
             }
         }
 
@@ -144,11 +163,11 @@ public sealed class AppHost : IAsyncDisposable
     {
         try
         {
-            return new AudioOutputService(new MiniaudioOutputLister(), SettingsStore);
+            return new AudioOutputService(new MiniaudioOutputLister(), SettingsStore, _log);
         }
         catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException or InvalidOperationException)
         {
-            return new AudioOutputService(new EmptyLister(), SettingsStore);
+            return new AudioOutputService(new EmptyLister(), SettingsStore, _log);
         }
     }
 
@@ -227,7 +246,61 @@ public sealed class AppHost : IAsyncDisposable
         public IReadOnlyList<OutputDevice> ListPlaybackDevices() => [];
     }
 
-    public void Submit(Command command) => Bus.Submit(new ClientId("app"), Interlocked.Increment(ref _seq), command);
+    public void Submit(Command command)
+    {
+        var seq = Interlocked.Increment(ref _seq);
+        if (command is not TickShowClock)
+        {
+            _log.Info("command", new Dictionary<string, string>
+            {
+                ["type"] = command.GetType().Name,
+                ["client"] = "app",
+            });
+        }
+        Bus.Submit(new ClientId("app"), seq, command);
+    }
+
+    private void OnBusEvent(StateEvent e)
+    {
+        if (e is Rejected rejected)
+        {
+            _log.Warn("command.rejected", new Dictionary<string, string> { ["reason"] = rejected.Reason });
+        }
+    }
+
+    private void InstallFatalHandlers()
+    {
+        _unhandled = (_, e) => _log.Error("fatal.unhandled", new Dictionary<string, string>
+        {
+            ["type"] = e.ExceptionObject.GetType().FullName ?? "unknown",
+            ["message"] = (e.ExceptionObject as Exception)?.Message ?? "unknown",
+        });
+        _unobserved = (_, e) =>
+        {
+            _log.Error("fatal.unobserved", new Dictionary<string, string>
+            {
+                ["type"] = e.Exception.GetType().FullName ?? "unknown",
+                ["message"] = e.Exception.Message,
+            });
+            e.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += _unhandled;
+        TaskScheduler.UnobservedTaskException += _unobserved;
+    }
+
+    private void RemoveFatalHandlers()
+    {
+        if (_unhandled is { } unhandled)
+        {
+            AppDomain.CurrentDomain.UnhandledException -= unhandled;
+            _unhandled = null;
+        }
+        if (_unobserved is { } unobserved)
+        {
+            TaskScheduler.UnobservedTaskException -= unobserved;
+            _unobserved = null;
+        }
+    }
 
     public TrackAudioSettings? GetTrackAudio(TrackId id) => _controller?.TrackAudio(id);
 
@@ -253,11 +326,13 @@ public sealed class AppHost : IAsyncDisposable
             }
             catch (Exception)
             {
+                _log.Warn("import.failed", new Dictionary<string, string> { ["path"] = filePath });
                 failed.Add(filePath);
                 continue;
             }
             if (imported is null)
             {
+                _log.Warn("import.failed", new Dictionary<string, string> { ["path"] = filePath });
                 failed.Add(filePath);
                 continue;
             }
@@ -291,11 +366,13 @@ public sealed class AppHost : IAsyncDisposable
         }
         if (!File.Exists(newPath))
         {
+            _log.Warn("relink.failed", new Dictionary<string, string> { ["path"] = newPath });
             return false;
         }
         var imported = await Task.Run(() => _importer.Import(newPath));
         if (imported is null)
         {
+            _log.Warn("relink.failed", new Dictionary<string, string> { ["path"] = newPath });
             return false;
         }
         var (tracks, projects) = _library.Load();
@@ -462,6 +539,9 @@ public sealed class AppHost : IAsyncDisposable
             return;
         }
         _disposed = true;
+        _log.Info("host.stopped");
+        RemoveFatalHandlers();
+        _busEvents?.Dispose();
         _clockTimer?.Dispose();
         _clockTimer = null;
         if (_autosaver is { } autosaver)
@@ -481,5 +561,7 @@ public sealed class AppHost : IAsyncDisposable
         _snapshots?.Dispose();
         _library?.Dispose();
         _waveforms?.Dispose();
+        (_log as IDisposable)?.Dispose();
+        _log = NullAppLog.Instance;
     }
 }

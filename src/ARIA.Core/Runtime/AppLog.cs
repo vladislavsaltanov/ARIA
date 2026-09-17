@@ -156,3 +156,15 @@ public sealed class FileAppLog : IAppLog, IDisposable
         return JsonSerializer.Serialize(entry);
     }
 }
+
+public static class AppLogConfig
+{
+    public static LogLevel ReadMinLevel(string? raw) =>
+        raw?.ToLowerInvariant() switch
+        {
+            "debug" => LogLevel.Debug,
+            "warn" => LogLevel.Warn,
+            "error" => LogLevel.Error,
+            _ => LogLevel.Info,
+        };
+}
