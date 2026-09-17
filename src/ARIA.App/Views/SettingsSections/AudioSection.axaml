@@ -7,6 +7,11 @@
   <Border Classes="section" x:DataType="vms:AudioSectionVm" DataContext="{Binding Audio}">
     <StackPanel>
       <TextBlock Text="Звук" Classes="sectionTitle"/>
+      <TextBlock Text="Устройство вывода" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,0,0,4"/>
+      <ComboBox ItemsSource="{Binding Outputs}" SelectedValue="{Binding SelectedOutputId, Mode=TwoWay}"
+                SelectedValueBinding="{Binding Id}" DisplayMemberBinding="{Binding Name}"
+                FontSize="12" Margin="0,0,0,2"/>
+      <TextBlock Text="{Binding OutputStatus}" FontSize="11" Foreground="{StaticResource BrushDim}" Margin="0,0,0,6"/>
       <TextBlock Text="Эквалайзер" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,0,0,4"/>
       <ItemsControl ItemsSource="{Binding EqBands}">
         <ItemsControl.ItemTemplate>

@@ -1,5 +1,7 @@
 namespace Aria.App.ViewModels.Settings;
 
+using Aria.App.Services;
+using Aria.Audio;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.State;
@@ -23,14 +25,52 @@ public sealed partial class AudioSectionVm : ObservableObject
     private double _previewGainDb;
     private bool _previewMuted;
     private readonly Func<ProjectId?>? _activeProject;
+    private readonly AudioOutputService? _outputs;
     private bool _measuringProject;
     private string _normalizeProjectStatus = "Не измерялся";
 
-    public AudioSectionVm(Action<Command> submit, Func<ProjectId?>? activeProject = null)
+    public AudioSectionVm(Action<Command> submit, Func<ProjectId?>? activeProject = null, AudioOutputService? outputs = null)
     {
         _submit = submit;
         _activeProject = activeProject;
+        _outputs = outputs;
         EqBands = [.. AudioEq.DefaultFrequencies.Select((f, i) => new EqBandVm(BandLabel(i, f), f, 0, SubmitGlobal))];
+        if (_outputs is not null)
+        {
+            _outputs.Changed += OnOutputsChanged;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_outputs is not null)
+        {
+            _outputs.Changed -= OnOutputsChanged;
+        }
+    }
+
+    public IReadOnlyList<OutputDevice> Outputs => _outputs?.Devices ?? [];
+
+    public string SelectedOutputId
+    {
+        get => _outputs?.SelectedId ?? string.Empty;
+        set
+        {
+            if (_outputs?.Select(value) == true)
+            {
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(OutputStatus));
+            }
+        }
+    }
+
+    public string OutputStatus => _outputs?.Status ?? string.Empty;
+
+    private void OnOutputsChanged()
+    {
+        OnPropertyChanged(nameof(Outputs));
+        OnPropertyChanged(nameof(SelectedOutputId));
+        OnPropertyChanged(nameof(OutputStatus));
     }
 
     public string NormalizeProjectStatus

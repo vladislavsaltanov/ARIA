@@ -37,7 +37,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         string hotkeysPath,
         AppSettingsStore settingsStore,
         Action<AppSettings>? rowSettingsApplied = null,
-        SynchronizationContext? sync = null)
+        SynchronizationContext? sync = null,
+        AudioOutputService? outputs = null)
     {
         _bus = bus;
         _settingsStore = settingsStore;
@@ -45,7 +46,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         Clock = new ClockSectionVm(Submit);
-        Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId);
+        Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId, outputs);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
@@ -62,7 +63,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
 
-    public void Dispose() => _subscription.Dispose();
+    public void Dispose()
+    {
+        Audio.Dispose();
+        _subscription.Dispose();
+    }
 
     private void Submit(Command command) => _bus.Submit(_client, Interlocked.Increment(ref _seq), command);
 

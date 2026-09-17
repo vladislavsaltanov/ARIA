@@ -93,7 +93,8 @@ public partial class App : Application
                 projects.UpdateRowSettings(updated);
                 transport.UpdateRowSettings(updated);
             },
-            sync);
+            sync,
+            host.Outputs);
         window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();
