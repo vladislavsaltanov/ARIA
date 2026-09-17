@@ -134,7 +134,7 @@ sh scripts/publish.sh <RID>          # шим + dotnet publish + упаковк�
 
 ## Changelog
 
-Релизов с CHANGELOG.md пока нет. История — `git log` (`origin/main`, ветки `batch*`).
+Релизы — [CHANGELOG.md](CHANGELOG.md). История — `git log`.
 
 ## Ссылки
 
