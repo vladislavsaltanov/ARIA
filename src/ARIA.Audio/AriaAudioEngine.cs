@@ -384,7 +384,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             return;
         }
         Volatile.Write(ref _lastMeterTicks, now);
-        _meters.Publish(_lufs.MomentaryLufs);
+        _meters.Publish(_lufs.MomentaryLufs, _mixer.PeakLeft, _mixer.PeakRight);
     }
 
     private void PublishPosition()
