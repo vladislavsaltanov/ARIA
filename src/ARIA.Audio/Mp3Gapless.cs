@@ -115,6 +115,66 @@ public static class Mp3Gapless
         return true;
     }
 
+    private const float SilenceThreshold = 1e-6f;
+    private const int LeadScanCapMs = 150;
+    private const int LeadScanChunkFrames = 4096;
+
+    public static int FirstAudibleFrame(float[] samples, int channels) =>
+        FirstAudibleFrame(samples.AsSpan(), channels);
+
+    public static int FirstAudibleFrame(Span<float> samples, int channels)
+    {
+        var frames = samples.Length / channels;
+        for (var frame = 0; frame < frames; frame++)
+        {
+            for (var channel = 0; channel < channels; channel++)
+            {
+                if (Math.Abs(samples[frame * channels + channel]) > SilenceThreshold)
+                {
+                    return frame;
+                }
+            }
+        }
+        return -1;
+    }
+
+    internal static bool TryMeasureLeadSilence(IntPtr decoder, int channels, int sampleRate, out long skipFrames)
+    {
+        skipFrames = 0;
+        var capFrames = (long)(LeadScanCapMs / 1000.0 * sampleRate);
+        var buffer = new float[LeadScanChunkFrames * channels];
+        var handle = System.Runtime.InteropServices.GCHandle.Alloc(buffer, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try
+        {
+            var consumed = 0L;
+            while (consumed < capFrames)
+            {
+                var want = (int)Math.Min(LeadScanChunkFrames, capFrames - consumed);
+                var read = Aria.Audio.Native.AriaShim.DecoderRead(decoder, handle.AddrOfPinnedObject(), want);
+                if (read <= 0)
+                {
+                    break;
+                }
+                var found = FirstAudibleFrame(buffer.AsSpan(0, read * channels), channels);
+                if (found >= 0)
+                {
+                    skipFrames = consumed + found;
+                    return Aria.Audio.Native.AriaShim.DecoderSeek(decoder, skipFrames) == 0;
+                }
+                consumed += read;
+                if (read < want)
+                {
+                    break;
+                }
+            }
+            return Aria.Audio.Native.AriaShim.DecoderSeek(decoder, 0) == 0;
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
     private static bool IsMagic(byte[] data, int offset, string magic) =>
         data[offset] == magic[0] && data[offset + 1] == magic[1] && data[offset + 2] == magic[2] && data[offset + 3] == magic[3];
 }
