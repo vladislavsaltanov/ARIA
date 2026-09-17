@@ -103,6 +103,22 @@ public sealed class AppHostLoggingTests : IDisposable
     }
 
     [Fact]
+    public async Task ImportTracks_MergedGhostFile_MarksFaulted()
+    {
+        await using var host = await StartHostAsync();
+        var ghost = new Track(TrackId.New(), Path.Combine(_directory, "ghost.flac"), "ghost", TimeSpan.FromMinutes(1), new TrackDefaults());
+        host.ImportOverride = _ => new ImportedTrack(ghost, null);
+        var file = Path.Combine(_directory, "real.flac");
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(file, "not audio");
+
+        var report = await host.ImportTracksAsync([file]);
+
+        Assert.Equal(1, report.Added);
+        await PollAsync(() => host.Bus.Snapshot().Transport.Faulted.Contains(ghost.Id));
+    }
+
+    [Fact]
     public async Task Start_AppliesStoredLogLevel()
     {
         Directory.CreateDirectory(_directory);

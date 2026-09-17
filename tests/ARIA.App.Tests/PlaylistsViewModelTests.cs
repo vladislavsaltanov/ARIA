@@ -380,6 +380,19 @@ public sealed class ProjectsViewModelTests
     }
 
     [Fact]
+    public async Task ImportDocumentAsync_ResolvedGhostFile_MarksFaulted()
+    {
+        var (bus, _, _) = Setup();
+        using var vm = new ProjectsViewModel(bus, () => [TestTrack]);
+        var json = ProjectFormat.Export("Вечер", [new ProjectExportEntry("/audio/test.flac")]);
+
+        var report = await vm.ImportDocumentAsync(json);
+
+        Assert.Null(report.Error);
+        Assert.Contains(TestTrack.Id, bus.Snapshot().Transport.Faulted);
+    }
+
+    [Fact]
     public async Task ImportDocumentAsync_CountsPendingTransitions()
     {
         var (bus, _, _) = Setup();
