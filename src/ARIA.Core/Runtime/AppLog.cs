@@ -47,7 +47,7 @@ public sealed class FileAppLog : IAppLog, IDisposable
 {
     private const long DefaultMaxBytes = 5 * 1024 * 1024;
     private readonly string _path;
-    private readonly LogLevel _minLevel;
+    private LogLevel _minLevel;
     private readonly long _maxBytes;
     private readonly object _gate = new();
     private StreamWriter? _writer;
@@ -95,6 +95,14 @@ public sealed class FileAppLog : IAppLog, IDisposable
         {
             _disposed = true;
             CloseWriter();
+        }
+    }
+
+    public void SetMinLevel(LogLevel level)
+    {
+        lock (_gate)
+        {
+            _minLevel = level;
         }
     }
 

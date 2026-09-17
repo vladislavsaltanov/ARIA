@@ -94,7 +94,9 @@ public partial class App : Application
                 transport.UpdateRowSettings(updated);
             },
             sync,
-            host.Outputs);
+            host.Outputs,
+            host.LogPath,
+            host.SetLogLevel);
         window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();

@@ -133,7 +133,7 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
 
             var nav = dialog.FindControl<ListBox>("SectionNav");
             Assert.NotNull(nav);
-            Assert.Equal(7, nav.ItemCount);
+            Assert.Equal(8, nav.ItemCount);
 
             nav.SelectedIndex = 6;
             var engine = dialog.GetVisualDescendants().OfType<EngineSection>().FirstOrDefault();

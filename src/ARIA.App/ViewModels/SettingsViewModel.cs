@@ -31,6 +31,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public AudioSectionVm Audio { get; }
 
+    public LogSectionVm Logging { get; }
+
     public SettingsViewModel(
         ICommandBus bus,
         HotkeyService hotkeys,
@@ -38,7 +40,9 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         AppSettingsStore settingsStore,
         Action<AppSettings>? rowSettingsApplied = null,
         SynchronizationContext? sync = null,
-        AudioOutputService? outputs = null)
+        AudioOutputService? outputs = null,
+        string? logPath = null,
+        Action<LogLevel>? logLevelApplied = null)
     {
         _bus = bus;
         _settingsStore = settingsStore;
@@ -49,6 +53,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId, outputs);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
+        Logging = new LogSectionVm(SnapshotSettings, SaveSettings, settings.LogLevel, logPath ?? string.Empty, logLevelApplied);
         RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
         Playback = new PlaybackSectionVm(Submit, SnapshotSettings, SaveSettings, settings.DefaultEndAction, settings.MeterSmoothing, rowSettingsApplied);
         Engine.ApplyMixer(bus.Snapshot().Mixer);
@@ -74,7 +79,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     public AppSettings SnapshotSettings()
     {
         var stored = _settingsStore.Load();
-        return new(RowFormat.UseFileName, RowFormat.RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction, stored.OutputDeviceId, stored.OutputDeviceName, stored.PreviewOutputDeviceId, stored.PreviewOutputDeviceName, stored.MeterSmoothing);
+        return new(RowFormat.UseFileName, RowFormat.RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction, stored.OutputDeviceId, stored.OutputDeviceName, stored.PreviewOutputDeviceId, stored.PreviewOutputDeviceName, stored.MeterSmoothing, stored.LogLevel);
     }
 
     public void SaveSettings(AppSettings settings) => _settingsStore.Save(settings);

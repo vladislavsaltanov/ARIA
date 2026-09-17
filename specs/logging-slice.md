@@ -16,6 +16,10 @@
 - `FileAppLog : IAppLog, IDisposable` — lock, flush каждый write (краш переживает), ротация 5 МБ с одним бэкапом, `maxBytes <= 0` → дефолт; `NullAppLog` для тестов/выключенного состояния
 - Запрет секретов: пароли/токены/credentials не пишутся никогда (только факты: `remote.auth_failed`, без значений)
 
+## UI
+
+Раздел «Журнал» в настройках: селектор уровня (пишется в settings.json, применяется живьём), путь к файлу, кнопка «Показать файл», пометка про приоритет `ARIA_LOG_LEVEL`. Стартовый уровень: env (если задан) иначе настройка.
+
 ## Точки врезки
 
 1. `AppHost.StartAsync`: `AppDomain.UnhandledException` + `TaskScheduler.UnobservedTaskException` → error fatal (логгер уже на data dir); `DisposeAsync` снимает хендлеры.

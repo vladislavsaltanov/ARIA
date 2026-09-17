@@ -92,7 +92,9 @@ public sealed class AppHost : IAsyncDisposable
         Directory.CreateDirectory(DataDirectory);
         _log = new FileAppLog(
             Path.Combine(DataDirectory, "logs", "aria.log"),
-            AppLogConfig.ReadMinLevel(Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL")));
+            Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL") is { } env
+                ? AppLogConfig.ReadMinLevel(env)
+                : SettingsStore.Load().LogLevel);
         InstallFatalHandlers();
         _log.Info("host.started", new Dictionary<string, string>
         {
@@ -245,6 +247,16 @@ public sealed class AppHost : IAsyncDisposable
     private sealed class EmptyLister : IAudioOutputLister
     {
         public IReadOnlyList<OutputDevice> ListPlaybackDevices() => [];
+    }
+
+    public string LogPath => Path.Combine(DataDirectory, "logs", "aria.log");
+
+    public void SetLogLevel(LogLevel level)
+    {
+        if (_log is FileAppLog file)
+        {
+            file.SetMinLevel(level);
+        }
     }
 
     public void Submit(Command command)
