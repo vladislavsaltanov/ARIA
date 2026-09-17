@@ -52,8 +52,8 @@
     <Grid RowDefinitions="Auto,Auto,*">
       <ProgressBar Grid.Row="0" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
                    Height="3" Background="Transparent" Foreground="{StaticResource BrushFg}" Opacity="0.85"
-                   BorderThickness="0" CornerRadius="0" Margin="0,0,0,8"/>
-      <StackPanel Grid.Row="1" Margin="14,0,10,4">
+                   BorderThickness="0" CornerRadius="0" Margin="0,0,0,10"/>
+      <StackPanel Grid.Row="1" Margin="14,0,10,2">
         <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
         <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
       </StackPanel>
