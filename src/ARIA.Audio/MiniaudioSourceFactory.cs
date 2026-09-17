@@ -24,8 +24,11 @@ public sealed class MiniaudioSourceFactory : ISourceFactory
         {
             return null;
         }
-        return new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn, cueOut);
+        return new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn + GapDelay(filePath), cueOut);
     }
+
+    private static TimeSpan GapDelay(string filePath) =>
+        Mp3Gapless.TryRead(filePath, out var info) ? info.Delay() : TimeSpan.Zero;
 
     public bool TryOpen(string filePath, TimeSpan cueIn, TimeSpan? cueOut, out ISampleSource? source, out SourceOpenFault fault)
     {
@@ -36,7 +39,7 @@ public sealed class MiniaudioSourceFactory : ISourceFactory
             fault = File.Exists(filePath) ? SourceOpenFault.Undecodable : SourceOpenFault.Missing;
             return false;
         }
-        source = new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn, cueOut);
+        source = new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn + GapDelay(filePath), cueOut);
         fault = SourceOpenFault.Unknown;
         return true;
     }
