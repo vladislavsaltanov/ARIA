@@ -36,6 +36,8 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private double _volumePercent = DbToPercent(0.0);
     private bool _playing;
     private double _lastLufs = double.NaN;
+    private float _lastPeakLeft;
+    private float _lastPeakRight;
     private LufsMeterZones _zones = LufsMeterZones.Default;
     private string _trackElapsedText = "--:--";
     private string _timeOfDayText = "--:--:--";
@@ -75,6 +77,15 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private IBrush lufsBarBrush = BrushFg;
+
+    [ObservableProperty]
+    private double levelLeft;
+
+    [ObservableProperty]
+    private double levelRight;
+
+    [ObservableProperty]
+    private bool levelHot;
 
     [ObservableProperty]
     private IBrush lockBrush = BrushDim;
@@ -297,6 +308,8 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private void OnLufs(LufsSnapshot snapshot) => Post(() =>
     {
         _lastLufs = snapshot.MomentaryLufs;
+        _lastPeakLeft = snapshot.PeakLeft;
+        _lastPeakRight = snapshot.PeakRight;
         RefreshLufs();
     });
 
@@ -308,6 +321,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LufsLevel = 0;
             LufsHot = false;
             LufsBarBrush = BrushFg;
+            LevelLeft = 0;
+            LevelRight = 0;
+            LevelHot = false;
             return;
         }
         if (double.IsNaN(_lastLufs))
@@ -316,12 +332,18 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LufsLevel = 0;
             LufsHot = false;
             LufsBarBrush = BrushFg;
+            LevelLeft = 0;
+            LevelRight = 0;
+            LevelHot = false;
             return;
         }
         LufsText = _lastLufs.ToString("F1", CultureInfo.InvariantCulture);
         LufsLevel = Math.Clamp((_lastLufs + 60.0) / 60.0, 0.0, 1.0);
         LufsBarBrush = ZoneBrush(_lastLufs, _zones);
         LufsHot = ReferenceEquals(LufsBarBrush, BrushFaulted);
+        LevelLeft = Math.Clamp(_lastPeakLeft, 0.0, 1.0);
+        LevelRight = Math.Clamp(_lastPeakRight, 0.0, 1.0);
+        LevelHot = _lastPeakLeft >= 1.0f || _lastPeakRight >= 1.0f;
     }
 
     internal static SolidColorBrush ZoneBrush(double lufs, LufsMeterZones zones)
