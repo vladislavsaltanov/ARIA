@@ -261,6 +261,8 @@ public sealed class ScriptPanelViewModelTests : IDisposable
             .Select(i => new Track(TrackId.New(), $"/audio/n{i}.flac", $"Ночь {i}", TimeSpan.FromMinutes(2), new TrackDefaults()))
             .ToImmutableArray();
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var project = new Project(ProjectId.New(), "Main", [.. tracks.Select(track => new ProjectEntry(EntryId.New(), track.Id, null))]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow(tracks, [project], project.Id));
         using var viewModel = new ScriptPanelViewModel(bus, () => tracks);
 
         var suggestions = viewModel.SuggestTracks("ночь");

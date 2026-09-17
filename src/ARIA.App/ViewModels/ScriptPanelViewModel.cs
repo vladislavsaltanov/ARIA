@@ -442,7 +442,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<Track> SuggestTracks(string query)
     {
-        var source = _trackSource?.Invoke() ?? [];
+        var source = (_trackSource?.Invoke() ?? []).Where(t => _projectTracks.Contains(t.Id));
         if (string.IsNullOrWhiteSpace(query))
         {
             return source.Take(SuggestLimit).ToList();
