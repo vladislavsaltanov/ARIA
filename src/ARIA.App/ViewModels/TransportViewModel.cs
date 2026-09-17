@@ -88,6 +88,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private bool levelHot;
 
     [ObservableProperty]
+    private IBrush levelBarBrush = BrushFg;
+
+    [ObservableProperty]
     private IBrush lockBrush = BrushDim;
 
     [ObservableProperty]
@@ -324,6 +327,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LevelLeft = 0;
             LevelRight = 0;
             LevelHot = false;
+            LevelBarBrush = BrushFg;
             return;
         }
         if (double.IsNaN(_lastLufs))
@@ -335,6 +339,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LevelLeft = 0;
             LevelRight = 0;
             LevelHot = false;
+            LevelBarBrush = BrushFg;
             return;
         }
         LufsText = _lastLufs.ToString("F1", CultureInfo.InvariantCulture);
@@ -344,6 +349,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         LevelLeft = Math.Clamp(_lastPeakLeft, 0.0, 1.0);
         LevelRight = Math.Clamp(_lastPeakRight, 0.0, 1.0);
         LevelHot = _lastPeakLeft >= 1.0f || _lastPeakRight >= 1.0f;
+        LevelBarBrush = LevelHot ? BrushFaulted : BrushFg;
     }
 
     internal static SolidColorBrush ZoneBrush(double lufs, LufsMeterZones zones)
