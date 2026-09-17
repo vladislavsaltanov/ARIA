@@ -42,7 +42,13 @@ The auto transition is timing-fragile by construction, unlike the manual switch:
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Equal-power smoothing crossfades shipped (Option A, sqrt/sqrt): fade-out forced to Logarithmic on smoothing crossfade override paths (auto AdvanceWithCrossfade, manual ReleaseOld), pairing with existing sqrt fade-in. Power sum 1.0 constant, removing the -1.25 dB construction dip of the Linear-out/sqrt-in pair. Solo Start/Stop/Seek fades and smoothing-off behavior unchanged. Tests: AutoCrossfade_UsesEqualPowerCurves + manual-path test RED then GREEN; boundary expectation updated as intended consequence. Suites: Audio 144, Core 268, App 349, all green. Temp probe files deleted.
+
+## Follow-up (2026-09-17, wave 2): envelope vs mixer separated, half-window answered
+
+- Solo file envelope (same MP3, 0.1 s windows): 0-1 s avg -13.8 dB, 1-2 s avg -16.1 dB, 2-3.4 s avg -20.7 dB min -22.7 dB (natural quiet intro passage), 7-10 s avg -15.6 dB min -19.9 dB single window, 6-9.5 s avg -15.5 dB. The -21..-22 dB shelf exists only at file 2.5-3.4 s, nowhere near the fade region.
+- Transition probe (cue-out 10 s, 3 s window, same file both tracks): pre-fix zoneMin -21 dB vs edgeAvg -16 dB (~5 dB); post-fix rerun zoneMin -21.2 dB vs edgeAvg -16.1 dB (switch 7430 ms) — unchanged within probe noise. Verdict: construction dip (-1.25 dB) fixed by sqrt/sqrt, but this probe is confounded by track B starting at file 0 (its quiet 2-3.4 s passage falls in the overlap tail) plus unequal source levels, so the probe cannot validate audibility. Honest status: math fixed and tested; audibility needs production timeline or loudness-matched material, not this probe.
+- Half-window proposal answered: pre-open already exists in stronger form (preroll fires full window before end, Remaining <= window, async silent open via StartInactive + Play-then-SetMix; late trigger clamps both fades to actual remaining). Starting at half-window is a step back in time. No-fade part not adopted: the fade-free boundary fallback is exactly the reported defect path, and removing fades re-exposes the MP3 edge-silence gap. Only on-device transition timeline data (trigger fire, remaining/lead, fade durations, open latency, end-event order) would change this.
 
 ## Diagnosis log (diagnose-root)
 
