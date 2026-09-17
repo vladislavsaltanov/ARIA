@@ -271,6 +271,21 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     }
 
     [Fact]
+    public void SuggestTracks_FiltersToActiveProject()
+    {
+        var outsider = new Track(TrackId.New(), "/audio/old.flac", "Старый трек", TimeSpan.FromMinutes(2), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), FirstTrack.Id, null)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, outsider], [project], project.Id));
+        using var viewModel = new ScriptPanelViewModel(bus, () => [FirstTrack, outsider]);
+
+        var suggestions = viewModel.SuggestTracks("");
+
+        Assert.Equal([FirstTrack.Id], suggestions.Select(t => t.Id));
+        bus.Dispose();
+    }
+
+    [Fact]
     public void RemoveLine_DeletesRow()
     {
         _viewModel.CreateScriptCommand.Execute(null);
