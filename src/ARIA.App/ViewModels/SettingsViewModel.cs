@@ -50,7 +50,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         RowFormat = new RowFormatSectionVm(SnapshotSettings, SaveSettings, rowSettingsApplied, settings.UseFileName, settings.RowFormat);
-        Playback = new PlaybackSectionVm(Submit, SnapshotSettings, SaveSettings, settings.DefaultEndAction);
+        Playback = new PlaybackSectionVm(Submit, SnapshotSettings, SaveSettings, settings.DefaultEndAction, settings.MeterSmoothing, rowSettingsApplied);
         Engine.ApplyMixer(bus.Snapshot().Mixer);
         Audio.ApplyMixer(bus.Snapshot().Mixer);
         Engine.ApplySmoothing(settings.Smoothing);
