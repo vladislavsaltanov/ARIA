@@ -38,10 +38,8 @@ public sealed class TransportViewModelTests
         Assert.Equal(0.2, converged, 3);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void SmoothLevel_Disabled_PassesThrough(bool enabledIgnored)
+    [Fact]
+    public void SmoothLevel_Disabled_PassesThrough()
     {
         Assert.Equal(0.2, TransportViewModel.SmoothLevel(0.8, 0.2, 33.0, 250, false));
         Assert.Equal(0.2, TransportViewModel.SmoothLevel(0.8, 0.2, 33.0, 0, true));

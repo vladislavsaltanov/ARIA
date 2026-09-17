@@ -3,6 +3,11 @@ namespace Aria.App.Services;
 using System.Text.Json;
 using Aria.Core.Model;
 
+public sealed record MeterSmoothing(bool Enabled, int ReleaseMs)
+{
+    public static MeterSmoothing Default { get; } = new(true, 250);
+}
+
 public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance, string OutputDeviceId = "", string OutputDeviceName = "", string PreviewOutputDeviceId = "", string PreviewOutputDeviceName = "")
 {
     public static AppSettings Default { get; } = new(false, "{name}", Smoothing.Default, EndAction.Advance);

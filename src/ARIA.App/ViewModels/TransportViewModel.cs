@@ -38,6 +38,11 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private double _lastLufs = double.NaN;
     private float _lastPeakLeft;
     private float _lastPeakRight;
+    private long _lastMeterStamp;
+    private double _shownLufsLevel;
+    private double _shownLeft;
+    private double _shownRight;
+    private MeterSmoothing _meterSmoothing = MeterSmoothing.Default;
     private LufsMeterZones _zones = LufsMeterZones.Default;
     private string _trackElapsedText = "--:--";
     private string _timeOfDayText = "--:--:--";
@@ -310,13 +315,26 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     private void OnLufs(LufsSnapshot snapshot) => Post(() =>
     {
+        var now = Environment.TickCount64;
+        var elapsed = _lastMeterStamp == 0 ? 33.0 : Math.Min(now - _lastMeterStamp, 1000);
+        _lastMeterStamp = now;
         _lastLufs = snapshot.MomentaryLufs;
         _lastPeakLeft = snapshot.PeakLeft;
         _lastPeakRight = snapshot.PeakRight;
-        RefreshLufs();
+        RefreshLufs(elapsed);
     });
 
-    private void RefreshLufs()
+    internal static double SmoothLevel(double shown, double target, double elapsedMs, int releaseMs, bool enabled)
+    {
+        if (!enabled || releaseMs <= 0 || target >= shown)
+        {
+            return target;
+        }
+        var gain = 1.0 - Math.Exp(-elapsedMs / releaseMs);
+        return shown + ((target - shown) * gain);
+    }
+
+    private void RefreshLufs(double elapsedMs = 0)
     {
         if (Panicked)
         {
@@ -328,6 +346,9 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LevelRight = 0;
             LevelHot = false;
             LevelBarBrush = BrushFg;
+            _shownLufsLevel = 0;
+            _shownLeft = 0;
+            _shownRight = 0;
             return;
         }
         if (double.IsNaN(_lastLufs))
@@ -340,14 +361,20 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LevelRight = 0;
             LevelHot = false;
             LevelBarBrush = BrushFg;
+            _shownLufsLevel = 0;
+            _shownLeft = 0;
+            _shownRight = 0;
             return;
         }
         LufsText = _lastLufs.ToString("F1", CultureInfo.InvariantCulture);
-        LufsLevel = Math.Clamp((_lastLufs + 60.0) / 60.0, 0.0, 1.0);
+        _shownLufsLevel = SmoothLevel(_shownLufsLevel, Math.Clamp((_lastLufs + 60.0) / 60.0, 0.0, 1.0), elapsedMs, _meterSmoothing.ReleaseMs, _meterSmoothing.Enabled);
+        LufsLevel = _shownLufsLevel;
         LufsBarBrush = ZoneBrush(_lastLufs, _zones);
         LufsHot = ReferenceEquals(LufsBarBrush, BrushFaulted);
-        LevelLeft = Math.Clamp(_lastPeakLeft, 0.0, 1.0);
-        LevelRight = Math.Clamp(_lastPeakRight, 0.0, 1.0);
+        _shownLeft = SmoothLevel(_shownLeft, Math.Clamp(_lastPeakLeft, 0.0, 1.0), elapsedMs, _meterSmoothing.ReleaseMs, _meterSmoothing.Enabled);
+        _shownRight = SmoothLevel(_shownRight, Math.Clamp(_lastPeakRight, 0.0, 1.0), elapsedMs, _meterSmoothing.ReleaseMs, _meterSmoothing.Enabled);
+        LevelLeft = _shownLeft;
+        LevelRight = _shownRight;
         LevelHot = _lastPeakLeft >= 1.0f || _lastPeakRight >= 1.0f;
         LevelBarBrush = LevelHot ? BrushFaulted : BrushFg;
     }
