@@ -47,6 +47,16 @@ internal static class AriaShim
 
     internal static void DecoderClose(IntPtr decoder) => aria_decoder_close(decoder);
 
+    internal static int OutputDeviceIdSize() => aria_device_id_size();
+
+    internal static int OutputCount() => aria_output_count();
+
+    internal static int OutputInfo(int index, byte[] name, int nameCapacity, byte[] id, int idLength, out int isDefault)
+        => aria_output_info(index, name, nameCapacity, id, idLength, out isDefault);
+
+    internal static int EngineCreateOnDevice(int sampleRate, int channels, int blockSizeFrames, int backend, byte[] id, int idLength, out IntPtr engine)
+        => aria_engine_create_on_device(sampleRate, channels, blockSizeFrames, backend, id, idLength, out engine);
+
     private static IntPtr Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
         if (libraryName != LibraryName)
@@ -120,4 +130,16 @@ internal static class AriaShim
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern void aria_decoder_close(IntPtr decoder);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_device_id_size();
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_output_count();
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_output_info(int index, byte[] name, int nameCapacity, byte[] id, int idLength, out int isDefault);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_engine_create_on_device(int sampleRate, int channels, int blockSizeFrames, int backend, byte[] id, int idLength, out IntPtr engine);
 }

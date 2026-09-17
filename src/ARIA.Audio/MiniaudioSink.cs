@@ -10,14 +10,17 @@ public sealed class MiniaudioSink : IAudioSink, IDisposable
     private readonly int _blockSizeFrames;
     private IntPtr _engine;
 
-    public MiniaudioSink(int sampleRate, int channels, int blockSizeFrames, int backend = 0)
+    public MiniaudioSink(int sampleRate, int channels, int blockSizeFrames, int backend = 0, byte[]? deviceId = null)
     {
         SampleRate = sampleRate;
         Channels = channels;
         _blockSizeFrames = blockSizeFrames;
         _scratch = new float[Math.Max(1, blockSizeFrames * channels)];
         _scratchHandle = GCHandle.Alloc(_scratch, GCHandleType.Pinned);
-        var created = AriaShim.EngineCreate(sampleRate, channels, blockSizeFrames, backend, out var engine);
+        IntPtr engine;
+        var created = deviceId is null
+            ? AriaShim.EngineCreate(sampleRate, channels, blockSizeFrames, backend, out engine)
+            : AriaShim.EngineCreateOnDevice(sampleRate, channels, blockSizeFrames, backend, deviceId, deviceId.Length, out engine);
         if (created != 0)
         {
             _scratchHandle.Free();

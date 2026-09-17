@@ -261,12 +261,29 @@ public sealed class ScriptPanelViewModelTests : IDisposable
             .Select(i => new Track(TrackId.New(), $"/audio/n{i}.flac", $"Ночь {i}", TimeSpan.FromMinutes(2), new TrackDefaults()))
             .ToImmutableArray();
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var project = new Project(ProjectId.New(), "Main", [.. tracks.Select(track => new ProjectEntry(EntryId.New(), track.Id, null))]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow(tracks, [project], project.Id));
         using var viewModel = new ScriptPanelViewModel(bus, () => tracks);
 
         var suggestions = viewModel.SuggestTracks("ночь");
 
         Assert.Equal(5, suggestions.Count);
         Assert.All(suggestions, t => Assert.Contains("Ночь", t.DefaultName));
+        bus.Dispose();
+    }
+
+    [Fact]
+    public void SuggestTracks_FiltersToActiveProject()
+    {
+        var outsider = new Track(TrackId.New(), "/audio/old.flac", "Старый трек", TimeSpan.FromMinutes(2), new TrackDefaults());
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), FirstTrack.Id, null)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, outsider], [project], project.Id));
+        using var viewModel = new ScriptPanelViewModel(bus, () => [FirstTrack, outsider]);
+
+        var suggestions = viewModel.SuggestTracks("");
+
+        Assert.Equal([FirstTrack.Id], suggestions.Select(t => t.Id));
         bus.Dispose();
     }
 

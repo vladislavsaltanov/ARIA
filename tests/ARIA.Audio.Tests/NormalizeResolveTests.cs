@@ -17,7 +17,8 @@ public sealed class NormalizeResolveTests
         rig.Engine.SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true, NormalizeTargetLufs = measured - 6.0 });
         var audio = new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeEnabled: true, MeasuredLufs: measured);
 
-        rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        var streamHandle = rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(streamHandle, TransportCommand.Play);
         var peak = await PeakOf(rig);
 
         Assert.InRange(peak, 0.2, 0.3);
@@ -32,7 +33,8 @@ public sealed class NormalizeResolveTests
         rig.Engine.SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true, NormalizeTargetLufs = measured - 6.0 });
         var audio = new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeEnabled: true, MeasuredLufs: measured, NormalizeTargetLufs: measured - 12.0);
 
-        rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        var streamHandle = rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(streamHandle, TransportCommand.Play);
         var peak = await PeakOf(rig);
 
         Assert.InRange(peak, 0.08, 0.18);
@@ -44,7 +46,8 @@ public sealed class NormalizeResolveTests
         using var rig = new Rig();
         var audio = new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeEnabled: true, MeasuredLufs: -6.0);
 
-        rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        var streamHandle = rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(streamHandle, TransportCommand.Play);
         var peak = await PeakOf(rig);
 
         Assert.InRange(peak, 0.4, 0.6);
@@ -57,7 +60,8 @@ public sealed class NormalizeResolveTests
         rig.Engine.SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true, NormalizeTargetLufs = -30.0 });
         var audio = new TrackAudioSettings(0, 0, AudioEq.Flat, MeasuredLufs: -6.0);
 
-        rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        var streamHandle = rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(streamHandle, TransportCommand.Play);
         var peak = await PeakOf(rig);
 
         Assert.InRange(peak, 0.4, 0.6);
@@ -70,7 +74,8 @@ public sealed class NormalizeResolveTests
         rig.Engine.SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true, NormalizeTargetLufs = -30.0 });
         var audio = new TrackAudioSettings(0, 0, AudioEq.Flat, NormalizeEnabled: true);
 
-        rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        var streamHandle = rig.Engine.StartStream(new TrackSource("/audio/finite.flac", TimeSpan.Zero, null, audio), new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(streamHandle, TransportCommand.Play);
         var peak = await PeakOf(rig);
 
         Assert.InRange(peak, 0.4, 0.6);

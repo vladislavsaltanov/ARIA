@@ -39,6 +39,14 @@ public sealed class TrackImporter
         }
 
         var duration = TimeSpan.FromSeconds(totalFrames / (double)source.SampleRate);
+        if (Mp3Gapless.TryRead(filePath, out var gap))
+        {
+            duration -= gap.Delay() + gap.Padding();
+            if (duration <= TimeSpan.Zero)
+            {
+                return null;
+            }
+        }
         var track = new Track(
             TrackId.New(),
             filePath,

@@ -61,3 +61,10 @@
   scope: script-panel
   summary: Клик мимо панели сценариев сразу закрывает её
   file: specs/bugs/BUG-2026-09-17-drawer-light-dismiss.md
+- bug_id: BUG-2026-09-17-crossfade-preroll-timing
+  date: 2026-09-17
+  severity: high
+  priority: high
+  scope: audio-crossfade
+  summary: Нет плавного автоперехода между треками, резкий обрыв посреди фейда
+  file: specs/bugs/BUG-2026-09-17-crossfade-preroll-timing.md

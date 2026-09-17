@@ -2,6 +2,7 @@ namespace Aria.Core.Tests;
 
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.State;
 
 public sealed class PlayTrackTests : IDisposable
@@ -56,6 +57,22 @@ public sealed class PlayTrackTests : IDisposable
         Assert.Equal(t2.Id, _harness.Transport.Current!.TrackId);
 
         _harness.Submit(new Next());
+
+        Assert.Equal(t3.Id, _harness.Transport.Current!.TrackId);
+    }
+
+    [Fact]
+    public void PlayTrack_EndAdvancesFromMentionedEntry()
+    {
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var t3 = TestShow.Track("three");
+        var pr = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2), TestShow.Entry(t3));
+        _harness.Submit(new LoadShow([t1, t2, t3], [pr], pr.Id));
+
+        _harness.Submit(new PlayTrack(t2.Id));
+        var playing = _harness.Engine.Last!;
+        _harness.Engine.End(playing.Handle, StreamEndReason.Completed);
 
         Assert.Equal(t3.Id, _harness.Transport.Current!.TrackId);
     }

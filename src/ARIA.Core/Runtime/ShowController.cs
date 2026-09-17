@@ -713,7 +713,8 @@ public sealed class ShowController : IShowHandler
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
-        _monitor?.Bind(handle, Content(deck) with { CueIn = filePosition });
+        deck.Settings = settings with { CueIn = filePosition };
+        _monitor?.Bind(handle, Content(deck));
         _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
         _engine.Transport(handle, TransportCommand.Play);
         _preRolled = false;
@@ -803,7 +804,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        if (!IsInActiveProject(command.Track))
+        if (!FindActiveEntry(command.Track, out var project, out var index))
         {
             Reject(client, seq, "track-not-in-playlist");
             return;
@@ -817,17 +818,34 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "nothing-to-play");
             return;
         }
+        _activeProjectId = project.Id;
+        _cursor = index + 1;
         ReleaseOld(old, wasPlaying, manual: true);
     }
 
-    private bool IsInActiveProject(TrackId track)
+    private bool FindActiveEntry(TrackId track, out Project project, out int index)
     {
+        project = null!;
+        index = -1;
         if (_activeProjectId is not { } projectId)
         {
             return false;
         }
-        var project = _projects.FirstOrDefault(p => p.Id == projectId);
-        return project is not null && project.Entries.Any(e => e.TrackId == track);
+        var found = _projects.FirstOrDefault(p => p.Id == projectId);
+        if (found is null)
+        {
+            return false;
+        }
+        for (var i = 0; i < found.Entries.Length; i++)
+        {
+            if (found.Entries[i].TrackId == track)
+            {
+                project = found;
+                index = i;
+                return true;
+            }
+        }
+        return false;
     }
 
     private void OnRemoveFromQueue(ClientId client, long seq, RemoveFromQueue command)
@@ -1560,12 +1578,18 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
-        if (snapshot.Remaining > _smoothing.AutoCrossfade || !HasNext())
+        if (snapshot.Remaining > _smoothing.ManualCrossfade || !HasNext())
+        {
+            return;
+        }
+        var wasPlaying = _status == TransportStatus.Playing;
+        var old = _current;
+        if (!StartFromOrder(_smoothing.ManualCrossfade))
         {
             return;
         }
         _preRolled = true;
-        AdvanceWithCrossfade();
+        ReleaseOld(old, wasPlaying, manual: true);
     }
 
     private bool HasNext()
@@ -1656,9 +1680,9 @@ public sealed class ShowController : IShowHandler
         }
     }
 
-    private void AdvanceFromBoundary()
+    private void AdvanceFromBoundary(TimeSpan? lead = null)
     {
-        if (!StartFromOrder())
+        if (!StartFromOrder(lead))
         {
             _status = TransportStatus.Stopped;
             _atEndBoundary = false;
@@ -1668,21 +1692,21 @@ public sealed class ShowController : IShowHandler
         }
     }
 
-    private void AdvanceWithCrossfade()
+    private void AdvanceWithCrossfade(TimeSpan? lead = null)
     {
         var old = _current!;
         var handle = old.Handle;
         old.Handle = null;
-        AdvanceFromBoundary();
+        AdvanceFromBoundary(lead);
         if (handle is { } faded)
         {
-            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(_smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(lead ?? _smoothing.AutoCrossfade, _smoothing.Enabled ? FadeCurve.Exponential : old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
             _retired.Add(faded);
             _monitor?.Unbind(faded);
         }
     }
 
-    private bool StartFromOrder()
+    private bool StartFromOrder(TimeSpan? lead = null)
     {
         if (_queue.Count > 0)
         {
@@ -1693,7 +1717,7 @@ public sealed class ShowController : IShowHandler
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
-            StartStreamFor(_current, auto: true);
+            StartStreamFor(_current, auto: true, lead);
             _status = TransportStatus.Playing;
             _atEndBoundary = false;
             _panicked = false;
@@ -1708,14 +1732,14 @@ public sealed class ShowController : IShowHandler
             var project = _projects.First(p => p.Id == projectId);
             if (_cursor < project.Entries.Length)
             {
-                StartProjectEntry(project, _cursor, auto: true);
+                StartProjectEntry(project, _cursor, auto: true, lead);
                 return true;
             }
         }
         return false;
     }
 
-    private void StartProjectEntry(Project project, int index, bool auto)
+    private void StartProjectEntry(Project project, int index, bool auto, TimeSpan? lead = null)
     {
         var entry = project.Entries[index];
         var track = _trackMap[entry.TrackId];
@@ -1723,7 +1747,7 @@ public sealed class ShowController : IShowHandler
         _activeProjectId = project.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
-        StartStreamFor(_current, auto);
+        StartStreamFor(_current, auto, lead);
         _status = TransportStatus.Playing;
         _atEndBoundary = false;
         _panicked = false;
@@ -1744,7 +1768,7 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private void StartStreamFor(DeckInstance deck, bool auto)
+    private void StartStreamFor(DeckInstance deck, bool auto, TimeSpan? lead = null)
     {
         _preRolled = false;
         if (deck.Handle is { } previous)
@@ -1761,33 +1785,33 @@ public sealed class ShowController : IShowHandler
         var engine = _engine;
         if (_marshal is not { } marshal)
         {
-            FinishOpen(deck, engine.StartStream(source, options), auto);
+            FinishOpen(deck, engine.StartStream(source, options), auto, lead);
             return;
         }
         var seq = ++_openSeq;
         _pendingOpen = (seq, deck);
         _ = Task.Run(() => engine.StartStream(source, options)).ContinueWith(
-            task => marshal(() => CompleteOpen(seq, deck, auto, task)),
+            task => marshal(() => CompleteOpen(seq, deck, auto, task, lead)),
             TaskScheduler.Default);
         _ = Task.Delay(_openTimeout).ContinueWith(
             _ => marshal(() => OpenExpired(seq, deck)),
             TaskScheduler.Default);
     }
 
-    private void FinishOpen(DeckInstance deck, StreamHandle handle, bool auto)
+    private void FinishOpen(DeckInstance deck, StreamHandle handle, bool auto, TimeSpan? lead = null)
     {
         deck.Handle = handle;
         _monitor?.Bind(handle, Content(deck));
         var settings = deck.Settings;
-        var fadeIn = ResolveFadeIn(settings.In, auto);
+        var fadeIn = ResolveFadeIn(settings.In, auto, lead);
         var mix = fadeIn.Duration > TimeSpan.Zero
             ? new MixParameters(settings.GainDb, new FadeSpec(fadeIn.Duration, fadeIn.Curve, settings.GainDb, StopWhenDone: false))
             : new MixParameters(settings.GainDb, null);
-        _engine.SetMix(handle, mix);
         _engine.Transport(handle, TransportCommand.Play);
+        _engine.SetMix(handle, mix);
     }
 
-    private void CompleteOpen(long seq, DeckInstance deck, bool auto, Task<StreamHandle> task)
+    private void CompleteOpen(long seq, DeckInstance deck, bool auto, Task<StreamHandle> task, TimeSpan? lead = null)
     {
         if (_pendingOpen is not { } pending || pending.Seq != seq || !ReferenceEquals(_current, deck))
         {
@@ -1807,7 +1831,7 @@ public sealed class ShowController : IShowHandler
             FaultCurrent(SourceOpenFault.Unknown.ToString());
             return;
         }
-        FinishOpen(deck, task.Result, auto);
+        FinishOpen(deck, task.Result, auto, lead);
     }
 
     private void OpenExpired(long seq, DeckInstance deck)
@@ -1837,14 +1861,15 @@ public sealed class ShowController : IShowHandler
         EmitTransport();
     }
 
-    private Fade ResolveFadeIn(Fade trackFade, bool auto)
+    private Fade ResolveFadeIn(Fade trackFade, bool auto, TimeSpan? lead = null)
     {
         if (!_smoothing.Enabled)
         {
             return trackFade;
         }
-        var duration = auto ? _smoothing.AutoCrossfade : _smoothing.StartFade;
-        return duration > TimeSpan.Zero ? new Fade(duration, trackFade.Curve) : Fade.None;
+        var duration = auto ? (lead ?? _smoothing.AutoCrossfade) : _smoothing.StartFade;
+        var curve = auto ? FadeCurve.Logarithmic : trackFade.Curve;
+        return duration > TimeSpan.Zero ? new Fade(duration, curve) : Fade.None;
     }
 
     private void ReleaseOld(DeckInstance? old, bool wasPlaying, bool manual)
@@ -1856,7 +1881,7 @@ public sealed class ShowController : IShowHandler
         var fadeOut = wasPlaying ? old.Settings.Out : null;
         if (_smoothing.Enabled && manual && wasPlaying && _smoothing.ManualCrossfade > TimeSpan.Zero)
         {
-            fadeOut = new Fade(_smoothing.ManualCrossfade, old.Settings.Out.Curve);
+            fadeOut = new Fade(_smoothing.ManualCrossfade, FadeCurve.Exponential);
         }
         if (fadeOut is { } fade && fade.Duration > TimeSpan.Zero)
         {
@@ -2025,7 +2050,7 @@ public sealed class ShowController : IShowHandler
     {
         public required EntryId? Entry { get; init; }
         public required Track Track { get; init; }
-        public required PlaybackSettings Settings { get; init; }
+        public required PlaybackSettings Settings { get; set; }
         public StreamHandle? Handle { get; set; }
     }
 }

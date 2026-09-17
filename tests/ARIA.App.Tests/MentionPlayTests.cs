@@ -89,6 +89,16 @@ public sealed class MentionPlayTests : IDisposable
     }
 
     [Fact]
+    public void ExecuteMention_LatchesHighlight()
+    {
+        var mention = new ScriptPanelViewModel.MentionVm(LiveTrack.Id, "трек (лайв)", false, "03:00");
+
+        _viewModel.ExecuteMention(mention);
+
+        Assert.Equal(LiveTrack.Id, _viewModel.HighlightedTrack);
+    }
+
+    [Fact]
     public void ExecuteMention_TrackOutsidePlaylist_DoesNothing()
     {
         var rejections = new List<Rejected>();

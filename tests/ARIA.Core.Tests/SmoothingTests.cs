@@ -186,6 +186,24 @@ public sealed class SmoothingTests
     }
 
     [Fact]
+    public void AutoAdvance_FadesOutGentleStart_InLogarithmic()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var pr = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [pr], pr.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        var old = h.Engine.Created[0];
+        Assert.Equal(FadeCurve.Exponential, Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Curve);
+        Assert.Equal(FadeCurve.Logarithmic, h.Engine.Last!.Mixes[0].Fade!.Curve);
+    }
+
+    [Fact]
     public void AutoAdvance_WithSmoothing_OldVoiceFadesOutWithAutoCrossfade()
     {
         using var h = new Harness();
@@ -270,18 +288,162 @@ public sealed class SmoothingTests
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
 
-        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(500));
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
 
         Assert.Equal(2, h.Engine.Created.Count);
         Assert.Empty(h.Engine.Disposed);
         var old = h.Engine.Created[0];
         var fadeOut = Assert.Single(old.Mixes, m => m.Fade is not null);
-        Assert.Equal(TimeSpan.FromMilliseconds(900), fadeOut.Fade!.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Fade!.Duration);
         Assert.True(fadeOut.Fade!.StopWhenDone);
         var fresh = h.Engine.Last!;
-        Assert.Equal(TimeSpan.FromMilliseconds(900), fresh.Mixes[0].Fade!.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fresh.Mixes[0].Fade!.Duration);
         Assert.False(fresh.Mixes[0].Fade!.StopWhenDone);
         Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
+    public void PreRollLate_KeepsFullManualFades()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var pr = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [pr], pr.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(100));
+
+        var old = h.Engine.Created[0];
+        Assert.Equal(TimeSpan.FromMilliseconds(400), Assert.Single(old.Mixes, m => m.Fade is not null).Fade!.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(400), h.Engine.Last!.Mixes[0].Fade!.Duration);
+    }
+
+    [Fact]
+    public void AutoCrossfade_UsesExponentialOutLogarithmicIn()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        var fadeOut = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
+        var fadeIn = h.Engine.Last!.Mixes[0].Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Duration);
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeIn.Duration);
+        Assert.Equal(FadeCurve.Exponential, fadeOut.Curve);
+        Assert.Equal(FadeCurve.Logarithmic, fadeIn.Curve);
+    }
+
+    [Fact]
+    public void ManualCrossfade_UsesGentleStartOutCurve()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(manualMs: 400, startMs: 250)));
+
+        h.Submit(new JumpTo(p.Entries[1].Id));
+
+        var manual = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(400), manual.Duration);
+        Assert.Equal(FadeCurve.Exponential, manual.Curve);
+    }
+
+    [Fact]
+    public void PreRoll_ManualStyle_WaitsForManualFadeWindow()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(manualMs: 400, autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(500));
+
+        Assert.Single(h.Engine.Created);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
+    public void PreRoll_ManualStyle_UsesSymmetricManualFades()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(manualMs: 400, autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Empty(h.Engine.Disposed);
+        var fadeOut = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Duration);
+        Assert.Equal(FadeCurve.Exponential, fadeOut.Curve);
+        Assert.True(fadeOut.StopWhenDone);
+        var fadeIn = h.Engine.Last!.Mixes[0].Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeIn.Duration);
+        Assert.Equal(FadeCurve.Logarithmic, fadeIn.Curve);
+        Assert.False(fadeIn.StopWhenDone);
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
+    public void Crossfade_OutFade_UsesGentleStartCurve()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(manualMs: 400, autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        var fadeOut = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
+        Assert.Equal(FadeCurve.Exponential, fadeOut.Curve);
+    }
+
+    [Fact]
+    public void PreRoll_AfterSeekWithCrossfade_StillFires()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one");
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled()));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(60)));
+        Assert.Equal(2, h.Engine.Created.Count);
+
+        monitor.Publish(h.Engine.Created[1].Handle, t1.Duration - TimeSpan.FromSeconds(60) - TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(3, h.Engine.Created.Count);
         Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
     }
 
@@ -365,11 +527,11 @@ public sealed class SmoothingTests
         h.Submit(new Play());
         h.Submit(new SetSmoothing(Enabled(autoMs: 900, seekMs: 0)));
 
-        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(500));
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
         Assert.Equal(2, h.Engine.Created.Count);
 
         h.Submit(new SeekTo(TimeSpan.Zero));
-        monitor.Publish(h.Engine.Created[1].Handle, t2.Duration - TimeSpan.FromMilliseconds(500));
+        monitor.Publish(h.Engine.Created[1].Handle, t2.Duration - TimeSpan.FromMilliseconds(300));
 
         Assert.Equal(3, h.Engine.Created.Count);
         Assert.Equal(t3.Id, h.Transport.Current!.TrackId);

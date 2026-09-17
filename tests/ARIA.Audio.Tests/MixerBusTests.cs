@@ -65,6 +65,23 @@ public sealed class MixerBusTests
     }
 
     [Fact]
+    public void StartInactiveVoice_StaysSilentUntilPlay()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5)) with { StartInactive = true });
+
+        bus.Render(output);
+
+        Assert.DoesNotContain(output, static sample => sample != 0f);
+
+        bus.Transport(handle, TransportCommand.Play);
+        bus.Render(output);
+
+        Assert.Contains(output, static sample => sample != 0f);
+    }
+
+    [Fact]
     public void Pause_SuspendsVoice_PositionStands_AndMarkerDoesNotFire()
     {
         using var bus = new MixerBus(1, 48000, 512);

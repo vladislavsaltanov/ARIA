@@ -64,7 +64,7 @@ public partial class App : Application
     {
         var sync = SynchronizationContext.Current;
         var thumbs = new WaveformThumbs(host.Waveforms!);
-        var settingsStore = new AppSettingsStore(Path.Combine(dataDirectory, "settings.json"));
+        var settingsStore = host.SettingsStore;
         var rowSettings = settingsStore.Load();
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
         ScriptPanelViewModel? scripts = null;
@@ -93,7 +93,8 @@ public partial class App : Application
                 projects.UpdateRowSettings(updated);
                 transport.UpdateRowSettings(updated);
             },
-            sync);
+            sync,
+            host.Outputs);
         window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         window.Show();

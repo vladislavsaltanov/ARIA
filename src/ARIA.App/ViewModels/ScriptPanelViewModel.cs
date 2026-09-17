@@ -394,6 +394,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             case 1 when line.Mentions[0].IsDangling || !IsKnownTrack(line.Mentions[0].Track):
                 break;
             case 1:
+                HighlightedTrack = line.Mentions[0].Track;
                 Submit(new PlayTrack(line.Mentions[0].Track));
                 break;
             default:
@@ -410,6 +411,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             line.CandidatesVisible = false;
             return;
         }
+        HighlightedTrack = mention.Track;
         Submit(new PlayTrack(mention.Track));
         line.CandidatesVisible = false;
     }
@@ -421,6 +423,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
             return;
         }
         CommitOpenEdit();
+        HighlightedTrack = mention.Track;
         Submit(new PlayTrack(mention.Track));
     }
 
@@ -439,7 +442,7 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<Track> SuggestTracks(string query)
     {
-        var source = _trackSource?.Invoke() ?? [];
+        var source = (_trackSource?.Invoke() ?? []).Where(t => _projectTracks.Contains(t.Id));
         if (string.IsNullOrWhiteSpace(query))
         {
             return source.Take(SuggestLimit).ToList();

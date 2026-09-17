@@ -19,24 +19,53 @@ public sealed class MiniaudioSourceFactory : ISourceFactory
 
     public ISampleSource? Open(string filePath, TimeSpan cueIn, TimeSpan? cueOut)
     {
-        var opened = AriaShim.DecoderOpen(filePath, _outputSampleRate, _outputChannels, out var decoder);
-        if (opened != 0)
+        if (!TryOpenDecoder(filePath, out var decoder, out var lead))
         {
             return null;
         }
-        return new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn, cueOut);
+        return new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn + GapDelay(filePath) + lead, cueOut);
     }
+
+    private bool TryOpenDecoder(string filePath, out IntPtr decoder, out TimeSpan lead)
+    {
+        lead = TimeSpan.Zero;
+        if (AriaShim.DecoderOpen(filePath, _outputSampleRate, _outputChannels, out decoder) != 0)
+        {
+            return false;
+        }
+        if (!IsMp3(filePath) || Mp3Gapless.TryRead(filePath, out _))
+        {
+            return true;
+        }
+        if (Mp3Gapless.TryMeasureLeadSilence(decoder, _outputChannels, _outputSampleRate, out var skip))
+        {
+            lead = TimeSpan.FromSeconds(skip / (double)_outputSampleRate);
+            return true;
+        }
+        AriaShim.DecoderClose(decoder);
+        if (AriaShim.DecoderOpen(filePath, _outputSampleRate, _outputChannels, out decoder) != 0)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    private static bool IsMp3(string filePath) =>
+        string.Equals(Path.GetExtension(filePath), ".mp3", StringComparison.OrdinalIgnoreCase);
+
+    private static TimeSpan GapDelay(string filePath) =>
+        Mp3Gapless.TryRead(filePath, out var info) ? info.Delay() : TimeSpan.Zero;
 
     public bool TryOpen(string filePath, TimeSpan cueIn, TimeSpan? cueOut, out ISampleSource? source, out SourceOpenFault fault)
     {
         source = null;
         fault = SourceOpenFault.Undecodable;
-        if (AriaShim.DecoderOpen(filePath, _outputSampleRate, _outputChannels, out var decoder) != 0)
+        if (!TryOpenDecoder(filePath, out var decoder, out var lead))
         {
             fault = File.Exists(filePath) ? SourceOpenFault.Undecodable : SourceOpenFault.Missing;
             return false;
         }
-        source = new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn, cueOut);
+        source = new DecoderSource(decoder, _outputChannels, _outputSampleRate, cueIn + GapDelay(filePath) + lead, cueOut);
         fault = SourceOpenFault.Unknown;
         return true;
     }
