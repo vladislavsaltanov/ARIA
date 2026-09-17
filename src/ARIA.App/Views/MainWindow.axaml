@@ -76,7 +76,7 @@
       <views:QueueColumn Grid.Column="2" x:Name="QueueColumn" />
       </Grid>
     </SplitView>
-    <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="124" Margin="-24,12,-24,-24" />
+    <views:TransportBar x:Name="TransportBar" Grid.Row="2" Height="100" Margin="-24,12,-24,-24" />
     <Border x:Name="FocusSink" Grid.RowSpan="3" Width="0" Height="0" Focusable="True" IsHitTestVisible="False"/>
   </Grid>
 </Window>
