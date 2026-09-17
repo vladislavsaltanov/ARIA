@@ -64,6 +64,11 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
             var smoothSlider = playback.FindControl<Slider>("MeterSmoothingSlider");
             Assert.NotNull(smoothCheck);
             Assert.NotNull(smoothSlider);
+            var log = dialog.GetVisualDescendants().OfType<LogSection>().FirstOrDefault();
+            Assert.NotNull(log);
+            Assert.NotNull(log.FindControl<ComboBox>("LogLevelBox"));
+            Assert.NotNull(log.FindControl<CheckBox>("LogEnabledCheck"));
+            Assert.NotNull(log.FindControl<Button>("ShowLogButton"));
 
             dialog.Close();
             return 0;
@@ -129,7 +134,7 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
 
             var nav = dialog.FindControl<ListBox>("SectionNav");
             Assert.NotNull(nav);
-            Assert.Equal(7, nav.ItemCount);
+            Assert.Equal(8, nav.ItemCount);
 
             nav.SelectedIndex = 6;
             var engine = dialog.GetVisualDescendants().OfType<EngineSection>().FirstOrDefault();

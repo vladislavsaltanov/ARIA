@@ -15,5 +15,6 @@ public static class SettingsSectionRegistry
         new("playback", "Воспроизведение", () => new PlaybackSection()),
         new("audio", "Звук", () => new AudioSection()),
         new("engine", "Движок", () => new EngineSection()),
+        new("log", "Журнал", () => new LogSection()),
     ];
 }

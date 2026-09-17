@@ -5,11 +5,11 @@ using Aria.App.Views.SettingsSections;
 public sealed class SettingsSectionsTests
 {
     [Fact]
-    public void Registry_HasSevenSections_InOrder()
+    public void Registry_HasEightSections_InOrder()
     {
         var titles = SettingsSectionRegistry.All.Select(s => s.Title).ToArray();
 
-        Assert.Equal(["Пульт", "Жесты", "Часы", "Формат строк", "Воспроизведение", "Звук", "Движок"], titles);
+        Assert.Equal(["Пульт", "Жесты", "Часы", "Формат строк", "Воспроизведение", "Звук", "Движок", "Журнал"], titles);
     }
 
     [Fact]

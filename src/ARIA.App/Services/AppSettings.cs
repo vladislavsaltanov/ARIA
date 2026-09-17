@@ -2,13 +2,14 @@ namespace Aria.App.Services;
 
 using System.Text.Json;
 using Aria.Core.Model;
+using Aria.Core.Runtime;
 
 public sealed record MeterSmoothing(bool Enabled, int ReleaseMs)
 {
     public static MeterSmoothing Default { get; } = new(true, 250);
 }
 
-public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance, string OutputDeviceId = "", string OutputDeviceName = "", string PreviewOutputDeviceId = "", string PreviewOutputDeviceName = "", MeterSmoothing? MeterSmoothing = null)
+public sealed record AppSettings(bool UseFileName, string RowFormat, Smoothing Smoothing, EndAction DefaultEndAction = EndAction.Advance, string OutputDeviceId = "", string OutputDeviceName = "", string PreviewOutputDeviceId = "", string PreviewOutputDeviceName = "", MeterSmoothing? MeterSmoothing = null, LogLevel LogLevel = LogLevel.Info, bool LogEnabled = false)
 {
     public MeterSmoothing EffectiveMeterSmoothing => MeterSmoothing ?? MeterSmoothing.Default;
 
@@ -46,7 +47,9 @@ public sealed class AppSettingsStore(string path)
                 dto.OutputDeviceName ?? string.Empty,
                 dto.PreviewOutputDeviceId ?? string.Empty,
                 dto.PreviewOutputDeviceName ?? string.Empty,
-                dto.MeterSmoothing?.ToModel());
+                dto.MeterSmoothing?.ToModel(),
+                dto.LogLevel ?? LogLevel.Info,
+                dto.LogEnabled ?? false);
         }
         catch (Exception e) when (e is JsonException or IOException)
         {
@@ -73,7 +76,9 @@ public sealed class AppSettingsStore(string path)
         string? OutputDeviceName = null,
         string? PreviewOutputDeviceId = null,
         string? PreviewOutputDeviceName = null,
-        MeterSmoothingDto? MeterSmoothing = null)
+        MeterSmoothingDto? MeterSmoothing = null,
+        LogLevel? LogLevel = null,
+        bool? LogEnabled = null)
     {
         public static AppSettingsDto FromModel(AppSettings settings) => new(
             settings.UseFileName,
@@ -84,7 +89,9 @@ public sealed class AppSettingsStore(string path)
             settings.OutputDeviceName,
             settings.PreviewOutputDeviceId,
             settings.PreviewOutputDeviceName,
-            settings.MeterSmoothing is null ? null : MeterSmoothingDto.FromModel(settings.MeterSmoothing));
+            settings.MeterSmoothing is null ? null : MeterSmoothingDto.FromModel(settings.MeterSmoothing),
+            settings.LogLevel,
+            settings.LogEnabled);
 
         public Smoothing ToModel()
         {

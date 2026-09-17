@@ -1,6 +1,7 @@
 namespace Aria.App.Services;
 
 using Aria.Audio;
+using Aria.Core.Runtime;
 
 public sealed class AudioOutputService
 {
@@ -10,14 +11,16 @@ public sealed class AudioOutputService
 
     private readonly IAudioOutputLister _lister;
     private readonly AppSettingsStore _settingsStore;
+    private readonly IAppLog _log;
     private IReadOnlyList<OutputDevice> _devices = [];
     private string _status = string.Empty;
     private string _previewStatus = string.Empty;
 
-    public AudioOutputService(IAudioOutputLister lister, AppSettingsStore settingsStore)
+    public AudioOutputService(IAudioOutputLister lister, AppSettingsStore settingsStore, IAppLog? log = null)
     {
         _lister = lister;
         _settingsStore = settingsStore;
+        _log = log ?? NullAppLog.Instance;
         Refresh();
         _status = SelectedName(SelectedId);
         _previewStatus = SelectedName(SelectedPreviewId);
@@ -58,12 +61,14 @@ public sealed class AudioOutputService
     public void NotifyDeviceFault(string message)
     {
         _status = message;
+        _log.Warn("output.device_fault", new Dictionary<string, string> { ["scope"] = "main", ["message"] = message });
         Changed?.Invoke();
     }
 
     public void NotifyPreviewFault(string message)
     {
         _previewStatus = message;
+        _log.Warn("output.device_fault", new Dictionary<string, string> { ["scope"] = "preview", ["message"] = message });
         Changed?.Invoke();
     }
 
