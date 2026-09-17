@@ -1694,7 +1694,7 @@ public sealed class ShowController : IShowHandler
         AdvanceFromBoundary(lead);
         if (handle is { } faded)
         {
-            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(lead ?? _smoothing.AutoCrossfade, old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
+            _engine.SetMix(faded, new MixParameters(old.Settings.GainDb, new FadeSpec(lead ?? _smoothing.AutoCrossfade, _smoothing.Enabled ? FadeCurve.Logarithmic : old.Settings.Out.Curve, SilenceDb, StopWhenDone: true)));
             _retired.Add(faded);
             _monitor?.Unbind(faded);
         }
@@ -1875,7 +1875,7 @@ public sealed class ShowController : IShowHandler
         var fadeOut = wasPlaying ? old.Settings.Out : null;
         if (_smoothing.Enabled && manual && wasPlaying && _smoothing.ManualCrossfade > TimeSpan.Zero)
         {
-            fadeOut = new Fade(_smoothing.ManualCrossfade, old.Settings.Out.Curve);
+            fadeOut = new Fade(_smoothing.ManualCrossfade, FadeCurve.Logarithmic);
         }
         if (fadeOut is { } fade && fade.Duration > TimeSpan.Zero)
         {
