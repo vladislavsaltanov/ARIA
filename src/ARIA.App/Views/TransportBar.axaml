@@ -98,7 +98,7 @@
             </Panel>
           </Button>
           <Slider Width="120" Minimum="0" Maximum="125" Value="{Binding VolumePercent, Mode=TwoWay}"
-                  ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center" Margin="0,-4,0,4"/>
+                  ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center" Margin="0,-3,0,3"/>
           <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
                      Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>
         </StackPanel>
