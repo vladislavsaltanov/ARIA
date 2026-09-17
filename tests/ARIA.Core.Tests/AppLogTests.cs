@@ -80,6 +80,22 @@ public sealed class AppLogTests : IDisposable
     }
 
     [Fact]
+    public void SetMinLevel_AppliesImmediately()
+    {
+        using var log = OpenLog();
+        log.Debug("quiet");
+        log.SetMinLevel(LogLevel.Debug);
+        log.Debug("loud");
+        log.SetMinLevel(LogLevel.Error);
+        log.Info("dropped");
+
+        var lines = ReadLines();
+        var single = Assert.Single(lines);
+        using var document = JsonDocument.Parse(single);
+        Assert.Equal("loud", document.RootElement.GetProperty("msg").GetString());
+    }
+
+    [Fact]
     public void Write_NonPositiveMaxBytes_DoesNotRotate()
     {
         using var log = OpenLog(LogLevel.Info, maxBytes: 0);

@@ -88,6 +88,18 @@ public sealed class AppHostLoggingTests : IDisposable
     }
 
     [Fact]
+    public async Task Start_AppliesStoredLogLevel()
+    {
+        Directory.CreateDirectory(_directory);
+        new AppSettingsStore(Path.Combine(_directory, "settings.json")).Save(AppSettings.Default with { LogLevel = LogLevel.Error });
+        await using var host = await StartHostAsync();
+        host.Submit(new CreateProject("Quiet"));
+        await Task.Delay(300);
+
+        Assert.False(HasData("command", "type", "CreateProject"));
+    }
+
+    [Fact]
     public async Task RemoteStart_LogsEndpoint_WithoutToken()
     {
         await using var host = new AppHost(
@@ -99,6 +111,17 @@ public sealed class AppHostLoggingTests : IDisposable
 
         await PollAsync(() => HasLine("remote.started"));
         Assert.DoesNotContain("test-token-secret", File.ReadAllText(LogPath()));
+    }
+
+    [Fact]
+    public async Task SetLogLevel_AppliesLive()
+    {
+        await using var host = await StartHostAsync();
+        host.SetLogLevel(LogLevel.Error);
+        host.Submit(new CreateProject("Quiet"));
+        await Task.Delay(300);
+
+        Assert.False(HasData("command", "type", "CreateProject"));
     }
 
     [Fact]

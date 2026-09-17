@@ -19,6 +19,21 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Roundtrip_PreservesLogLevel()
+    {
+        var store = new AppSettingsStore(_path);
+        store.Save(AppSettings.Default with { LogLevel = LogLevel.Debug });
+
+        Assert.Equal(LogLevel.Debug, store.Load().LogLevel);
+    }
+
+    [Fact]
+    public void Load_MissingFile_LogLevelDefaultsToInfo()
+    {
+        Assert.Equal(LogLevel.Info, new AppSettingsStore(_path).Load().LogLevel);
+    }
+
+    [Fact]
     public void Load_MissingFile_ReturnsDefault()
     {
         var settings = new AppSettingsStore(_path).Load();
