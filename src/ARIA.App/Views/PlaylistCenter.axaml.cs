@@ -29,6 +29,7 @@ public partial class ProjectCenter : UserControl
             _bound.ProjectImportMissing -= OnProjectImportMissing;
             _bound.ExportSucceeded -= OnExportSucceeded;
             _bound.RevealRequested -= OnRevealRequested;
+            _bound.ConfirmDeleteProject = null;
         }
         _bound = DataContext as ProjectsViewModel;
         if (_bound is not null)
@@ -38,6 +39,7 @@ public partial class ProjectCenter : UserControl
             _bound.ProjectImportMissing += OnProjectImportMissing;
             _bound.ExportSucceeded += OnExportSucceeded;
             _bound.RevealRequested += OnRevealRequested;
+            _bound.ConfirmDeleteProject = ConfirmDeleteProjectAsync;
         }
     }
 
@@ -151,6 +153,50 @@ public partial class ProjectCenter : UserControl
     private async void OnExportSucceeded(string fileName, string message)
     {
         await ShowInfoDialog("Проект экспортирован", message);
+    }
+
+    private async Task<bool> ConfirmDeleteProjectAsync(ProjectsViewModel.ProjectVm project)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return false;
+        }
+        var remove = new Button { Content = "Удалить" };
+        var cancel = new Button { Content = "Отмена" };
+        var dialog = new Window
+        {
+            Title = $"Удалить проект «{project.Name}»?",
+            Width = 440,
+            MinWidth = 360,
+            MinHeight = 120,
+            MaxWidth = 600,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Margin = new Thickness(16),
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Проект будет удалён из списка. Аудиофайлы на диске останутся.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
+                    new StackPanel
+                    {
+                        Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        Spacing = 8,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                        Children = { remove, cancel },
+                    },
+                },
+            },
+        };
+        remove.Click += (_, _) => dialog.Close(true);
+        cancel.Click += (_, _) => dialog.Close(false);
+        return await dialog.ShowDialog<bool>(owner);
     }
 
     private async Task ShowInfoDialog(string title, string message)
