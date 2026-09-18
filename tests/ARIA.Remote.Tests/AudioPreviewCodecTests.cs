@@ -292,6 +292,26 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public void SetTrackBpm_Parses()
+    {
+        var id = Guid.NewGuid();
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_bpm\",\"track\":\"" + id + "\",\"bpm\":128.5}}";
+
+        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
+        Assert.Equal(new SetTrackBpm(new TrackId(id), 128.5), command);
+    }
+
+    [Fact]
+    public void SetTrackBpm_Null_Clears()
+    {
+        var id = Guid.NewGuid();
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_bpm\",\"track\":\"" + id + "\",\"bpm\":null}}";
+
+        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
+        Assert.Equal(new SetTrackBpm(new TrackId(id), null), command);
+    }
+
     private sealed class CapturingEngine : IAudioEngine
     {
         public bool PreviewMuted { get; private set; }
