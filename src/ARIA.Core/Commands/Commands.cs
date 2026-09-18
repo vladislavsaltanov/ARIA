@@ -83,6 +83,8 @@ public sealed record SetClickSettings(PreviewSessionHandle Session, ClickSetting
 
 public sealed record SetClickMuted(PreviewSessionHandle Session, bool Muted) : Command;
 
+public sealed record StartSessionTrack(PreviewSessionHandle Session, TrackId Track) : Command;
+
 public sealed record NormalizeTrack(TrackId Track) : Command;
 
 public sealed record NormalizeProject(ProjectId Project) : Command;

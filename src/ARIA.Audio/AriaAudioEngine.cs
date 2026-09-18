@@ -44,6 +44,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly float[] _sessionScratch;
     private readonly float[] _clickScratch;
     private readonly object _sessionLock = new();
+    private readonly ConcurrentQueue<ISampleSource> _retiredVoices = [];
 
     private static readonly ClickSettings DefaultClick = new(120, 4, 0, 0);
     private int _handleCounter;
@@ -366,6 +367,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     public void ClosePreviewSession(PreviewSessionHandle session)
     {
+        var target = FindSession(session);
+        if (target?.TrackVoice is { } voice)
+        {
+            _retiredVoices.Enqueue(voice);
+            target.TrackVoice = null;
+        }
         lock (_sessionLock)
         {
             var kept = new PreviewSession[_sessions.Length];
@@ -381,6 +388,26 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             Array.Copy(kept, shrunk, count);
             _sessions = shrunk;
         }
+    }
+
+    public void StartSessionTrack(PreviewSessionHandle session, TrackSource source)
+    {
+        if (FindSession(session) is not { } target)
+        {
+            return;
+        }
+        if (!_sourceFactory.TryOpen(source.FilePath, source.CueIn, source.CueOut, out var sample, out var fault) || sample is null)
+        {
+            _faultedAtBirth.Enqueue(new BirthFault(session.Value, fault));
+            return;
+        }
+        var old = Volatile.Read(ref target.TrackVoice);
+        Volatile.Write(ref target.TrackVoice, sample);
+        if (old is not null)
+        {
+            _retiredVoices.Enqueue(old);
+        }
+        target.ResetVoice = true;
     }
 
     public void SetClick(PreviewSessionHandle session, ClickSettings settings)
@@ -424,6 +451,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void PumpPreviewSessions()
     {
+        while (_retiredVoices.TryDequeue(out var retired))
+        {
+            (retired as IDisposable)?.Dispose();
+        }
         var sessions = Volatile.Read(ref _sessions);
         if (sessions.Length == 0)
         {
@@ -437,11 +468,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void PumpSession(PreviewSession session)
     {
-        if (!Volatile.Read(ref _mainPlaying))
+        var voice = Volatile.Read(ref session.TrackVoice);
+        if (voice is null && !Volatile.Read(ref _mainPlaying))
         {
             return;
         }
-        if (session.Reader is null)
+        if (session.Reader is null && voice is null)
         {
             return;
         }
@@ -455,7 +487,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             session.Voice.UpdateSettings(settings);
             session.PendingSettings = null;
         }
-        var read = session.Reader.Read(_sessionScratch.AsSpan(0, _sessionScratch.Length));
+        var read = voice is not null
+            ? voice.ReadFrames(_sessionScratch.AsSpan(0, _sessionScratch.Length)) * _channels
+            : session.Reader!.Read(_sessionScratch.AsSpan(0, _sessionScratch.Length));
         if (read <= 0)
         {
             return;
@@ -496,6 +530,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         public volatile ClickSettings? PendingSettings;
 
         public volatile bool ResetVoice;
+
+        public ISampleSource? TrackVoice;
     }
 
     private void DrainPendingSinks()

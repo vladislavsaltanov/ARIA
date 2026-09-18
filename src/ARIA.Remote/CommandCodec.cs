@@ -81,6 +81,7 @@ internal static class CommandCodec
                 "set_preview_muted" => new SetPreviewMuted(BoolOf(commandElement, "muted")),
                 "set_click_settings" => ParseSetClickSettings(commandElement),
                 "set_click_muted" => new SetClickMuted(new PreviewSessionHandle(IntOf(commandElement, "session")), BoolOf(commandElement, "muted")),
+                "start_session_track" => new StartSessionTrack(new PreviewSessionHandle(IntOf(commandElement, "session")), new TrackId(GuidOf(commandElement, "track"))),
                 "normalize_track" => new NormalizeTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "normalize_playlist" or "normalize_project" => new NormalizeProject(new ProjectId(GuidOf(commandElement, "playlist"))),
                 "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),

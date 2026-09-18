@@ -1394,7 +1394,7 @@
   el.previewPlay.addEventListener("click", () => {
     var current = state.transport && state.transport.current;
     if (!current || !current.trackId) return;
-    send("start_preview_track", { track: current.trackId });
+    var trackId = current.trackId;
     ensureToken().then((token) => {
       if (!token) return;
       fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
@@ -1402,6 +1402,9 @@
         return response.json().catch(() => null);
       }).then((body) => {
         clickSession = body && body.session ? body.session : 0;
+        if (clickSession) {
+          send("start_session_track", { session: clickSession, track: trackId });
+        }
         syncClickInputs();
         pushClickSettings();
         el.previewAudio.src =
@@ -1414,7 +1417,6 @@
   });
 
   el.previewStop.addEventListener("click", () => {
-    send("stop_preview", {});
     clickSession = 0;
     try {
       el.previewAudio.pause();

@@ -99,6 +99,10 @@ public interface IAudioEngine
     {
     }
 
+    void StartSessionTrack(PreviewSessionHandle session, TrackSource source)
+    {
+    }
+
     void SetClick(PreviewSessionHandle session, ClickSettings settings)
     {
     }

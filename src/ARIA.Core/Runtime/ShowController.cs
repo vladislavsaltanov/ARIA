@@ -213,6 +213,9 @@ public sealed class ShowController : IShowHandler
             case SetClickMuted setClickMuted:
                 OnSetClickMuted(setClickMuted);
                 break;
+            case StartSessionTrack startSessionTrack:
+                OnStartSessionTrack(client, seq, startSessionTrack);
+                break;
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
                 break;
@@ -1183,6 +1186,22 @@ public sealed class ShowController : IShowHandler
     }
 
     private void OnSetClickMuted(SetClickMuted command) => _engine.SetClickMuted(command.Session, command.Muted);
+
+    private void OnStartSessionTrack(ClientId client, long seq, StartSessionTrack command)
+    {
+        if (_panicked)
+        {
+            Reject(client, seq, "panicked");
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var track))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
+        _engine.StartSessionTrack(command.Session, new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio));
+    }
 
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {
