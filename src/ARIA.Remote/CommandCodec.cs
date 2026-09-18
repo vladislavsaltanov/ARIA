@@ -73,6 +73,7 @@ internal static class CommandCodec
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
                 "set_global_audio" => ParseSetGlobalAudio(commandElement),
                 "set_track_audio" => ParseSetTrackAudio(commandElement),
+                "set_track_bpm" => new SetTrackBpm(new TrackId(GuidOf(commandElement, "track")), DoubleOrNullOf(commandElement, "bpm")),
                 "set_entry_audio" => ParseSetEntryAudio(commandElement),
                 "start_preview_track" => new StartPreviewTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "stop_preview" => new StopPreview(),

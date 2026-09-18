@@ -67,6 +67,8 @@ public sealed record SetGlobalAudio(GlobalAudioSettings Value) : Command;
 
 public sealed record SetTrackAudio(TrackId Track, TrackAudioSettings Audio) : Command;
 
+public sealed record SetTrackBpm(TrackId Track, double? Bpm) : Command;
+
 public sealed record SetEntryAudio(EntryId Entry, TrackAudioSettings? Audio) : Command;
 
 public sealed record StartPreviewTrack(TrackId Track) : Command;

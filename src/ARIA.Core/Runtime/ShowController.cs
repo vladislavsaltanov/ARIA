@@ -189,6 +189,9 @@ public sealed class ShowController : IShowHandler
             case SetTrackAudio setTrackAudio:
                 OnSetTrackAudio(client, seq, setTrackAudio);
                 break;
+            case SetTrackBpm setTrackBpm:
+                OnSetTrackBpm(client, seq, setTrackBpm);
+                break;
             case SetEntryAudio setEntryAudio:
                 OnSetEntryAudio(client, seq, setEntryAudio);
                 break;
@@ -266,6 +269,9 @@ public sealed class ShowController : IShowHandler
 
     public TrackAudioSettings? TrackAudio(TrackId id) =>
         _trackMap.TryGetValue(id, out var track) ? track.Defaults.Audio : null;
+
+    public double? TrackBpm(TrackId id) =>
+        _trackMap.TryGetValue(id, out var track) ? track.Defaults.Bpm : null;
 
     public ShowSnapshot Snapshot() => new(
         _showVersion,
@@ -1197,6 +1203,24 @@ public sealed class ShowController : IShowHandler
         {
             PushCurrentAudio();
         }
+        EmitShow();
+    }
+
+    private void OnSetTrackBpm(ClientId client, long seq, SetTrackBpm command)
+    {
+        if (command.Bpm is < ClickBpmMin or > ClickBpmMax)
+        {
+            Reject(client, seq, "bpm-out-of-range");
+            return;
+        }
+        if (!_trackMap.TryGetValue(command.Track, out var existing))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var updated = existing with { Defaults = existing.Defaults with { Bpm = command.Bpm } };
+        _tracks = _tracks.Replace(existing, updated);
+        _trackMap[command.Track] = updated;
         EmitShow();
     }
 

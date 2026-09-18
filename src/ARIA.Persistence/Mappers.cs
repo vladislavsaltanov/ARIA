@@ -140,6 +140,7 @@ internal sealed class TrackDto
     public int? FadeOutCurve { get; set; }
     public List<MarkerDto>? Markers { get; set; }
     public TrackAudioDto? Audio { get; set; }
+    public double? Bpm { get; set; }
 }
 
 internal sealed class OverridesDto
@@ -193,6 +194,7 @@ internal static class TrackMapper
                 ? null
                 : [.. d.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
             Audio = AudioMapper.ToDto(d.Audio),
+            Bpm = d.Bpm,
         };
     }
 
@@ -212,7 +214,8 @@ internal static class TrackMapper
                 In: dto.FadeInTicks is null ? null : new Fade(new TimeSpan(dto.FadeInTicks.Value), (FadeCurve)dto.FadeInCurve!.Value),
                 Out: dto.FadeOutTicks is null ? null : new Fade(new TimeSpan(dto.FadeOutTicks.Value), (FadeCurve)dto.FadeOutCurve!.Value),
                 Markers: markers,
-                Audio: AudioMapper.ToDomain(dto.Audio)));
+                Audio: AudioMapper.ToDomain(dto.Audio),
+                Bpm: dto.Bpm));
     }
 }
 

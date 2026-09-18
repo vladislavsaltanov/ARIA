@@ -8,7 +8,8 @@ public sealed record TrackDefaults(
     Fade? In = null,
     Fade? Out = null,
     ImmutableArray<Marker>? Markers = null,
-    TrackAudioSettings? Audio = null);
+    TrackAudioSettings? Audio = null,
+    double? Bpm = null);
 
 public sealed record Track(
     TrackId Id,
