@@ -295,7 +295,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void OnMixerEnded(StreamEvent e)
     {
-        if (e.Kind == StreamEventKind.Ended)
+        if (e.Kind == StreamEventKind.Ended
+            && e.Handle.Value == Volatile.Read(ref _currentHandle))
         {
             Volatile.Write(ref _mainPlaying, false);
         }
