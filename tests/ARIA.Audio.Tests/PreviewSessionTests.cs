@@ -9,8 +9,6 @@ public sealed class PreviewSessionTests
 
     private sealed class Rig : IDisposable
     {
-        public PreviewTap Shared { get; } = new(SampleRate * 2, Channels);
-
         public AriaAudioEngine Engine { get; }
 
         public Rig()
@@ -24,7 +22,7 @@ public sealed class PreviewSessionTests
                 new NullSink(SampleRate, Channels),
                 null,
                 new NullSink(SampleRate, Channels),
-                Shared);
+                new PreviewTap(SampleRate * 2, Channels));
         }
 
         public void Dispose() => Engine.Dispose();
@@ -53,12 +51,17 @@ public sealed class PreviewSessionTests
         return peak;
     }
 
-    private static void StartSine(Rig rig) => rig.Engine.StartPreview(
-        new TrackSource("/audio/sine.flac", TimeSpan.Zero, null),
-        new StreamOptions(StreamBus.Preview, []));
+    private static StreamHandle StartSine(Rig rig)
+    {
+        var handle = rig.Engine.StartStream(
+            new TrackSource("/audio/sine.flac", TimeSpan.Zero, null),
+            new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(handle, TransportCommand.Play);
+        return handle;
+    }
 
     [Fact]
-    public async Task MutedSession_MirrorsPreviewAudio()
+    public async Task MutedSession_MirrorsMainAudio()
     {
         using var rig = new Rig();
         var session = rig.Engine.OpenPreviewSession();
@@ -72,7 +75,7 @@ public sealed class PreviewSessionTests
         {
             peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
             return peak > 0.1;
-        }, "muted session never received preview audio");
+        }, "muted session never received main audio");
     }
 
     [Fact]
@@ -100,6 +103,36 @@ public sealed class PreviewSessionTests
             return clickedPeak > 0.8;
         }, "clicked session never rose above track");
         Assert.True(mutedPeak < 0.7, "muted session leaked click, peak " + mutedPeak);
+    }
+
+    [Fact]
+    public async Task ClickSilent_WhenMainStopped()
+    {
+        using var rig = new Rig();
+        var session = rig.Engine.OpenPreviewSession();
+        rig.Engine.SetClick(session, new ClickSettings(120, 4, 0, 0));
+        rig.Engine.SetClickMuted(session, false);
+        var handle = StartSine(rig);
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[8192];
+        var peak = 0.0;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.8;
+        }, "clicked session never sounded while playing");
+        rig.Engine.Transport(handle, TransportCommand.Stop);
+        await Task.Delay(300);
+        int read;
+        do
+        {
+            read = reader.Read(buffer);
+        }
+        while (read > 0);
+        await Task.Delay(100);
+        Assert.Equal(0, reader.Read(buffer));
     }
 
     [Fact]
