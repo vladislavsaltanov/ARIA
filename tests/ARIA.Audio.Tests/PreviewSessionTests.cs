@@ -60,6 +60,44 @@ public sealed class PreviewSessionTests
         return handle;
     }
 
+    private static StreamHandle StartFinite(Rig rig)
+    {
+        var handle = rig.Engine.StartStream(
+            new TrackSource("/audio/finite.flac", TimeSpan.Zero, null),
+            new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(handle, TransportCommand.Play);
+        return handle;
+    }
+
+    [Fact]
+    public async Task RetiredVoiceEnded_KeepsSessionFlowing()
+    {
+        using var rig = new Rig();
+        var ended = new TaskCompletionSource();
+        rig.Engine.Events += e =>
+        {
+            if (e.Kind == StreamEventKind.Ended)
+            {
+                ended.TrySetResult();
+            }
+        };
+        StartFinite(rig);
+        StartSine(rig);
+        var session = rig.Engine.OpenPreviewSession();
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        await Poll(() => ended.Task.IsCompleted, "finite voice never ended");
+        var buffer = new float[4096];
+        int read;
+        do
+        {
+            read = reader.Read(buffer);
+        }
+        while (read > 0);
+        await Poll(() => reader.Read(buffer) > 0, "session stalled after retired voice ended");
+    }
+
     [Fact]
     public async Task MutedSession_MirrorsMainAudio()
     {
