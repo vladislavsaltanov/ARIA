@@ -1,6 +1,7 @@
 namespace Aria.Remote.Tests;
 
 using System.Net;
+using System.Text.Json;
 using Aria.Audio;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
@@ -96,6 +97,154 @@ public sealed class PreviewStreamTests : IAsyncLifetime
             Assert.Null(response.Content.Headers.ContentLength);
             var header = await ReadExactlyAsync(await response.Content.ReadAsStreamAsync(cts.Token), 44, cts.Token);
             Assert.Equal((byte)'W', header[8]);
+        }
+        finally
+        {
+            await host.DisposeAsync();
+            bus.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task PreviewSession_Open_ReturnsId()
+    {
+        var engine = new StubEngine();
+        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), engine: engine);
+        await host.StartAsync();
+        try
+        {
+            using var http = new HttpClient();
+            using var response = await http.PostAsync(new Uri(host.HttpEndpoint, "preview/open?token=secret"), new StringContent(string.Empty));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var session = document.RootElement.GetProperty("session").GetInt32();
+            Assert.True(session > 0, "session id not positive");
+            Assert.Equal(1, engine.OpenSessions);
+        }
+        finally
+        {
+            await host.DisposeAsync();
+            bus.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task PreviewSession_Stream_ServesSessionTap()
+    {
+        var engine = new StubEngine();
+        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), engine: engine);
+        await host.StartAsync();
+        try
+        {
+            using var http = new HttpClient();
+            using var opened = await http.PostAsync(new Uri(host.HttpEndpoint, "preview/open?token=secret"), new StringContent(string.Empty));
+            using var openDocument = JsonDocument.Parse(await opened.Content.ReadAsStringAsync());
+            var session = openDocument.RootElement.GetProperty("session").GetInt32();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var response = await http.GetAsync(
+                new Uri(host.HttpEndpoint, $"preview?session={session}&token=secret"),
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadAsStreamAsync(cts.Token);
+            var header = await ReadExactlyAsync(body, 44, cts.Token);
+            Assert.Equal((byte)'R', header[0]);
+            var tap = engine.PreviewSessionTap(new PreviewSessionHandle(session));
+            Assert.NotNull(tap);
+            var frames = 2400;
+            var data = new float[frames * 2];
+            Array.Fill(data, 0.5f);
+            tap.Publish(data);
+            var audio = await ReadExactlyAsync(body, frames * 2 * 2, cts.Token);
+            Assert.Equal(0x4000, audio[0] | (audio[1] << 8));
+        }
+        finally
+        {
+            await host.DisposeAsync();
+            bus.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task PreviewSession_Unknown_Returns404()
+    {
+        var engine = new StubEngine();
+        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), engine: engine);
+        await host.StartAsync();
+        try
+        {
+            using var http = new HttpClient();
+            using var response = await http.GetAsync(new Uri(host.HttpEndpoint, "preview?session=999&token=secret"));
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+        finally
+        {
+            await host.DisposeAsync();
+            bus.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task PreviewSession_Open_WithoutToken_Returns401()
+    {
+        var engine = new StubEngine();
+        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), engine: engine);
+        await host.StartAsync();
+        try
+        {
+            using var http = new HttpClient();
+            using var response = await http.PostAsync(new Uri(host.HttpEndpoint, "preview/open"), new StringContent(string.Empty));
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            await host.DisposeAsync();
+            bus.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task PreviewSession_Open_WithoutEngine_Returns404()
+    {
+        using var http = new HttpClient();
+        using var response = await http.PostAsync(new Uri(_host.HttpEndpoint, "preview/open?token=secret"), new StringContent(string.Empty));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PreviewSession_Disconnect_ClosesSession()
+    {
+        var engine = new StubEngine();
+        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), engine: engine);
+        await host.StartAsync();
+        try
+        {
+            using var http = new HttpClient();
+            using var opened = await http.PostAsync(new Uri(host.HttpEndpoint, "preview/open?token=secret"), new StringContent(string.Empty));
+            using var openDocument = JsonDocument.Parse(await opened.Content.ReadAsStringAsync());
+            var session = openDocument.RootElement.GetProperty("session").GetInt32();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var response = await http.GetAsync(
+                new Uri(host.HttpEndpoint, $"preview?session={session}&token=secret"),
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
+            var body = await response.Content.ReadAsStreamAsync(cts.Token);
+            await ReadExactlyAsync(body, 44, cts.Token);
+            cts.Cancel();
+            var deadline = Environment.TickCount64 + 5000;
+            while (engine.OpenSessions > 0)
+            {
+                if (Environment.TickCount64 > deadline)
+                {
+                    Assert.Fail("session not closed after disconnect");
+                }
+                await Task.Delay(25);
+            }
         }
         finally
         {
