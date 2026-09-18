@@ -463,6 +463,51 @@ public sealed class AudioSettingsVmTests : IDisposable
         Assert.Equal(80, viewModel.Audio.HpfHz);
     }
 
+    [Fact]
+    public void TrackBpm_Set_SubmitsSetTrackBpm()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId);
+
+        Assert.False(editor.HasBpm);
+        editor.HasBpm = true;
+
+        var set = Assert.IsType<SetTrackBpm>(Assert.Single(submitted));
+        Assert.Equal(trackId, set.Track);
+        Assert.Equal(120, set.Bpm);
+    }
+
+    [Fact]
+    public void TrackBpm_Value_ClampsAndSubmits()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId);
+
+        editor.HasBpm = true;
+        submitted.Clear();
+        editor.BpmValue = 500;
+
+        Assert.Equal(300, editor.BpmValue);
+        Assert.Equal(300, Assert.IsType<SetTrackBpm>(Assert.Single(submitted)).Bpm);
+    }
+
+    [Fact]
+    public void TrackBpm_Unset_SubmitsNull()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId, initialBpm: 100);
+
+        Assert.True(editor.HasBpm);
+        Assert.Equal(100, editor.BpmValue);
+        Assert.Empty(submitted);
+        editor.HasBpm = false;
+
+        Assert.Null(Assert.IsType<SetTrackBpm>(Assert.Single(submitted)).Bpm);
+    }
+
     private sealed class OutputStubLister(Func<IReadOnlyList<OutputDevice>> list) : IAudioOutputLister
     {
         public IReadOnlyList<OutputDevice> ListPlaybackDevices() => list();
