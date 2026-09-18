@@ -312,6 +312,16 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
         Assert.Equal(new SetTrackBpm(new TrackId(id), null), command);
     }
 
+    [Fact]
+    public void StartSessionTrack_Parses()
+    {
+        var id = Guid.NewGuid();
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"start_session_track\",\"session\":7,\"track\":\"" + id + "\"}}";
+
+        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
+        Assert.Equal(new StartSessionTrack(new PreviewSessionHandle(7), new TrackId(id)), command);
+    }
+
     private sealed class CapturingEngine : IAudioEngine
     {
         public bool PreviewMuted { get; private set; }

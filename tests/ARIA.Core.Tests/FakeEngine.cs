@@ -31,6 +31,7 @@ public sealed class FakeEngine : IAudioEngine
     public List<(StreamHandle Handle, TrackAudioSettings Audio)> VoiceAudios { get; } = [];
     public Func<string, double> ScanLufs { get; set; } = _ => double.NaN;
     public List<string> ScannedPaths { get; } = [];
+    public List<(PreviewSessionHandle Session, TrackSource Source)> SessionTracks { get; } = [];
 
     public double ScanTrackLufs(string filePath)
     {
@@ -103,6 +104,8 @@ public sealed class FakeEngine : IAudioEngine
     public void SetPreviewMuted(bool muted) => PreviewMutes.Add(muted);
 
     public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio) => VoiceAudios.Add((handle, audio));
+
+    public void StartSessionTrack(PreviewSessionHandle session, TrackSource source) => SessionTracks.Add((session, source));
 
     public void SetGlobalAudio(GlobalAudioSettings audio) => GlobalAudios.Add(audio);
 
