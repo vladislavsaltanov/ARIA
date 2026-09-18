@@ -2052,7 +2052,7 @@ public sealed class ShowController : IShowHandler
         }
         return new TrackDigest([.. names
             .OrderBy(pair => pair.Key.Value)
-            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value))]);
+            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value, _trackMap.TryGetValue(pair.Key, out var track) ? track.Defaults.Bpm : null))]);
     }
 
     private static bool DigestEquals(TrackDigest left, TrackDigest right)
