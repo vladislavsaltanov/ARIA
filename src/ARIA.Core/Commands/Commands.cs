@@ -2,6 +2,7 @@ namespace Aria.Core.Commands;
 
 using System.Collections.Immutable;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.State;
 
 public readonly record struct ClientId(string Value);
@@ -75,6 +76,10 @@ public sealed record StopPreview : Command;
 public sealed record SetPreviewGain(double GainDb) : Command;
 
 public sealed record SetPreviewMuted(bool Muted) : Command;
+
+public sealed record SetClickSettings(PreviewSessionHandle Session, ClickSettings Settings) : Command;
+
+public sealed record SetClickMuted(PreviewSessionHandle Session, bool Muted) : Command;
 
 public sealed record NormalizeTrack(TrackId Track) : Command;
 

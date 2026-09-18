@@ -14,6 +14,8 @@ public sealed class ShowController : IShowHandler
     private const double SilenceDb = -80.0;
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
+    private const double ClickBpmMin = 20.0;
+    private const double ClickBpmMax = 300.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
@@ -201,6 +203,12 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetPreviewMuted setPreviewMuted:
                 OnSetPreviewMuted(setPreviewMuted);
+                break;
+            case SetClickSettings setClickSettings:
+                OnSetClickSettings(client, seq, setClickSettings);
+                break;
+            case SetClickMuted setClickMuted:
+                OnSetClickMuted(setClickMuted);
                 break;
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
@@ -1152,6 +1160,23 @@ public sealed class ShowController : IShowHandler
     }
 
     private void OnSetPreviewMuted(SetPreviewMuted command) => _engine.SetPreviewMuted(command.Muted);
+
+    private void OnSetClickSettings(ClientId client, long seq, SetClickSettings command)
+    {
+        if (command.Settings.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
+        {
+            Reject(client, seq, "gain-out-of-range");
+            return;
+        }
+        if (command.Settings.Bpm is < ClickBpmMin or > ClickBpmMax)
+        {
+            Reject(client, seq, "bpm-out-of-range");
+            return;
+        }
+        _engine.SetClick(command.Session, command.Settings);
+    }
+
+    private void OnSetClickMuted(SetClickMuted command) => _engine.SetClickMuted(command.Session, command.Muted);
 
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {

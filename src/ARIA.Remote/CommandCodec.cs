@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 
 internal static class CommandCodec
 {
@@ -77,6 +78,8 @@ internal static class CommandCodec
                 "stop_preview" => new StopPreview(),
                 "set_preview_gain" => new SetPreviewGain(DoubleOf(commandElement, "gain_db")),
                 "set_preview_muted" => new SetPreviewMuted(BoolOf(commandElement, "muted")),
+                "set_click_settings" => ParseSetClickSettings(commandElement),
+                "set_click_muted" => new SetClickMuted(new PreviewSessionHandle(IntOf(commandElement, "session")), BoolOf(commandElement, "muted")),
                 "normalize_track" => new NormalizeTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "normalize_playlist" or "normalize_project" => new NormalizeProject(new ProjectId(GuidOf(commandElement, "playlist"))),
                 "seek_to" => new SeekTo(TimeSpan.FromMilliseconds(LongOf(commandElement, "position_ms"))),
@@ -125,6 +128,24 @@ internal static class CommandCodec
 
     private static SetTrackAudio ParseSetTrackAudio(JsonElement element) =>
         new(new TrackId(GuidOf(element, "track")), ParseTrackAudio(element));
+
+    private static SetClickSettings ParseSetClickSettings(JsonElement element)
+    {
+        try
+        {
+            return new SetClickSettings(
+                new PreviewSessionHandle(IntOf(element, "session")),
+                new ClickSettings(
+                    DoubleOf(element, "bpm"),
+                    IntOf(element, "beats_per_bar"),
+                    DoubleOf(element, "gain_db"),
+                    DoubleOf(element, "offset_ms")));
+        }
+        catch (ArgumentOutOfRangeException e)
+        {
+            throw new FormatException(e.Message);
+        }
+    }
 
     private static SetEntryAudio ParseSetEntryAudio(JsonElement element)
     {
