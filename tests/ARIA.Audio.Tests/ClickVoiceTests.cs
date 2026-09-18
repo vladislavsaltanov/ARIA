@@ -71,6 +71,19 @@ public sealed class ClickVoiceTests
     }
 
     [Fact]
+    public void UpdateSettings_PreservesPhase()
+    {
+        var voice = new ClickVoice(1, SampleRate, new ClickSettings(120, 4, 0, 0));
+        var warm = new float[1000];
+        voice.ReadFrames(warm);
+        voice.UpdateSettings(new ClickSettings(60, 4, 0, 0));
+        var rest = new float[48000];
+        voice.ReadFrames(rest);
+        Assert.Equal(0, Energy(rest, 23000, 2000));
+        Assert.True(Energy(rest, 47000, 192) > 1, "no click on rebased grid");
+    }
+
+    [Fact]
     public void InvalidSettings_Throw()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new ClickSettings(0, 4, 0, 0));
