@@ -304,6 +304,21 @@ body {
 .preview-audio {
   width: 100%;
 }
+.click-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+.click-num {
+  width: 84px;
+  flex: none;
+}
+.click-beats {
+  width: 64px;
+  flex: none;
+}
 
 .queue h2 {
   font-size: 12px;

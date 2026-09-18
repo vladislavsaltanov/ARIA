@@ -40,6 +40,12 @@
     previewGain: document.getElementById("preview-gain"),
     previewMute: document.getElementById("btn-preview-mute"),
     previewAudio: document.getElementById("preview-audio"),
+    clickToggle: document.getElementById("btn-click-toggle"),
+    clickBpm: document.getElementById("click-bpm"),
+    clickDefault: document.getElementById("btn-click-default"),
+    clickBeats: document.getElementById("click-beats"),
+    clickOffset: document.getElementById("click-offset"),
+    clickGain: document.getElementById("click-gain"),
     projects: document.getElementById("projects"),
     scriptSection: document.getElementById("script-section"),
     scriptTabs: document.getElementById("script-tabs"),
@@ -249,12 +255,14 @@
     renderScript();
     renderLock();
     renderDefaultAction();
+    renderClick();
   }
 
   function applyDelta(frame) {
     if (frame.partition === "transport") {
       state.transport = frame.state;
       renderTransport();
+      renderClick();
     } else if (frame.partition === "queue") {
       state.queue = frame.state.items || [];
       renderQueue();
@@ -265,6 +273,7 @@
       renderProjects();
       renderLock();
       renderDefaultAction();
+      renderClick();
       if (scriptContentChanged(prev, frame.state)) {
         renderScript();
       } else {
@@ -1388,14 +1397,25 @@
     send("start_preview_track", { track: current.trackId });
     ensureToken().then((token) => {
       if (!token) return;
-      el.previewAudio.src = "/preview?token=" + encodeURIComponent(token);
-      el.previewAudio.play().catch(() => {});
+      fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
+        if (!response.ok) return null;
+        return response.json().catch(() => null);
+      }).then((body) => {
+        clickSession = body && body.session ? body.session : 0;
+        syncClickInputs();
+        pushClickSettings();
+        el.previewAudio.src =
+          "/preview?token=" + encodeURIComponent(token) +
+          (clickSession ? "&session=" + clickSession : "");
+        el.previewAudio.play().catch(() => {});
+      });
     });
     vibrate();
   });
 
   el.previewStop.addEventListener("click", () => {
     send("stop_preview", {});
+    clickSession = 0;
     try {
       el.previewAudio.pause();
       el.previewAudio.removeAttribute("src");
@@ -1416,6 +1436,140 @@
     el.previewMute.classList.toggle("active", previewMuted);
     vibrate();
   });
+
+  var CLICK_KEY = "aria.click";
+  var clickSession = 0;
+  var click = loadClick();
+
+  function clampNum(value, min, max, fallback) {
+    var n = Number(value);
+    if (!isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function loadClick() {
+    var fallback = { enabled: false, bpmOverride: 0, beats: 4, offsetMs: 0, gainPct: 100 };
+    try {
+      var raw = localStorage.getItem(CLICK_KEY);
+      if (!raw) return fallback;
+      var parsed = JSON.parse(raw);
+      return {
+        enabled: !!parsed.enabled,
+        bpmOverride: clampNum(parsed.bpmOverride, 0, 300, 0),
+        beats: [2, 3, 4, 5, 6, 7].indexOf(Number(parsed.beats)) >= 0 ? Number(parsed.beats) : 4,
+        offsetMs: clampNum(parsed.offsetMs, -2000, 2000, 0),
+        gainPct: clampNum(parsed.gainPct, 0, 125, 100),
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function saveClick() {
+    try {
+      localStorage.setItem(CLICK_KEY, JSON.stringify(click));
+    } catch {}
+  }
+
+  function currentTrackId() {
+    var current = state.transport && state.transport.current;
+    return current && current.trackId ? current.trackId : null;
+  }
+
+  function digestBpm(trackId) {
+    var entries = (state.show && state.show.trackDigest && state.show.trackDigest.entries) || [];
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].track === trackId && entries[i].bpm != null) return entries[i].bpm;
+    }
+    return 0;
+  }
+
+  function effectiveBpm() {
+    if (click.bpmOverride > 0) return click.bpmOverride;
+    return digestBpm(currentTrackId()) || 120;
+  }
+
+  function paintClickToggle() {
+    el.clickToggle.textContent = click.enabled ? "ВКЛ" : "ВЫКЛ";
+    el.clickToggle.classList.toggle("active", click.enabled);
+  }
+
+  function syncClickInputs() {
+    if (click.bpmOverride <= 0) {
+      el.clickBpm.value = Math.round(digestBpm(currentTrackId()) || 120);
+    }
+    el.clickBeats.value = String(click.beats);
+    el.clickOffset.value = click.offsetMs;
+    el.clickGain.value = click.gainPct;
+    paintClickToggle();
+  }
+
+  function pushClickSettings() {
+    if (!clickSession) return;
+    send("set_click_settings", {
+      session: clickSession,
+      bpm: effectiveBpm(),
+      beats_per_bar: click.beats,
+      gain_db: pctToGain(click.gainPct),
+      offset_ms: click.offsetMs,
+    });
+    send("set_click_muted", { session: clickSession, muted: !click.enabled });
+  }
+
+  function renderClick() {
+    syncClickInputs();
+  }
+
+  el.clickToggle.addEventListener("click", () => {
+    click.enabled = !click.enabled;
+    saveClick();
+    paintClickToggle();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickBpm.addEventListener("change", () => {
+    click.bpmOverride = clampNum(Number(el.clickBpm.value), 20, 300, 0);
+    if (click.bpmOverride <= 0) {
+      syncClickInputs();
+      return;
+    }
+    el.clickBpm.value = Math.round(click.bpmOverride);
+    saveClick();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickDefault.addEventListener("click", () => {
+    click.bpmOverride = 0;
+    saveClick();
+    syncClickInputs();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickBeats.addEventListener("change", () => {
+    click.beats = [2, 3, 4, 5, 6, 7].indexOf(Number(el.clickBeats.value)) >= 0 ? Number(el.clickBeats.value) : 4;
+    saveClick();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickOffset.addEventListener("change", () => {
+    click.offsetMs = clampNum(Number(el.clickOffset.value), -2000, 2000, 0);
+    el.clickOffset.value = click.offsetMs;
+    saveClick();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickGain.addEventListener("input", () => {
+    click.gainPct = clampNum(Number(el.clickGain.value), 0, 125, 100);
+    saveClick();
+    pushClickSettings();
+  });
+
+  syncClickInputs();
 
   if (el.seek) {
     el.seek.addEventListener("click", (event) => {
