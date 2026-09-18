@@ -1405,6 +1405,7 @@
         if (clickSession) {
           send("start_session_track", { session: clickSession, track: trackId });
         }
+        clickOwnsStream = false;
         syncClickInputs();
         pushClickSettings();
         el.previewAudio.src =
@@ -1418,11 +1419,8 @@
 
   el.previewStop.addEventListener("click", () => {
     clickSession = 0;
-    try {
-      el.previewAudio.pause();
-      el.previewAudio.removeAttribute("src");
-      el.previewAudio.load();
-    } catch {}
+    clickOwnsStream = false;
+    stopAudioStream();
     vibrate();
   });
 
@@ -1441,6 +1439,7 @@
 
   var CLICK_KEY = "aria.click";
   var clickSession = 0;
+  var clickOwnsStream = false;
   var click = loadClick();
 
   function clampNum(value, min, max, fallback) {
@@ -1522,11 +1521,44 @@
     syncClickInputs();
   }
 
+  function stopAudioStream() {
+    try {
+      el.previewAudio.pause();
+      el.previewAudio.removeAttribute("src");
+      el.previewAudio.load();
+    } catch {}
+  }
+
   el.clickToggle.addEventListener("click", () => {
     click.enabled = !click.enabled;
     saveClick();
     paintClickToggle();
-    pushClickSettings();
+    if (click.enabled && !clickSession) {
+      ensureToken().then((token) => {
+        if (!token) return;
+        fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
+          if (!response.ok) return null;
+          return response.json().catch(() => null);
+        }).then((body) => {
+          clickSession = body && body.session ? body.session : 0;
+          if (!clickSession) return;
+          clickOwnsStream = true;
+          syncClickInputs();
+          pushClickSettings();
+          el.previewAudio.src =
+            "/preview?token=" + encodeURIComponent(token) +
+            "&session=" + clickSession;
+          el.previewAudio.play().catch(() => {});
+        });
+      });
+    } else if (!click.enabled && clickOwnsStream) {
+      pushClickSettings();
+      stopAudioStream();
+      clickSession = 0;
+      clickOwnsStream = false;
+    } else {
+      pushClickSettings();
+    }
     vibrate();
   });
 
