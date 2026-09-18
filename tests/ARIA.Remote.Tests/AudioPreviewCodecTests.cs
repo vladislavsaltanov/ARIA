@@ -226,35 +226,53 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Preview_WithData_ReturnsWavPcm()
+    private static async Task<byte[]> ReadExactlyAsync(Stream stream, int count, CancellationToken token)
     {
-        var tap = new SampleRing(1024, 2);
-        var frames = 256;
+        var result = new byte[count];
+        var offset = 0;
+        while (offset < count)
+        {
+            var read = await stream.ReadAsync(result.AsMemory(offset), token);
+            Assert.True(read > 0, "stream ended before expected bytes arrived");
+            offset += read;
+        }
+        return result;
+    }
+
+    [Fact]
+    public async Task Preview_WithData_StreamsWavPcm()
+    {
+        var tap = new PreviewTap(4800, 2);
+        var frames = 2400;
         var source = new float[frames * 2];
         for (var i = 0; i < source.Length; i++)
         {
             source[i] = 0.5f;
         }
-        tap.Write(source);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
         var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), previewTap: tap);
         await host.StartAsync();
         try
         {
             using var http = new HttpClient();
-            var response = await http.GetAsync(new Uri(host.HttpEndpoint, "preview?token=secret"));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var response = await http.GetAsync(
+                new Uri(host.HttpEndpoint, "preview?token=secret"),
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("audio/x-wav", response.Content.Headers.ContentType!.MediaType);
-            var body = await response.Content.ReadAsByteArrayAsync();
-            Assert.True(body.Length > 44);
-            Assert.Equal((byte)'R', body[0]);
-            Assert.Equal((byte)'I', body[1]);
-            Assert.Equal((byte)'F', body[2]);
-            Assert.Equal((byte)'F', body[3]);
-            Assert.Equal(0x4000, body[44] | (body[45] << 8));
-            Assert.Equal(frames * 2 * 2, body.Length - 44);
+            Assert.Null(response.Content.Headers.ContentLength);
+            var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+            var header = await ReadExactlyAsync(stream, 44, cts.Token);
+            Assert.Equal((byte)'R', header[0]);
+            Assert.Equal((byte)'I', header[1]);
+            Assert.Equal((byte)'F', header[2]);
+            Assert.Equal((byte)'F', header[3]);
+            tap.Publish(source);
+            var audio = await ReadExactlyAsync(stream, frames * 2 * 2, cts.Token);
+            Assert.Equal(0x4000, audio[0] | (audio[1] << 8));
         }
         finally
         {
@@ -263,27 +281,4 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
         }
     }
 
-    [Fact]
-    public async Task Preview_EmptyTap_ReturnsHeaderOnly()
-    {
-        var tap = new SampleRing(1024, 2);
-        var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
-        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), previewTap: tap);
-        await host.StartAsync();
-        try
-        {
-            using var http = new HttpClient();
-            var response = await http.GetAsync(new Uri(host.HttpEndpoint, "preview?token=secret"));
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var body = await response.Content.ReadAsByteArrayAsync();
-            Assert.Equal(44, body.Length);
-            Assert.Equal((byte)'W', body[8]);
-        }
-        finally
-        {
-            await host.DisposeAsync();
-            bus.Dispose();
-        }
-    }
 }

@@ -32,7 +32,7 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly RemoteOptions _options;
     private readonly PlaybackMonitor? _monitor;
     private readonly MeterMonitor? _meters;
-    private readonly SampleRing? _previewTap;
+    private readonly PreviewTap? _previewTap;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -55,7 +55,7 @@ public sealed class RemoteHost : IAsyncDisposable
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, SampleRing? previewTap = null)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null)
     {
         _bus = bus;
         _options = options;
@@ -152,7 +152,7 @@ public sealed class RemoteHost : IAsyncDisposable
         {
             return Results.Unauthorized();
         }
-        return new PreviewCapture(_previewTap);
+        return new PreviewStream(_previewTap);
     }
 
     private async Task HandleWebSocket(HttpContext context)

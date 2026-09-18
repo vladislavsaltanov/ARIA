@@ -42,7 +42,6 @@ public sealed class PreviewStreamTests : IAsyncLifetime
         var frames = 4800;
         var data = new float[frames * 2];
         Array.Fill(data, 0.25f);
-        tap.Publish(data);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
         var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), previewTap: tap);
         await host.StartAsync();
@@ -56,13 +55,19 @@ public sealed class PreviewStreamTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.OK, first.StatusCode);
             Assert.Equal(HttpStatusCode.OK, second.StatusCode);
             Assert.Equal("audio/x-wav", first.Content.Headers.ContentType!.MediaType);
-            var want = 44 + frames * 2 * 2;
-            var a = await ReadExactlyAsync(await first.Content.ReadAsStreamAsync(cts.Token), want, cts.Token);
-            var b = await ReadExactlyAsync(await second.Content.ReadAsStreamAsync(cts.Token), want, cts.Token);
+            var firstStream = await first.Content.ReadAsStreamAsync(cts.Token);
+            var secondStream = await second.Content.ReadAsStreamAsync(cts.Token);
+            var firstHeader = await ReadExactlyAsync(firstStream, 44, cts.Token);
+            var secondHeader = await ReadExactlyAsync(secondStream, 44, cts.Token);
+            Assert.Equal(firstHeader, secondHeader);
+            Assert.Equal((byte)'R', firstHeader[0]);
+            tap.Publish(data);
+            var want = frames * 2 * 2;
+            var a = await ReadExactlyAsync(firstStream, want, cts.Token);
+            var b = await ReadExactlyAsync(secondStream, want, cts.Token);
             Assert.Equal(a, b);
-            Assert.Equal((byte)'R', a[0]);
-            Assert.Equal(0xFF, a[44]);
-            Assert.Equal(0x1F, a[45]);
+            Assert.Equal(0x00, a[0]);
+            Assert.Equal(0x20, a[1]);
         }
         finally
         {

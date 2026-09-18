@@ -34,7 +34,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly PanNode _masterPan;
     private readonly SimpleLimiter _masterLimiter;
     private readonly MonoSumNode _masterMono;
-    private readonly SampleRing? _previewTap;
+    private readonly PreviewTap? _previewTap;
     private int _handleCounter;
     private int _currentHandle;
 
@@ -47,7 +47,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         IAudioSink? sink = null,
         MeterMonitor? meters = null,
         IAudioSink? previewSink = null,
-        SampleRing? previewTap = null)
+        PreviewTap? previewTap = null)
     {
         ArgumentNullException.ThrowIfNull(sourceFactory);
         _sourceFactory = sourceFactory;
@@ -299,7 +299,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             }
         }
         _previewSink.Write(_previewBlock);
-        _previewTap?.Write(_previewBlock);
+        _previewTap?.Publish(_previewBlock);
     }
 
     private void DrainPendingSinks()

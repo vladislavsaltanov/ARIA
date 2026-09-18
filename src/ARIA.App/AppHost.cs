@@ -67,7 +67,7 @@ public sealed class AppHost : IAsyncDisposable
 
     public AudioOutputService Outputs { get; private set; } = null!;
 
-    public SampleRing PreviewTap { get; private set; } = null!;
+    public PreviewTap PreviewTap { get; private set; } = null!;
 
     public AppHost(
         string dataDirectory,
@@ -107,7 +107,7 @@ public sealed class AppHost : IAsyncDisposable
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
         WaveformScanner = new WaveformScanner(_decoderFactory);
         _importer = new TrackImporter(_decoderFactory, WaveformScanner);
-        PreviewTap = new SampleRing(SampleRate * 2, Channels);
+        PreviewTap = new PreviewTap(SampleRate * 2, Channels);
         _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters, CreatePreviewSink(), PreviewTap);
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
