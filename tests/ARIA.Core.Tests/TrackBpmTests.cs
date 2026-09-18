@@ -4,6 +4,7 @@ using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Runtime;
 using Aria.Core.State;
+using System.Linq;
 
 public sealed class TrackBpmTests : IDisposable
 {
@@ -88,4 +89,16 @@ public sealed class TrackBpmTests : IDisposable
         _bus.Submit(TestClient, seq, new SetTrackBpm(new TrackId(Guid.NewGuid()), 120));
         await WaitRejected(seq, "unknown-track");
     }
+
+    [Fact]
+    public async Task SetTrackBpm_UpdatesDigest()
+    {
+        Submit(new SetTrackBpm(_track.Id, 140));
+        await Poll(() => DigestBpm() == 140, "digest missing bpm");
+        Submit(new SetTrackBpm(_track.Id, null));
+        await Poll(() => DigestBpm() is null, "digest bpm not cleared");
+    }
+
+    private double? DigestBpm() => _bus.Snapshot().Show.TrackDigest.Entries
+        .FirstOrDefault(e => e.Track == _track.Id)?.Bpm;
 }
