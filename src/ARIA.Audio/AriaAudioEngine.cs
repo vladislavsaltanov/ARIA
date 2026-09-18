@@ -35,6 +35,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly SimpleLimiter _masterLimiter;
     private readonly MonoSumNode _masterMono;
     private readonly PreviewTap? _previewTap;
+    private readonly PreviewTap _mainTap;
+    private bool _mainPlaying;
+    private readonly int _blockFrames;
     private readonly int _sampleRate;
     private readonly int _channels;
     private PreviewSession[] _sessions = [];
@@ -66,12 +69,15 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _mixer = new MixerBus(channels, sampleRate, blockSizeFrames);
         _block = new float[blockSizeFrames * channels];
         _mixer.Events += ForwardEvent;
+        _mixer.Events += OnMixerEnded;
         _masterHpf = new HighPassNode(0, channels, sampleRate);
         _masterEq = new SevenBandEq(AudioChain.SafeFrequencies(GlobalAudioSettings.Default.Eq.Bands, sampleRate), channels, sampleRate);
         _masterPan = new PanNode(0);
         _masterLimiter = new SimpleLimiter(channels, sampleRate);
         _masterMono = new MonoSumNode();
         _previewTap = previewTap;
+        _mainTap = new PreviewTap(sampleRate * 2, channels);
+        _blockFrames = blockSizeFrames;
         _sampleRate = sampleRate;
         _channels = channels;
         _sessionScratch = new float[blockSizeFrames * channels];
@@ -104,6 +110,18 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         if (_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
         {
+            if (command == TransportCommand.Play)
+            {
+                Volatile.Write(ref _mainPlaying, true);
+                if (MixerPositionFrames(mixerHandle) <= _blockFrames)
+                {
+                    ResetSessionVoices();
+                }
+            }
+            else if (command == TransportCommand.Pause || command == TransportCommand.Stop)
+            {
+                Volatile.Write(ref _mainPlaying, false);
+            }
             _mixer.Transport(mixerHandle, command);
         }
     }
@@ -137,6 +155,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     public void Panic(PanicSpec spec)
     {
+        Volatile.Write(ref _mainPlaying, false);
         _mixer.StopAll(spec.FadeDuration);
         _preview.StopAll(spec.FadeDuration);
         _previewHandles.Clear();
@@ -154,7 +173,6 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _preview.StopAll(TimeSpan.Zero);
         _previewHandles.Clear();
-        ResetSessionVoices();
         var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio)));
         _previewHandles[handle.Value] = mixerHandle;
         return handle;
@@ -274,6 +292,19 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void ForwardEvent(StreamEvent e) => Events?.Invoke(e);
 
+    private void OnMixerEnded(StreamEvent e)
+    {
+        if (e.Kind == StreamEventKind.Ended)
+        {
+            Volatile.Write(ref _mainPlaying, false);
+        }
+    }
+
+    private long MixerPositionFrames(StreamHandle mixerHandle) =>
+        _mixer.TryGetPosition(mixerHandle, out var position)
+            ? (long)(position.TotalSeconds * _mixer.SampleRate)
+            : long.MaxValue;
+
     private void RenderLoop()
     {
         while (!_cts.Token.IsCancellationRequested)
@@ -295,6 +326,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void RenderPreview()
     {
+        _mainTap.Publish(_block);
         _preview.Render(_previewBlock);
         if (Volatile.Read(ref _previewMuted) == 1)
         {
@@ -321,8 +353,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         var handle = new PreviewSessionHandle(Interlocked.Increment(ref _handleCounter));
         var tap = new PreviewTap(Math.Max(256, _sampleRate * 2), _channels);
         var voice = new ClickVoice(_channels, _sampleRate, DefaultClick);
-        var shared = _previewTap;
-        var session = new PreviewSession(handle, shared?.Subscribe(), voice, tap);
+        var session = new PreviewSession(handle, _mainTap.Subscribe(), voice, tap);
         lock (_sessionLock)
         {
             var grown = new PreviewSession[_sessions.Length + 1];
@@ -406,6 +437,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void PumpSession(PreviewSession session)
     {
+        if (!Volatile.Read(ref _mainPlaying))
+        {
+            return;
+        }
         if (session.Reader is null)
         {
             return;
