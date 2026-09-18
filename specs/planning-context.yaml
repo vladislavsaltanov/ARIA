@@ -1,0 +1,70 @@
+# planning-context: elaborate-spec
+# consumed by scope-work and slice-tasks
+feature_name: "MetronomePreview"
+problem_statement: >-
+  Drummer starts backing track from web
+  remote. Hall gets clean track.
+  Each remote client hears track plus
+  own click, or mutes it entirely.
+constraints:
+  - >-
+    Click never reaches main bus.
+    Only per-client preview mixes.
+  - >-
+    Settings are per client: enabled,
+    BPM override, offset ms, gain,
+    meter, timbre. Sent as ws commands.
+  - >-
+    Click follows main transport:
+    start, stop, seek together.
+    Offset ms aligns first downbeat.
+  - >-
+    BPM stored per track as default.
+    Editable in app and web remote.
+  - >-
+    Offline gig: voice samples bundled
+    locally, no network fetch live.
+  - >-
+    Tests via interfaces only.
+    Zero allocs, zero locks in callback.
+out_of_scope:
+  - "BPM auto-detect from audio."
+  - >-
+    Custom user patterns. Only tick
+    and voice accent + meter.
+  - "Click in hall mix or export."
+  - "Remote settings scope-freeze."
+  - "Browser WebAudio click fallback."
+key_decisions:
+  - decision: >-
+      One stream per client, premixed
+      track plus own click. Toggle is
+      server-side per-connection unmute.
+    rationale: >-
+      Two streams cannot stay in sync:
+      separate buffers, starts, drift.
+      Mixed stream sync by construction.
+  - decision: >-
+      Muted click renders nothing.
+      No always-on silent stream.
+    rationale: >-
+      Sending silence wastes encode and
+      bandwidth for zero benefit.
+  - decision: >-
+      Slice 0 first: continuous
+      per-connection preview streaming
+      plus broadcast tap.
+    rationale: >-
+      Current /preview is one-shot WAV
+      up to 1s with shared destructive
+      cursor. Two clients steal samples.
+      Full-track monitor missing.
+  - decision: >-
+      BPM per track default, editable
+      in app and web remote. Client
+      may override locally.
+    rationale: "User answers 2026-09-18."
+  - decision: >-
+      Accent + meter. Timbres tick
+      and voice ONE-two-three-four.
+    rationale: "User answer 2026-09-18."
