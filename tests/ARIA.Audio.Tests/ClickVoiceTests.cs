@@ -1,5 +1,7 @@
 namespace Aria.Audio.Tests;
 
+using Aria.Core.Playback;
+
 public sealed class ClickVoiceTests
 {
     private const int SampleRate = 48000;

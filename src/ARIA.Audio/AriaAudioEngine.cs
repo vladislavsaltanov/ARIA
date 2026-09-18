@@ -35,6 +35,14 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly SimpleLimiter _masterLimiter;
     private readonly MonoSumNode _masterMono;
     private readonly PreviewTap? _previewTap;
+    private readonly int _sampleRate;
+    private readonly int _channels;
+    private PreviewSession[] _sessions = [];
+    private readonly float[] _sessionScratch;
+    private readonly float[] _clickScratch;
+    private readonly object _sessionLock = new();
+
+    private static readonly ClickSettings DefaultClick = new(120, 4, 0, 0);
     private int _handleCounter;
     private int _currentHandle;
 
@@ -64,6 +72,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _masterLimiter = new SimpleLimiter(channels, sampleRate);
         _masterMono = new MonoSumNode();
         _previewTap = previewTap;
+        _sampleRate = sampleRate;
+        _channels = channels;
+        _sessionScratch = new float[blockSizeFrames * channels];
+        _clickScratch = new float[blockSizeFrames * channels];
         _previewSink = previewSink ?? new NullSink(sampleRate, channels);
         _preview = new MixerBus(channels, sampleRate, blockSizeFrames);
         _previewBlock = new float[blockSizeFrames * channels];
@@ -142,6 +154,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _preview.StopAll(TimeSpan.Zero);
         _previewHandles.Clear();
+        ResetSessionVoices();
         var mixerHandle = _preview.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio)));
         _previewHandles[handle.Value] = mixerHandle;
         return handle;
@@ -300,6 +313,154 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _previewSink.Write(_previewBlock);
         _previewTap?.Publish(_previewBlock);
+        PumpPreviewSessions();
+    }
+
+    public PreviewSessionHandle OpenPreviewSession()
+    {
+        var handle = new PreviewSessionHandle(Interlocked.Increment(ref _handleCounter));
+        var tap = new PreviewTap(Math.Max(256, _sampleRate * 2), _channels);
+        var voice = new ClickVoice(_channels, _sampleRate, DefaultClick);
+        var shared = _previewTap;
+        var session = new PreviewSession(handle, shared?.Subscribe(), voice, tap);
+        lock (_sessionLock)
+        {
+            var grown = new PreviewSession[_sessions.Length + 1];
+            Array.Copy(_sessions, grown, _sessions.Length);
+            grown[_sessions.Length] = session;
+            _sessions = grown;
+        }
+        return handle;
+    }
+
+    public void ClosePreviewSession(PreviewSessionHandle session)
+    {
+        lock (_sessionLock)
+        {
+            var kept = new PreviewSession[_sessions.Length];
+            var count = 0;
+            foreach (var candidate in _sessions)
+            {
+                if (candidate.Handle != session)
+                {
+                    kept[count++] = candidate;
+                }
+            }
+            var shrunk = new PreviewSession[count];
+            Array.Copy(kept, shrunk, count);
+            _sessions = shrunk;
+        }
+    }
+
+    public void SetClick(PreviewSessionHandle session, ClickSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (FindSession(session) is { } target)
+        {
+            target.PendingSettings = settings;
+        }
+    }
+
+    public void SetClickMuted(PreviewSessionHandle session, bool muted)
+    {
+        if (FindSession(session) is { } target)
+        {
+            target.ClickMuted = muted;
+        }
+    }
+
+    public PreviewTap? PreviewSessionTap(PreviewSessionHandle session) => FindSession(session)?.Tap;
+
+    private PreviewSession? FindSession(PreviewSessionHandle session)
+    {
+        foreach (var candidate in Volatile.Read(ref _sessions))
+        {
+            if (candidate.Handle == session)
+            {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private void ResetSessionVoices()
+    {
+        foreach (var session in Volatile.Read(ref _sessions))
+        {
+            session.ResetVoice = true;
+        }
+    }
+
+    private void PumpPreviewSessions()
+    {
+        var sessions = Volatile.Read(ref _sessions);
+        if (sessions.Length == 0)
+        {
+            return;
+        }
+        foreach (var session in sessions)
+        {
+            PumpSession(session);
+        }
+    }
+
+    private void PumpSession(PreviewSession session)
+    {
+        if (session.Reader is null)
+        {
+            return;
+        }
+        if (session.ResetVoice)
+        {
+            session.Voice.Seek(0);
+            session.ResetVoice = false;
+        }
+        if (session.PendingSettings is { } settings)
+        {
+            session.Voice.UpdateSettings(settings);
+            session.PendingSettings = null;
+        }
+        var read = session.Reader.Read(_sessionScratch.AsSpan(0, _sessionScratch.Length));
+        if (read <= 0)
+        {
+            return;
+        }
+        if (session.ClickMuted)
+        {
+            session.Tap.Publish(_sessionScratch.AsSpan(0, read));
+            return;
+        }
+        session.Voice.ReadFrames(_clickScratch.AsSpan(0, read));
+        for (var i = 0; i < read; i++)
+        {
+            _sessionScratch[i] += _clickScratch[i];
+        }
+        session.Tap.Publish(_sessionScratch.AsSpan(0, read));
+    }
+
+    private sealed class PreviewSession
+    {
+        public PreviewSession(PreviewSessionHandle handle, PreviewReader? reader, ClickVoice voice, PreviewTap tap)
+        {
+            Handle = handle;
+            Reader = reader;
+            Voice = voice;
+            Tap = tap;
+        }
+
+        public PreviewSessionHandle Handle { get; }
+
+        public PreviewReader? Reader { get; }
+
+        public ClickVoice Voice { get; }
+
+        public PreviewTap Tap { get; }
+
+        public volatile bool ClickMuted = true;
+
+        public volatile ClickSettings? PendingSettings;
+
+        public volatile bool ResetVoice;
     }
 
     private void DrainPendingSinks()

@@ -1,4 +1,4 @@
-namespace Aria.Audio;
+namespace Aria.Core.Playback;
 
 public sealed class PreviewTap
 {

@@ -2,6 +2,7 @@ namespace Aria.Remote;
 
 using System.Buffers;
 using Aria.Audio;
+using Aria.Core.Playback;
 using Microsoft.AspNetCore.Http;
 
 internal sealed class PreviewStream(PreviewTap? tap) : IResult

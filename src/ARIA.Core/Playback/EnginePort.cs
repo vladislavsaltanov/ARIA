@@ -5,6 +5,8 @@ using Aria.Core.Model;
 
 public readonly record struct StreamHandle(int Value);
 
+public readonly record struct PreviewSessionHandle(int Value);
+
 public enum StreamBus
 {
     Main,
@@ -90,6 +92,22 @@ public interface IAudioEngine
     void SetPreviewMuted(bool muted)
     {
     }
+
+    PreviewSessionHandle OpenPreviewSession() => default;
+
+    void ClosePreviewSession(PreviewSessionHandle session)
+    {
+    }
+
+    void SetClick(PreviewSessionHandle session, ClickSettings settings)
+    {
+    }
+
+    void SetClickMuted(PreviewSessionHandle session, bool muted)
+    {
+    }
+
+    PreviewTap? PreviewSessionTap(PreviewSessionHandle session) => null;
 
     void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio)
     {

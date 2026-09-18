@@ -2,6 +2,7 @@ namespace Aria.Remote.Tests;
 
 using System.Net;
 using Aria.Audio;
+using Aria.Core.Playback;
 using Aria.Core.Runtime;
 
 public sealed class PreviewStreamTests : IAsyncLifetime
