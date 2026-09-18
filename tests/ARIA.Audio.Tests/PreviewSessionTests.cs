@@ -136,6 +136,51 @@ public sealed class PreviewSessionTests
     }
 
     [Fact]
+    public async Task SessionTrack_PlaysWithoutMainOrPreviewBus()
+    {
+        using var rig = new Rig();
+        var session = rig.Engine.OpenPreviewSession();
+        rig.Engine.StartSessionTrack(session, new TrackSource("/audio/sine.flac", TimeSpan.Zero, null));
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[4096];
+        var peak = 0.0;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.1;
+        }, "session voice never sounded without main or preview bus");
+    }
+
+    [Fact]
+    public async Task SessionVoice_EndStallsTap()
+    {
+        using var rig = new Rig();
+        var session = rig.Engine.OpenPreviewSession();
+        rig.Engine.StartSessionTrack(session, new TrackSource("/audio/finite.flac", TimeSpan.Zero, null));
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[4096];
+        var peak = 0.0;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.1;
+        }, "finite session voice never sounded");
+        await Task.Delay(300);
+        int read;
+        do
+        {
+            read = reader.Read(buffer);
+        }
+        while (read > 0);
+        await Task.Delay(100);
+        Assert.Equal(0, reader.Read(buffer));
+    }
+
+    [Fact]
     public async Task ClosedSession_StopsPumping()
     {
         using var rig = new Rig();
