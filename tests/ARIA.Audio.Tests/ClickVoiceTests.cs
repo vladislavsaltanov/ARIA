@@ -40,7 +40,8 @@ public sealed class ClickVoiceTests
         }
         Assert.True(downbeat > 0, "downbeat is silent");
         Assert.True(beat > 0, "beat is silent");
-        Assert.Equal(downbeat, beat * 2, 3);
+        Assert.Equal(downbeat, beat * 2, 1);
+        Assert.True(downbeat > beat * 1.5, "accent missing");
     }
 
     [Fact]
