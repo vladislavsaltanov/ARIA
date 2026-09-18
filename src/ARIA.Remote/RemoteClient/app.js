@@ -220,15 +220,19 @@
 
   var toastTimer = null;
 
-  function rejectFeedback() {
-    if (navigator.vibrate) navigator.vibrate(40);
-    el.toast.textContent = "команда отклонена";
+  function showHint(text) {
+    el.toast.textContent = text;
     el.toast.classList.remove("hidden");
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       el.toast.classList.add("hidden");
       toastTimer = null;
-    }, 2000);
+    }, 2500);
+  }
+
+  function rejectFeedback() {
+    if (navigator.vibrate) navigator.vibrate(40);
+    showHint("команда отклонена");
   }
 
   function renderLock() {
@@ -347,6 +351,7 @@
     el.panic.disabled = t.status === "Panicked";
     trackWindowMs = trackWindow(t.current);
     renderSeek(state.lastFileMs);
+    maybeFollowTransport();
   }
 
   function trackWindow(current) {
@@ -1395,24 +1400,14 @@
     var current = state.transport && state.transport.current;
     if (!current || !current.trackId) return;
     var trackId = current.trackId;
-    ensureToken().then((token) => {
-      if (!token) return;
-      fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
-        if (!response.ok) return null;
-        return response.json().catch(() => null);
-      }).then((body) => {
-        clickSession = body && body.session ? body.session : 0;
-        if (clickSession) {
-          send("start_session_track", { session: clickSession, track: trackId });
-        }
-        clickOwnsStream = false;
-        syncClickInputs();
-        pushClickSettings();
-        el.previewAudio.src =
-          "/preview?token=" + encodeURIComponent(token) +
-          (clickSession ? "&session=" + clickSession : "");
-        el.previewAudio.play().catch(() => {});
-      });
+    openClickMonitor((token) => {
+      if (clickSession) {
+        send("start_session_track", { session: clickSession, track: trackId });
+      }
+      clickOwnsStream = false;
+      playMonitorStream(
+        "/preview?token=" + encodeURIComponent(token) +
+        (clickSession ? "&session=" + clickSession : ""));
     });
     vibrate();
   });
@@ -1420,7 +1415,7 @@
   el.previewStop.addEventListener("click", () => {
     clickSession = 0;
     clickOwnsStream = false;
-    stopAudioStream();
+    stopMonitorStream();
     vibrate();
   });
 
@@ -1529,31 +1524,195 @@
     } catch {}
   }
 
+  var audioCtx = null;
+  var monitorUrl = "";
+  var monitorPlaying = null;
+  var clickOpening = false;
+  var lastClickTrack = null;
+  var unlockArmed = false;
+
+  function ensureAudioCtx() {
+    var AC = typeof AudioContext !== "undefined" ? AudioContext : (typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null);
+    if (!AC) return null;
+    if (!audioCtx) {
+      try { audioCtx = new AC(); } catch { return null; }
+    }
+    return audioCtx;
+  }
+
+  function playMonitorStream(url) {
+    stopMonitorStream();
+    monitorUrl = url;
+    monitorPlaying = startPcmPlayer(url);
+    if (!monitorPlaying) monitorPlaying = startElementPlayer(url);
+  }
+
+  function stopMonitorStream() {
+    monitorUrl = "";
+    if (monitorPlaying) {
+      try { monitorPlaying.stop(); } catch {}
+      monitorPlaying = null;
+    } else {
+      stopAudioStream();
+    }
+  }
+
+  function startElementPlayer(url) {
+    el.previewAudio.src = url;
+    var played = null;
+    try { played = el.previewAudio.play(); } catch { played = null; }
+    if (played && played.catch) played.catch(() => { noteAudioBlocked(); });
+    return { stop() { stopAudioStream(); } };
+  }
+
+  function startPcmPlayer(url) {
+    var ctx = null;
+    try { ctx = ensureAudioCtx(); } catch { return null; }
+    if (!ctx) return null;
+    try { var resumed = ctx.resume(); if (resumed && resumed.catch) resumed.catch(() => {}); } catch {}
+    if (ctx.state !== "running") return null;
+    var abort = null;
+    try { abort = new AbortController(); } catch { abort = null; }
+    var stopped = false;
+    var nextTime = 0;
+    var live = [];
+    function stop() {
+      stopped = true;
+      if (abort) { try { abort.abort(); } catch {} }
+      live.forEach((s) => { try { s.stop(); } catch {} });
+      live = [];
+    }
+    function scheduleChunk(bytes, channels) {
+      var frames = bytes.length / (channels * 2);
+      var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+      var audio = ctx.createBuffer(channels, frames, 48000);
+      for (var c = 0; c < channels; c++) {
+        var out = audio.getChannelData(c);
+        for (var i = 0; i < frames; i++) out[i] = view.getInt16((i * channels + c) * 2, true) / 32768;
+      }
+      var src = ctx.createBufferSource();
+      src.buffer = audio;
+      src.connect(ctx.destination);
+      var t = nextTime < ctx.currentTime ? ctx.currentTime + 0.06 : Math.max(nextTime, ctx.currentTime + 0.06);
+      nextTime = t + frames / 48000;
+      live.push(src);
+      src.onended = () => { var k = live.indexOf(src); if (k >= 0) live.splice(k, 1); };
+      try { src.start(t); } catch {}
+    }
+    var opts = abort ? { signal: abort.signal } : undefined;
+    fetch(url, opts).then((response) => {
+      if (!response.ok || stopped) return null;
+      var reader = response.body ? response.body.getReader() : null;
+      if (!reader) return null;
+      var buf = new Uint8Array(0);
+      var channels = 0;
+      var append = (bytes) => {
+        var joined = new Uint8Array(buf.length + bytes.length);
+        joined.set(buf, 0);
+        joined.set(bytes, buf.length);
+        buf = joined;
+      };
+      var pump = () => {
+        if (stopped) return Promise.resolve();
+        return reader.read().then((chunk) => {
+          if (!chunk || chunk.done) return;
+          append(chunk.value);
+          if (!channels) {
+            if (buf.length < 44) return pump();
+            channels = buf[22] | (buf[23] << 8);
+            if (!(channels >= 1 && channels <= 8)) return;
+            buf = buf.slice(44);
+          }
+          var frameBytes = channels * 2;
+          var frames = Math.floor(buf.length / frameBytes);
+          if (frames > 0) {
+            scheduleChunk(buf.slice(0, frames * frameBytes), channels);
+            buf = buf.slice(frames * frameBytes);
+          }
+          return pump();
+        }).catch(() => {});
+      };
+      return pump();
+    }).catch(() => {});
+    return { stop: stop };
+  }
+
+  function noteAudioBlocked() {
+    showHint("коснись экрана, чтобы включить звук");
+    if (unlockArmed) return;
+    unlockArmed = true;
+    var retry = () => {
+      unlockArmed = false;
+      document.removeEventListener("pointerdown", retry);
+      document.removeEventListener("keydown", retry);
+      if (audioCtx && audioCtx.state === "suspended") {
+        try { audioCtx.resume().catch(() => {}); } catch {}
+      }
+      if (clickSession && monitorUrl) playMonitorStream(monitorUrl);
+    };
+    document.addEventListener("pointerdown", retry);
+    document.addEventListener("keydown", retry);
+  }
+
+  function openClickMonitor(then) {
+    if (clickOpening) return;
+    ensureToken().then((token) => {
+      if (!token) return;
+      if (clickSession) {
+        syncClickInputs();
+        pushClickSettings();
+        if (then) then(token);
+        return;
+      }
+      clickOpening = true;
+      fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
+        if (!response.ok) return null;
+        return response.json().catch(() => null);
+      }).then((body) => {
+        clickOpening = false;
+        clickSession = body && body.session ? body.session : 0;
+        if (!clickSession) return;
+        clickOwnsStream = true;
+        syncClickInputs();
+        pushClickSettings();
+        if (then) then(token);
+      }).catch(() => { clickOpening = false; });
+    });
+  }
+
+  function maybeFollowTransport() {
+    var playing = !!state.transport && state.transport.status === "Playing";
+    var trackId = currentTrackId();
+    if (playing && trackId && trackId !== lastClickTrack) {
+      lastClickTrack = trackId;
+      if (clickSession) {
+        syncClickInputs();
+        pushClickSettings();
+      }
+    }
+    if (!playing) return;
+    if (click.enabled && !clickSession) {
+      openClickMonitor((token) => {
+        playMonitorStream(
+          "/preview?token=" + encodeURIComponent(token) +
+          "&session=" + clickSession);
+      });
+    }
+  }
+
   el.clickToggle.addEventListener("click", () => {
     click.enabled = !click.enabled;
     saveClick();
     paintClickToggle();
     if (click.enabled && !clickSession) {
-      ensureToken().then((token) => {
-        if (!token) return;
-        fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
-          if (!response.ok) return null;
-          return response.json().catch(() => null);
-        }).then((body) => {
-          clickSession = body && body.session ? body.session : 0;
-          if (!clickSession) return;
-          clickOwnsStream = true;
-          syncClickInputs();
-          pushClickSettings();
-          el.previewAudio.src =
-            "/preview?token=" + encodeURIComponent(token) +
-            "&session=" + clickSession;
-          el.previewAudio.play().catch(() => {});
-        });
+      openClickMonitor((token) => {
+        playMonitorStream(
+          "/preview?token=" + encodeURIComponent(token) +
+          "&session=" + clickSession);
       });
     } else if (!click.enabled && clickOwnsStream) {
       pushClickSettings();
-      stopAudioStream();
+      stopMonitorStream();
       clickSession = 0;
       clickOwnsStream = false;
     } else {

@@ -1,5 +1,6 @@
 namespace Aria.Audio.Tests;
 
+using System.Diagnostics;
 using Aria.Core.Playback;
 
 public sealed class ClickVoiceTests
@@ -90,5 +91,18 @@ public sealed class ClickVoiceTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new ClickSettings(0, 4, 0, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ClickSettings(120, 0, 0, 0));
+    }
+
+    [Fact]
+    public void Seek_HugeFrameIndex_ReturnsFast_WithCoherentGrid()
+    {
+        var voice = new ClickVoice(1, SampleRate, new ClickSettings(120, 4, 0, 0));
+        var sw = Stopwatch.StartNew();
+        voice.Seek(9_000_000_000_000_000_000L);
+        sw.Stop();
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), "seek hung on huge frame");
+        var buffer = new float[48000];
+        Assert.Equal(48000, voice.ReadFrames(buffer));
+        Assert.True(Energy(buffer, 0, 48000) > 1, "no click within two beats of huge seek");
     }
 }

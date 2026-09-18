@@ -203,4 +203,23 @@ public sealed class PreviewSessionTests
         Assert.Equal(0, reader.Read(buffer));
         Assert.Null(rig.Engine.PreviewSessionTap(session));
     }
+
+    [Fact]
+    public async Task SessionOpenedMidPlay_ReceivesAudio()
+    {
+        using var rig = new Rig();
+        StartSine(rig);
+        await Task.Delay(200);
+        var session = rig.Engine.OpenPreviewSession();
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[4096];
+        var peak = 0.0;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.1;
+        }, "mid-play session never received main audio");
+    }
 }

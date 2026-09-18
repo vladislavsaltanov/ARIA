@@ -99,12 +99,17 @@ public sealed class ClickVoice : ISampleSource
 
     private void Reset(long frameIndex)
     {
-        _untilClick = _offsetFrames - frameIndex;
-        _clickIndex = 0;
-        while (_untilClick < 0)
+        var relative = frameIndex - _offsetFrames;
+        if (relative <= 0)
         {
-            _untilClick += _framesPerBeat;
-            _clickIndex++;
+            _untilClick = _offsetFrames - frameIndex;
+            _clickIndex = 0;
+        }
+        else
+        {
+            var skipped = Math.Max(1L, (long)Math.Ceiling(relative / _framesPerBeat - 1e-9));
+            _clickIndex = skipped;
+            _untilClick = _offsetFrames + skipped * _framesPerBeat - frameIndex;
         }
         _burstTaken = _burstFrames;
     }

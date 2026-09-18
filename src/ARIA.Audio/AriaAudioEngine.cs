@@ -355,6 +355,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         var tap = new PreviewTap(Math.Max(256, _sampleRate * 2), _channels);
         var voice = new ClickVoice(_channels, _sampleRate, DefaultClick);
         var session = new PreviewSession(handle, _mainTap.Subscribe(), voice, tap);
+        if (Volatile.Read(ref _mainPlaying)
+            && _mixerHandles.TryGetValue(Volatile.Read(ref _currentHandle), out var mainMixer)
+            && MixerPositionFrames(mainMixer) is var mainFrames && mainFrames != long.MaxValue)
+        {
+            voice.Seek(mainFrames);
+        }
         lock (_sessionLock)
         {
             var grown = new PreviewSession[_sessions.Length + 1];
