@@ -133,7 +133,7 @@ public sealed class AppHost : IAsyncDisposable
 
         if (_remoteOptions is { } options)
         {
-            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap);
+            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap, _engine);
             try
             {
                 await Remote.StartAsync(cancellationToken);
@@ -141,7 +141,7 @@ public sealed class AppHost : IAsyncDisposable
             catch (Exception e) when (options.Port != 0 && IsPortBusy(e))
             {
                 _log.Warn("remote.port_fallback", new Dictionary<string, string> { ["port"] = options.Port.ToString() });
-                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap);
+                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap, _engine);
                 await Remote.StartAsync(cancellationToken);
             }
             if (Remote is { } remote)

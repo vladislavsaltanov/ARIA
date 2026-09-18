@@ -33,6 +33,7 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly PlaybackMonitor? _monitor;
     private readonly MeterMonitor? _meters;
     private readonly PreviewTap? _previewTap;
+    private readonly IAudioEngine? _engine;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -55,13 +56,14 @@ public sealed class RemoteHost : IAsyncDisposable
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null, IAudioEngine? engine = null)
     {
         _bus = bus;
         _options = options;
         _monitor = monitor;
         _meters = meters;
         _previewTap = previewTap;
+        _engine = engine;
     }
 
     public Uri HttpEndpoint { get; private set; } = new("http://127.0.0.1:0/");
@@ -85,6 +87,7 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapPost("/auth", AuthenticateAsync);
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
         app.MapGet("/preview", PreviewAsync);
+        app.MapPost("/preview/open", OpenPreviewSessionAsync);
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
@@ -146,13 +149,48 @@ public sealed class RemoteHost : IAsyncDisposable
             ? token == _options.AuthToken
             : _sessionTokens.ContainsKey(token));
 
-    private IResult PreviewAsync(HttpContext context)
+    private async Task PreviewAsync(HttpContext context)
+    {
+        if (!IsTokenValid(context.Request.Query["token"]))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (context.Request.Query.TryGetValue("session", out var sessionValue)
+            && int.TryParse(sessionValue, out var sessionId)
+            && _engine is not null)
+        {
+            var handle = new PreviewSessionHandle(sessionId);
+            var tap = _engine.PreviewSessionTap(handle);
+            if (tap is null)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+            try
+            {
+                await new PreviewStream(tap).ExecuteAsync(context);
+            }
+            finally
+            {
+                _engine.ClosePreviewSession(handle);
+            }
+            return;
+        }
+        await new PreviewStream(_previewTap).ExecuteAsync(context);
+    }
+
+    private IResult OpenPreviewSessionAsync(HttpContext context)
     {
         if (!IsTokenValid(context.Request.Query["token"]))
         {
             return Results.Unauthorized();
         }
-        return new PreviewStream(_previewTap);
+        if (_engine is null)
+        {
+            return Results.NotFound();
+        }
+        return Results.Json(new { Session = _engine.OpenPreviewSession().Value });
     }
 
     private async Task HandleWebSocket(HttpContext context)

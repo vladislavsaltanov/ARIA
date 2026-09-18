@@ -228,14 +228,17 @@ public sealed class PreviewStreamTests : IAsyncLifetime
             using var opened = await http.PostAsync(new Uri(host.HttpEndpoint, "preview/open?token=secret"), new StringContent(string.Empty));
             using var openDocument = JsonDocument.Parse(await opened.Content.ReadAsStringAsync());
             var session = openDocument.RootElement.GetProperty("session").GetInt32();
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            using var response = await http.GetAsync(
-                new Uri(host.HttpEndpoint, $"preview?session={session}&token=secret"),
-                HttpCompletionOption.ResponseHeadersRead,
-                cts.Token);
-            var body = await response.Content.ReadAsStreamAsync(cts.Token);
-            await ReadExactlyAsync(body, 44, cts.Token);
-            cts.Cancel();
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
+            {
+                using (var response = await http.GetAsync(
+                    new Uri(host.HttpEndpoint, $"preview?session={session}&token=secret"),
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cts.Token))
+                {
+                    var body = await response.Content.ReadAsStreamAsync(cts.Token);
+                    await ReadExactlyAsync(body, 44, cts.Token);
+                }
+            }
             var deadline = Environment.TickCount64 + 5000;
             while (engine.OpenSessions > 0)
             {
