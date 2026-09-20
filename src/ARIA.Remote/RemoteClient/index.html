@@ -64,19 +64,24 @@
     <button id="btn-panic" class="panic">PANIC</button>
 
     <section class="mixer">
-      <input id="master" class="master" type="range" min="0" max="125" step="1" value="0">
-      <button id="btn-mute" class="mute">MUTE</button>
-    </section>
-
-    <section class="lufs">
-      <span id="lufs-value" class="lufs-value">—</span>
+      <div class="section-header">
+        <h2>МАСТЕР (ЗАЛ)</h2>
+        <div class="lufs-badge">
+          <span class="lufs-label">LUFS</span>
+          <span id="lufs-value" class="lufs-value">—</span>
+        </div>
+      </div>
+      <div class="preview-row">
+        <input id="master" class="master" type="range" min="0" max="125" step="1" value="0">
+        <button id="btn-mute" class="mute">MUTE</button>
+      </div>
       <div class="lufs-bar"><div id="lufs-fill" class="lufs-fill"></div></div>
     </section>
 
     <section class="preview">
-      <h2>МОНИТОР</h2>
+      <h2>МОНИТОР (НАУШНИКИ)</h2>
       <div class="preview-row">
-        <button id="btn-preview-play" class="pad">▶<span>ПРЕВЬЮ</span></button>
+        <button id="btn-preview-play" class="pad">▶<span>СТАРТ</span></button>
         <button id="btn-preview-stop" class="pad">■<span>СТОП</span></button>
         <input id="preview-gain" class="master" type="range" min="0" max="125" step="1" value="100">
         <button id="btn-preview-mute" class="mute">MUTE</button>

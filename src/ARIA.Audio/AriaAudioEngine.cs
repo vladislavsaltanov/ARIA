@@ -322,6 +322,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             DrainPendingSinks();
             EmitFaults();
             _mixer.Render(_block);
+            _mainTap.Publish(_block);
             ApplyMasterChain();
             PublishMeter();
             var accepted = _sink.Write(_block);
@@ -336,7 +337,6 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private void RenderPreview()
     {
-        _mainTap.Publish(_block);
         _preview.Render(_previewBlock);
         if (Volatile.Read(ref _previewMuted) == 1)
         {
@@ -526,6 +526,21 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         if (read <= 0)
         {
             return;
+        }
+        if (Volatile.Read(ref _previewMuted) == 1)
+        {
+            _sessionScratch.AsSpan(0, read).Clear();
+        }
+        else
+        {
+            var gain = (float)BitConverter.Int64BitsToDouble(Volatile.Read(ref _previewGainBits));
+            if (gain != 1f)
+            {
+                for (var i = 0; i < read; i++)
+                {
+                    _sessionScratch[i] *= gain;
+                }
+            }
         }
         if (session.ClickMuted)
         {

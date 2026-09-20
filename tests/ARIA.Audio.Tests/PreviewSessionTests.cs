@@ -343,6 +343,68 @@ public sealed class PreviewSessionTests
         await Task.Delay(200);
         Assert.True(reader.Read(buffer) > 0, "session stalled after track switch");
     }
+
+    [Fact]
+    public async Task SessionAudio_IndependentOfMasterGain()
+    {
+        using var rig = new Rig();
+        StartSine(rig);
+        var session = rig.Engine.OpenPreviewSession();
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        rig.Engine.SetMasterGain(-80.0);
+        var buffer = new float[2048];
+        var peak = 0.0;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.3;
+        }, "session audio attenuated by master gain");
+    }
+
+    [Fact]
+    public async Task SessionAudio_RespondsToPreviewGainAndMute()
+    {
+        using var rig = new Rig();
+        StartSine(rig);
+        var session = rig.Engine.OpenPreviewSession();
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[2048];
+        var peak = 0.0;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.3;
+        }, "session never received initial audio");
+
+        rig.Engine.SetPreviewMuted(true);
+        await Task.Delay(200);
+        int read;
+        do
+        {
+            read = reader.Read(buffer);
+        }
+        while (read > 0);
+        await Task.Delay(100);
+        var mutedPeak = 0.0;
+        read = reader.Read(buffer);
+        if (read > 0)
+        {
+            mutedPeak = Peak(buffer, read);
+        }
+        Assert.True(mutedPeak < 0.001, "session leaked audio when preview muted, peak " + mutedPeak);
+
+        rig.Engine.SetPreviewMuted(false);
+        var unmutedPeak = 0.0;
+        await Poll(() =>
+        {
+            unmutedPeak = Math.Max(unmutedPeak, Peak(buffer, reader.Read(buffer)));
+            return unmutedPeak > 0.3;
+        }, "session never recovered after preview unmuted");
+    }
 }
 
 

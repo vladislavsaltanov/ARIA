@@ -162,6 +162,7 @@
         reconnectDelay = 500;
         el.conn.textContent = "ONLINE";
         el.conn.className = "conn conn-on";
+        pushPreviewSettings();
       };
       ws.onclose = () => {
         el.conn.textContent = "OFFLINE";
@@ -848,6 +849,12 @@
     return rect.top < window.innerHeight && rect.bottom > 0;
   }
 
+  function clampNum(value, min, max, fallback) {
+    var n = Number(value);
+    if (!isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+
   function gainToPct(db) {
     if (!(db > -80)) return 0;
     return Math.max(0, Math.min(125, 10 ** (db / 40) * 100));
@@ -1396,14 +1403,47 @@
     vibrate();
   });
 
+  var PREVIEW_KEY = "aria.preview";
   var previewMuted = false;
+  var previewGainPct = 100;
+
+  function loadPreview() {
+    try {
+      var raw = localStorage.getItem(PREVIEW_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (typeof parsed.muted === "boolean") previewMuted = parsed.muted;
+      if (typeof parsed.gainPct === "number") previewGainPct = clampNum(parsed.gainPct, 0, 125, 100);
+    } catch {}
+  }
+
+  function savePreview() {
+    try {
+      localStorage.setItem(PREVIEW_KEY, JSON.stringify({
+        muted: previewMuted,
+        gainPct: previewGainPct,
+      }));
+    } catch {}
+  }
+
+  function syncPreviewInputs() {
+    if (el.previewGain) el.previewGain.value = previewGainPct;
+    if (el.previewMute) el.previewMute.classList.toggle("active", previewMuted);
+  }
+
+  function pushPreviewSettings() {
+    send("set_preview_gain", { gain_db: pctToGain(previewGainPct) });
+    send("set_preview_muted", { muted: previewMuted });
+  }
+
+  loadPreview();
+  syncPreviewInputs();
 
   el.previewPlay.addEventListener("click", () => {
     var current = state.transport && state.transport.current;
-    if (!current || !current.trackId) return;
-    var trackId = current.trackId;
+    var trackId = current ? current.trackId : null;
     openClickMonitor((token) => {
-      if (clickSession) {
+      if (clickSession && (!state.transport || state.transport.status !== "Playing") && trackId) {
         send("start_session_track", { session: clickSession, track: trackId });
       }
       clickOwnsStream = false;
@@ -1422,13 +1462,16 @@
   });
 
   el.previewGain.addEventListener("input", () => {
+    previewGainPct = clampNum(Number(el.previewGain.value), 0, 125, 100);
+    savePreview();
     send("set_preview_gain", {
-      gain_db: pctToGain(Number(el.previewGain.value)),
+      gain_db: pctToGain(previewGainPct),
     });
   });
 
   el.previewMute.addEventListener("click", () => {
     previewMuted = !previewMuted;
+    savePreview();
     send("set_preview_muted", { muted: previewMuted });
     el.previewMute.classList.toggle("active", previewMuted);
     vibrate();
@@ -1438,12 +1481,6 @@
   var clickSession = 0;
   var clickOwnsStream = false;
   var click = loadClick();
-
-  function clampNum(value, min, max, fallback) {
-    var n = Number(value);
-    if (!isFinite(n)) return fallback;
-    return Math.max(min, Math.min(max, n));
-  }
 
   function loadClick() {
     var fallback = { enabled: false, bpmOverride: 0, beats: 4, offsetMs: 0, gainPct: 100 };
