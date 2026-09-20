@@ -791,6 +791,7 @@
 
   function smartClick(mentions, names) {
     if (!mentions.length) return;
+    unlockAudioContext();
     if (mentions.length === 1) {
       send("play_track", { track: mentions[0].track });
       vibrate();
@@ -808,6 +809,7 @@
       button.textContent = name || "повисшее";
       button.disabled = !name;
       button.addEventListener("click", () => {
+        unlockAudioContext();
         hideMentionMenu();
         send("play_track", { track: mention.track });
         vibrate();
@@ -1570,19 +1572,34 @@
     try { ctx = ensureAudioCtx(); } catch { return null; }
     if (!ctx) return null;
     try { var resumed = ctx.resume(); if (resumed && resumed.catch) resumed.catch(() => {}); } catch {}
-    if (ctx.state !== "running") return null;
     var abort = null;
     try { abort = new AbortController(); } catch { abort = null; }
     var stopped = false;
     var nextTime = 0;
     var live = [];
+    var TARGET_LEAD = 0.045;
+    var MAX_LEAD = 0.120;
     function stop() {
       stopped = true;
       if (abort) { try { abort.abort(); } catch {} }
       live.forEach((s) => { try { s.stop(); } catch {} });
       live = [];
     }
+    function onStreamEnded() {
+      if (stopped) return;
+      stopped = true;
+      if (clickOwnsStream) {
+        clickSession = 0;
+        clickOwnsStream = false;
+      }
+      if (monitorPlaying && monitorPlaying.stop === stop) {
+        monitorPlaying = null;
+      }
+    }
     function scheduleChunk(bytes, channels) {
+      if (ctx.state === "suspended") {
+        try { ctx.resume().catch(() => {}); } catch {}
+      }
       var frames = bytes.length / (channels * 2);
       var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
       var audio = ctx.createBuffer(channels, frames, 48000);
@@ -1593,7 +1610,13 @@
       var src = ctx.createBufferSource();
       src.buffer = audio;
       src.connect(ctx.destination);
-      var t = nextTime < ctx.currentTime ? ctx.currentTime + 0.06 : Math.max(nextTime, ctx.currentTime + 0.06);
+      var now = ctx.currentTime;
+      var t;
+      if (nextTime < now || nextTime - now > MAX_LEAD) {
+        t = now + TARGET_LEAD;
+      } else {
+        t = Math.max(nextTime, now + TARGET_LEAD);
+      }
       nextTime = t + frames / 48000;
       live.push(src);
       src.onended = () => { var k = live.indexOf(src); if (k >= 0) live.splice(k, 1); };
@@ -1601,9 +1624,15 @@
     }
     var opts = abort ? { signal: abort.signal } : undefined;
     fetch(url, opts).then((response) => {
-      if (!response.ok || stopped) return null;
+      if (!response.ok || stopped) {
+        onStreamEnded();
+        return null;
+      }
       var reader = response.body ? response.body.getReader() : null;
-      if (!reader) return null;
+      if (!reader) {
+        onStreamEnded();
+        return null;
+      }
       var buf = new Uint8Array(0);
       var channels = 0;
       var append = (bytes) => {
@@ -1615,12 +1644,18 @@
       var pump = () => {
         if (stopped) return Promise.resolve();
         return reader.read().then((chunk) => {
-          if (!chunk || chunk.done) return;
+          if (!chunk || chunk.done) {
+            onStreamEnded();
+            return;
+          }
           append(chunk.value);
           if (!channels) {
             if (buf.length < 44) return pump();
             channels = buf[22] | (buf[23] << 8);
-            if (!(channels >= 1 && channels <= 8)) return;
+            if (!(channels >= 1 && channels <= 8)) {
+              onStreamEnded();
+              return;
+            }
             buf = buf.slice(44);
           }
           var frameBytes = channels * 2;
@@ -1630,10 +1665,14 @@
             buf = buf.slice(frames * frameBytes);
           }
           return pump();
-        }).catch(() => {});
+        }).catch(() => {
+          onStreamEnded();
+        });
       };
       return pump();
-    }).catch(() => {});
+    }).catch(() => {
+      onStreamEnded();
+    });
     return { stop: stop };
   }
 
@@ -1653,6 +1692,22 @@
     document.addEventListener("pointerdown", retry);
     document.addEventListener("keydown", retry);
   }
+
+  function unlockAudioContext() {
+    var ctx = ensureAudioCtx();
+    if (ctx && ctx.state === "suspended") {
+      try { ctx.resume().catch(() => {}); } catch {}
+    }
+    if (click.enabled && !clickSession && !clickOpening) {
+      openClickMonitor((token) => {
+        playMonitorStream(
+          "/preview?token=" + encodeURIComponent(token) +
+          "&session=" + clickSession);
+      });
+    }
+  }
+  document.addEventListener("pointerdown", unlockAudioContext, { passive: true });
+  document.addEventListener("keydown", unlockAudioContext, { passive: true });
 
   function openClickMonitor(then) {
     if (clickOpening) return;
@@ -1796,6 +1851,14 @@
     var button = document.getElementById(id);
     if (!button) return;
     button.addEventListener("click", () => {
+      unlockAudioContext();
+      if (actions[id] === "play" && click.enabled && !clickSession) {
+        openClickMonitor((token) => {
+          playMonitorStream(
+            "/preview?token=" + encodeURIComponent(token) +
+            "&session=" + clickSession);
+        });
+      }
       send(actions[id]);
       vibrate();
     });

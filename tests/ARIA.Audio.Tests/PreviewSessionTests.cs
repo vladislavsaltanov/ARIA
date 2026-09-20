@@ -260,4 +260,59 @@ public sealed class PreviewSessionTests
             return peak > 0.1;
         }, "mid-play session never received main audio");
     }
+
+    [Fact]
+    public async Task StartTrack_AfterSessionIdle_TrackAudioStartsImmediately()
+    {
+        using var rig = new Rig();
+        var session = rig.Engine.OpenPreviewSession();
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        await Task.Delay(600);
+        StartSine(rig);
+        var buffer = new float[2048];
+        var peak = 0.0;
+        var start = Environment.TickCount64;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.3;
+        }, "track audio did not start within 100ms, peak " + peak);
+        var elapsed = Environment.TickCount64 - start;
+        Assert.True(elapsed < 100, "track audio took " + elapsed + "ms to start (expected < 100ms)");
+    }
+
+    [Fact]
+    public async Task ResumeTrack_AfterPauseIdle_ResumesImmediately()
+    {
+        using var rig = new Rig();
+        var session = rig.Engine.OpenPreviewSession();
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var handle = StartSine(rig);
+        var buffer = new float[2048];
+        await Poll(() => reader.Read(buffer) > 0, "audio never started");
+        rig.Engine.Transport(handle, TransportCommand.Pause);
+        await Task.Delay(500);
+        int read;
+        do
+        {
+            read = reader.Read(buffer);
+        }
+        while (read > 0);
+        rig.Engine.Transport(handle, TransportCommand.Play);
+        var peak = 0.0;
+        var start = Environment.TickCount64;
+        await Poll(() =>
+        {
+            peak = Math.Max(peak, Peak(buffer, reader.Read(buffer)));
+            return peak > 0.3;
+        }, "resumed audio did not start within 100ms, peak " + peak);
+        var elapsed = Environment.TickCount64 - start;
+        Assert.True(elapsed < 100, "resumed audio took " + elapsed + "ms to start (expected < 100ms)");
+    }
 }
+
+

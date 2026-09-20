@@ -118,6 +118,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
                 {
                     ResetSessionVoices();
                 }
+                else
+                {
+                    SyncSessionVoices(MixerPositionFrames(mixerHandle));
+                }
             }
             else if (command == TransportCommand.Pause || command == TransportCommand.Stop)
             {
@@ -142,6 +146,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             var frames = (long)Math.Round(position.TotalSeconds * _mixer.SampleRate);
             _mixer.Seek(mixerHandle, Math.Max(0, frames));
             Volatile.Read(ref _sink).Flush();
+            SyncSessionVoices(Math.Max(0, frames));
         }
     }
 
@@ -453,6 +458,15 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         foreach (var session in Volatile.Read(ref _sessions))
         {
             session.ResetVoice = true;
+            Interlocked.Exchange(ref session.PendingSyncFrames, 0);
+        }
+    }
+
+    private void SyncSessionVoices(long frames)
+    {
+        foreach (var session in Volatile.Read(ref _sessions))
+        {
+            Interlocked.Exchange(ref session.PendingSyncFrames, frames);
         }
     }
 
@@ -478,15 +492,24 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         var voice = Volatile.Read(ref session.TrackVoice);
         if (voice is null && !Volatile.Read(ref _mainPlaying))
         {
+            session.Reader?.ResetToHead();
             return;
         }
         if (session.Reader is null && voice is null)
         {
             return;
         }
-        if (session.ResetVoice)
+        var syncFrames = Interlocked.Exchange(ref session.PendingSyncFrames, -1);
+        if (syncFrames >= 0)
+        {
+            session.Voice.Seek(syncFrames);
+            session.Reader?.Seek(Math.Max(0, _mainTap.Head - (_block.Length / _channels)));
+            session.ResetVoice = false;
+        }
+        else if (session.ResetVoice)
         {
             session.Voice.Seek(0);
+            session.Reader?.Seek(Math.Max(0, _mainTap.Head - (_block.Length / _channels)));
             session.ResetVoice = false;
         }
         if (session.PendingSettings is { } settings)
@@ -537,6 +560,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         public volatile ClickSettings? PendingSettings;
 
         public volatile bool ResetVoice;
+
+        public long PendingSyncFrames = -1;
 
         public ISampleSource? TrackVoice;
     }

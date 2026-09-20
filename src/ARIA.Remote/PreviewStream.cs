@@ -9,7 +9,7 @@ internal sealed class PreviewStream(PreviewTap? tap) : IResult
 {
     private const int SampleRate = 48000;
     private const int ChunkFrames = 1024;
-    private const int IdleDelayMs = 15;
+    private const int IdleDelayMs = 5;
 
     public async Task ExecuteAsync(HttpContext context)
     {

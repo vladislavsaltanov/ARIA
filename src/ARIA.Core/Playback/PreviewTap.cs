@@ -25,6 +25,8 @@ public sealed class PreviewTap
 
     public int Channels => _channels;
 
+    public long Head => Volatile.Read(ref _head);
+
     public void Publish(ReadOnlySpan<float> data)
     {
         var frames = data.Length / _channels;
@@ -102,4 +104,8 @@ public sealed class PreviewReader
     }
 
     public int Read(Span<float> target) => _tap.ReadFrom(ref _cursor, target);
+
+    public void Seek(long cursor) => Volatile.Write(ref _cursor, cursor);
+
+    public void ResetToHead() => Volatile.Write(ref _cursor, _tap.Head);
 }
