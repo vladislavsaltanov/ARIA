@@ -313,6 +313,36 @@ public sealed class PreviewSessionTests
         var elapsed = Environment.TickCount64 - start;
         Assert.True(elapsed < 100, "resumed audio took " + elapsed + "ms to start (expected < 100ms)");
     }
+
+    [Fact]
+    public async Task SwitchTrack_KeepsSessionAndClickFlowing()
+    {
+        using var rig = new Rig();
+        var handle1 = StartSine(rig);
+        var session = rig.Engine.OpenPreviewSession();
+        rig.Engine.SetClick(session, new ClickSettings(120, 4, 0, 0));
+        rig.Engine.SetClickMuted(session, false);
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[2048];
+        await Poll(() => reader.Read(buffer) > 0, "session never started");
+
+        var handle2 = rig.Engine.StartStream(
+            new TrackSource("/audio/sine.flac", TimeSpan.Zero, null),
+            new StreamOptions(StreamBus.Main, []));
+        rig.Engine.Transport(handle2, TransportCommand.Play);
+        rig.Engine.Transport(handle1, TransportCommand.Stop);
+
+        int read;
+        do
+        {
+            read = reader.Read(buffer);
+        }
+        while (read > 0);
+        await Task.Delay(200);
+        Assert.True(reader.Read(buffer) > 0, "session stalled after track switch");
+    }
 }
 
 

@@ -125,7 +125,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             }
             else if (command == TransportCommand.Pause || command == TransportCommand.Stop)
             {
-                Volatile.Write(ref _mainPlaying, false);
+                if (handle.Value == Volatile.Read(ref _currentHandle))
+                {
+                    Volatile.Write(ref _mainPlaying, false);
+                }
             }
             _mixer.Transport(mixerHandle, command);
         }

@@ -1502,13 +1502,18 @@
     paintClickToggle();
   }
 
+  function clickPctToGain(pct) {
+    if (!(pct > 0)) return -80;
+    return Math.round((pctToGain(pct) - 12) * 10) / 10;
+  }
+
   function pushClickSettings() {
     if (!clickSession) return;
     send("set_click_settings", {
       session: clickSession,
       bpm: effectiveBpm(),
       beats_per_bar: click.beats,
-      gain_db: pctToGain(click.gainPct),
+      gain_db: clickPctToGain(click.gainPct),
       offset_ms: click.offsetMs,
     });
     send("set_click_muted", { session: clickSession, muted: !click.enabled });
