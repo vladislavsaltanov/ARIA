@@ -66,13 +66,13 @@ public partial class App : Application
         var thumbs = new WaveformThumbs(host.Waveforms!);
         var settingsStore = host.SettingsStore;
         var rowSettings = settingsStore.Load();
-        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Library!.Load().Tracks, rowSettings);
+        var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Tracks, rowSettings);
         ScriptPanelViewModel? scripts = null;
-        var projects = new ProjectsViewModel(host.Bus, () => host.Library!.Load().Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio, scriptExporter: pid => scripts!.ExportProjectScripts(pid));
+        var projects = new ProjectsViewModel(host.Bus, () => host.Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio, scriptExporter: pid => scripts!.ExportProjectScripts(pid));
         projects.TrackRelink = (id, path) => host.RelinkTrackAsync(id, path);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
-        scripts = new ScriptPanelViewModel(host.Bus, () => host.Library!.Load().Tracks, sync, topLevel: () => desktop.MainWindow, projectDirSource: projects.GetProjectDirectory);
+        scripts = new ScriptPanelViewModel(host.Bus, () => host.Tracks, sync, topLevel: () => desktop.MainWindow, projectDirSource: projects.GetProjectDirectory);
         MainWindow? window = null;
         var hotkeys = new HotkeyService(
             HotkeyConfig.Load(Path.Combine(dataDirectory, "hotkeys.json")),
@@ -100,9 +100,24 @@ public partial class App : Application
             {
                 host.SetLogEnabled(updated.LogEnabled);
                 host.SetLogLevel(updated.LogLevel);
-            });
+            },
+            monitorSessions: () => host.MonitorSessions);
         window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
+        host.LibrarySaveFailed += error =>
+        {
+            var owner = desktop.MainWindow;
+            if (owner is null)
+            {
+                return;
+            }
+            if (sync is null)
+            {
+                _ = ShowLibraryErrorDialog(owner, error.Message);
+                return;
+            }
+            sync.Post(_ => _ = ShowLibraryErrorDialog(owner, error.Message), null);
+        };
         window.Show();
 
         window.AttachPlaybackHeader(host.Monitor, host.Waveforms);
@@ -140,6 +155,29 @@ public partial class App : Application
         {
             host.Bus.Submit(new ClientId("desktop-hotkeys"), Interlocked.Increment(ref _hotkeySeq), command);
         }
+    }
+
+    private static async Task ShowLibraryErrorDialog(Avalonia.Controls.Window owner, string detail)
+    {
+        var ok = new Avalonia.Controls.Button { Content = "Понятно", Margin = new Avalonia.Thickness(0, 12, 0, 0) };
+        var dialog = new Avalonia.Controls.Window
+        {
+            Title = "Библиотека не сохраняется",
+            Width = 420,
+            SizeToContent = Avalonia.Controls.SizeToContent.Height,
+            CanResize = false,
+            Content = new Avalonia.Controls.StackPanel
+            {
+                Margin = new Avalonia.Thickness(16),
+                Children =
+                {
+                    new Avalonia.Controls.TextBlock { Text = "Не удалось записать библиотеку: " + detail, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    ok,
+                },
+            },
+        };
+        ok.Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(owner);
     }
 
     private static string DefaultDataDirectory()

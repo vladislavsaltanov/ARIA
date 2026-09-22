@@ -8,7 +8,7 @@ public sealed record ScriptLine(ScriptLineId Id, TimeSpan AtElapsed, string Text
 
 public sealed record Script(ScriptId Id, string Name, ImmutableArray<ScriptLine> Lines, ProjectId? Project = null);
 
-public sealed record TrackDigestEntry(TrackId Track, string DisplayName);
+public sealed record TrackDigestEntry(TrackId Track, string DisplayName, double? Bpm);
 
 public sealed record TrackDigest(ImmutableArray<TrackDigestEntry> Entries)
 {

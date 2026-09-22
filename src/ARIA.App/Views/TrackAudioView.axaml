@@ -22,6 +22,14 @@
       <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" FontSize="11"
                  VerticalAlignment="Center" Width="64"/>
     </Grid>
+    <CheckBox Content="Метроном для трека" IsChecked="{Binding HasBpm}" FontSize="12" Margin="0,4,0,0"/>
+    <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasBpm}">
+      <TextBlock Text="темп" FontSize="12" VerticalAlignment="Center"/>
+      <Slider Grid.Column="1" Minimum="20" Maximum="300" Value="{Binding BpmValue, Mode=TwoWay}"
+              VerticalAlignment="Center" Margin="14,0"/>
+      <TextBlock Grid.Column="2" Text="{Binding BpmValue, StringFormat={}{0:0} BPM}" FontSize="11"
+                 VerticalAlignment="Center" Width="64"/>
+    </Grid>
     <TextBlock Text="Эквалайзер" FontSize="12" Margin="0,4,0,0"/>
     <ItemsControl ItemsSource="{Binding EqBands}">
       <ItemsControl.ItemTemplate>

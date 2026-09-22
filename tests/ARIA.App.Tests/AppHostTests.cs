@@ -166,6 +166,32 @@ public sealed class AppHostTests : IDisposable
     }
 
     [Fact]
+    public async Task RelinkTrackAsync_PreservesTrackDefaults()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        var wav = TestWav.Write(_directory, "defaults.wav");
+        var report = await host.ImportTracksAsync([wav]);
+        Assert.Equal(1, report.Added);
+        var stored = Assert.Single(host.Library!.Load().Tracks);
+        var audio = new TrackAudioSettings(3.0, 0.5, AudioEq.Flat, false, null, null);
+        var customized = stored with { Defaults = stored.Defaults with { Bpm = 128.0, Audio = audio } };
+        var (_, projects) = host.Library.Load();
+        host.Library.Upsert([customized], projects);
+
+        Assert.True(await host.RelinkTrackAsync(stored.Id, wav));
+
+        var relinked = Assert.Single(host.Library.Load().Tracks);
+        Assert.Equal(128.0, relinked.Defaults.Bpm);
+        Assert.NotNull(relinked.Defaults.Audio);
+        var relinkedAudio = relinked.Defaults.Audio!;
+        Assert.Equal(3.0, relinkedAudio.GainDb, 3);
+        Assert.Equal(0.5, relinkedAudio.Pan, 3);
+        Assert.False(relinkedAudio.NormalizeEnabled);
+        Assert.Equal(audio.Eq.Bands.Length, relinkedAudio.Eq.Bands.Length);
+    }
+
+    [Fact]
     public async Task RelinkTrackAsync_MissingFile_ReturnsFalse()
     {
         await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());

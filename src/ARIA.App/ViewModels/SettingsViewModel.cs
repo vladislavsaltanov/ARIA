@@ -5,6 +5,7 @@ using Aria.App.Services;
 using Aria.App.ViewModels.Settings;
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -31,6 +32,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     public AudioSectionVm Audio { get; }
 
+    public MonitorsSectionVm Monitors { get; }
+
     public LogSectionVm Logging { get; }
 
     public SettingsViewModel(
@@ -42,7 +45,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         SynchronizationContext? sync = null,
         AudioOutputService? outputs = null,
         string? logPath = null,
-        Action<AppSettings>? loggingApplied = null)
+        Action<AppSettings>? loggingApplied = null,
+        Func<IReadOnlyList<SessionProfile>>? monitorSessions = null)
     {
         _bus = bus;
         _settingsStore = settingsStore;
@@ -51,6 +55,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         Clock = new ClockSectionVm(Submit);
         Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId, outputs);
+        Monitors = new MonitorsSectionVm(Submit, monitorSessions ?? (() => []), sync);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         Logging = new LogSectionVm(SnapshotSettings, SaveSettings, settings.LogLevel, settings.LogEnabled, logPath ?? string.Empty, loggingApplied);
@@ -71,6 +76,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         Audio.Dispose();
+        Monitors.Dispose();
         _subscription.Dispose();
     }
 

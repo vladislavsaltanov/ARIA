@@ -134,17 +134,23 @@ public sealed class SettingsDialogHeadlessTests : IDisposable
 
             var nav = dialog.FindControl<ListBox>("SectionNav");
             Assert.NotNull(nav);
-            Assert.Equal(8, nav.ItemCount);
+            Assert.Equal(9, nav.ItemCount);
 
-            nav.SelectedIndex = 6;
+            nav.SelectedIndex = 1;
+            var monitors = dialog.GetVisualDescendants().OfType<MonitorsSection>().FirstOrDefault();
+            Assert.NotNull(monitors);
+            Assert.True(monitors.IsVisible);
+
+            nav.SelectedIndex = 7;
             var engine = dialog.GetVisualDescendants().OfType<EngineSection>().FirstOrDefault();
             var hotkeys = dialog.GetVisualDescendants().OfType<HotkeysSection>().FirstOrDefault();
             Assert.NotNull(engine);
             Assert.NotNull(hotkeys);
             Assert.True(engine.IsVisible);
             Assert.False(hotkeys.IsVisible);
+            Assert.False(monitors.IsVisible);
 
-            nav.SelectedIndex = 1;
+            nav.SelectedIndex = 2;
             Assert.True(hotkeys.IsVisible);
             Assert.False(engine.IsVisible);
 

@@ -201,21 +201,21 @@ public sealed class EngineWireTests
             new TrackSource("/audio/sine.flac", TimeSpan.Zero, null),
             new StreamOptions(StreamBus.Preview, []));
 
-        await Poll(() => rig.Tap.Count > 4096, "preview tap never received audio");
-
         var buffer = new float[4096];
-        var read = rig.Tap.Read(buffer);
-        Assert.True(read > 0, "tap read returned nothing");
         var peak = 0f;
-        for (var index = 0; index < read; index++)
+        await Poll(() =>
         {
-            var magnitude = Math.Abs(buffer[index]);
-            if (magnitude > peak)
+            var read = rig.TapReader.Read(buffer);
+            for (var index = 0; index < read; index++)
             {
-                peak = magnitude;
+                var magnitude = Math.Abs(buffer[index]);
+                if (magnitude > peak)
+                {
+                    peak = magnitude;
+                }
             }
-        }
-        Assert.True(peak > 0.1, "tap audio is silent");
+            return peak > 0.1f;
+        }, "preview tap never received audio");
     }
 
     [Fact]
@@ -404,13 +404,16 @@ public sealed class EngineWireTests
 
         public CapturingSink Preview { get; } = new(SampleRate, Channels);
 
-        public SampleRing Tap { get; }
+        public PreviewTap Tap { get; }
+
+        public PreviewReader TapReader { get; }
 
         public AriaAudioEngine Engine { get; }
 
         public Rig(int tapFrames = 0)
         {
-            Tap = new SampleRing(Math.Max(tapFrames, SampleRate * 2), Channels);
+            Tap = new PreviewTap(Math.Max(tapFrames, SampleRate * 2), Channels);
+            TapReader = Tap.Subscribe();
             Engine = new AriaAudioEngine(
                 new WireFactory(SampleRate),
                 null,

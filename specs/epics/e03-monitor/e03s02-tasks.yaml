@@ -1,0 +1,25 @@
+---
+story_id: e03s02
+title: "Секция настроек Мониторы"
+status: passing
+tasks:
+  - id: 1
+    description: "MonitorsSectionVm: живой список сессий, уровни подложки/клика, кик"
+    verify: "dotnet test tests/ARIA.App.Tests --filter MonitorsSectionVm"
+    risk: P1
+    status: passing
+  - id: 2
+    description: "SetSessionClickGain: команда, движок, кодек"
+    verify: "dotnet test tests/ARIA.Core.Tests tests/ARIA.Audio.Tests tests/ARIA.Remote.Tests"
+    risk: P1
+    status: passing
+  - id: 3
+    description: "MonitorsSection view + реестр + вайринг AppHost"
+    verify: "dotnet test tests/ARIA.App.Tests --filter SettingsDialog"
+    risk: P2
+    status: passing
+  - id: 4
+    description: "Полный прогон всех сборок"
+    verify: "dotnet test tests/ARIA.Core.Tests tests/ARIA.Audio.Tests tests/ARIA.Remote.Tests tests/ARIA.Persistence.Tests tests/ARIA.App.Tests"
+    risk: P1
+    status: passing

@@ -2,34 +2,52 @@ namespace Aria.Remote;
 
 using System.Buffers;
 using Aria.Audio;
+using Aria.Core.Playback;
 using Microsoft.AspNetCore.Http;
 
-internal sealed class PreviewCapture(SampleRing? tap) : IResult
+internal sealed class PreviewStream(PreviewTap? tap, Func<bool>? alive = null) : IResult
 {
     private const int SampleRate = 48000;
-    private const int MaxFrames = 48000;
+    private const int ChunkFrames = 1024;
+    private const int IdleDelayMs = 5;
 
-    public Task ExecuteAsync(HttpContext context)
+    public async Task ExecuteAsync(HttpContext context)
     {
         var channels = tap?.Channels ?? 2;
-        var rented = ArrayPool<float>.Shared.Rent(MaxFrames * channels);
+        var header = new byte[44];
+        WriteHeader(header, channels);
+        context.Response.ContentType = "audio/x-wav";
+        await context.Response.Body.WriteAsync(header, context.RequestAborted);
+        await context.Response.Body.FlushAsync(context.RequestAborted);
+        if (tap is null)
+        {
+            return;
+        }
+        var reader = tap.Subscribe();
+        var rented = ArrayPool<float>.Shared.Rent(ChunkFrames * channels);
+        var pcm = new byte[ChunkFrames * channels * 2];
         try
         {
-            var read = tap?.Read(rented.AsSpan(0, MaxFrames * channels)) ?? 0;
-            var frames = read / channels;
-            var pcm = new byte[frames * channels * 2];
-            for (var i = 0; i < frames * channels; i++)
+            while (!context.RequestAborted.IsCancellationRequested && (alive?.Invoke() ?? true))
             {
-                var sample = Math.Clamp((int)Math.Round(rented[i] * short.MaxValue), short.MinValue, short.MaxValue);
-                pcm[i * 2] = (byte)sample;
-                pcm[i * 2 + 1] = (byte)(sample >> 8);
+                var read = reader.Read(rented.AsSpan(0, ChunkFrames * channels));
+                if (read == 0)
+                {
+                    await Task.Delay(IdleDelayMs, context.RequestAborted);
+                    continue;
+                }
+                for (var i = 0; i < read; i++)
+                {
+                    var sample = Math.Clamp((int)Math.Round(rented[i] * short.MaxValue), short.MinValue, short.MaxValue);
+                    pcm[i * 2] = (byte)sample;
+                    pcm[i * 2 + 1] = (byte)(sample >> 8);
+                }
+                await context.Response.Body.WriteAsync(pcm.AsMemory(0, read * 2), context.RequestAborted);
+                await context.Response.Body.FlushAsync(context.RequestAborted);
             }
-            var header = new byte[44];
-            WriteHeader(header, channels, frames);
-            context.Response.ContentType = "audio/x-wav";
-            context.Response.ContentLength = header.Length + pcm.Length;
-            var body = context.Response.Body;
-            return WriteBodyAsync(body, header, pcm);
+        }
+        catch (Exception e) when (e is OperationCanceledException or IOException)
+        {
         }
         finally
         {
@@ -37,20 +55,10 @@ internal sealed class PreviewCapture(SampleRing? tap) : IResult
         }
     }
 
-    private static async Task WriteBodyAsync(Stream body, byte[] header, byte[] pcm)
+    private static void WriteHeader(byte[] header, int channels)
     {
-        await body.WriteAsync(header);
-        if (pcm.Length > 0)
-        {
-            await body.WriteAsync(pcm);
-        }
-    }
-
-    private static void WriteHeader(byte[] header, int channels, int frames)
-    {
-        var dataBytes = frames * channels * 2;
         WriteAscii(header, 0, "RIFF");
-        WriteInt32(header, 4, 36 + dataBytes);
+        WriteInt32(header, 4, unchecked(int.MaxValue - 8));
         WriteAscii(header, 8, "WAVE");
         WriteAscii(header, 12, "fmt ");
         WriteInt32(header, 16, 16);
@@ -61,7 +69,7 @@ internal sealed class PreviewCapture(SampleRing? tap) : IResult
         WriteInt16(header, 32, (short)(channels * 2));
         WriteInt16(header, 34, 16);
         WriteAscii(header, 36, "data");
-        WriteInt32(header, 40, dataBytes);
+        WriteInt32(header, 40, int.MaxValue);
     }
 
     private static void WriteAscii(byte[] target, int offset, string text)

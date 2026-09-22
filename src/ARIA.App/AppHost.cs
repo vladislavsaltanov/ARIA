@@ -51,7 +51,11 @@ public sealed class AppHost : IAsyncDisposable
 
     public RemoteHost? Remote { get; private set; }
 
+    public event Action<Exception>? LibrarySaveFailed;
+
     public ILibraryStore? Library => _library;
+
+    public IReadOnlyList<SessionProfile> MonitorSessions => _engine?.ListSessions() ?? [];
 
     public IWaveformStore? Waveforms => _waveforms;
 
@@ -67,7 +71,9 @@ public sealed class AppHost : IAsyncDisposable
 
     public AudioOutputService Outputs { get; private set; } = null!;
 
-    public SampleRing PreviewTap { get; private set; } = null!;
+    private void OnLibrarySaveFailed(Exception error) => LibrarySaveFailed?.Invoke(error);
+
+    public PreviewTap PreviewTap { get; private set; } = null!;
 
     public AppHost(
         string dataDirectory,
@@ -107,7 +113,7 @@ public sealed class AppHost : IAsyncDisposable
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
         WaveformScanner = new WaveformScanner(_decoderFactory);
         _importer = new TrackImporter(_decoderFactory, WaveformScanner);
-        PreviewTap = new SampleRing(SampleRate * 2, Channels);
+        PreviewTap = new PreviewTap(SampleRate * 2, Channels);
         _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters, CreatePreviewSink(), PreviewTap);
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
@@ -120,7 +126,7 @@ public sealed class AppHost : IAsyncDisposable
         _library = new SqliteLibraryStore(Path.Combine(DataDirectory, "library.db"));
         _waveforms = new SqliteWaveformStore(Path.Combine(DataDirectory, "waveforms.db"));
         _snapshots = new JsonSnapshotStore(Path.Combine(DataDirectory, "show.json"));
-        _autosaver = new ShowAutosaver(Bus, _snapshots, TimeSpan.FromMilliseconds(500), () => _library.Load().Tracks);
+        _autosaver = new ShowAutosaver(Bus, _snapshots, TimeSpan.FromMilliseconds(500), () => Tracks, _library, _log, OnLibrarySaveFailed);
 
         var document = _snapshots.LoadLatest();
         if (document is { } saved)
@@ -133,7 +139,7 @@ public sealed class AppHost : IAsyncDisposable
 
         if (_remoteOptions is { } options)
         {
-            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap);
+            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap, _engine);
             try
             {
                 await Remote.StartAsync(cancellationToken);
@@ -141,7 +147,7 @@ public sealed class AppHost : IAsyncDisposable
             catch (Exception e) when (options.Port != 0 && IsPortBusy(e))
             {
                 _log.Warn("remote.port_fallback", new Dictionary<string, string> { ["port"] = options.Port.ToString() });
-                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap);
+                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap, _engine);
                 await Remote.StartAsync(cancellationToken);
             }
             if (Remote is { } remote)
@@ -340,6 +346,8 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    public ImmutableArray<Track> Tracks => _controller?.Tracks ?? _library?.Load().Tracks ?? [];
+
     public TrackAudioSettings? GetTrackAudio(TrackId id) => _controller?.TrackAudio(id);
 
     public async Task<ImportReport> ImportTracksAsync(IReadOnlyList<string> paths, IProgress<string>? progress = null)
@@ -427,7 +435,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             return false;
         }
-        var relinked = imported.Track with { Id = trackId };
+        var relinked = imported.Track with { Id = trackId, Defaults = tracks[index].Defaults };
         _library.Upsert(tracks.SetItem(index, relinked), projects);
         if (imported.Peaks is { } peaks)
         {

@@ -40,6 +40,13 @@
     previewGain: document.getElementById("preview-gain"),
     previewMute: document.getElementById("btn-preview-mute"),
     previewAudio: document.getElementById("preview-audio"),
+    clickToggle: document.getElementById("btn-click-toggle"),
+    clickName: document.getElementById("click-name"),
+    clickBpm: document.getElementById("click-bpm"),
+    clickDefault: document.getElementById("btn-click-default"),
+    clickBeats: document.getElementById("click-beats"),
+    clickOffset: document.getElementById("click-offset"),
+    clickGain: document.getElementById("click-gain"),
     projects: document.getElementById("projects"),
     scriptSection: document.getElementById("script-section"),
     scriptTabs: document.getElementById("script-tabs"),
@@ -156,6 +163,7 @@
         reconnectDelay = 500;
         el.conn.textContent = "ONLINE";
         el.conn.className = "conn conn-on";
+        pushPreviewSettings();
       };
       ws.onclose = () => {
         el.conn.textContent = "OFFLINE";
@@ -214,15 +222,19 @@
 
   var toastTimer = null;
 
-  function rejectFeedback() {
-    if (navigator.vibrate) navigator.vibrate(40);
-    el.toast.textContent = "команда отклонена";
+  function showHint(text) {
+    el.toast.textContent = text;
     el.toast.classList.remove("hidden");
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       el.toast.classList.add("hidden");
       toastTimer = null;
-    }, 2000);
+    }, 2500);
+  }
+
+  function rejectFeedback() {
+    if (navigator.vibrate) navigator.vibrate(40);
+    showHint("команда отклонена");
   }
 
   function renderLock() {
@@ -249,12 +261,16 @@
     renderScript();
     renderLock();
     renderDefaultAction();
+    renderClick();
+    if (clickSession) pushClickSettings();
   }
 
   function applyDelta(frame) {
     if (frame.partition === "transport") {
       state.transport = frame.state;
       renderTransport();
+      renderClick();
+      if (clickSession) pushClickSettings();
     } else if (frame.partition === "queue") {
       state.queue = frame.state.items || [];
       renderQueue();
@@ -265,6 +281,8 @@
       renderProjects();
       renderLock();
       renderDefaultAction();
+      renderClick();
+      if (clickSession) pushClickSettings();
       if (scriptContentChanged(prev, frame.state)) {
         renderScript();
       } else {
@@ -338,6 +356,7 @@
     el.panic.disabled = t.status === "Panicked";
     trackWindowMs = trackWindow(t.current);
     renderSeek(state.lastFileMs);
+    maybeFollowTransport();
   }
 
   function trackWindow(current) {
@@ -777,6 +796,7 @@
 
   function smartClick(mentions, names) {
     if (!mentions.length) return;
+    unlockAudioContext();
     if (mentions.length === 1) {
       send("play_track", { track: mentions[0].track });
       vibrate();
@@ -794,6 +814,7 @@
       button.textContent = name || "повисшее";
       button.disabled = !name;
       button.addEventListener("click", () => {
+        unlockAudioContext();
         hideMentionMenu();
         send("play_track", { track: mention.track });
         vibrate();
@@ -830,6 +851,12 @@
   function scriptSectionVisible() {
     var rect = el.scriptSection.getBoundingClientRect();
     return rect.top < window.innerHeight && rect.bottom > 0;
+  }
+
+  function clampNum(value, min, max, fallback) {
+    var n = Number(value);
+    if (!isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
   }
 
   function gainToPct(db) {
@@ -1380,42 +1407,489 @@
     vibrate();
   });
 
+  var PREVIEW_KEY = "aria.preview";
   var previewMuted = false;
+  var previewGainPct = 100;
+
+  function loadPreview() {
+    try {
+      var raw = localStorage.getItem(PREVIEW_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (typeof parsed.muted === "boolean") previewMuted = parsed.muted;
+      if (typeof parsed.gainPct === "number") previewGainPct = clampNum(parsed.gainPct, 0, 125, 100);
+    } catch {}
+  }
+
+  function savePreview() {
+    try {
+      localStorage.setItem(PREVIEW_KEY, JSON.stringify({
+        muted: previewMuted,
+        gainPct: previewGainPct,
+      }));
+    } catch {}
+  }
+
+  function syncPreviewInputs() {
+    if (el.previewGain) el.previewGain.value = previewGainPct;
+    if (el.previewMute) el.previewMute.classList.toggle("active", previewMuted);
+  }
+
+  function pushPreviewSettings() {
+    send("set_preview_gain", { gain_db: pctToGain(previewGainPct) });
+    send("set_preview_muted", { muted: previewMuted });
+  }
+
+  loadPreview();
+  syncPreviewInputs();
 
   el.previewPlay.addEventListener("click", () => {
     var current = state.transport && state.transport.current;
-    if (!current || !current.trackId) return;
-    send("start_preview_track", { track: current.trackId });
-    ensureToken().then((token) => {
-      if (!token) return;
-      el.previewAudio.src = "/preview?token=" + encodeURIComponent(token);
-      el.previewAudio.play().catch(() => {});
+    var trackId = current ? current.trackId : null;
+    openClickMonitor((token) => {
+      if (clickSession && (!state.transport || state.transport.status !== "Playing") && trackId) {
+        send("start_session_track", { session: clickSession, track: trackId });
+      }
+      clickOwnsStream = false;
+      playMonitorStream(
+        "/preview?token=" + encodeURIComponent(token) +
+        (clickSession ? "&session=" + clickSession : ""));
     });
     vibrate();
   });
 
   el.previewStop.addEventListener("click", () => {
-    send("stop_preview", {});
-    try {
-      el.previewAudio.pause();
-      el.previewAudio.removeAttribute("src");
-      el.previewAudio.load();
-    } catch {}
+    clickSession = 0;
+    clickOwnsStream = false;
+    stopMonitorStream();
     vibrate();
   });
 
   el.previewGain.addEventListener("input", () => {
+    previewGainPct = clampNum(Number(el.previewGain.value), 0, 125, 100);
+    savePreview();
     send("set_preview_gain", {
-      gain_db: pctToGain(Number(el.previewGain.value)),
+      gain_db: pctToGain(previewGainPct),
     });
   });
 
   el.previewMute.addEventListener("click", () => {
     previewMuted = !previewMuted;
+    savePreview();
     send("set_preview_muted", { muted: previewMuted });
     el.previewMute.classList.toggle("active", previewMuted);
     vibrate();
   });
+
+  var CLICK_KEY = "aria.click";
+  var clickSession = 0;
+  var clickOwnsStream = false;
+  var click = loadClick();
+
+  function loadClick() {
+    var fallback = { enabled: false, bpm: 120, beats: 4, offsetMs: 0, gainPct: 100, name: "" };
+    try {
+      var raw = localStorage.getItem(CLICK_KEY);
+      if (!raw) return fallback;
+      var parsed = JSON.parse(raw);
+      return {
+        enabled: !!parsed.enabled,
+        bpm: clampNum(parsed.bpm, 20, 300, 120),
+        name: typeof parsed.name === "string" ? parsed.name.slice(0, 64) : "",
+        beats: [2, 3, 4, 5, 6, 7].indexOf(Number(parsed.beats)) >= 0 ? Number(parsed.beats) : 4,
+        offsetMs: clampNum(parsed.offsetMs, -2000, 2000, 0),
+        gainPct: clampNum(parsed.gainPct, 0, 125, 100),
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function saveClick() {
+    try {
+      localStorage.setItem(CLICK_KEY, JSON.stringify(click));
+    } catch {}
+  }
+
+  function currentTrackId() {
+    var current = state.transport && state.transport.current;
+    return current && current.trackId ? current.trackId : null;
+  }
+
+  function activeTrackId() {
+    var t = state.transport;
+    if (t && t.current && t.current.trackId) return t.current.trackId;
+    if (t && t.next && t.next.trackId) return t.next.trackId;
+    if (state.queue && state.queue.length > 0 && state.queue[0].trackId) return state.queue[0].trackId;
+    return null;
+  }
+
+  function digestBpm(trackId) {
+    var entries = (state.show && state.show.trackDigest && state.show.trackDigest.entries) || [];
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].track === trackId && entries[i].bpm != null) return entries[i].bpm;
+    }
+    return 0;
+  }
+
+  function trackBpm(trackId) {
+    if (!trackId) return 0;
+    var t = state.transport;
+    if (t && t.current && t.current.trackId === trackId && t.current.bpm != null) return t.current.bpm;
+    if (t && t.next && t.next.trackId === trackId && t.next.bpm != null) return t.next.bpm;
+    return digestBpm(trackId);
+  }
+
+  function effectiveBpm() {
+    var id = activeTrackId();
+    return (id ? trackBpm(id) : 0) || click.bpm || 120;
+  }
+
+  function paintClickToggle() {
+    el.clickToggle.textContent = click.enabled ? "ВКЛ" : "ВЫКЛ";
+    el.clickToggle.classList.toggle("active", click.enabled);
+  }
+
+  function syncClickInputs() {
+    if (el.clickName && document.activeElement !== el.clickName) el.clickName.value = click.name || "";
+    el.clickBpm.value = Math.round(effectiveBpm());
+    el.clickBeats.value = String(click.beats);
+    el.clickOffset.value = click.offsetMs;
+    el.clickGain.value = click.gainPct;
+    paintClickToggle();
+  }
+
+  function clickPctToGain(pct) {
+    if (!(pct > 0)) return -80;
+    return Math.round((pctToGain(pct) - 12) * 10) / 10;
+  }
+
+  function pushClickSettings() {
+    if (!clickSession) return;
+    send("set_click_settings", {
+      session: clickSession,
+      bpm: effectiveBpm(),
+      beats_per_bar: click.beats,
+      gain_db: clickPctToGain(click.gainPct),
+      offset_ms: click.offsetMs,
+    });
+    send("set_click_muted", { session: clickSession, muted: !click.enabled });
+  }
+
+  function renderClick() {
+    syncClickInputs();
+  }
+
+  function stopAudioStream() {
+    try {
+      el.previewAudio.pause();
+      el.previewAudio.removeAttribute("src");
+      el.previewAudio.load();
+    } catch {}
+  }
+
+  var audioCtx = null;
+  var monitorUrl = "";
+  var monitorPlaying = null;
+  var clickOpening = false;
+  var lastClickTrack = null;
+  var unlockArmed = false;
+
+  function ensureAudioCtx() {
+    var AC = typeof AudioContext !== "undefined" ? AudioContext : (typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null);
+    if (!AC) return null;
+    if (!audioCtx) {
+      try { audioCtx = new AC(); } catch { return null; }
+    }
+    return audioCtx;
+  }
+
+  function playMonitorStream(url) {
+    stopMonitorStream();
+    monitorUrl = url;
+    monitorPlaying = startPcmPlayer(url);
+    if (!monitorPlaying) monitorPlaying = startElementPlayer(url);
+  }
+
+  function stopMonitorStream() {
+    monitorUrl = "";
+    if (monitorPlaying) {
+      try { monitorPlaying.stop(); } catch {}
+      monitorPlaying = null;
+    } else {
+      stopAudioStream();
+    }
+  }
+
+  function startElementPlayer(url) {
+    el.previewAudio.src = url;
+    var played = null;
+    try { played = el.previewAudio.play(); } catch { played = null; }
+    if (played && played.catch) played.catch(() => { noteAudioBlocked(); });
+    return { stop() { stopAudioStream(); } };
+  }
+
+  function startPcmPlayer(url) {
+    var ctx = null;
+    try { ctx = ensureAudioCtx(); } catch { return null; }
+    if (!ctx) return null;
+    try { var resumed = ctx.resume(); if (resumed && resumed.catch) resumed.catch(() => {}); } catch {}
+    var abort = null;
+    try { abort = new AbortController(); } catch { abort = null; }
+    var stopped = false;
+    var nextTime = 0;
+    var live = [];
+    var TARGET_LEAD = 0.045;
+    var MAX_LEAD = 0.120;
+    function stop() {
+      stopped = true;
+      if (abort) { try { abort.abort(); } catch {} }
+      live.forEach((s) => { try { s.stop(); } catch {} });
+      live = [];
+    }
+    function onStreamEnded() {
+      if (stopped) return;
+      stopped = true;
+      if (clickOwnsStream) {
+        clickSession = 0;
+        clickOwnsStream = false;
+      }
+      if (monitorPlaying && monitorPlaying.stop === stop) {
+        monitorPlaying = null;
+      }
+    }
+    function scheduleChunk(bytes, channels) {
+      if (ctx.state === "suspended") {
+        try { ctx.resume().catch(() => {}); } catch {}
+      }
+      var frames = bytes.length / (channels * 2);
+      var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+      var audio = ctx.createBuffer(channels, frames, 48000);
+      for (var c = 0; c < channels; c++) {
+        var out = audio.getChannelData(c);
+        for (var i = 0; i < frames; i++) out[i] = view.getInt16((i * channels + c) * 2, true) / 32768;
+      }
+      var src = ctx.createBufferSource();
+      src.buffer = audio;
+      src.connect(ctx.destination);
+      var now = ctx.currentTime;
+      var t;
+      if (nextTime < now || nextTime - now > MAX_LEAD) {
+        t = now + TARGET_LEAD;
+      } else {
+        t = Math.max(nextTime, now + TARGET_LEAD);
+      }
+      nextTime = t + frames / 48000;
+      live.push(src);
+      src.onended = () => { var k = live.indexOf(src); if (k >= 0) live.splice(k, 1); };
+      try { src.start(t); } catch {}
+    }
+    var opts = abort ? { signal: abort.signal } : undefined;
+    fetch(url, opts).then((response) => {
+      if (!response.ok || stopped) {
+        onStreamEnded();
+        return null;
+      }
+      var reader = response.body ? response.body.getReader() : null;
+      if (!reader) {
+        onStreamEnded();
+        return null;
+      }
+      var buf = new Uint8Array(0);
+      var channels = 0;
+      var append = (bytes) => {
+        var joined = new Uint8Array(buf.length + bytes.length);
+        joined.set(buf, 0);
+        joined.set(bytes, buf.length);
+        buf = joined;
+      };
+      var pump = () => {
+        if (stopped) return Promise.resolve();
+        return reader.read().then((chunk) => {
+          if (!chunk || chunk.done) {
+            onStreamEnded();
+            return;
+          }
+          append(chunk.value);
+          if (!channels) {
+            if (buf.length < 44) return pump();
+            channels = buf[22] | (buf[23] << 8);
+            if (!(channels >= 1 && channels <= 8)) {
+              onStreamEnded();
+              return;
+            }
+            buf = buf.slice(44);
+          }
+          var frameBytes = channels * 2;
+          var frames = Math.floor(buf.length / frameBytes);
+          if (frames > 0) {
+            scheduleChunk(buf.slice(0, frames * frameBytes), channels);
+            buf = buf.slice(frames * frameBytes);
+          }
+          return pump();
+        }).catch(() => {
+          onStreamEnded();
+        });
+      };
+      return pump();
+    }).catch(() => {
+      onStreamEnded();
+    });
+    return { stop: stop };
+  }
+
+  function noteAudioBlocked() {
+    showHint("коснись экрана, чтобы включить звук");
+    if (unlockArmed) return;
+    unlockArmed = true;
+    var retry = () => {
+      unlockArmed = false;
+      document.removeEventListener("pointerdown", retry);
+      document.removeEventListener("keydown", retry);
+      if (audioCtx && audioCtx.state === "suspended") {
+        try { audioCtx.resume().catch(() => {}); } catch {}
+      }
+      if (clickSession && monitorUrl) playMonitorStream(monitorUrl);
+    };
+    document.addEventListener("pointerdown", retry);
+    document.addEventListener("keydown", retry);
+  }
+
+  function unlockAudioContext() {
+    var ctx = ensureAudioCtx();
+    if (ctx && ctx.state === "suspended") {
+      try { ctx.resume().catch(() => {}); } catch {}
+    }
+    if (click.enabled && !clickSession && !clickOpening) {
+      openClickMonitor((token) => {
+        playMonitorStream(
+          "/preview?token=" + encodeURIComponent(token) +
+          "&session=" + clickSession);
+      });
+    }
+  }
+  document.addEventListener("pointerdown", unlockAudioContext, { passive: true });
+  document.addEventListener("keydown", unlockAudioContext, { passive: true });
+
+  function openClickMonitor(then) {
+    if (clickOpening) return;
+    ensureToken().then((token) => {
+      if (!token) return;
+      if (clickSession) {
+        syncClickInputs();
+        pushClickSettings();
+        if (then) then(token);
+        return;
+      }
+      clickOpening = true;
+      fetch("/preview/open?token=" + encodeURIComponent(token) + "&name=" + encodeURIComponent(click.name || ""), { method: "POST" }).then((response) => {
+        if (!response.ok) return null;
+        return response.json().catch(() => null);
+      }).then((body) => {
+        clickOpening = false;
+        clickSession = body && body.session ? body.session : 0;
+        if (!clickSession) return;
+        clickOwnsStream = true;
+        syncClickInputs();
+        pushClickSettings();
+        if (then) then(token);
+      }).catch(() => { clickOpening = false; });
+    });
+  }
+
+  function maybeFollowTransport() {
+    var playing = !!state.transport && state.transport.status === "Playing";
+    var trackId = currentTrackId();
+    if (playing && trackId && trackId !== lastClickTrack) {
+      lastClickTrack = trackId;
+      syncClickInputs();
+      if (clickSession) {
+        pushClickSettings();
+      }
+    }
+    if (!playing) return;
+    if (click.enabled && !clickSession) {
+      openClickMonitor((token) => {
+        playMonitorStream(
+          "/preview?token=" + encodeURIComponent(token) +
+          "&session=" + clickSession);
+      });
+    }
+  }
+
+  el.clickToggle.addEventListener("click", () => {
+    click.enabled = !click.enabled;
+    saveClick();
+    paintClickToggle();
+    if (click.enabled && !clickSession) {
+      openClickMonitor((token) => {
+        playMonitorStream(
+          "/preview?token=" + encodeURIComponent(token) +
+          "&session=" + clickSession);
+      });
+    } else if (!click.enabled && clickOwnsStream) {
+      pushClickSettings();
+      stopMonitorStream();
+      clickSession = 0;
+      clickOwnsStream = false;
+    } else {
+      pushClickSettings();
+    }
+    vibrate();
+  });
+
+  if (el.clickName) el.clickName.addEventListener("change", () => {
+    click.name = el.clickName.value.slice(0, 64);
+    saveClick();
+    if (clickSession) send("rename_session", { session: clickSession, name: click.name });
+    vibrate();
+  });
+
+  el.clickBpm.addEventListener("change", () => {
+    var val = clampNum(Number(el.clickBpm.value), 20, 300, 120);
+    el.clickBpm.value = Math.round(val);
+    click.bpm = val;
+    var trackId = activeTrackId();
+    if (trackId) {
+      send("set_track_bpm", { track: trackId, bpm: val });
+    }
+    saveClick();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickDefault.addEventListener("click", () => {
+    var adopted = activeTrackId() ? trackBpm(activeTrackId()) : 0;
+    click.bpm = adopted || 120;
+    el.clickBpm.value = Math.round(click.bpm);
+    saveClick();
+    syncClickInputs();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickBeats.addEventListener("change", () => {
+    click.beats = [2, 3, 4, 5, 6, 7].indexOf(Number(el.clickBeats.value)) >= 0 ? Number(el.clickBeats.value) : 4;
+    saveClick();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickOffset.addEventListener("change", () => {
+    click.offsetMs = clampNum(Number(el.clickOffset.value), -2000, 2000, 0);
+    el.clickOffset.value = click.offsetMs;
+    saveClick();
+    pushClickSettings();
+    vibrate();
+  });
+
+  el.clickGain.addEventListener("input", () => {
+    click.gainPct = clampNum(Number(el.clickGain.value), 0, 125, 100);
+    saveClick();
+    pushClickSettings();
+  });
+
+  syncClickInputs();
 
   if (el.seek) {
     el.seek.addEventListener("click", (event) => {
@@ -1449,6 +1923,14 @@
     var button = document.getElementById(id);
     if (!button) return;
     button.addEventListener("click", () => {
+      unlockAudioContext();
+      if (actions[id] === "play" && click.enabled && !clickSession) {
+        openClickMonitor((token) => {
+          playMonitorStream(
+            "/preview?token=" + encodeURIComponent(token) +
+            "&session=" + clickSession);
+        });
+      }
       send(actions[id]);
       vibrate();
     });

@@ -11,11 +11,15 @@ public sealed partial class TrackAudioVm : ObservableObject
 {
     public const double NormalizeDefaultLufs = -16.0;
 
+    public const double DefaultBpm = 120.0;
+
     private readonly Action<Command> _submit;
     private readonly TrackId _trackId;
     private readonly EntryId? _entryId;
     private double _gainDb;
     private double _pan;
+    private bool _hasBpm;
+    private double _bpmValue = DefaultBpm;
     private bool _inheritTrackSettings;
     private double _normalizeTargetLufs;
     private bool _normalizeEnabled;
@@ -25,7 +29,7 @@ public sealed partial class TrackAudioVm : ObservableObject
     private readonly bool _globalNormalizeEnabled;
     private readonly Func<double?>? _measureReader;
 
-    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null)
+    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, double? initialBpm = null)
     {
         _submit = submit;
         _trackId = trackId;
@@ -40,6 +44,8 @@ public sealed partial class TrackAudioVm : ObservableObject
         _targetLufs = audio.NormalizeTargetLufs ?? NormalizeDefaultLufs;
         _gainDb = audio.GainDb;
         _pan = audio.Pan;
+        _hasBpm = initialBpm is not null;
+        _bpmValue = Math.Clamp(initialBpm ?? DefaultBpm, 20.0, 300.0);
         EqBands = [.. audio.Eq.Bands.Select((b, i) => new AudioSectionVm.EqBandVm(AudioSectionVm.BandLabel(i, b.FrequencyHz), b.FrequencyHz, b.GainDb, SubmitCurrent))];
         NormalizeRequest = id => _submit(new NormalizeTrack(id));
     }
@@ -146,6 +152,32 @@ public sealed partial class TrackAudioVm : ObservableObject
             }
         }
     }
+
+    public bool HasBpm
+    {
+        get => _hasBpm;
+        set
+        {
+            if (SetProperty(ref _hasBpm, value))
+            {
+                SubmitBpm();
+            }
+        }
+    }
+
+    public double BpmValue
+    {
+        get => _bpmValue;
+        set
+        {
+            if (SetProperty(ref _bpmValue, Math.Clamp(value, 20.0, 300.0)))
+            {
+                SubmitBpm();
+            }
+        }
+    }
+
+    private void SubmitBpm() => _submit(new SetTrackBpm(_trackId, _hasBpm ? _bpmValue : null));
 
     public bool InheritTrackSettings
     {

@@ -2,6 +2,7 @@ namespace Aria.Core.Commands;
 
 using System.Collections.Immutable;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.State;
 
 public readonly record struct ClientId(string Value);
@@ -66,6 +67,8 @@ public sealed record SetGlobalAudio(GlobalAudioSettings Value) : Command;
 
 public sealed record SetTrackAudio(TrackId Track, TrackAudioSettings Audio) : Command;
 
+public sealed record SetTrackBpm(TrackId Track, double? Bpm) : Command;
+
 public sealed record SetEntryAudio(EntryId Entry, TrackAudioSettings? Audio) : Command;
 
 public sealed record StartPreviewTrack(TrackId Track) : Command;
@@ -75,6 +78,20 @@ public sealed record StopPreview : Command;
 public sealed record SetPreviewGain(double GainDb) : Command;
 
 public sealed record SetPreviewMuted(bool Muted) : Command;
+
+public sealed record SetClickSettings(PreviewSessionHandle Session, ClickSettings Settings) : Command;
+
+public sealed record SetClickMuted(PreviewSessionHandle Session, bool Muted) : Command;
+
+public sealed record StartSessionTrack(PreviewSessionHandle Session, TrackId Track) : Command;
+
+public sealed record RenameSession(PreviewSessionHandle Session, string Name) : Command;
+
+public sealed record SetSessionBackingGain(PreviewSessionHandle Session, double GainDb) : Command;
+
+public sealed record SetSessionClickGain(PreviewSessionHandle Session, double GainDb) : Command;
+
+public sealed record CloseSession(PreviewSessionHandle Session) : Command;
 
 public sealed record NormalizeTrack(TrackId Track) : Command;
 

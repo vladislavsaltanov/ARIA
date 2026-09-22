@@ -9,6 +9,7 @@ public static class SettingsSectionRegistry
     public static IReadOnlyList<SettingsSectionDescriptor> All { get; } =
     [
         new("remote", "Пульт", () => new RemotePanel()),
+        new("monitors", "Мониторы", () => new MonitorsSection()),
         new("hotkeys", "Жесты", () => new HotkeysSection()),
         new("clock", "Часы", () => new ClockSection()),
         new("rowformat", "Формат строк", () => new RowFormatSection()),

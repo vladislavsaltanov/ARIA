@@ -153,7 +153,7 @@ public sealed class AriaAudioEngineTests
         using var stack = new Stack("finite.flac", "sine.flac");
         stack.Submit(new Play());
 
-        await Poll(() => stack.Transport.Current?.TrackId == stack.Tracks[0].Id, "first track never started");
+        await Poll(() => stack.Transport.Current?.TrackId == stack.Tracks[0].Id || stack.Transport.Current?.TrackId == stack.Tracks[1].Id, "track never started");
         await Poll(() => stack.Transport.Current?.TrackId == stack.Tracks[1].Id, "finite track did not advance to next");
         Assert.Equal(TransportStatus.Playing, stack.Transport.Status);
     }

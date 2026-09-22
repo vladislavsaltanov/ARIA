@@ -1,5 +1,6 @@
 namespace Aria.Persistence.Tests;
 
+using System.Collections.Immutable;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Playback;
@@ -139,6 +140,78 @@ public sealed class ShowAutosaverTests : IDisposable
             {
                 Directory.Delete(dir, recursive: true);
             }
+        }
+    }
+
+    [Fact]
+    public void LibraryUpsertFailure_LogsError_AndNotifiesOnce()
+    {
+        using var store = new JsonSnapshotStore(_path);
+        using var bus = NewBus();
+        var log = new RecordingLog();
+        var library = new FailingLibraryStore { Fail = true };
+        var notices = 0;
+        var track = TestFactory.Track("library-fail");
+        using var autosaver = new ShowAutosaver(bus, store, TimeSpan.FromMilliseconds(50), () => [track], library, log, _ => notices++);
+
+        bus.Submit(Client, 1, new CreateProject("Main"));
+        autosaver.FlushNow();
+        autosaver.FlushNow();
+
+        Assert.Equal(2, log.Entries.Count);
+        Assert.Equal(LogLevel.Error, log.Entries[0].Level);
+        Assert.Equal("library.upsert_failed", log.Entries[0].Message);
+        Assert.Equal(1, notices);
+    }
+
+    [Fact]
+    public void LibraryUpsertRecovery_ResetsNotification()
+    {
+        using var store = new JsonSnapshotStore(_path);
+        using var bus = NewBus();
+        var log = new RecordingLog();
+        var library = new FailingLibraryStore { Fail = true };
+        var notices = 0;
+        var track = TestFactory.Track("library-recover");
+        using var autosaver = new ShowAutosaver(bus, store, TimeSpan.FromMilliseconds(50), () => [track], library, log, _ => notices++);
+
+        bus.Submit(Client, 1, new CreateProject("Main"));
+        autosaver.FlushNow();
+        Assert.Equal(1, notices);
+
+        library.Fail = false;
+        autosaver.FlushNow();
+        Assert.Equal(1, notices);
+
+        library.Fail = true;
+        autosaver.FlushNow();
+        Assert.Equal(2, notices);
+    }
+
+    private sealed class RecordingLog : IAppLog
+    {
+        public readonly List<(LogLevel Level, string Message)> Entries = new();
+
+        public void Write(LogLevel level, string message, IReadOnlyDictionary<string, string>? data = null) =>
+            Entries.Add((level, message));
+    }
+
+    private sealed class FailingLibraryStore : ILibraryStore
+    {
+        public bool Fail;
+
+        public void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Project> projects)
+        {
+            if (Fail)
+            {
+                throw new IOException("disk full");
+            }
+        }
+
+        public (ImmutableArray<Track> Tracks, ImmutableArray<Project> Projects) Load() => ([], []);
+
+        public void Dispose()
+        {
         }
     }
 
