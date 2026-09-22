@@ -70,6 +70,32 @@ public sealed class PreviewSessionTests
     }
 
     [Fact]
+    public async Task SessionTrackEnded_RejoinsMainMix()
+    {
+        using var rig = new Rig();
+        StartSine(rig);
+        var session = rig.Engine.OpenPreviewSession();
+        rig.Engine.StartSessionTrack(session, new TrackSource("/audio/finite.flac", TimeSpan.Zero, null));
+        var tap = rig.Engine.PreviewSessionTap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var buffer = new float[256 * 2];
+        await Poll(() => reader.Read(buffer) > 0, "audition never started");
+        var started = Environment.TickCount64;
+        var rejoined = false;
+        while (Environment.TickCount64 - started < 8000)
+        {
+            if (Environment.TickCount64 - started > 1200 && reader.Read(buffer) > 0)
+            {
+                rejoined = true;
+                break;
+            }
+            await Task.Delay(25);
+        }
+        Assert.True(rejoined, "session stalled after audition ended");
+    }
+
+    [Fact]
     public async Task RetiredVoiceEnded_KeepsSessionFlowing()
     {
         using var rig = new Rig();

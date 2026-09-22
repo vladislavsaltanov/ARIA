@@ -383,13 +383,21 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         return handle;
     }
 
+    private static void RetireDisposable(object? disposable)
+    {
+        if (disposable is IDisposable target)
+        {
+            ThreadPool.QueueUserWorkItem(static state => ((IDisposable)state!).Dispose(), target);
+        }
+    }
+
     public void ClosePreviewSession(PreviewSessionHandle session)
     {
         var target = FindSession(session);
         if (target?.TrackVoice is { } voice)
         {
             _retiredVoices.Enqueue(voice);
-            target.TrackVoice = null;
+            Volatile.Write(ref target.TrackVoice, null);
         }
         lock (_sessionLock)
         {
@@ -481,7 +489,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         while (_retiredVoices.TryDequeue(out var retired))
         {
-            (retired as IDisposable)?.Dispose();
+            if (retired is IDisposable disposable)
+            {
+                ThreadPool.QueueUserWorkItem(static state => ((IDisposable)state!).Dispose(), disposable);
+            }
         }
         var sessions = Volatile.Read(ref _sessions);
         if (sessions.Length == 0)
@@ -497,12 +508,26 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private void PumpSession(PreviewSession session)
     {
         var voice = Volatile.Read(ref session.TrackVoice);
-        if (voice is null && !Volatile.Read(ref _mainPlaying))
+        if (voice is not null)
+        {
+            var voiceRead = voice.ReadFrames(_sessionScratch.AsSpan(0, _sessionScratch.Length)) * _channels;
+            if (voiceRead > 0)
+            {
+                PublishSession(session, voiceRead);
+                return;
+            }
+            _retiredVoices.Enqueue(voice);
+            Volatile.Write(ref session.TrackVoice, null);
+            var anchor = Math.Max(0, _mainTap.Head - (_block.Length / _channels));
+            session.Voice.Seek(anchor);
+            session.Reader?.Seek(anchor);
+        }
+        if (!Volatile.Read(ref _mainPlaying))
         {
             session.Reader?.ResetToHead();
             return;
         }
-        if (session.Reader is null && voice is null)
+        if (session.Reader is null)
         {
             return;
         }
@@ -510,13 +535,13 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         if (syncFrames >= 0)
         {
             session.Voice.Seek(syncFrames);
-            session.Reader?.Seek(Math.Max(0, _mainTap.Head - (_block.Length / _channels)));
+            session.Reader.Seek(Math.Max(0, _mainTap.Head - (_block.Length / _channels)));
             session.ResetVoice = false;
         }
         else if (session.ResetVoice)
         {
             session.Voice.Seek(0);
-            session.Reader?.Seek(Math.Max(0, _mainTap.Head - (_block.Length / _channels)));
+            session.Reader.Seek(Math.Max(0, _mainTap.Head - (_block.Length / _channels)));
             session.ResetVoice = false;
         }
         if (session.PendingSettings is { } settings)
@@ -524,13 +549,16 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             session.Voice.UpdateSettings(settings);
             session.PendingSettings = null;
         }
-        var read = voice is not null
-            ? voice.ReadFrames(_sessionScratch.AsSpan(0, _sessionScratch.Length)) * _channels
-            : session.Reader!.Read(_sessionScratch.AsSpan(0, _sessionScratch.Length));
+        var read = session.Reader.Read(_sessionScratch.AsSpan(0, _sessionScratch.Length));
         if (read <= 0)
         {
             return;
         }
+        PublishSession(session, read);
+    }
+
+    private void PublishSession(PreviewSession session, int read)
+    {
         if (Volatile.Read(ref _previewMuted) == 1)
         {
             _sessionScratch.AsSpan(0, read).Clear();
@@ -645,12 +673,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             if (pending.Preview)
             {
                 var old = Interlocked.Exchange(ref _previewSink, pending.Sink);
-                (old as IDisposable)?.Dispose();
+                RetireDisposable(old);
             }
             else
             {
                 var old = Interlocked.Exchange(ref _sink, pending.Sink);
-                (old as IDisposable)?.Dispose();
+                RetireDisposable(old);
             }
         }
     }

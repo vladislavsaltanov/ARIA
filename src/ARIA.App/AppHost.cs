@@ -435,7 +435,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             return false;
         }
-        var relinked = imported.Track with { Id = trackId };
+        var relinked = imported.Track with { Id = trackId, Defaults = tracks[index].Defaults };
         _library.Upsert(tracks.SetItem(index, relinked), projects);
         if (imported.Peaks is { } peaks)
         {
