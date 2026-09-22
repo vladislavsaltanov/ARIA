@@ -608,7 +608,7 @@ public sealed class ShowController : IShowHandler
                     return;
                 }
                 _engine.Transport(handle, TransportCommand.Play);
-                _status = TransportStatus.Playing;
+                SetStatus(TransportStatus.Playing);
                 EmitTransport();
                 break;
             case TransportStatus.Stopped:
@@ -635,7 +635,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _engine.Transport(handle, TransportCommand.Pause);
-        _status = TransportStatus.Paused;
+        SetStatus(TransportStatus.Paused);
         _atEndBoundary = false;
         EmitTransport();
     }
@@ -668,7 +668,7 @@ public sealed class ShowController : IShowHandler
                 _current.Handle = null;
             }
         }
-        _status = TransportStatus.Stopped;
+        SetStatus(TransportStatus.Stopped);
         _atEndBoundary = false;
         _engine.StopPreview();
         EmitTransport();
@@ -767,7 +767,7 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(handle);
             _current.Handle = null;
         }
-        _status = TransportStatus.Panicked;
+        SetStatus(TransportStatus.Panicked);
         _panicked = true;
         _atEndBoundary = false;
         EmitTransport();
@@ -1795,12 +1795,12 @@ public sealed class ShowController : IShowHandler
         switch (_current!.Settings.EndAction)
         {
             case EndAction.Pause:
-                _status = TransportStatus.Paused;
+                SetStatus(TransportStatus.Paused);
                 _atEndBoundary = true;
                 EmitTransport();
                 break;
             case EndAction.Stop:
-                _status = TransportStatus.Stopped;
+                SetStatus(TransportStatus.Stopped);
                 _atEndBoundary = false;
                 EmitTransport();
                 break;
@@ -1817,7 +1817,7 @@ public sealed class ShowController : IShowHandler
     {
         if (!StartFromOrder(lead))
         {
-            _status = TransportStatus.Stopped;
+            SetStatus(TransportStatus.Stopped);
             _atEndBoundary = false;
             _current = null;
             EmitTransport();
@@ -1851,7 +1851,7 @@ public sealed class ShowController : IShowHandler
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
             StartStreamFor(_current, auto: true, lead);
-            _status = TransportStatus.Playing;
+            SetStatus(TransportStatus.Playing);
             _atEndBoundary = false;
             _panicked = false;
             EmitQueue();
@@ -1881,7 +1881,7 @@ public sealed class ShowController : IShowHandler
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
         StartStreamFor(_current, auto, lead);
-        _status = TransportStatus.Playing;
+        SetStatus(TransportStatus.Playing);
         _atEndBoundary = false;
         _panicked = false;
         EmitShow();
@@ -1896,7 +1896,7 @@ public sealed class ShowController : IShowHandler
             _faultCauses[failed.Track.Id] = ParseFaultCause(detail);
         }
         DisposeCurrentHandle();
-        _status = TransportStatus.Stopped;
+        SetStatus(TransportStatus.Stopped);
         _current = null;
         EmitTransport();
     }
@@ -1988,7 +1988,7 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(handle);
         }
         StartStreamFor(deck, auto: false);
-        _status = TransportStatus.Playing;
+        SetStatus(TransportStatus.Playing);
         _atEndBoundary = false;
         _panicked = false;
         EmitTransport();
@@ -2040,7 +2040,7 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(handle);
         }
         _current = null;
-        _status = TransportStatus.Stopped;
+        SetStatus(TransportStatus.Stopped);
     }
 
     private void DisposeCurrentHandle()
@@ -2169,6 +2169,12 @@ public sealed class ShowController : IShowHandler
         {
             EmitShow();
         }
+    }
+
+    private void SetStatus(TransportStatus status)
+    {
+        _status = status;
+        _engine.SetSessionFollow(status == TransportStatus.Playing);
     }
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));

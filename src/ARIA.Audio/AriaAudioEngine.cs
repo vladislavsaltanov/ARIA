@@ -37,6 +37,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly PreviewTap? _previewTap;
     private readonly PreviewTap _mainTap;
     private bool _mainPlaying;
+    private int _sessionFollow;
     private readonly int _blockFrames;
     private readonly int _sampleRate;
     private readonly int _channels;
@@ -353,6 +354,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _sessionMixer.Pump(new SessionPumpContext(
             _mainTap.Head,
             Volatile.Read(ref _mainPlaying),
+            Volatile.Read(ref _sessionFollow) == 1,
             Volatile.Read(ref _previewGainBits),
             Volatile.Read(ref _previewMuted)));
     }
@@ -384,6 +386,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public void SetClick(PreviewSessionHandle session, ClickSettings settings) => _sessionMixer.SetClick(session, settings);
 
     public void SetClickMuted(PreviewSessionHandle session, bool muted) => _sessionMixer.SetClickMuted(session, muted);
+
+    public void SetSessionFollow(bool follow) => Volatile.Write(ref _sessionFollow, follow ? 1 : 0);
 
     public PreviewTap? PreviewSessionTap(PreviewSessionHandle session) => _sessionMixer.Tap(session);
 

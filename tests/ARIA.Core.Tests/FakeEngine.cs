@@ -129,6 +129,10 @@ public sealed class FakeEngine : IAudioEngine
 
     public List<(PreviewSessionHandle Session, double GainDb)> SessionClickGains { get; } = [];
 
+    public List<bool> SessionFollows { get; } = [];
+
+    public void SetSessionFollow(bool follow) => SessionFollows.Add(follow);
+
     public void SetSessionClickGain(PreviewSessionHandle session, double gainDb)
     {
         SessionClickGains.Add((session, gainDb));

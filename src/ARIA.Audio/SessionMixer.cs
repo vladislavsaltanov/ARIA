@@ -6,6 +6,7 @@ using Aria.Core.Playback;
 public readonly record struct SessionPumpContext(
     long MainTapHead,
     bool MainPlaying,
+    bool SessionFollow,
     long PreviewGainBits,
     int PreviewMuted);
 
@@ -234,7 +235,7 @@ public sealed class SessionMixer : IDisposable
             session.Voice.Seek(anchor);
             session.Reader?.Seek(anchor);
         }
-        if (!context.MainPlaying)
+        if (!context.MainPlaying && !context.SessionFollow)
         {
             session.Reader?.ResetToHead();
             return;
