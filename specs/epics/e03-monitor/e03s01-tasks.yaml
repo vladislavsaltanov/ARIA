@@ -1,0 +1,25 @@
+---
+story_id: e03s01
+title: "Именованные сессии + уровни подложки/клика + кик"
+status: passing
+tasks:
+  - id: 1
+    description: "SessionProfile в Core: имя, backing gain, состояние; команды rename/set backing gain/close по handle"
+    verify: "dotnet test tests/ARIA.Core.Tests --filter SessionProfile"
+    risk: P1
+    status: passing
+  - id: 2
+    description: "Движок: per-session track gain в PumpSession + ListSessions latest-value"
+    verify: "dotnet test tests/ARIA.Audio.Tests --filter SessionGain"
+    risk: P1
+    status: passing
+  - id: 3
+    description: "Remote кодек: имя при open/session команды, кик закрывает сессию и соединение"
+    verify: "dotnet test tests/ARIA.Remote.Tests --filter SessionControl"
+    risk: P1
+    status: passing
+  - id: 4
+    description: "app.js: поле имени устройства в панели метронома, шлет при open"
+    verify: "ручной пульт: имя видно в списке"
+    risk: P2
+    status: passing

@@ -47,6 +47,14 @@ internal sealed class StubEngine : IAudioEngine
     {
     }
 
+    public List<string?> SessionNames { get; } = [];
+
+    public PreviewSessionHandle OpenPreviewSession(string? name)
+    {
+        SessionNames.Add(name);
+        return OpenPreviewSession();
+    }
+
     public PreviewSessionHandle OpenPreviewSession()
     {
         var handle = new PreviewSessionHandle(++_sessionNext);

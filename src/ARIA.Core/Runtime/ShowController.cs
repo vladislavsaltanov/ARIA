@@ -15,6 +15,8 @@ public sealed class ShowController : IShowHandler
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
     private const double ClickBpmMin = 20.0;
+
+    private const int SessionNameMaxLength = 64;
     private const double ClickBpmMax = 300.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
@@ -215,6 +217,15 @@ public sealed class ShowController : IShowHandler
                 break;
             case StartSessionTrack startSessionTrack:
                 OnStartSessionTrack(client, seq, startSessionTrack);
+                break;
+            case RenameSession renameSession:
+                OnRenameSession(client, seq, renameSession);
+                break;
+            case SetSessionBackingGain setSessionBackingGain:
+                OnSetSessionBackingGain(client, seq, setSessionBackingGain);
+                break;
+            case CloseSession closeSession:
+                OnCloseSession(closeSession);
                 break;
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
@@ -1204,6 +1215,34 @@ public sealed class ShowController : IShowHandler
         var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
         _engine.StartSessionTrack(command.Session, new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio));
     }
+
+    private void OnRenameSession(ClientId client, long seq, RenameSession command)
+    {
+        var name = command.Name.Trim();
+        if (name.Length is 0)
+        {
+            Reject(client, seq, "name-empty");
+            return;
+        }
+        if (name.Length > SessionNameMaxLength)
+        {
+            Reject(client, seq, "name-too-long");
+            return;
+        }
+        _engine.RenameSession(command.Session, name);
+    }
+
+    private void OnSetSessionBackingGain(ClientId client, long seq, SetSessionBackingGain command)
+    {
+        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
+        {
+            Reject(client, seq, "gain-out-of-range");
+            return;
+        }
+        _engine.SetSessionBackingGain(command.Session, command.GainDb);
+    }
+
+    private void OnCloseSession(CloseSession command) => _engine.ClosePreviewSession(command.Session);
 
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {

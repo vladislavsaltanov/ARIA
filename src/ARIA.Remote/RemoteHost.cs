@@ -169,7 +169,7 @@ public sealed class RemoteHost : IAsyncDisposable
             }
             try
             {
-                await new PreviewStream(tap).ExecuteAsync(context);
+                await new PreviewStream(tap, () => _engine.PreviewSessionTap(handle) is not null).ExecuteAsync(context);
             }
             finally
             {
@@ -190,7 +190,8 @@ public sealed class RemoteHost : IAsyncDisposable
         {
             return Results.NotFound();
         }
-        return Results.Json(new { Session = _engine.OpenPreviewSession().Value });
+        var name = context.Request.Query.TryGetValue("name", out var nameValue) ? nameValue.ToString() : null;
+        return Results.Json(new { Session = _engine.OpenPreviewSession(name).Value });
     }
 
     private async Task HandleWebSocket(HttpContext context)

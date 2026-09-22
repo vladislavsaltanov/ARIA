@@ -358,12 +358,15 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         PumpPreviewSessions();
     }
 
-    public PreviewSessionHandle OpenPreviewSession()
+    public PreviewSessionHandle OpenPreviewSession() => OpenPreviewSession(null);
+
+    public PreviewSessionHandle OpenPreviewSession(string? name)
     {
         var handle = new PreviewSessionHandle(Interlocked.Increment(ref _handleCounter));
         var tap = new PreviewTap(Math.Max(256, _sampleRate * 2), _channels);
         var voice = new ClickVoice(_channels, _sampleRate, DefaultClick);
-        var session = new PreviewSession(handle, _mainTap.Subscribe(), voice, tap);
+        var sessionName = string.IsNullOrWhiteSpace(name) ? $"Session {handle.Value}" : name.Trim();
+        var session = new PreviewSession(handle, _mainTap.Subscribe(), voice, tap, sessionName);
         if (Volatile.Read(ref _mainPlaying)
             && _mixerHandles.TryGetValue(Volatile.Read(ref _currentHandle), out var mainMixer)
             && MixerPositionFrames(mainMixer) is var mainFrames && mainFrames != long.MaxValue)
@@ -533,7 +536,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         else
         {
-            var gain = (float)BitConverter.Int64BitsToDouble(Volatile.Read(ref _previewGainBits));
+            var gain = (float)(BitConverter.Int64BitsToDouble(Volatile.Read(ref _previewGainBits)) * BitConverter.Int64BitsToDouble(Volatile.Read(ref session.BackingGainBits)));
             if (gain != 1f)
             {
                 for (var i = 0; i < read; i++)
@@ -555,14 +558,47 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         session.Tap.Publish(_sessionScratch.AsSpan(0, read));
     }
 
+    public void RenameSession(PreviewSessionHandle session, string name)
+    {
+        if (FindSession(session) is { } renamed)
+        {
+            renamed.Name = name;
+        }
+    }
+
+    public void SetSessionBackingGain(PreviewSessionHandle session, double gainDb)
+    {
+        if (FindSession(session) is { } target)
+        {
+            Volatile.Write(ref target.BackingGainBits, BitConverter.DoubleToInt64Bits(Math.Pow(10.0, gainDb / 20.0)));
+        }
+    }
+
+    public IReadOnlyList<SessionProfile> ListSessions()
+    {
+        var sessions = Volatile.Read(ref _sessions);
+        var profiles = new SessionProfile[sessions.Length];
+        for (var i = 0; i < sessions.Length; i++)
+        {
+            profiles[i] = new SessionProfile(
+                sessions[i].Handle,
+                sessions[i].Name,
+                20.0 * Math.Log10(Math.Max(double.Epsilon, BitConverter.Int64BitsToDouble(Volatile.Read(ref sessions[i].BackingGainBits)))),
+                sessions[i].ClickMuted);
+        }
+        return profiles;
+    }
+
     private sealed class PreviewSession
     {
-        public PreviewSession(PreviewSessionHandle handle, PreviewReader? reader, ClickVoice voice, PreviewTap tap)
+        public PreviewSession(PreviewSessionHandle handle, PreviewReader? reader, ClickVoice voice, PreviewTap tap, string name)
         {
             Handle = handle;
             Reader = reader;
             Voice = voice;
             Tap = tap;
+            Name = name;
+            BackingGainBits = BitConverter.DoubleToInt64Bits(1.0);
         }
 
         public PreviewSessionHandle Handle { get; }
@@ -572,6 +608,10 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         public ClickVoice Voice { get; }
 
         public PreviewTap Tap { get; }
+
+        public string Name;
+
+        public long BackingGainBits;
 
         public volatile bool ClickMuted = true;
 

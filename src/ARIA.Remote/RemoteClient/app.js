@@ -41,6 +41,7 @@
     previewMute: document.getElementById("btn-preview-mute"),
     previewAudio: document.getElementById("preview-audio"),
     clickToggle: document.getElementById("btn-click-toggle"),
+    clickName: document.getElementById("click-name"),
     clickBpm: document.getElementById("click-bpm"),
     clickDefault: document.getElementById("btn-click-default"),
     clickBeats: document.getElementById("click-beats"),
@@ -1486,7 +1487,7 @@
   var click = loadClick();
 
   function loadClick() {
-    var fallback = { enabled: false, bpm: 120, beats: 4, offsetMs: 0, gainPct: 100 };
+    var fallback = { enabled: false, bpm: 120, beats: 4, offsetMs: 0, gainPct: 100, name: "" };
     try {
       var raw = localStorage.getItem(CLICK_KEY);
       if (!raw) return fallback;
@@ -1494,6 +1495,7 @@
       return {
         enabled: !!parsed.enabled,
         bpm: clampNum(parsed.bpm, 20, 300, 120),
+        name: typeof parsed.name === "string" ? parsed.name.slice(0, 64) : "",
         beats: [2, 3, 4, 5, 6, 7].indexOf(Number(parsed.beats)) >= 0 ? Number(parsed.beats) : 4,
         offsetMs: clampNum(parsed.offsetMs, -2000, 2000, 0),
         gainPct: clampNum(parsed.gainPct, 0, 125, 100),
@@ -1549,6 +1551,7 @@
   }
 
   function syncClickInputs() {
+    if (el.clickName && document.activeElement !== el.clickName) el.clickName.value = click.name || "";
     el.clickBpm.value = Math.round(effectiveBpm());
     el.clickBeats.value = String(click.beats);
     el.clickOffset.value = click.offsetMs;
@@ -1779,7 +1782,7 @@
         return;
       }
       clickOpening = true;
-      fetch("/preview/open?token=" + encodeURIComponent(token), { method: "POST" }).then((response) => {
+      fetch("/preview/open?token=" + encodeURIComponent(token) + "&name=" + encodeURIComponent(click.name || ""), { method: "POST" }).then((response) => {
         if (!response.ok) return null;
         return response.json().catch(() => null);
       }).then((body) => {
@@ -1832,6 +1835,13 @@
     } else {
       pushClickSettings();
     }
+    vibrate();
+  });
+
+  if (el.clickName) el.clickName.addEventListener("change", () => {
+    click.name = el.clickName.value.slice(0, 64);
+    saveClick();
+    if (clickSession) send("rename_session", { session: clickSession, name: click.name });
     vibrate();
   });
 

@@ -5,7 +5,7 @@ using Aria.Audio;
 using Aria.Core.Playback;
 using Microsoft.AspNetCore.Http;
 
-internal sealed class PreviewStream(PreviewTap? tap) : IResult
+internal sealed class PreviewStream(PreviewTap? tap, Func<bool>? alive = null) : IResult
 {
     private const int SampleRate = 48000;
     private const int ChunkFrames = 1024;
@@ -28,7 +28,7 @@ internal sealed class PreviewStream(PreviewTap? tap) : IResult
         var pcm = new byte[ChunkFrames * channels * 2];
         try
         {
-            while (!context.RequestAborted.IsCancellationRequested)
+            while (!context.RequestAborted.IsCancellationRequested && (alive?.Invoke() ?? true))
             {
                 var read = reader.Read(rented.AsSpan(0, ChunkFrames * channels));
                 if (read == 0)

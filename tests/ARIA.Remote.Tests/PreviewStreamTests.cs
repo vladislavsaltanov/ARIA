@@ -216,6 +216,49 @@ public sealed class PreviewStreamTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PreviewSession_Kick_ClosesStream()
+    {
+        var engine = new StubEngine();
+        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
+        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()), engine: engine);
+        await host.StartAsync();
+        try
+        {
+            using var http = new HttpClient();
+            using var opened = await http.PostAsync(new Uri(host.HttpEndpoint, "preview/open?token=secret&name=Drums"), new StringContent(string.Empty));
+            using var openDocument = JsonDocument.Parse(await opened.Content.ReadAsStringAsync());
+            var session = openDocument.RootElement.GetProperty("session").GetInt32();
+            Assert.Equal(["Drums"], engine.SessionNames);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var response = await http.GetAsync(
+                new Uri(host.HttpEndpoint, $"preview?session={session}&token=secret"),
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
+            var body = await response.Content.ReadAsStreamAsync(cts.Token);
+            await ReadExactlyAsync(body, 44, cts.Token);
+            using var client = new TestClient();
+            await client.ConnectAsync(host.WebsocketEndpoint, "secret");
+            await client.SendAsync("{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"close_session\",\"session\":" + session + "}}");
+            var deadline = Environment.TickCount64 + 5000;
+            while (engine.OpenSessions > 0)
+            {
+                if (Environment.TickCount64 > deadline)
+                {
+                    Assert.Fail("session not closed after kick");
+                }
+                await Task.Delay(25);
+            }
+            var tail = new byte[1];
+            Assert.Equal(0, await body.ReadAsync(tail, cts.Token));
+        }
+        finally
+        {
+            await host.DisposeAsync();
+            bus.Dispose();
+        }
+    }
+
+    [Fact]
     public async Task PreviewSession_Disconnect_ClosesSession()
     {
         var engine = new StubEngine();

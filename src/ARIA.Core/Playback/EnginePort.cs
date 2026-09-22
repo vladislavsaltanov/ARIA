@@ -95,9 +95,21 @@ public interface IAudioEngine
 
     PreviewSessionHandle OpenPreviewSession() => default;
 
+    PreviewSessionHandle OpenPreviewSession(string? name) => OpenPreviewSession();
+
     void ClosePreviewSession(PreviewSessionHandle session)
     {
     }
+
+    void RenameSession(PreviewSessionHandle session, string name)
+    {
+    }
+
+    void SetSessionBackingGain(PreviewSessionHandle session, double gainDb)
+    {
+    }
+
+    IReadOnlyList<SessionProfile> ListSessions() => [];
 
     void StartSessionTrack(PreviewSessionHandle session, TrackSource source)
     {

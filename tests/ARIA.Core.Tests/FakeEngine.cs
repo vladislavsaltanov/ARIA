@@ -32,6 +32,10 @@ public sealed class FakeEngine : IAudioEngine
     public Func<string, double> ScanLufs { get; set; } = _ => double.NaN;
     public List<string> ScannedPaths { get; } = [];
     public List<(PreviewSessionHandle Session, TrackSource Source)> SessionTracks { get; } = [];
+    public List<(PreviewSessionHandle Session, string Name)> SessionNames { get; } = [];
+    public List<(PreviewSessionHandle Session, double GainDb)> SessionGains { get; } = [];
+    public List<PreviewSessionHandle> ClosedSessions { get; } = [];
+    private readonly Dictionary<int, SessionProfile> _profiles = [];
 
     public double ScanTrackLufs(string filePath)
     {
@@ -106,6 +110,28 @@ public sealed class FakeEngine : IAudioEngine
     public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio) => VoiceAudios.Add((handle, audio));
 
     public void StartSessionTrack(PreviewSessionHandle session, TrackSource source) => SessionTracks.Add((session, source));
+
+    public void RenameSession(PreviewSessionHandle session, string name)
+    {
+        SessionNames.Add((session, name));
+        var gain = _profiles.TryGetValue(session.Value, out var existing) ? existing.BackingGainDb : 0.0;
+        _profiles[session.Value] = new SessionProfile(session, name, gain, false);
+    }
+
+    public void SetSessionBackingGain(PreviewSessionHandle session, double gainDb)
+    {
+        SessionGains.Add((session, gainDb));
+        var name = _profiles.TryGetValue(session.Value, out var existing) ? existing.Name : $"Session {session.Value}";
+        _profiles[session.Value] = new SessionProfile(session, name, gainDb, false);
+    }
+
+    public void ClosePreviewSession(PreviewSessionHandle session)
+    {
+        ClosedSessions.Add(session);
+        _profiles.Remove(session.Value);
+    }
+
+    public IReadOnlyList<SessionProfile> ListSessions() => [.. _profiles.Values];
 
     public void SetGlobalAudio(GlobalAudioSettings audio) => GlobalAudios.Add(audio);
 
