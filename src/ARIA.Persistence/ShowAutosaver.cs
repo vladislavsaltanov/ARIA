@@ -11,16 +11,23 @@ public sealed class ShowAutosaver : IDisposable
     private readonly ISnapshotStore _store;
     private readonly TimeSpan _debounce;
     private readonly Func<ImmutableArray<Track>>? _tracksSource;
+    private readonly ILibraryStore? _libraryStore;
+    private readonly IAppLog _log;
+    private readonly Action<Exception>? _libraryError;
+    private bool _libraryFailed;
     private readonly IDisposable _subscription;
     private readonly object _gate = new();
     private System.Threading.Timer? _timer;
 
-    public ShowAutosaver(ICommandBus bus, ISnapshotStore store, TimeSpan debounce, Func<ImmutableArray<Track>>? tracksSource = null)
+    public ShowAutosaver(ICommandBus bus, ISnapshotStore store, TimeSpan debounce, Func<ImmutableArray<Track>>? tracksSource = null, ILibraryStore? libraryStore = null, IAppLog? log = null, Action<Exception>? libraryError = null)
     {
         _bus = bus;
         _store = store;
         _debounce = debounce;
         _tracksSource = tracksSource;
+        _libraryStore = libraryStore;
+        _log = log ?? NullAppLog.Instance;
+        _libraryError = libraryError;
         _subscription = bus.Subscribe(OnEvent);
     }
 
@@ -75,8 +82,9 @@ public sealed class ShowAutosaver : IDisposable
     private void Save()
     {
         var snapshot = _bus.Snapshot();
+        var tracks = _tracksSource?.Invoke() ?? [];
         var document = new ShowDocument(
-            _tracksSource?.Invoke() ?? [],
+            tracks,
             snapshot.Show.Projects,
             snapshot.Show.ActiveId,
             snapshot.Queue.Items,
@@ -88,5 +96,22 @@ public sealed class ShowAutosaver : IDisposable
             DateTimeOffset.UtcNow,
             snapshot.Mixer.EffectiveGlobal);
         _store.Save(document);
+        if (_libraryStore is not null && !tracks.IsEmpty)
+        {
+            try
+            {
+                _libraryStore.Upsert(tracks, snapshot.Show.Projects);
+                _libraryFailed = false;
+            }
+            catch (Exception e)
+            {
+                _log.Error("library.upsert_failed", new Dictionary<string, string> { ["error"] = e.Message });
+                if (!_libraryFailed)
+                {
+                    _libraryFailed = true;
+                    _libraryError?.Invoke(e);
+                }
+            }
+        }
     }
 }

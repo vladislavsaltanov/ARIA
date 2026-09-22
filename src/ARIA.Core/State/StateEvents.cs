@@ -29,7 +29,8 @@ public sealed record DeckContent(
     EndAction EndAction,
     TimeSpan Duration,
     TimeSpan CueIn,
-    TimeSpan? CueOut = null);
+    TimeSpan? CueOut = null,
+    double? Bpm = null);
 
 public sealed record TransportState(
     TransportStatus Status,

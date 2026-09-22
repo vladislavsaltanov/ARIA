@@ -99,6 +99,17 @@ public sealed class TrackBpmTests : IDisposable
         await Poll(() => DigestBpm() is null, "digest bpm not cleared");
     }
 
+    [Fact]
+    public async Task SetTrackBpm_UpdatesTransportCurrentBpm()
+    {
+        Submit(new Play());
+        await Poll(() => _bus.Snapshot().Transport.Status == TransportStatus.Playing, "not playing");
+
+        Submit(new SetTrackBpm(_track.Id, 130));
+        await Poll(() => _bus.Snapshot().Transport.Current?.Bpm == 130, "current deck missing bpm");
+        Assert.Equal(130, _controller.Tracks.First(t => t.Id == _track.Id).Defaults.Bpm);
+    }
+
     private double? DigestBpm() => _bus.Snapshot().Show.TrackDigest.Entries
         .FirstOrDefault(e => e.Track == _track.Id)?.Bpm;
 }

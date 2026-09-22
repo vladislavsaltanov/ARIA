@@ -276,6 +276,8 @@ public sealed class ShowController : IShowHandler
     public double? TrackBpm(TrackId id) =>
         _trackMap.TryGetValue(id, out var track) ? track.Defaults.Bpm : null;
 
+    public ImmutableArray<Track> Tracks => _tracks;
+
     public ShowSnapshot Snapshot() => new(
         _showVersion,
         new ShowState(_projects, _activeProjectId, _locked, new ShowClockState(_clockElapsed, _clockRunning), _scripts, _emittedDigest, _defaultEndAction),
@@ -1240,6 +1242,17 @@ public sealed class ShowController : IShowHandler
         var updated = existing with { Defaults = existing.Defaults with { Bpm = command.Bpm } };
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
+        if (_current?.Track.Id == command.Track)
+        {
+            _current = new DeckInstance
+            {
+                Entry = _current.Entry,
+                Track = updated,
+                Settings = _current.Settings,
+                Handle = _current.Handle,
+            };
+            EmitTransport();
+        }
         EmitShow();
     }
 
@@ -2002,7 +2015,8 @@ public sealed class ShowController : IShowHandler
         deck.Settings.EndAction,
         deck.Track.Duration,
         deck.Settings.CueIn,
-        deck.Settings.CueOut);
+        deck.Settings.CueOut,
+        deck.Track.Defaults.Bpm);
 
     private DeckContent? PeekNext()
     {
@@ -2013,7 +2027,7 @@ public sealed class ShowController : IShowHandler
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
-            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
+            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm);
         }
 
         if (_activeProjectId is { } projectId)
@@ -2024,7 +2038,7 @@ public sealed class ShowController : IShowHandler
                 var entry = project.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
                 var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
-                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut);
+                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm);
             }
         }
         return null;

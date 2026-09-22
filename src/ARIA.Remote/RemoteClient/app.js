@@ -261,6 +261,7 @@
     renderLock();
     renderDefaultAction();
     renderClick();
+    if (clickSession) pushClickSettings();
   }
 
   function applyDelta(frame) {
@@ -268,6 +269,7 @@
       state.transport = frame.state;
       renderTransport();
       renderClick();
+      if (clickSession) pushClickSettings();
     } else if (frame.partition === "queue") {
       state.queue = frame.state.items || [];
       renderQueue();
@@ -279,6 +281,7 @@
       renderLock();
       renderDefaultAction();
       renderClick();
+      if (clickSession) pushClickSettings();
       if (scriptContentChanged(prev, frame.state)) {
         renderScript();
       } else {
@@ -1483,14 +1486,14 @@
   var click = loadClick();
 
   function loadClick() {
-    var fallback = { enabled: false, bpmOverride: 0, beats: 4, offsetMs: 0, gainPct: 100 };
+    var fallback = { enabled: false, bpm: 120, beats: 4, offsetMs: 0, gainPct: 100 };
     try {
       var raw = localStorage.getItem(CLICK_KEY);
       if (!raw) return fallback;
       var parsed = JSON.parse(raw);
       return {
         enabled: !!parsed.enabled,
-        bpmOverride: clampNum(parsed.bpmOverride, 0, 300, 0),
+        bpm: clampNum(parsed.bpm, 20, 300, 120),
         beats: [2, 3, 4, 5, 6, 7].indexOf(Number(parsed.beats)) >= 0 ? Number(parsed.beats) : 4,
         offsetMs: clampNum(parsed.offsetMs, -2000, 2000, 0),
         gainPct: clampNum(parsed.gainPct, 0, 125, 100),
@@ -1511,6 +1514,14 @@
     return current && current.trackId ? current.trackId : null;
   }
 
+  function activeTrackId() {
+    var t = state.transport;
+    if (t && t.current && t.current.trackId) return t.current.trackId;
+    if (t && t.next && t.next.trackId) return t.next.trackId;
+    if (state.queue && state.queue.length > 0 && state.queue[0].trackId) return state.queue[0].trackId;
+    return null;
+  }
+
   function digestBpm(trackId) {
     var entries = (state.show && state.show.trackDigest && state.show.trackDigest.entries) || [];
     for (var i = 0; i < entries.length; i++) {
@@ -1519,9 +1530,17 @@
     return 0;
   }
 
+  function trackBpm(trackId) {
+    if (!trackId) return 0;
+    var t = state.transport;
+    if (t && t.current && t.current.trackId === trackId && t.current.bpm != null) return t.current.bpm;
+    if (t && t.next && t.next.trackId === trackId && t.next.bpm != null) return t.next.bpm;
+    return digestBpm(trackId);
+  }
+
   function effectiveBpm() {
-    if (click.bpmOverride > 0) return click.bpmOverride;
-    return digestBpm(currentTrackId()) || 120;
+    var id = activeTrackId();
+    return (id ? trackBpm(id) : 0) || click.bpm || 120;
   }
 
   function paintClickToggle() {
@@ -1530,9 +1549,7 @@
   }
 
   function syncClickInputs() {
-    if (click.bpmOverride <= 0) {
-      el.clickBpm.value = Math.round(digestBpm(currentTrackId()) || 120);
-    }
+    el.clickBpm.value = Math.round(effectiveBpm());
     el.clickBeats.value = String(click.beats);
     el.clickOffset.value = click.offsetMs;
     el.clickGain.value = click.gainPct;
@@ -1782,8 +1799,8 @@
     var trackId = currentTrackId();
     if (playing && trackId && trackId !== lastClickTrack) {
       lastClickTrack = trackId;
+      syncClickInputs();
       if (clickSession) {
-        syncClickInputs();
         pushClickSettings();
       }
     }
@@ -1819,19 +1836,22 @@
   });
 
   el.clickBpm.addEventListener("change", () => {
-    click.bpmOverride = clampNum(Number(el.clickBpm.value), 20, 300, 0);
-    if (click.bpmOverride <= 0) {
-      syncClickInputs();
-      return;
+    var val = clampNum(Number(el.clickBpm.value), 20, 300, 120);
+    el.clickBpm.value = Math.round(val);
+    click.bpm = val;
+    var trackId = activeTrackId();
+    if (trackId) {
+      send("set_track_bpm", { track: trackId, bpm: val });
     }
-    el.clickBpm.value = Math.round(click.bpmOverride);
     saveClick();
     pushClickSettings();
     vibrate();
   });
 
   el.clickDefault.addEventListener("click", () => {
-    click.bpmOverride = 0;
+    var adopted = activeTrackId() ? trackBpm(activeTrackId()) : 0;
+    click.bpm = adopted || 120;
+    el.clickBpm.value = Math.round(click.bpm);
     saveClick();
     syncClickInputs();
     pushClickSettings();

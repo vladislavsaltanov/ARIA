@@ -1,6 +1,10 @@
 namespace Aria.Persistence.Tests;
 
+using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
+using Aria.Core.Runtime;
+using Aria.Core.State;
 using Microsoft.Data.Sqlite;
 
 public sealed class TrackBpmPersistenceTests : IDisposable
@@ -92,6 +96,30 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         }
     }
 
+    [Fact]
+    public void ShowAutosaver_PersistsTrackBpm_ToSnapshotAndLibrary()
+    {
+        var plain = TestFactory.Track("bpm");
+        var track = plain with { Defaults = plain.Defaults with { Bpm = 133.0 } };
+        var project = TestFactory.Project("Main", TestFactory.Entry(track));
+        using var libStore = new SqliteLibraryStore(_dbPath);
+        libStore.Upsert([track], [project]);
+
+        using var snapStore = new JsonSnapshotStore(_snapPath);
+        using var bus = new CommandBus(new ShowController(new StubEngine()));
+        using var autosaver = new ShowAutosaver(bus, snapStore, TimeSpan.FromMilliseconds(50), () => [track], libStore);
+
+        bus.Submit(new ClientId("test"), 1, new CreateProject("NewProject"));
+        autosaver.FlushNow();
+
+        var reloadedSnap = snapStore.LoadLatest();
+        Assert.NotNull(reloadedSnap);
+        Assert.Equal(133.0, Assert.Single(reloadedSnap.Tracks).Defaults.Bpm);
+
+        var reloadedLib = libStore.Load();
+        Assert.Equal(133.0, Assert.Single(reloadedLib.Tracks).Defaults.Bpm);
+    }
+
     private void CreateLegacyDatabase(Track track)
     {
         using var connection = new SqliteConnection($"Data Source={_dbPath}");
@@ -120,5 +148,44 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
+    }
+
+    private sealed class StubEngine : IAudioEngine
+    {
+        public event Action<StreamEvent>? Events
+        {
+            add { }
+            remove { }
+        }
+
+        public StreamHandle StartStream(TrackSource source, StreamOptions options) => new(0);
+
+        public void Transport(StreamHandle handle, TransportCommand command)
+        {
+        }
+
+        public void SetMix(StreamHandle handle, MixParameters mix)
+        {
+        }
+
+        public void Seek(StreamHandle handle, TimeSpan position)
+        {
+        }
+
+        public void SetMasterGain(double gainDb)
+        {
+        }
+
+        public void SetSmoothing(Smoothing smoothing)
+        {
+        }
+
+        public void Panic(PanicSpec spec)
+        {
+        }
+
+        public void DisposeStream(StreamHandle handle)
+        {
+        }
     }
 }

@@ -51,6 +51,8 @@ public sealed class AppHost : IAsyncDisposable
 
     public RemoteHost? Remote { get; private set; }
 
+    public event Action<Exception>? LibrarySaveFailed;
+
     public ILibraryStore? Library => _library;
 
     public IWaveformStore? Waveforms => _waveforms;
@@ -66,6 +68,8 @@ public sealed class AppHost : IAsyncDisposable
     public AppSettingsStore SettingsStore { get; }
 
     public AudioOutputService Outputs { get; private set; } = null!;
+
+    private void OnLibrarySaveFailed(Exception error) => LibrarySaveFailed?.Invoke(error);
 
     public PreviewTap PreviewTap { get; private set; } = null!;
 
@@ -120,7 +124,7 @@ public sealed class AppHost : IAsyncDisposable
         _library = new SqliteLibraryStore(Path.Combine(DataDirectory, "library.db"));
         _waveforms = new SqliteWaveformStore(Path.Combine(DataDirectory, "waveforms.db"));
         _snapshots = new JsonSnapshotStore(Path.Combine(DataDirectory, "show.json"));
-        _autosaver = new ShowAutosaver(Bus, _snapshots, TimeSpan.FromMilliseconds(500), () => _library.Load().Tracks);
+        _autosaver = new ShowAutosaver(Bus, _snapshots, TimeSpan.FromMilliseconds(500), () => Tracks, _library, _log, OnLibrarySaveFailed);
 
         var document = _snapshots.LoadLatest();
         if (document is { } saved)
@@ -339,6 +343,8 @@ public sealed class AppHost : IAsyncDisposable
             _unobserved = null;
         }
     }
+
+    public ImmutableArray<Track> Tracks => _controller?.Tracks ?? _library?.Load().Tracks ?? [];
 
     public TrackAudioSettings? GetTrackAudio(TrackId id) => _controller?.TrackAudio(id);
 
