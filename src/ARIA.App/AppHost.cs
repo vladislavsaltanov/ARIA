@@ -55,6 +55,8 @@ public sealed class AppHost : IAsyncDisposable
 
     public ILibraryStore? Library => _library;
 
+    public IReadOnlyList<SessionProfile> MonitorSessions => _engine?.ListSessions() ?? [];
+
     public IWaveformStore? Waveforms => _waveforms;
 
     public ISourceFactory? SourceFactory { get; private set; }

@@ -84,6 +84,36 @@ public sealed class SessionGainTests
     }
 
     [Fact]
+    public async Task SetSessionClickGain_ScalesClick()
+    {
+        using var rig = new Rig();
+        var loud = rig.Engine.OpenPreviewSession("loud");
+        var quiet = rig.Engine.OpenPreviewSession("quiet");
+        rig.Engine.SetClick(loud, new ClickSettings(120, 4, 0, 0));
+        rig.Engine.SetClick(quiet, new ClickSettings(120, 4, 0, 0));
+        rig.Engine.SetClickMuted(loud, false);
+        rig.Engine.SetClickMuted(quiet, false);
+        rig.Engine.SetSessionClickGain(quiet, -6.0);
+        var loudTap = rig.Engine.PreviewSessionTap(loud);
+        var quietTap = rig.Engine.PreviewSessionTap(quiet);
+        Assert.NotNull(loudTap);
+        Assert.NotNull(quietTap);
+        var loudReader = loudTap.Subscribe();
+        var quietReader = quietTap.Subscribe();
+        var buffer = new float[256 * Channels];
+        await Poll(() => loudReader.Read(buffer) > 0 && quietReader.Read(buffer) > 0, "clicks never started");
+        var loudPeak = 0.0;
+        var quietPeak = 0.0;
+        for (var i = 0; i < 200; i++)
+        {
+            loudPeak = Math.Max(loudPeak, Peak(buffer, loudReader.Read(buffer)));
+            quietPeak = Math.Max(quietPeak, Peak(buffer, quietReader.Read(buffer)));
+        }
+        Assert.True(loudPeak > 0, "loud click silent");
+        Assert.InRange(quietPeak / loudPeak, 0.4, 0.6);
+    }
+
+    [Fact]
     public async Task SetSessionBackingGain_ScalesTrackAudio()
     {
         using var rig = new Rig();

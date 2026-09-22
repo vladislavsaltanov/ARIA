@@ -84,6 +84,7 @@ internal static class CommandCodec
                 "start_session_track" => new StartSessionTrack(new PreviewSessionHandle(IntOf(commandElement, "session")), new TrackId(GuidOf(commandElement, "track"))),
                 "rename_session" => new RenameSession(new PreviewSessionHandle(IntOf(commandElement, "session")), StringOf(commandElement, "name")),
                 "set_session_backing_gain" => new SetSessionBackingGain(new PreviewSessionHandle(IntOf(commandElement, "session")), DoubleOf(commandElement, "gain_db")),
+                "set_session_click_gain" => new SetSessionClickGain(new PreviewSessionHandle(IntOf(commandElement, "session")), DoubleOf(commandElement, "gain_db")),
                 "close_session" => new CloseSession(new PreviewSessionHandle(IntOf(commandElement, "session"))),
                 "normalize_track" => new NormalizeTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "normalize_playlist" or "normalize_project" => new NormalizeProject(new ProjectId(GuidOf(commandElement, "playlist"))),

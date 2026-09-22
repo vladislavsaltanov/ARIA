@@ -224,6 +224,9 @@ public sealed class ShowController : IShowHandler
             case SetSessionBackingGain setSessionBackingGain:
                 OnSetSessionBackingGain(client, seq, setSessionBackingGain);
                 break;
+            case SetSessionClickGain setSessionClickGain:
+                OnSetSessionClickGain(client, seq, setSessionClickGain);
+                break;
             case CloseSession closeSession:
                 OnCloseSession(closeSession);
                 break;
@@ -1243,6 +1246,16 @@ public sealed class ShowController : IShowHandler
     }
 
     private void OnCloseSession(CloseSession command) => _engine.ClosePreviewSession(command.Session);
+
+    private void OnSetSessionClickGain(ClientId client, long seq, SetSessionClickGain command)
+    {
+        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
+        {
+            Reject(client, seq, "gain-out-of-range");
+            return;
+        }
+        _engine.SetSessionClickGain(command.Session, command.GainDb);
+    }
 
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {

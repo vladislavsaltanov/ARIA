@@ -114,15 +114,27 @@ public sealed class FakeEngine : IAudioEngine
     public void RenameSession(PreviewSessionHandle session, string name)
     {
         SessionNames.Add((session, name));
-        var gain = _profiles.TryGetValue(session.Value, out var existing) ? existing.BackingGainDb : 0.0;
-        _profiles[session.Value] = new SessionProfile(session, name, gain, false);
+        var gain = _profiles.TryGetValue(session.Value, out var renamed) ? renamed.BackingGainDb : 0.0;
+        var click = _profiles.TryGetValue(session.Value, out var current) ? current.ClickGainDb : 0.0;
+        _profiles[session.Value] = new SessionProfile(session, name, gain, false, click);
     }
 
     public void SetSessionBackingGain(PreviewSessionHandle session, double gainDb)
     {
         SessionGains.Add((session, gainDb));
         var name = _profiles.TryGetValue(session.Value, out var existing) ? existing.Name : $"Session {session.Value}";
-        _profiles[session.Value] = new SessionProfile(session, name, gainDb, false);
+        var click = _profiles.TryGetValue(session.Value, out var current) ? current.ClickGainDb : 0.0;
+        _profiles[session.Value] = new SessionProfile(session, name, gainDb, false, click);
+    }
+
+    public List<(PreviewSessionHandle Session, double GainDb)> SessionClickGains { get; } = [];
+
+    public void SetSessionClickGain(PreviewSessionHandle session, double gainDb)
+    {
+        SessionClickGains.Add((session, gainDb));
+        var name = _profiles.TryGetValue(session.Value, out var existing) ? existing.Name : $"Session {session.Value}";
+        var backing = _profiles.TryGetValue(session.Value, out var current) ? current.BackingGainDb : 0.0;
+        _profiles[session.Value] = new SessionProfile(session, name, backing, false, gainDb);
     }
 
     public void ClosePreviewSession(PreviewSessionHandle session)

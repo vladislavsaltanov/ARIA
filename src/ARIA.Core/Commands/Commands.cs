@@ -89,6 +89,8 @@ public sealed record RenameSession(PreviewSessionHandle Session, string Name) : 
 
 public sealed record SetSessionBackingGain(PreviewSessionHandle Session, double GainDb) : Command;
 
+public sealed record SetSessionClickGain(PreviewSessionHandle Session, double GainDb) : Command;
+
 public sealed record CloseSession(PreviewSessionHandle Session) : Command;
 
 public sealed record NormalizeTrack(TrackId Track) : Command;

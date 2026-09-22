@@ -101,6 +101,24 @@ public sealed class SessionProfileTests : IDisposable
     }
 
     [Fact]
+    public async Task SetSessionClickGain_RecordsEngineCall()
+    {
+        var session = new PreviewSessionHandle(18);
+        _bus.Submit(TestClient, Interlocked.Increment(ref _seq), new SetSessionClickGain(session, -12.0));
+        await Poll(() => _engine.SessionClickGains.Count > 0, "click gain never reached engine");
+        Assert.Equal((session, -12.0), _engine.SessionClickGains[0]);
+        await Poll(() => _engine.ListSessions() is [{ } listed] && listed.ClickGainDb == -12.0, "click gain never listed");
+    }
+
+    [Fact]
+    public async Task SetSessionClickGain_OutOfRange_Rejected()
+    {
+        var seq = Interlocked.Increment(ref _seq);
+        _bus.Submit(TestClient, seq, new SetSessionClickGain(new PreviewSessionHandle(19), 20.0));
+        await WaitRejected(seq, "gain-out-of-range");
+    }
+
+    [Fact]
     public async Task CloseSession_ClosesEngineSession()
     {
         var session = new PreviewSessionHandle(16);
@@ -120,5 +138,6 @@ public sealed class SessionProfileTests : IDisposable
         Assert.Equal(session, profile.Session);
         Assert.Equal("Monitor", profile.Name);
         Assert.Equal(-3.0, profile.BackingGainDb);
+        Assert.Equal(0.0, profile.ClickGainDb);
     }
 }

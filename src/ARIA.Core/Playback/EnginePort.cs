@@ -109,6 +109,10 @@ public interface IAudioEngine
     {
     }
 
+    void SetSessionClickGain(PreviewSessionHandle session, double gainDb)
+    {
+    }
+
     IReadOnlyList<SessionProfile> ListSessions() => [];
 
     void StartSessionTrack(PreviewSessionHandle session, TrackSource source)

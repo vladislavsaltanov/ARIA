@@ -26,6 +26,16 @@ public sealed class SessionControlCodecTests
     }
 
     [Fact]
+    public void SetSessionClickGain_Parses()
+    {
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_session_click_gain\",\"session\":7,\"gain_db\":-12}}";
+        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
+        var parsed = Assert.IsType<SetSessionClickGain>(command);
+        Assert.Equal(new PreviewSessionHandle(7), parsed.Session);
+        Assert.Equal(-12, parsed.GainDb);
+    }
+
+    [Fact]
     public void CloseSession_Parses()
     {
         var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"close_session\",\"session\":7}}";

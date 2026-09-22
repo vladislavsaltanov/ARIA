@@ -433,6 +433,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         ArgumentNullException.ThrowIfNull(settings);
         if (FindSession(session) is { } target)
         {
+            target.Click = settings;
             target.PendingSettings = settings;
         }
     }
@@ -566,6 +567,16 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
     }
 
+    public void SetSessionClickGain(PreviewSessionHandle session, double gainDb)
+    {
+        if (FindSession(session) is { } target)
+        {
+            var settings = target.Click ?? DefaultClick;
+            target.Click = settings with { GainDb = gainDb };
+            target.PendingSettings = target.Click;
+        }
+    }
+
     public void SetSessionBackingGain(PreviewSessionHandle session, double gainDb)
     {
         if (FindSession(session) is { } target)
@@ -584,7 +595,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
                 sessions[i].Handle,
                 sessions[i].Name,
                 20.0 * Math.Log10(Math.Max(double.Epsilon, BitConverter.Int64BitsToDouble(Volatile.Read(ref sessions[i].BackingGainBits)))),
-                sessions[i].ClickMuted);
+                sessions[i].ClickMuted,
+                sessions[i].Click?.GainDb ?? DefaultClick.GainDb);
         }
         return profiles;
     }
@@ -616,6 +628,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         public volatile bool ClickMuted = true;
 
         public volatile ClickSettings? PendingSettings;
+
+        public ClickSettings? Click;
 
         public volatile bool ResetVoice;
 
