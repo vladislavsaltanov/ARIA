@@ -30,7 +30,7 @@ osx-*)
   APP="publish/$RID/ARIA.app"
   rm -rf "$APP"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-  cp -R "publish/$RID/stage/" "$APP/Contents/MacOS/"
+  cp -R "publish/$RID/stage/." "$APP/Contents/MacOS/"
   mv "$APP/Contents/MacOS/ARIA.App" "$APP/Contents/MacOS/ARIA"
   cat >"$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -53,7 +53,7 @@ linux-*)
   mv "publish/$RID/stage/ARIA.App" "publish/$RID/stage/aria"
   rm -rf "publish/$RID/ARIA"
   mkdir -p "publish/$RID/ARIA"
-  cp -R "publish/$RID/stage/" "publish/$RID/ARIA/"
+  cp -R "publish/$RID/stage/." "publish/$RID/ARIA/"
   rm -rf "publish/$RID/stage"
   tar -czf "publish/$RID/aria-$RID.tar.gz" -C "publish/$RID" ARIA
   echo "publish complete: publish/$RID/ARIA/ + publish/$RID/aria-$RID.tar.gz"
@@ -62,7 +62,7 @@ linux-*)
 win-*)
   rm -rf "publish/$RID/ARIA"
   mkdir -p "publish/$RID/ARIA"
-  cp -R "publish/$RID/stage/" "publish/$RID/ARIA/"
+  cp -R "publish/$RID/stage/." "publish/$RID/ARIA/"
   rm -rf "publish/$RID/stage"
   (cd "publish/$RID" && ditto -c -k --sequesterRsrc ARIA "aria-$RID.zip")
   echo "publish complete: publish/$RID/ARIA/ + publish/$RID/aria-$RID.zip"
