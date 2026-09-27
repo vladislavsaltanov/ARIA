@@ -146,7 +146,7 @@ public sealed class SessionMixerTests : IDisposable
         _mixer.StartTrack(session, new TrackSource("/audio/sine.flac", TimeSpan.Zero, null));
         var block = new float[BlockFrames * Channels];
         var phase = 0.0;
-        for (var i = 0; i < 50; i++)
+        for (var i = 0; i < 300; i++)
         {
             FillSine(block, Channels, ref phase);
             _mainTap.Publish(block);
