@@ -184,8 +184,12 @@ public sealed class MixerBus : IDisposable
         }
         _voices.Clear();
         PublishVoices();
-        while (_commands.TryDequeue(out _))
+        while (_commands.TryDequeue(out var command))
         {
+            if (command.Voice is { } voice)
+            {
+                CloseSource(voice);
+            }
         }
     }
 
