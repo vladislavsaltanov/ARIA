@@ -94,14 +94,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install mingw and zig
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64
-          python3 -m pip install --break-system-packages -q ziglang
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.local/bin:$PATH"
-          zig version
-          x86_64-w64-mingw32-gcc --version
+      - name: Install mingw for win-x64 shim
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64
+      - name: Install zig compiler
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
       - name: Build linux-x64 shim
         run: sh native/aria-shim/build.sh linux-x64
       - name: Build win-x64 shim
@@ -154,12 +152,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
-      - name: Install zig for shim build
-        run: |
-          python3 -m pip install --break-system-packages -q ziglang
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.local/bin:$PATH"
-          zig version
+      - name: Install zig compiler
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
       - name: Publish bundle
         run: sh scripts/publish.sh linux-x64
       - name: Run selftest

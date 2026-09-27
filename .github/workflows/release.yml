@@ -43,13 +43,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
-      - name: Install zig for shim build
-        run: |
-          python3 -m pip install \
-            --break-system-packages -q ziglang
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.local/bin:$PATH"
-          zig version
+      - name: Install zig compiler
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
       - name: Publish linux-x64 bundle
         run: sh scripts/publish.sh linux-x64
       - name: Upload bundle
