@@ -34,11 +34,11 @@ Security impact: NONE — no security exploit path identified.
 
 ## Acceptance Criteria
 
-- [ ] Замер играющего трека сразу меняет звук и LUFS-счётчик
-- [ ] Тогглы и смена таргета применяются без перезапуска
-- [ ] Неиграющие голоса и чужие entry не трогаются
-- [ ] All new tests pass
-- [ ] Existing tests still pass
+- [x] Замер играющего трека сразу меняет звук и LUFS-счётчик
+- [x] Тогглы и смена таргета применяются без перезапуска
+- [x] Неиграющие голоса и чужие entry не трогаются
+- [x] All new tests pass
+- [x] Existing tests still pass
 
 ## Resolution
 

@@ -5,6 +5,10 @@
   scope: audio-normalize
   summary: Normalization inaudible without track restart, LUFS meter static
   file: specs/bugs/BUG-2026-09-15-normalize-live-voice.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: src/ARIA.Core/Runtime/ShowController.cs:1398 PushCurrentAudio; tests/ARIA.Core.Tests/LufsNormalizeTests.cs
+
 - bug_id: BUG-2026-09-16-file-loss-hang
   date: 2026-09-16
   severity: critical
@@ -12,6 +16,10 @@
   scope: audio-fault
   summary: Потеря доступа к воспроизводимому файлу вешает приложение, требуется перезапуск
   file: specs/bugs/BUG-2026-09-16-file-loss-hang.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: tests/ARIA.Core.Tests/HangingOpenTests.cs BlockedOpen_KeepsBusResponsive/BlockedOpen_TimesOutToFault; tests/ARIA.Audio.Tests/OpenFaultCauseTests.cs; AriaAudioEngineTests.BrokenTrack_StopsWithoutAdvance
+
 - bug_id: BUG-2026-09-16-file-lock
   date: 2026-09-16
   severity: high
@@ -19,6 +27,10 @@
   scope: audio-resource
   summary: Удалённый из проекта трек держит файл открытым, помогает только перезапуск
   file: specs/bugs/BUG-2026-09-16-file-lock.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: tests/ARIA.Audio.Tests/VoiceSourceReleaseTests.cs StoppedVoice/RemovedVoice/DisposedBus
+
 - bug_id: BUG-2026-09-16-cyrillic-paths
   date: 2026-09-16
   severity: high
@@ -26,6 +38,10 @@
   scope: i18n-paths
   summary: Файлы с кириллицей в пути не открываются на Windows (ANSI fopen в шиме)
   file: specs/bugs/BUG-2026-09-16-cyrillic-paths.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: src/ARIA.Audio/Native/AriaShim.cs:40 aria_decoder_open_w; native/aria-shim/aria_shim.h:24; tests/ARIA.Audio.Tests/UnicodePathDecoderTests.cs
+
 - bug_id: BUG-2026-09-16-folder-import
   date: 2026-09-16
   severity: medium
@@ -33,6 +49,10 @@
   scope: import
   summary: Импорт папки без выбора папки, отчёт теряется, битый файл валит батч
   file: specs/bugs/BUG-2026-09-16-folder-import.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: tests/ARIA.App.Tests/FolderImportCommandTests.cs; tests/ARIA.App.Tests/ImportBatchResilienceTests.cs
+
 - bug_id: BUG-2026-09-16-rail-drop-no-playlist
   date: 2026-09-16
   severity: medium
@@ -40,6 +60,10 @@
   scope: dnd-import
   summary: Дроп папки на боковое меню не создаёт плейлист
   file: specs/bugs/BUG-2026-09-16-rail-drop-no-playlist.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: tests/ARIA.App.Tests/RailDropPlaylistTests.cs DropFolder_CreatesProjectNamedAfterFolder_WithItsTracks
+
 - bug_id: BUG-2026-09-16-mention-outside-project
   date: 2026-09-16
   severity: high
@@ -47,6 +71,10 @@
   scope: script-playback
   summary: Упоминание сценария играет трек, удалённый из проекта
   file: specs/bugs/BUG-2026-09-16-mention-outside-project.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: src/ARIA.Core/Runtime/ShowController.cs:838 FindActiveEntry guard; tests/ARIA.App.Tests/MentionPlayTests.cs
+
 - bug_id: BUG-2026-09-17-selection-activates
   date: 2026-09-17
   severity: high
@@ -54,6 +82,10 @@
   scope: project-selection
   summary: Выбор проекта в списке не активирует его, сценарии и гарды висят на stale ActiveId
   file: specs/bugs/BUG-2026-09-17-selection-activates.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: tests/ARIA.App.Tests/ScriptProjectScopingTests.cs:58 SelectingProject_ActivatesIt_SoPanelFollows; PlaylistsViewModelTests.cs:188 Activate_MarksActiveProject
+
 - bug_id: BUG-2026-09-17-drawer-light-dismiss
   date: 2026-09-17
   severity: medium
@@ -61,6 +93,10 @@
   scope: script-panel
   summary: Клик мимо панели сценариев сразу закрывает её
   file: specs/bugs/BUG-2026-09-17-drawer-light-dismiss.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: tests/ARIA.App.Tests/ScriptPanelHeadlessTests.cs:238 ClickOutside_KeepsDrawerOpen
+
 - bug_id: BUG-2026-09-17-crossfade-preroll-timing
   date: 2026-09-17
   severity: high
@@ -68,3 +104,62 @@
   scope: audio-crossfade
   summary: Нет плавного автоперехода между треками, резкий обрыв посреди фейда
   file: specs/bugs/BUG-2026-09-17-crossfade-preroll-timing.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: acceptance boxes ticked in the doc; tests/ARIA.Core.Tests/PlaybackTests.cs FirstAudibleFrame/PreRoll
+
+- bug_id: BUG-dnd-playlist-drop
+  date: 2026-09-16
+  severity: medium
+  priority: medium
+  scope: dnd-import
+  summary: Дроп на плейлист не показывает импортированные треки
+  file: specs/bugs/BUG-dnd-playlist-drop.md
+  status: needs-confirmation
+  verified: 2026-09-27
+  evidence: fix in code; SCOPE_LATEST S3 requires user confirmation before closing
+
+- bug_id: BUG-fault-advance-import-noise
+  date: 2026-09-16
+  severity: high
+  priority: high
+  scope: audio-fault
+  summary: Битый трек после импорта шумит прогрессом и уводит на следующий
+  file: specs/bugs/BUG-fault-advance-import-noise.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: acceptance boxes ticked in the doc; tests/ARIA.Audio.Tests/AriaAudioEngineTests.cs BrokenTrack_StopsWithoutAdvance
+
+- bug_id: BUG-relink-stale-fault
+  date: 2026-09-16
+  severity: medium
+  priority: high
+  scope: relink
+  summary: Иконка fault не гаснет после успешного «Найти…»
+  file: specs/bugs/BUG-relink-stale-fault.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: acceptance boxes ticked in the doc; tests/ARIA.App.Tests/PlaylistsViewModelTests.cs:574 RelinkEntryAsync_UsesDelegate
+
+- bug_id: BUG-startup-missing-mark
+  date: 2026-09-16
+  severity: medium
+  priority: high
+  scope: startup
+  summary: Отсутствующие файлы не помечаются на старте до попытки воспроизведения
+  file: specs/bugs/BUG-startup-missing-mark.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: acceptance boxes ticked in the doc; tests/ARIA.Core.Tests/FaultedTests.cs
+
+- bug_id: BUG-2026-09-15-queue-end-pause
+  date: 2026-09-15
+  severity: medium
+  priority: high
+  scope: transport-end-action
+  summary: Pause/Stop/Replay не подхватывают непустую очередь
+  file: specs/bugs/BUG-2026-09-15-queue-end-pause.md
+  status: fixed
+  verified: 2026-09-27
+  evidence: src/ARIA.Core/Runtime/ShowController.cs:1786 ApplyEndAction drains queue first; tests/ARIA.App.Tests/EntryEndActionMenuTests.cs, tests/ARIA.Core.Tests/DefaultEndActionTests.cs
+

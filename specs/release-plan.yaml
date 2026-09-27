@@ -1,9 +1,22 @@
 ---
 release: "Стабилизация + Trigger срез 1"
 source: specs/product/SCOPE_LATEST.yaml
+updated: 2026-09-27
 epics:
   - id: e01
     capsule: specs/epics/e01-stabilization-trigger
     title: "Стабилизация долгов + hotkey-триггеры"
     wsjf: 1
     status: done
+  - id: e02
+    capsule: specs/epics/e02-project
+    title: "Проект вместо Плейлиста"
+    wsjf: 2
+    status: done
+    shipped: "0.3.0 (2026-09-18)"
+  - id: e03
+    capsule: specs/epics/e03-monitor
+    title: "Мониторы: именованные пульты, уровни, вход карты"
+    wsjf: 3
+    status: active
+    remaining: "e03s03 — захват входа карты, отложен до спайка"
