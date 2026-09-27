@@ -245,6 +245,22 @@ public sealed class AriaAudioEngineTests
 
     private static bool IsAudible(float[] block) => !IsSilent(block);
 
+    [Fact]
+    public void MixerPositionLookups_SurviveVoiceRetirement()
+    {
+        using var stack = new Stack("finite.flac");
+        stack.Submit(new Play());
+
+        var deadline = Environment.TickCount64 + 10000;
+        while (Environment.TickCount64 < deadline
+            && !stack.EngineEvents.Any(e => e.Kind == StreamEventKind.Ended))
+        {
+            stack.Submit(new Play());
+        }
+
+        Assert.Contains(stack.EngineEvents, e => e.Kind == StreamEventKind.Ended);
+    }
+
     private sealed class Stack : IDisposable
     {
         public static readonly ClientId Client = new("audio-e2e");

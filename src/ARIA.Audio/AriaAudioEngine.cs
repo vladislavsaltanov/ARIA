@@ -284,7 +284,11 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     public void Dispose()
     {
         _cts.Cancel();
-        _renderThread.Join(TimeSpan.FromSeconds(2));
+        if (!_renderThread.Join(TimeSpan.FromSeconds(2)))
+        {
+            _cts.Dispose();
+            return;
+        }
         _sessionMixer.Dispose();
         _mixer.Dispose();
         _preview.Dispose();

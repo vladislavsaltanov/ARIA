@@ -54,6 +54,7 @@ public sealed class MixerBus : IDisposable
     private readonly int _blockSizeFrames;
     private readonly ConcurrentQueue<MixerCommand> _commands = new();
     private readonly List<MixerVoice> _voices = [];
+    private MixerVoice[] _voiceView = [];
     private long _handleCounter;
     private int _pauseFadeFrames;
     private int _resumeFadeFrames;
@@ -96,9 +97,10 @@ public sealed class MixerBus : IDisposable
 
     public bool TryGetPosition(StreamHandle handle, out TimeSpan position)
     {
-        for (var index = 0; index < _voices.Count; index++)
+        var view = Volatile.Read(ref _voiceView);
+        for (var index = 0; index < view.Length; index++)
         {
-            var voice = _voices[index];
+            var voice = view[index];
             if (voice.Handle.Value == handle.Value && !voice.Dead && !voice.RemoveRequested)
             {
                 position = TimeSpan.FromSeconds(Volatile.Read(ref voice.StartFrame) / (double)_sampleRate);
@@ -181,6 +183,7 @@ public sealed class MixerBus : IDisposable
             CloseSource(_voices[index]);
         }
         _voices.Clear();
+        PublishVoices();
         while (_commands.TryDequeue(out _))
         {
         }
@@ -218,12 +221,14 @@ public sealed class MixerBus : IDisposable
 
     private void DrainCommands()
     {
+        var published = false;
         while (_commands.TryDequeue(out var command))
         {
             switch (command.Kind)
             {
                 case CommandKind.Add:
                     _voices.Add(command.Voice!);
+                    published = true;
                     break;
                 case CommandKind.Remove:
                     var removed = FindVoice(command.Handle);
@@ -248,6 +253,10 @@ public sealed class MixerBus : IDisposable
                     ApplyStopAll(command.Duration);
                     break;
             }
+        }
+        if (published)
+        {
+            PublishVoices();
         }
     }
 
@@ -519,7 +528,19 @@ public sealed class MixerBus : IDisposable
                 CloseSource(voice);
             }
         }
+        if (writeIndex == _voices.Count)
+        {
+            return;
+        }
         _voices.RemoveRange(writeIndex, _voices.Count - writeIndex);
+        PublishVoices();
+    }
+
+    private void PublishVoices()
+    {
+        var view = new MixerVoice[_voices.Count];
+        _voices.CopyTo(view);
+        Volatile.Write(ref _voiceView, view);
     }
 
     private static void CloseSource(MixerVoice voice)
