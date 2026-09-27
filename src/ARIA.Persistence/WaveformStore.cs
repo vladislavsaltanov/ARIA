@@ -19,7 +19,7 @@ public sealed class SqliteWaveformStore : IWaveformStore
 
     public SqliteWaveformStore(string path)
     {
-        _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString();
         using var connection = Open();
         EnsureSchema(connection);
     }

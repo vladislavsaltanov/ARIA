@@ -168,6 +168,11 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
                 var ack = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "ack", TimeSpan.FromSeconds(5));
                 Assert.Equal(1, ack.GetProperty("seq").GetInt64());
             }
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+            while (!engine.PreviewMuted && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(25);
+            }
             Assert.True(engine.PreviewMuted);
         }
         finally

@@ -116,7 +116,7 @@ public sealed class FileAppLog : IAppLog, IDisposable
             }
             RotateIfNeeded();
             _writer = new StreamWriter(
-                new FileStream(_path, FileMode.Append, FileAccess.Write, FileShare.Read));
+                new FileStream(_path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
             return;
         }
         if (_writer.BaseStream.Length >= _maxBytes)
@@ -124,7 +124,7 @@ public sealed class FileAppLog : IAppLog, IDisposable
             CloseWriter();
             RotateIfNeeded();
             _writer = new StreamWriter(
-                new FileStream(_path, FileMode.Append, FileAccess.Write, FileShare.Read));
+                new FileStream(_path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
         }
     }
 

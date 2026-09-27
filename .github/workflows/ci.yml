@@ -54,9 +54,7 @@ jobs:
       - name: Test with one retry for known loopback and headless flakes
         run: |
           for attempt in 1 2; do
-            dotnet test -c Release --no-build \
-              --logger "trx;LogFileName=test-$attempt.trx" \
-              --results-directory TestResults && break
+            dotnet test -c Release --no-build && break
             status=$?
             test "$attempt" = 2 && exit "$status"
             sleep 10
@@ -66,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}
-          path: "**/TestResults/*.trx"
+          path: "**/*.trx"
       - name: Upload build log
         if: failure()
         uses: actions/upload-artifact@v4

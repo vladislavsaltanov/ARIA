@@ -33,6 +33,7 @@ public sealed class DecoderTests : IDisposable
         using var scope = (IDisposable)source;
         var reference = factory.Open(path, TimeSpan.Zero, null);
         Assert.NotNull(reference);
+        using var referenceScope = (IDisposable)reference;
 
         var warm = new float[1000];
         source.ReadFrames(warm);
@@ -61,6 +62,7 @@ public sealed class DecoderTests : IDisposable
         using var scope = (IDisposable)source;
         var reference = factory.Open(path, TimeSpan.Zero, null);
         Assert.NotNull(reference);
+        using var referenceScope = (IDisposable)reference;
 
         source.Seek(1000);
 
