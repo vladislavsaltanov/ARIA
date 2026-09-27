@@ -728,7 +728,7 @@ public sealed class ShowController : IShowHandler
             SeekWithCrossfade(deck, filePosition);
             return;
         }
-        _engine.Seek(handle, filePosition - settings.CueIn);
+        _engine.Seek(handle, filePosition - deck.StartAt);
         _preRolled = false;
     }
 
@@ -745,7 +745,7 @@ public sealed class ShowController : IShowHandler
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
-        deck.Settings = settings with { CueIn = filePosition };
+        deck.StartAt = filePosition;
         _monitor?.Bind(handle, Content(deck));
         _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
         _engine.Transport(handle, TransportCommand.Play);
@@ -1917,6 +1917,7 @@ public sealed class ShowController : IShowHandler
         _faulted.Remove(deck.Track.Id);
         _faultCauses.Remove(deck.Track.Id);
         var settings = deck.Settings;
+        deck.StartAt = settings.CueIn;
         var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut, settings.Audio);
         var options = new StreamOptions(
             StreamBus.Main,
@@ -2073,7 +2074,7 @@ public sealed class ShowController : IShowHandler
         deck.Settings.Color,
         deck.Settings.EndAction,
         deck.Track.Duration,
-        deck.Settings.CueIn,
+        deck.StartAt,
         deck.Settings.CueOut,
         deck.Track.Defaults.Bpm);
 
@@ -2199,5 +2200,6 @@ public sealed class ShowController : IShowHandler
         public required Track Track { get; init; }
         public required PlaybackSettings Settings { get; set; }
         public StreamHandle? Handle { get; set; }
+        public TimeSpan StartAt { get; set; }
     }
 }

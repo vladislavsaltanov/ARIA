@@ -129,6 +129,41 @@ public sealed class PlaybackTests
     }
 
     [Fact]
+    public void EndAction_Replay_AfterSeek_RestartsFromTrackCue()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one", EndAction.Replay);
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Smoothing.Default with { Enabled = true, SeekFade = TimeSpan.FromMilliseconds(350) }));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.Completed);
+
+        var replayed = h.Engine.Last!;
+        Assert.Equal(3, h.Engine.Created.Count);
+        Assert.Equal(TimeSpan.Zero, replayed.Source.CueIn);
+    }
+
+    [Fact]
+    public void SeekTo_AfterSeekWithCrossfade_StillReachesEarlierPosition()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Smoothing.Default with { Enabled = true, SeekFade = TimeSpan.FromMilliseconds(350) }));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(10)));
+
+        Assert.Equal(3, h.Engine.Created.Count);
+        Assert.Equal(TimeSpan.FromSeconds(10), h.Engine.Last!.Source.CueIn);
+    }
+
+    [Fact]
     public void EndAction_Stop_HoldsCurrent_PlayReplaysIt()
     {
         using var h = new Harness();
