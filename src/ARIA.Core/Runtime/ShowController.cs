@@ -1707,6 +1707,24 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
+        if (current.Settings.EndAction == EndAction.Replay)
+        {
+            if (snapshot.Remaining > _smoothing.ManualCrossfade)
+            {
+                return;
+            }
+            var replayWasPlaying = _status == TransportStatus.Playing;
+            var replayOld = _current;
+            _current = new DeckInstance { Entry = replayOld!.Entry, Track = replayOld.Track, Settings = replayOld.Settings };
+            StartStreamFor(_current, auto: true, _smoothing.ManualCrossfade);
+            SetStatus(TransportStatus.Playing);
+            _atEndBoundary = false;
+            _panicked = false;
+            EmitTransport();
+            _preRolled = true;
+            ReleaseOld(replayOld, replayWasPlaying, manual: true);
+            return;
+        }
         if (current.Settings.EndAction != EndAction.Advance)
         {
             return;
