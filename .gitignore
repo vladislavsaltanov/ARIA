@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 *.swp
 .pi/
 .scratch/
+
+# Local convenience copy written by native/aria-shim/build.sh (osx-arm64 only); canonical prebuilt shims live in runtimes/*/native/
+native/aria-shim/libaria_shim.dylib

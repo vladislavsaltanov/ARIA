@@ -114,7 +114,7 @@ sh scripts/publish.sh <RID>          # шим + dotnet publish + упаковк�
 | `linux-x64` | `libaria_shim.so` (stripped) | `zig cc -target x86_64-linux-gnu`, `-lpthread -ldl -lm` | `ARIA/` + `aria-linux-x64.tar.gz` | структурно (файлы, ELF-тип); рантайм — на стенде linux-x64 |
 | `win-x64` | `aria_shim.dll` | `x86_64-w64-mingw32-gcc`, `-lole32 -lwinmm -luuid -lversion -ladvapi32` | `ARIA/` + `aria-win-x64.zip` | структурно (файлы, PE-тип); рантайм — на стенде win-x64 |
 
-Исходники шима: `native/aria-shim/` (`aria_shim.c` — miniaudio-движок + ring buffer, `stb_vorbis.c` — декодер OGG, `miniaudio.h`). Собранные бинарники лежат в `runtimes/<RID>/native/` и коммитятся (как и `native/aria-shim/libaria_shim.dylib` для хоста); `publish/` — нет. Резолв в рантайме — `AriaShim.Resolve`: `runtimes/<RID>/native/<имя>` рядом со сборкой, затем рядом с процессом, затем системный поиск. `backend=1` (`ma_backend_null`) — беззвучный null-бэкенд для selftest/тестов.
+Исходники шима: `native/aria-shim/` (`aria_shim.c` — miniaudio-движок + ring buffer, `stb_vorbis.c` — декодер OGG, `miniaudio.h`). Собранные бинарники лежат в `runtimes/<RID>/native/` и коммитятся; `publish/` и локальная копия `native/aria-shim/libaria_shim.dylib` (ее пишет build.sh) — нет. Резолв в рантайме — `AriaShim.Resolve`: `runtimes/<RID>/native/<имя>` рядом со сборкой, затем рядом с процессом, затем системный поиск. `backend=1` (`ma_backend_null`) — беззвучный null-бэкенд для selftest/тестов.
 
 ## Поддержка
 
