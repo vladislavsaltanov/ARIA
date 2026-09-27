@@ -158,6 +158,10 @@ jobs:
           version: 0.16.0
       - name: Publish bundle
         run: sh scripts/publish.sh linux-x64
+      - name: List bundle contents
+        run: |
+          ls -la publish/linux-x64/ARIA/ | head -n 15
+          file publish/linux-x64/ARIA/aria || true
       - name: Run selftest
         run: publish/linux-x64/ARIA/aria --selftest
       - name: Upload bundle
@@ -174,6 +178,8 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
       - name: Publish package
+        env:
+          MSYS_NO_PATHCONV: 1
         run: |
           dotnet publish src/ARIA.App -c Release -r win-x64 \
             --self-contained -o publish/win-x64/stage \
