@@ -188,6 +188,30 @@ public sealed class ShowAutosaverTests : IDisposable
         Assert.Equal(2, notices);
     }
 
+    [Fact]
+    public void SnapshotSaveFailure_LogsError_AndSurvives()
+    {
+        using var bus = NewBus();
+        var log = new RecordingLog();
+        using var autosaver = new ShowAutosaver(bus, new ThrowingSnapshotStore(), TimeSpan.FromMilliseconds(50), log: log);
+
+        bus.Submit(Client, 1, new CreateProject("Main"));
+        autosaver.FlushNow();
+
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Error && e.Message == "snapshot.save_failed");
+    }
+
+    private sealed class ThrowingSnapshotStore : ISnapshotStore
+    {
+        public void Save(ShowDocument document) => throw new UnauthorizedAccessException("volume is read only");
+
+        public ShowDocument? LoadLatest() => null;
+
+        public void Dispose()
+        {
+        }
+    }
+
     private sealed class RecordingLog : IAppLog
     {
         public readonly List<(LogLevel Level, string Message)> Entries = new();

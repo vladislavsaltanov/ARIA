@@ -35,7 +35,7 @@ public sealed class ShowAutosaver : IDisposable
     {
         lock (_gate)
         {
-            Save();
+            TrySave();
         }
     }
 
@@ -68,14 +68,17 @@ public sealed class ShowAutosaver : IDisposable
         }
     }
 
-    private void BackgroundFlush()
+    private void BackgroundFlush() => FlushNow();
+
+    private void TrySave()
     {
         try
         {
-            FlushNow();
+            Save();
         }
-        catch (IOException)
+        catch (Exception e)
         {
+            _log.Error("snapshot.save_failed", new Dictionary<string, string> { ["error"] = e.Message });
         }
     }
 
