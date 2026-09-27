@@ -17,9 +17,22 @@ public sealed class DecoderTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_directory))
+        for (var attempt = 0; ; attempt++)
         {
-            Directory.Delete(_directory, recursive: true);
+            try
+            {
+                if (Directory.Exists(_directory))
+                {
+                    Directory.Delete(_directory, recursive: true);
+                }
+                return;
+            }
+            catch (IOException) when (attempt < 40)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                Thread.Sleep(100);
+            }
         }
     }
 
@@ -33,6 +46,7 @@ public sealed class DecoderTests : IDisposable
         using var scope = (IDisposable)source;
         var reference = factory.Open(path, TimeSpan.Zero, null);
         Assert.NotNull(reference);
+        using var referenceScope = (IDisposable)reference;
 
         var warm = new float[1000];
         source.ReadFrames(warm);
@@ -61,6 +75,7 @@ public sealed class DecoderTests : IDisposable
         using var scope = (IDisposable)source;
         var reference = factory.Open(path, TimeSpan.Zero, null);
         Assert.NotNull(reference);
+        using var referenceScope = (IDisposable)reference;
 
         source.Seek(1000);
 

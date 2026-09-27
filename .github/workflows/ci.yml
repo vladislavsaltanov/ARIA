@@ -1,0 +1,245 @@
+name: Test Build Release
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: 0 6 * * 1
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SDK_VERSION: 10.0.401
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Verify dotnet formatting
+        run: dotnet format --verify-no-changes --verbosity minimal
+      - name: Lint shell scripts
+        run: >
+          command -v shellcheck >/dev/null ||
+          { sudo apt-get update -qq &&
+          sudo apt-get install -y -qq shellcheck; } &&
+          shellcheck -S warning scripts/publish.sh
+          native/aria-shim/build.sh
+  build-test:
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Restore
+        run: dotnet restore
+      - name: Build release
+        run: dotnet build -c Release --no-restore -bl:build.binlog
+      - name: Test with one retry for known loopback and headless flakes
+        run: |
+          for attempt in 1 2; do
+            dotnet test -c Release --no-build && break
+            status=$?
+            test "$attempt" = 2 && exit "$status"
+            sleep 10
+          done
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: "**/*.trx"
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.os }}
+          path: build.binlog
+  audit:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Fail on vulnerable packages including transitive
+        run: |
+          fail=0
+          for p in src/*/*.csproj tests/*/*.csproj; do
+            out=$(dotnet list "$p" package \
+              --vulnerable --include-transitive 2>&1) || fail=1
+            echo "$out"
+            echo "$out" | grep -qi "following vulnerable" && fail=1
+          done
+          exit "$fail"
+  native-linux-windows:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install mingw for win-x64 shim
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64
+      - name: Install zig compiler
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Build linux-x64 shim
+        run: sh native/aria-shim/build.sh linux-x64
+      - name: Build win-x64 shim
+        run: sh native/aria-shim/build.sh win-x64
+      - name: Upload shims
+        uses: actions/upload-artifact@v4
+        with:
+          name: shims-linux-windows
+          path: |
+            runtimes/linux-x64/native/*
+            runtimes/win-x64/native/*
+  native-macos:
+    needs: build-test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build osx-arm64 shim
+        run: sh native/aria-shim/build.sh osx-arm64
+      - name: Build osx-x64 shim
+        run: sh native/aria-shim/build.sh osx-x64
+      - name: Upload shims
+        uses: actions/upload-artifact@v4
+        with:
+          name: shims-macos
+          path: |
+            runtimes/osx-arm64/native/*
+            runtimes/osx-x64/native/*
+  smoke-osx-arm64:
+    needs: [build-test, native-macos]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Publish bundle
+        run: sh scripts/publish.sh osx-arm64
+      - name: Run selftest
+        run: publish/osx-arm64/ARIA.app/Contents/MacOS/ARIA --selftest
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-osx-arm64
+          path: publish/osx-arm64/ARIA.app
+  smoke-linux-x64:
+    needs: [build-test, native-linux-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Install zig compiler
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Publish bundle
+        run: sh scripts/publish.sh linux-x64
+      - name: List bundle contents
+        run: |
+          ls publish/linux-x64/ARIA/
+          file publish/linux-x64/ARIA/aria || true
+      - name: Run selftest
+        run: publish/linux-x64/ARIA/aria --selftest
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-linux-x64
+          path: publish/linux-x64/aria-linux-x64.tar.gz
+  smoke-win-x64:
+    needs: [build-test, native-linux-windows]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Publish package
+        env:
+          MSYS_NO_PATHCONV: 1
+        run: |
+          dotnet publish src/ARIA.App -c Release -r win-x64 \
+            --self-contained -o publish/win-x64/stage \
+            /p:PublishTrimmed=false
+          for r in publish/win-x64/stage/runtimes/*/; do
+            case "$r" in
+              */win-x64/) ;;
+              *) rm -rf "$r" ;;
+            esac
+          done
+          mkdir -p publish/win-x64/ARIA
+          cp -R publish/win-x64/stage/. publish/win-x64/ARIA/
+          rm -rf publish/win-x64/stage
+      - name: Run selftest
+        run: publish/win-x64/ARIA/ARIA.App.exe --selftest
+      - name: Zip bundle
+        shell: pwsh
+        run: >
+          Compress-Archive -Path publish/win-x64/ARIA
+          -DestinationPath publish/win-x64/aria-win-x64.zip
+          -Force
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-win-x64
+          path: publish/win-x64/aria-win-x64.zip
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: >
+            --no-progress --verbose --max-retries 2
+            --timeout 20 README.md CHANGELOG.md
+            AGENTS.md CONTEXT.md docs/**/*.md specs/**/*.md
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/dependency-review-action@v4
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

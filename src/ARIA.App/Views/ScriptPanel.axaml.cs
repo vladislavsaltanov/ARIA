@@ -123,7 +123,8 @@ public partial class ScriptPanel : UserControl
 
     public event EventHandler? CloseRequested;
 
-    public void CommitOpenEdit()    {
+    public void CommitOpenEdit()
+    {
         if (DataContext is ScriptPanelViewModel viewModel)
         {
             foreach (var line in viewModel.Lines)
@@ -219,7 +220,8 @@ public partial class ScriptPanel : UserControl
     }
 
 
-    private void OnLineTapped(object? sender, TappedEventArgs e)    {
+    private void OnLineTapped(object? sender, TappedEventArgs e)
+    {
         if (_suppressTap)
         {
             _suppressTap = false;

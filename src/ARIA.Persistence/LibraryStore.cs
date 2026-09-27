@@ -17,7 +17,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
 
     public SqliteLibraryStore(string path)
     {
-        _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString();
         using var connection = Open();
         MigrateLegacySchema(connection);
         EnsureSchema(connection);

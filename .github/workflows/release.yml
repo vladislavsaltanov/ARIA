@@ -1,0 +1,104 @@
+name: Release
+on:
+  push:
+    tags: [v*]
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SDK_VERSION: 10.0.401
+jobs:
+  package-osx:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Publish osx-arm64 bundle
+        run: sh scripts/publish.sh osx-arm64
+      - name: Publish osx-x64 bundle
+        run: sh scripts/publish.sh osx-x64
+      - name: Zip bundles for release upload
+        run: |
+          (cd publish/osx-arm64 && ditto -c -k \
+            --sequesterRsrc ARIA.app aria-osx-arm64.zip)
+          (cd publish/osx-x64 && ditto -c -k \
+            --sequesterRsrc ARIA.app aria-osx-x64.zip)
+      - name: Upload bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles-osx
+          path: |
+            publish/osx-arm64/aria-osx-arm64.zip
+            publish/osx-x64/aria-osx-x64.zip
+  package-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Install zig compiler
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Publish linux-x64 bundle
+        run: sh scripts/publish.sh linux-x64
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-linux-x64
+          path: publish/linux-x64/aria-linux-x64.tar.gz
+  package-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+      - name: Publish win-x64 bundle
+        run: |
+          dotnet publish src/ARIA.App -c Release -r win-x64 \
+            --self-contained -o publish/win-x64/stage \
+            /p:PublishTrimmed=false
+          for r in publish/win-x64/stage/runtimes/*/; do
+            case "$r" in
+              */win-x64/) ;;
+              *) rm -rf "$r" ;;
+            esac
+          done
+          mkdir -p publish/win-x64/ARIA
+          cp -R publish/win-x64/stage/. publish/win-x64/ARIA/
+          rm -rf publish/win-x64/stage
+      - name: Zip bundle
+        shell: pwsh
+        run: >
+          Compress-Archive -Path publish/win-x64/ARIA
+          -DestinationPath publish/win-x64/aria-win-x64.zip
+          -Force
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-win-x64
+          path: publish/win-x64/aria-win-x64.zip
+  release:
+    needs: [package-osx, package-linux, package-win]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/**/*.tar.gz
+            dist/**/*.zip

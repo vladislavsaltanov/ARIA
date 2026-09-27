@@ -16,11 +16,16 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 {
     private const double VolumeMinDb = -80.0;
     private const double VolumeMaxDb = 12.0;
-    private static readonly SolidColorBrush BrushFg = new(Color.Parse("#ECECEC"));
-    private static readonly SolidColorBrush BrushDim = new(Color.Parse("#8A8A8A"));
-    private static readonly SolidColorBrush BrushFaulted = new(Color.Parse("#E5484D"));
-    private static readonly SolidColorBrush BrushOk = new(Color.Parse("#3FB950"));
-    private static readonly SolidColorBrush BrushWarm = new(Color.Parse("#D29922"));
+    private static SolidColorBrush CreateFgBrush() => new(Color.Parse("#ECECEC"));
+    private readonly SolidColorBrush _brushFg = CreateFgBrush();
+    private static SolidColorBrush CreateDimBrush() => new(Color.Parse("#8A8A8A"));
+    private readonly SolidColorBrush _brushDim = CreateDimBrush();
+    private static SolidColorBrush CreateFaultedBrush() => new(Color.Parse("#E5484D"));
+    private readonly SolidColorBrush _brushFaulted = CreateFaultedBrush();
+    private static SolidColorBrush CreateOkBrush() => new(Color.Parse("#3FB950"));
+    private readonly SolidColorBrush _brushOk = CreateOkBrush();
+    private static SolidColorBrush CreateWarmBrush() => new(Color.Parse("#D29922"));
+    private readonly SolidColorBrush _brushWarm = CreateWarmBrush();
 
     private readonly ICommandBus _bus;
     private readonly ClientId _client = new("desktop-transport");
@@ -81,7 +86,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private bool lufsHot;
 
     [ObservableProperty]
-    private IBrush lufsBarBrush = BrushFg;
+    private IBrush lufsBarBrush = CreateFgBrush();
 
     [ObservableProperty]
     private double levelLeft;
@@ -93,10 +98,10 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private bool levelHot;
 
     [ObservableProperty]
-    private IBrush levelBarBrush = BrushFg;
+    private IBrush levelBarBrush = CreateFgBrush();
 
     [ObservableProperty]
-    private IBrush lockBrush = BrushDim;
+    private IBrush lockBrush = CreateDimBrush();
 
     [ObservableProperty]
     private string showClockText = "00:00:00";
@@ -289,7 +294,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private void ApplyShow(ShowState state)
     {
         Locked = state.Locked;
-        LockBrush = state.Locked ? BrushFg : BrushDim;
+        LockBrush = state.Locked ? _brushFg : _brushDim;
         ShowClockText = FormatClock(state.Clock.Elapsed);
         ClockRunning = state.Clock.Running;
     }
@@ -343,11 +348,11 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LufsText = "MUTED";
             LufsLevel = 0;
             LufsHot = false;
-            LufsBarBrush = BrushFg;
+            LufsBarBrush = _brushFg;
             LevelLeft = 0;
             LevelRight = 0;
             LevelHot = false;
-            LevelBarBrush = BrushFg;
+            LevelBarBrush = _brushFg;
             _shownLufsLevel = 0;
             _shownLeft = 0;
             _shownRight = 0;
@@ -358,11 +363,11 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
             LufsText = "—";
             LufsLevel = 0;
             LufsHot = false;
-            LufsBarBrush = BrushFg;
+            LufsBarBrush = _brushFg;
             LevelLeft = 0;
             LevelRight = 0;
             LevelHot = false;
-            LevelBarBrush = BrushFg;
+            LevelBarBrush = _brushFg;
             _shownLufsLevel = 0;
             _shownLeft = 0;
             _shownRight = 0;
@@ -372,30 +377,30 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         _shownLufsLevel = SmoothLevel(_shownLufsLevel, Math.Clamp((_lastLufs + 60.0) / 60.0, 0.0, 1.0), elapsedMs, _meterSmoothing.ReleaseMs, _meterSmoothing.Enabled);
         LufsLevel = _shownLufsLevel;
         LufsBarBrush = ZoneBrush(_lastLufs, _zones);
-        LufsHot = ReferenceEquals(LufsBarBrush, BrushFaulted);
+        LufsHot = ReferenceEquals(LufsBarBrush, _brushFaulted);
         _shownLeft = SmoothLevel(_shownLeft, Math.Clamp(_lastPeakLeft, 0.0, 1.0), elapsedMs, _meterSmoothing.ReleaseMs, _meterSmoothing.Enabled);
         _shownRight = SmoothLevel(_shownRight, Math.Clamp(_lastPeakRight, 0.0, 1.0), elapsedMs, _meterSmoothing.ReleaseMs, _meterSmoothing.Enabled);
         LevelLeft = _shownLeft;
         LevelRight = _shownRight;
         LevelHot = _lastPeakLeft >= 1.0f || _lastPeakRight >= 1.0f;
-        LevelBarBrush = LevelHot ? BrushFaulted : BrushFg;
+        LevelBarBrush = LevelHot ? _brushFaulted : _brushFg;
     }
 
-    internal static SolidColorBrush ZoneBrush(double lufs, LufsMeterZones zones)
+    private SolidColorBrush ZoneBrush(double lufs, LufsMeterZones zones)
     {
         if (lufs < zones.GreenDb)
         {
-            return BrushFg;
+            return _brushFg;
         }
         if (lufs < zones.YellowDb)
         {
-            return BrushOk;
+            return _brushOk;
         }
         if (lufs < zones.RedDb)
         {
-            return BrushWarm;
+            return _brushWarm;
         }
-        return BrushFaulted;
+        return _brushFaulted;
     }
 
     private void RefreshTimerSubText() => TimerSubText = $"{_timeOfDayText} · {_trackElapsedText}";

@@ -110,7 +110,7 @@ public sealed class AudioPersistenceTests : IDisposable
     public void Library_LegacyTrackRowWithoutAudioColumn_LoadsNullAudio()
     {
         var id = Guid.NewGuid();
-        using (var connection = new SqliteConnection($"Data Source={_dbPath}"))
+        using (var connection = new SqliteConnection($"Data Source={_dbPath};Pooling=false"))
         {
             connection.Open();
             using (var command = connection.CreateCommand())
@@ -195,7 +195,7 @@ public sealed class AudioPersistenceTests : IDisposable
         {
             store.Upsert([track], []);
         }
-        using (var connection = new SqliteConnection($"Data Source={_dbPath}"))
+        using (var connection = new SqliteConnection($"Data Source={_dbPath};Pooling=false"))
         {
             connection.Open();
             using (var command = connection.CreateCommand())

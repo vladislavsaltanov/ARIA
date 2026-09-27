@@ -90,7 +90,7 @@ public sealed class WaveformStoreTests : IDisposable
             store.Save(new WaveformPeaks(trackId, 50, 8000, [new PeakPoint(-0.1f, 0.1f), new PeakPoint(-0.2f, 0.2f)]));
         }
 
-        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = _path }.ToString()))
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = _path, Pooling = false }.ToString()))
         {
             connection.Open();
             using var command = connection.CreateCommand();

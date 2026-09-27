@@ -101,7 +101,7 @@ public sealed class ProjectSchemaMigrationTests : IDisposable
 
     private void CreateLegacyDatabase(Track track, Guid entryId, Guid projectId)
     {
-        using var connection = new SqliteConnection($"Data Source={_dbPath}");
+        using var connection = new SqliteConnection($"Data Source={_dbPath};Pooling=false");
         connection.Open();
         Execute(connection, """
             CREATE TABLE tracks(
@@ -148,7 +148,7 @@ public sealed class ProjectSchemaMigrationTests : IDisposable
 
     private List<string> TableNames()
     {
-        using var connection = new SqliteConnection($"Data Source={_dbPath}");
+        using var connection = new SqliteConnection($"Data Source={_dbPath};Pooling=false");
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";

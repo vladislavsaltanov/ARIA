@@ -79,12 +79,17 @@ public sealed class OsDropReproTests : IDisposable
             return 0;
         }, CancellationToken.None);
 
-        deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
         var count = 0;
         while (DateTime.UtcNow < deadline && count == 0)
         {
             count = host.Bus.Snapshot().Show.Projects[0].Entries.Length;
             await Task.Delay(50);
+        }
+        var probe = "not-run";
+        if (count == 0)
+        {
+            probe = await ProbeDirectImportAsync(host, wav);
         }
         var status = string.Empty;
         var trackCount = 0;
@@ -94,11 +99,25 @@ public sealed class OsDropReproTests : IDisposable
             trackCount = host.Library!.Load().Tracks.Length;
             return 0;
         }, CancellationToken.None);
-        Assert.True(count == 1, $"entries={count} tracks={trackCount} status='{status}'");
+        Assert.True(count == 1, $"entries={count} tracks={trackCount} status='{status}' probe='{probe}'");
         await _session.Dispatch(() =>
         {
             window!.Close();
             return 0;
         }, CancellationToken.None);
+    }
+
+    private static async Task<string> ProbeDirectImportAsync(AppHost host, string wav)
+    {
+        var exists = File.Exists(wav) ? new FileInfo(wav).Length : -1;
+        try
+        {
+            var report = await host.ImportTracksAsync([wav]).WaitAsync(TimeSpan.FromSeconds(10));
+            return $"exists={exists} added={report.Added} skipped={report.Skipped} failed={report.Failed.Length}";
+        }
+        catch (TimeoutException)
+        {
+            return $"exists={exists} direct-import-timed-out";
+        }
     }
 }

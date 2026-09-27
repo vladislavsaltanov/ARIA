@@ -59,7 +59,7 @@ public sealed class TransportViewModelTests
         Assert.Equal(TransportStatus.Playing, bus.Snapshot().Transport.Status);
         Assert.Equal("PLAY", vm.StatusText);
         Assert.Equal("test", vm.DisplayName);
-        
+
     }
 
     [Fact]
