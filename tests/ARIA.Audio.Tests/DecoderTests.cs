@@ -27,9 +27,11 @@ public sealed class DecoderTests : IDisposable
                 }
                 return;
             }
-            catch (IOException) when (attempt < 5)
+            catch (IOException) when (attempt < 40)
             {
-                Thread.Sleep(50);
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                Thread.Sleep(100);
             }
         }
     }

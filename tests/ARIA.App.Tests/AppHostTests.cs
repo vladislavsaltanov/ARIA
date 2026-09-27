@@ -243,7 +243,8 @@ public sealed class AppHostTests : IDisposable
         Assert.Equal(0, second.Added);
         if (!OperatingSystem.IsMacOS())
         {
-            Assert.Single(second.Failed);
+            Assert.Empty(second.Failed);
+            Assert.Equal(0, second.Skipped);
         }
         else
         {

@@ -142,7 +142,9 @@ public sealed class AppHostLoggingTests : IDisposable
         await host.StartAsync();
 
         await PollAsync(() => HasLine("remote.started"));
-        Assert.DoesNotContain("test-token-secret", File.ReadAllText(LogPath()));
+        Assert.DoesNotContain(
+            "test-token-secret",
+            string.Concat(ReadEntries(LogPath()).Select(e => e.GetRawText())));
     }
 
     [Fact]
