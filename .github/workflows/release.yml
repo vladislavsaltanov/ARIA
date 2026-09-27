@@ -47,6 +47,8 @@ jobs:
         run: |
           python3 -m pip install \
             --break-system-packages -q ziglang
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
           zig version
       - name: Publish linux-x64 bundle
         run: sh scripts/publish.sh linux-x64

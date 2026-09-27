@@ -98,6 +98,8 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64
           python3 -m pip install --break-system-packages -q ziglang
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
           zig version
           x86_64-w64-mingw32-gcc --version
       - name: Build linux-x64 shim
@@ -155,6 +157,8 @@ jobs:
       - name: Install zig for shim build
         run: |
           python3 -m pip install --break-system-packages -q ziglang
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
           zig version
       - name: Publish bundle
         run: sh scripts/publish.sh linux-x64
