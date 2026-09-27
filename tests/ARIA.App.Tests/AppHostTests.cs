@@ -241,7 +241,7 @@ public sealed class AppHostTests : IDisposable
 
         var second = await host.ImportTracksAsync([nfd]);
         Assert.Equal(0, second.Added);
-        if (OperatingSystem.IsLinux())
+        if (!OperatingSystem.IsMacOS())
         {
             Assert.Single(second.Failed);
         }

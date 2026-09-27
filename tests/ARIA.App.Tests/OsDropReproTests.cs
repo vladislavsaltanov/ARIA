@@ -79,7 +79,7 @@ public sealed class OsDropReproTests : IDisposable
             return 0;
         }, CancellationToken.None);
 
-        deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
         var count = 0;
         while (DateTime.UtcNow < deadline && count == 0)
         {

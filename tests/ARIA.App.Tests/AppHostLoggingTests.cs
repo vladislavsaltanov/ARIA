@@ -217,10 +217,17 @@ public sealed class AppHostLoggingTests : IDisposable
             && data.TryGetProperty(key, out var field)
             && field.GetString() == value);
 
-    private static IEnumerable<JsonElement> ReadEntries(string path) =>
-        File.ReadAllLines(path)
+    private static IEnumerable<JsonElement> ReadEntries(string path)
+    {
+        using var stream = new FileStream(
+            path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd().Split('\n')
+            .Select(l => l.TrimEnd('\r'))
             .Where(l => l.Length > 0)
-            .Select(l => JsonDocument.Parse(l).RootElement.Clone());
+            .Select(l => JsonDocument.Parse(l).RootElement.Clone())
+            .ToArray();
+    }
 
     private static async Task PollAsync(Func<bool> condition)
     {

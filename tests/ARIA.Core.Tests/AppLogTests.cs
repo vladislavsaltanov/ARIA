@@ -141,8 +141,16 @@ public sealed class AppLogTests : IDisposable
     private IEnumerable<string> ReadAllLines()
     {
         var path = Path.Combine(_directory, "aria.log");
-        return !File.Exists(path)
-            ? []
-            : File.ReadAllLines(path).Where(l => l.Length > 0);
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+        using var stream = new FileStream(
+            path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd().Split('\n')
+            .Select(l => l.TrimEnd('\r'))
+            .Where(l => l.Length > 0)
+            .ToArray();
     }
 }

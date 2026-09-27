@@ -17,9 +17,20 @@ public sealed class DecoderTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_directory))
+        for (var attempt = 0; ; attempt++)
         {
-            Directory.Delete(_directory, recursive: true);
+            try
+            {
+                if (Directory.Exists(_directory))
+                {
+                    Directory.Delete(_directory, recursive: true);
+                }
+                return;
+            }
+            catch (IOException) when (attempt < 5)
+            {
+                Thread.Sleep(50);
+            }
         }
     }
 
