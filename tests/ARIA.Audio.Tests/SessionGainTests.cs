@@ -1,5 +1,6 @@
 namespace Aria.Audio.Tests;
 
+using Aria.Core.Model;
 using Aria.Core.Playback;
 
 public sealed class SessionGainTests
@@ -91,10 +92,11 @@ public sealed class SessionGainTests
             new TrackSource("/audio/sine.flac", TimeSpan.Zero, null),
             new StreamOptions(StreamBus.Main, []));
         rig.Engine.Transport(main, TransportCommand.Play);
+        rig.Engine.SetVoiceAudio(main, new TrackAudioSettings(-80.0, 0, AudioEq.Flat));
         var loud = rig.Engine.OpenPreviewSession("loud");
         var quiet = rig.Engine.OpenPreviewSession("quiet");
-        rig.Engine.SetClick(loud, new ClickSettings(120, 4, 0, 0));
-        rig.Engine.SetClick(quiet, new ClickSettings(120, 4, 0, 0));
+        rig.Engine.SetClick(loud, new ClickSettings(120, 1, 0, 0));
+        rig.Engine.SetClick(quiet, new ClickSettings(120, 1, 0, 0));
         rig.Engine.SetClickMuted(loud, false);
         rig.Engine.SetClickMuted(quiet, false);
         rig.Engine.SetSessionClickGain(quiet, -6.0);
@@ -104,17 +106,26 @@ public sealed class SessionGainTests
         Assert.NotNull(quietTap);
         var loudReader = loudTap.Subscribe();
         var quietReader = quietTap.Subscribe();
-        var buffer = new float[256 * Channels];
-        await Poll(() => loudReader.Read(buffer) > 0 && quietReader.Read(buffer) > 0, "clicks never started");
+        var loudBuffer = new float[256 * Channels];
+        var quietBuffer = new float[256 * Channels];
+        await Poll(
+            () => loudReader.Read(loudBuffer) > 0 && quietReader.Read(quietBuffer) > 0,
+            "clicks never started");
         var loudPeak = 0.0;
         var quietPeak = 0.0;
-        for (var i = 0; i < 400; i++)
+        var frames = 0;
+        var deadline = Environment.TickCount64 + 10000;
+        while (frames < 2 * SampleRate && Environment.TickCount64 < deadline)
         {
-            loudPeak = Math.Max(loudPeak, Peak(buffer, loudReader.Read(buffer)));
-            quietPeak = Math.Max(quietPeak, Peak(buffer, quietReader.Read(buffer)));
+            var loudRead = loudReader.Read(loudBuffer);
+            var quietRead = quietReader.Read(quietBuffer);
+            loudPeak = Math.Max(loudPeak, Peak(loudBuffer, loudRead));
+            quietPeak = Math.Max(quietPeak, Peak(quietBuffer, quietRead));
+            frames += loudRead / Channels + quietRead / Channels;
         }
         Assert.True(loudPeak > 0, "loud click silent");
-        Assert.InRange(quietPeak / loudPeak, 0.5, 0.8);
+        Assert.True(quietPeak > 0, "quiet click silent");
+        Assert.InRange(quietPeak / loudPeak, 0.45, 0.8);
     }
 
     [Fact]

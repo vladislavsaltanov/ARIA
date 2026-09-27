@@ -22,15 +22,11 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
 
     public RemoteCredentials Load()
     {
-        if (File.Exists(_filePath))
+        if (File.Exists(_filePath) && ReadStored() is { } stored)
         {
-            return JsonSerializer.Deserialize<StoredCredentials>(File.ReadAllText(_filePath)) is { } stored
-                ? new RemoteCredentials(stored.Identifier, stored.Password)
-                : throw new InvalidOperationException("remote credentials file is corrupt");
+            return new RemoteCredentials(stored.Identifier, stored.Password);
         }
-        var generated = new StoredCredentials(GenerateIdentifier(), GeneratePassword());
-        Persist(generated);
-        return new RemoteCredentials(generated.Identifier, generated.Password);
+        return Regenerate();
     }
 
     public bool Verify(string identifier, string password)
@@ -39,7 +35,15 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
         {
             return false;
         }
-        var stored = Load();
+        RemoteCredentials stored;
+        try
+        {
+            stored = Load();
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return false;
+        }
         if (!string.Equals(identifier, stored.Identifier, StringComparison.Ordinal))
         {
             return false;
@@ -79,6 +83,29 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
             Directory.CreateDirectory(directory);
         }
         File.WriteAllText(_filePath, JsonSerializer.Serialize(stored, JsonOptions));
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(_filePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    private StoredCredentials? ReadStored()
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<StoredCredentials>(File.ReadAllText(_filePath));
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private RemoteCredentials Regenerate()
+    {
+        var regenerated = new StoredCredentials(GenerateIdentifier(), GeneratePassword());
+        Persist(regenerated);
+        return new RemoteCredentials(regenerated.Identifier, regenerated.Password);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };

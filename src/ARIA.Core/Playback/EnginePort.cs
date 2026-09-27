@@ -113,6 +113,10 @@ public interface IAudioEngine
     {
     }
 
+    void SetSessionFollow(bool follow)
+    {
+    }
+
     IReadOnlyList<SessionProfile> ListSessions() => [];
 
     void StartSessionTrack(PreviewSessionHandle session, TrackSource source)

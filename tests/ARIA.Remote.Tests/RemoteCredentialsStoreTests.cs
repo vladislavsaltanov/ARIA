@@ -18,6 +18,35 @@ public sealed class RemoteCredentialsStoreTests : IDisposable
     }
 
     [Fact]
+    public void CorruptFile_RegeneratesPair_AndVerifyFailsClosed()
+    {
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(FilePath, "{ not json");
+        var store = new RemoteCredentialsStore(FilePath);
+
+        var regenerated = store.Load();
+
+        Assert.StartsWith("ARIA-", regenerated.Identifier);
+        Assert.False(store.Verify("ARIA-XXXX", "whatever"));
+        Assert.True(store.Verify(regenerated.Identifier, regenerated.Password));
+    }
+
+    [Fact]
+    public void PersistedFile_IsOwnerOnly_OnUnix()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var store = new RemoteCredentialsStore(FilePath);
+        store.Load();
+
+        var mode = File.GetUnixFileMode(FilePath);
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
+    }
+
+    [Fact]
     public void FirstLoad_CreatesRandomPair_AndPersists()
     {
         var store = new RemoteCredentialsStore(FilePath);

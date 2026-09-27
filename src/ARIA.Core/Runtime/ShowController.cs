@@ -6,7 +6,6 @@ using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.State;
 
-// Owns PlayerState: mutate only here, on control thread.
 public sealed class ShowController : IShowHandler
 {
     private const double MasterGainMinDb = -80.0;
@@ -608,7 +607,7 @@ public sealed class ShowController : IShowHandler
                     return;
                 }
                 _engine.Transport(handle, TransportCommand.Play);
-                _status = TransportStatus.Playing;
+                SetStatus(TransportStatus.Playing);
                 EmitTransport();
                 break;
             case TransportStatus.Stopped:
@@ -635,7 +634,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _engine.Transport(handle, TransportCommand.Pause);
-        _status = TransportStatus.Paused;
+        SetStatus(TransportStatus.Paused);
         _atEndBoundary = false;
         EmitTransport();
     }
@@ -668,7 +667,8 @@ public sealed class ShowController : IShowHandler
                 _current.Handle = null;
             }
         }
-        _status = TransportStatus.Stopped;
+        _pendingOpen = null;
+        SetStatus(TransportStatus.Stopped);
         _atEndBoundary = false;
         _engine.StopPreview();
         EmitTransport();
@@ -728,13 +728,12 @@ public sealed class ShowController : IShowHandler
             SeekWithCrossfade(deck, filePosition);
             return;
         }
-        _engine.Seek(handle, filePosition - settings.CueIn);
+        _engine.Seek(handle, filePosition - deck.StartAt);
         _preRolled = false;
     }
 
     private void SeekWithCrossfade(DeckInstance deck, TimeSpan filePosition)
     {
-        // New stream, not in-place seek: overlap fades, no click.
         var settings = deck.Settings;
         var old = deck.Handle!.Value;
         _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
@@ -746,7 +745,7 @@ public sealed class ShowController : IShowHandler
             settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
-        deck.Settings = settings with { CueIn = filePosition };
+        deck.StartAt = filePosition;
         _monitor?.Bind(handle, Content(deck));
         _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
         _engine.Transport(handle, TransportCommand.Play);
@@ -767,7 +766,8 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(handle);
             _current.Handle = null;
         }
-        _status = TransportStatus.Panicked;
+        _pendingOpen = null;
+        SetStatus(TransportStatus.Panicked);
         _panicked = true;
         _atEndBoundary = false;
         EmitTransport();
@@ -1087,6 +1087,10 @@ public sealed class ShowController : IShowHandler
         var entries = project.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
         _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
+        if (_current?.Entry is { } currentEntry && currentEntry.Equals(command.Entry))
+        {
+            RefreshCurrentEndAction();
+        }
         EmitShow();
         EmitTransport();
     }
@@ -1397,6 +1401,27 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
+    private void RefreshCurrentEndAction()
+    {
+        if (_current is not { } deck)
+        {
+            return;
+        }
+        if (!_trackMap.TryGetValue(deck.Track.Id, out var track))
+        {
+            return;
+        }
+        var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
+            ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+            : EffectiveSettings.ForTrack(track, _defaultEndAction);
+        if (settings.EndAction == deck.Settings.EndAction)
+        {
+            return;
+        }
+        deck.Settings = deck.Settings with { EndAction = settings.EndAction };
+        EmitTransport();
+    }
+
     private void PushCurrentAudio()
     {
         if (_current?.Handle is not { } handle)
@@ -1680,6 +1705,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _defaultEndAction = command.Action;
+        RefreshCurrentEndAction();
         EmitShow();
     }
 
@@ -1705,6 +1731,24 @@ public sealed class ShowController : IShowHandler
         }
         if (!_smoothing.Enabled || _smoothing.AutoCrossfade <= TimeSpan.Zero)
         {
+            return;
+        }
+        if (current.Settings.EndAction == EndAction.Replay)
+        {
+            if (snapshot.Remaining > _smoothing.ManualCrossfade)
+            {
+                return;
+            }
+            var replayWasPlaying = _status == TransportStatus.Playing;
+            var replayOld = _current;
+            _current = new DeckInstance { Entry = replayOld!.Entry, Track = replayOld.Track, Settings = replayOld.Settings };
+            StartStreamFor(_current, auto: true, _smoothing.ManualCrossfade);
+            SetStatus(TransportStatus.Playing);
+            _atEndBoundary = false;
+            _panicked = false;
+            EmitTransport();
+            _preRolled = true;
+            ReleaseOld(replayOld, replayWasPlaying, manual: true);
             return;
         }
         if (current.Settings.EndAction != EndAction.Advance)
@@ -1787,6 +1831,11 @@ public sealed class ShowController : IShowHandler
 
     private void ApplyEndAction()
     {
+        if (_current!.Settings.EndAction == EndAction.Replay)
+        {
+            RestartCurrent();
+            return;
+        }
         if (_queue.Count > 0)
         {
             AdvanceFromBoundary();
@@ -1795,12 +1844,12 @@ public sealed class ShowController : IShowHandler
         switch (_current!.Settings.EndAction)
         {
             case EndAction.Pause:
-                _status = TransportStatus.Paused;
+                SetStatus(TransportStatus.Paused);
                 _atEndBoundary = true;
                 EmitTransport();
                 break;
             case EndAction.Stop:
-                _status = TransportStatus.Stopped;
+                SetStatus(TransportStatus.Stopped);
                 _atEndBoundary = false;
                 EmitTransport();
                 break;
@@ -1817,7 +1866,7 @@ public sealed class ShowController : IShowHandler
     {
         if (!StartFromOrder(lead))
         {
-            _status = TransportStatus.Stopped;
+            SetStatus(TransportStatus.Stopped);
             _atEndBoundary = false;
             _current = null;
             EmitTransport();
@@ -1851,7 +1900,7 @@ public sealed class ShowController : IShowHandler
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
             StartStreamFor(_current, auto: true, lead);
-            _status = TransportStatus.Playing;
+            SetStatus(TransportStatus.Playing);
             _atEndBoundary = false;
             _panicked = false;
             EmitQueue();
@@ -1881,7 +1930,7 @@ public sealed class ShowController : IShowHandler
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
         StartStreamFor(_current, auto, lead);
-        _status = TransportStatus.Playing;
+        SetStatus(TransportStatus.Playing);
         _atEndBoundary = false;
         _panicked = false;
         EmitShow();
@@ -1895,8 +1944,9 @@ public sealed class ShowController : IShowHandler
             _faulted.Add(failed.Track.Id);
             _faultCauses[failed.Track.Id] = ParseFaultCause(detail);
         }
+        _pendingOpen = null;
         DisposeCurrentHandle();
-        _status = TransportStatus.Stopped;
+        SetStatus(TransportStatus.Stopped);
         _current = null;
         EmitTransport();
     }
@@ -1911,6 +1961,7 @@ public sealed class ShowController : IShowHandler
         _faulted.Remove(deck.Track.Id);
         _faultCauses.Remove(deck.Track.Id);
         var settings = deck.Settings;
+        deck.StartAt = settings.CueIn;
         var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut, settings.Audio);
         var options = new StreamOptions(
             StreamBus.Main,
@@ -1988,7 +2039,7 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(handle);
         }
         StartStreamFor(deck, auto: false);
-        _status = TransportStatus.Playing;
+        SetStatus(TransportStatus.Playing);
         _atEndBoundary = false;
         _panicked = false;
         EmitTransport();
@@ -2040,7 +2091,8 @@ public sealed class ShowController : IShowHandler
             _monitor?.Unbind(handle);
         }
         _current = null;
-        _status = TransportStatus.Stopped;
+        _pendingOpen = null;
+        SetStatus(TransportStatus.Stopped);
     }
 
     private void DisposeCurrentHandle()
@@ -2066,7 +2118,7 @@ public sealed class ShowController : IShowHandler
         deck.Settings.Color,
         deck.Settings.EndAction,
         deck.Track.Duration,
-        deck.Settings.CueIn,
+        deck.StartAt,
         deck.Settings.CueOut,
         deck.Track.Defaults.Bpm);
 
@@ -2171,6 +2223,12 @@ public sealed class ShowController : IShowHandler
         }
     }
 
+    private void SetStatus(TransportStatus status)
+    {
+        _status = status;
+        _engine.SetSessionFollow(status == TransportStatus.Playing);
+    }
+
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));
 
     private static SourceOpenFault ParseFaultCause(string? detail) =>
@@ -2186,5 +2244,6 @@ public sealed class ShowController : IShowHandler
         public required Track Track { get; init; }
         public required PlaybackSettings Settings { get; set; }
         public StreamHandle? Handle { get; set; }
+        public TimeSpan StartAt { get; set; }
     }
 }

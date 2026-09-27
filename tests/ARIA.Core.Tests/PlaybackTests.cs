@@ -129,6 +129,41 @@ public sealed class PlaybackTests
     }
 
     [Fact]
+    public void EndAction_Replay_AfterSeek_RestartsFromTrackCue()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one", EndAction.Replay);
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Smoothing.Default with { Enabled = true, SeekFade = TimeSpan.FromMilliseconds(350) }));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.Completed);
+
+        var replayed = h.Engine.Last!;
+        Assert.Equal(3, h.Engine.Created.Count);
+        Assert.Equal(TimeSpan.Zero, replayed.Source.CueIn);
+    }
+
+    [Fact]
+    public void SeekTo_AfterSeekWithCrossfade_StillReachesEarlierPosition()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Smoothing.Default with { Enabled = true, SeekFade = TimeSpan.FromMilliseconds(350) }));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(10)));
+
+        Assert.Equal(3, h.Engine.Created.Count);
+        Assert.Equal(TimeSpan.FromSeconds(10), h.Engine.Last!.Source.CueIn);
+    }
+
+    [Fact]
     public void EndAction_Stop_HoldsCurrent_PlayReplaysIt()
     {
         using var h = new Harness();
@@ -186,7 +221,7 @@ public sealed class PlaybackTests
     }
 
     [Fact]
-    public void EndAction_Replay_WithQueuedItem_AdvancesToQueue()
+    public void EndAction_Replay_WithQueuedItem_ReplaysAndKeepsQueue()
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one", EndAction.Replay);
@@ -198,9 +233,11 @@ public sealed class PlaybackTests
 
         h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
 
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Equal(t1.FilePath, h.Engine.Last!.Source.FilePath);
         Assert.Equal(TransportStatus.Playing, h.Transport.Status);
-        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
-        Assert.Empty(h.Snapshot.Queue.Items);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+        Assert.Single(h.Snapshot.Queue.Items);
     }
 
     [Fact]

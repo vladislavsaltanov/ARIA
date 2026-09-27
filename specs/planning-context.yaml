@@ -1,4 +1,8 @@
 # planning-context: elaborate-spec
+# status: superseded 2026-09-27 — срез MetronomePreview вывезен в код
+# (коммиты f9d58dc..5b8ed47, запись в CHANGELOG Unreleased).
+# Активная линия — specs/epics/e03-monitor
+# (e03s01 и e03s02 passing, e03s03 deferred).
 # consumed by scope-work and slice-tasks
 feature_name: "MetronomePreview"
 problem_statement: >-

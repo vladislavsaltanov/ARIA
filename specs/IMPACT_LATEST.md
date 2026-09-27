@@ -2,6 +2,9 @@
 
 src/ARIA.Core/Runtime/ShowController.cs (1627 lines) — split into cohort files
 
+Снимок от 2026-09-15. Цель выросла до 2196 строк; решение по сплиту —
+ADR 0009 (отклонён 2026-09-14, перепроверен 2026-09-27).
+
 ## Dependents (30)
 
 - src/ARIA.App/AppHost.cs: only caller in prod (ctor, via ICommandBus seam)

@@ -13,9 +13,10 @@ public sealed class SessionMixerTests : IDisposable
 
     public void Dispose() => _mixer.Dispose();
 
-    private SessionPumpContext LiveContext() => new(
+    private SessionPumpContext LiveContext(bool mainPlaying = true, bool follow = true) => new(
         _mainTap.Head,
-        true,
+        mainPlaying,
+        follow,
         BitConverter.DoubleToInt64Bits(1.0),
         0);
 
@@ -107,13 +108,45 @@ public sealed class SessionMixerTests : IDisposable
     }
 
     [Fact]
+    public void FollowBridgesGap_WhenMainPausedBetweenTracks()
+    {
+        var session = _mixer.Open(null, _mainTap.Subscribe(), -1);
+        var tap = _mixer.Tap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var block = new float[BlockFrames * Channels];
+        var phase = 0.0;
+        FillSine(block, Channels, ref phase);
+        _mainTap.Publish(block);
+        _mixer.Pump(LiveContext(mainPlaying: false, follow: true));
+
+        Assert.True(reader.Read(block) > 0, "session starved during boundary gap");
+    }
+
+    [Fact]
+    public void NoFollowStarves_WhenMainStopped()
+    {
+        var session = _mixer.Open(null, _mainTap.Subscribe(), -1);
+        var tap = _mixer.Tap(session);
+        Assert.NotNull(tap);
+        var reader = tap.Subscribe();
+        var block = new float[BlockFrames * Channels];
+        var phase = 0.0;
+        FillSine(block, Channels, ref phase);
+        _mainTap.Publish(block);
+        _mixer.Pump(LiveContext(mainPlaying: false, follow: false));
+
+        Assert.Equal(0, reader.Read(block));
+    }
+
+    [Fact]
     public void Pump_AllocatesNothing_InSteadyState()
     {
         var session = _mixer.Open(null, _mainTap.Subscribe(), -1);
         _mixer.StartTrack(session, new TrackSource("/audio/sine.flac", TimeSpan.Zero, null));
         var block = new float[BlockFrames * Channels];
         var phase = 0.0;
-        for (var i = 0; i < 50; i++)
+        for (var i = 0; i < 300; i++)
         {
             FillSine(block, Channels, ref phase);
             _mainTap.Publish(block);

@@ -448,6 +448,54 @@ public sealed class SmoothingTests
     }
 
     [Fact]
+    public void PreRoll_Replay_StartsSameTrackBeforeOldEnds_WithAudibleOverlap()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one", EndAction.Replay);
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Empty(h.Engine.Disposed);
+        var fadeOut = Assert.Single(h.Engine.Created[0].Mixes, m => m.Fade is not null).Fade!;
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fadeOut.Duration);
+        Assert.Equal(FadeCurve.Exponential, fadeOut.Curve);
+        Assert.True(fadeOut.StopWhenDone);
+        var fresh = h.Engine.Last!;
+        Assert.Equal(t1.FilePath, fresh.Source.FilePath);
+        Assert.Equal(TimeSpan.FromMilliseconds(400), fresh.Mixes[0].Fade!.Duration);
+        Assert.Equal(FadeCurve.Logarithmic, fresh.Mixes[0].Fade!.Curve);
+        Assert.False(fresh.Mixes[0].Fade!.StopWhenDone);
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+    }
+
+    [Fact]
+    public void PreRoll_Replay_WithQueuedItem_KeepsQueueWaiting()
+    {
+        var monitor = new PlaybackMonitor();
+        using var h = new Harness(monitor);
+        var t1 = TestShow.Track("one", EndAction.Replay);
+        var t2 = TestShow.Track("two");
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1, t2], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new EnqueueTrack(t2.Id));
+        h.Submit(new SetSmoothing(Enabled(autoMs: 900)));
+
+        monitor.Publish(h.Engine.Created[0].Handle, t1.Duration - TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+        Assert.Single(h.Snapshot.Queue.Items);
+    }
+
+    [Fact]
     public void PreRoll_FiresOnce()
     {
         var monitor = new PlaybackMonitor();
