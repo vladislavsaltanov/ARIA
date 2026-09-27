@@ -1787,6 +1787,11 @@ public sealed class ShowController : IShowHandler
 
     private void ApplyEndAction()
     {
+        if (_current!.Settings.EndAction == EndAction.Replay)
+        {
+            RestartCurrent();
+            return;
+        }
         if (_queue.Count > 0)
         {
             AdvanceFromBoundary();
