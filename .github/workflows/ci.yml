@@ -160,7 +160,7 @@ jobs:
         run: sh scripts/publish.sh linux-x64
       - name: List bundle contents
         run: |
-          ls -la publish/linux-x64/ARIA/ | head -n 15
+          ls publish/linux-x64/ARIA/
           file publish/linux-x64/ARIA/aria || true
       - name: Run selftest
         run: publish/linux-x64/ARIA/aria --selftest
