@@ -113,4 +113,38 @@ public sealed class DefaultEndActionTests
         var delta = h.Events.OfType<ShowDelta>().Last();
         Assert.Equal(EndAction.Pause, delta.State.DefaultEndAction);
     }
+
+    [Fact]
+    public void ChangingCurrentEntryEndAction_WhilePlaying_AppliesAtBoundary()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetEntryOverrides(p.Entries[0].Id, new ProjectOverrides(EndAction: EndAction.Replay)));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+    }
+
+    [Fact]
+    public void ChangingGlobalEndAction_WhilePlaying_AppliesAtBoundary()
+    {
+        using var h = new Harness();
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new Play());
+        h.Submit(new SetDefaultEndAction(EndAction.Replay));
+
+        h.Engine.End(h.Engine.Created[0].Handle, StreamEndReason.Completed);
+
+        Assert.Equal(2, h.Engine.Created.Count);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+    }
 }

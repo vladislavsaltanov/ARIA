@@ -1087,6 +1087,10 @@ public sealed class ShowController : IShowHandler
         var entries = project.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
         _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
+        if (_current?.Entry is { } currentEntry && currentEntry.Equals(command.Entry))
+        {
+            RefreshCurrentEndAction();
+        }
         EmitShow();
         EmitTransport();
     }
@@ -1397,6 +1401,27 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
+    private void RefreshCurrentEndAction()
+    {
+        if (_current is not { } deck)
+        {
+            return;
+        }
+        if (!_trackMap.TryGetValue(deck.Track.Id, out var track))
+        {
+            return;
+        }
+        var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
+            ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+            : EffectiveSettings.ForTrack(track, _defaultEndAction);
+        if (settings.EndAction == deck.Settings.EndAction)
+        {
+            return;
+        }
+        deck.Settings = deck.Settings with { EndAction = settings.EndAction };
+        EmitTransport();
+    }
+
     private void PushCurrentAudio()
     {
         if (_current?.Handle is not { } handle)
@@ -1680,6 +1705,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _defaultEndAction = command.Action;
+        RefreshCurrentEndAction();
         EmitShow();
     }
 
