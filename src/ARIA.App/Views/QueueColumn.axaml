@@ -3,6 +3,14 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.QueueColumn"
              x:DataType="vm:QueueViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.qRow.current">
+      <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>
+    </Style>
+    <Style Selector="Border.qRow.current PathIcon">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+    </Style>
+  </UserControl.Styles>
   <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}"
           BorderThickness="1" CornerRadius="8" Margin="14,10,14,10">
     <Grid RowDefinitions="Auto,*">
@@ -26,7 +34,7 @@
                ItemContainerTheme="{StaticResource PlainRowItem}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:QueueViewModel+QueueItemVm">
-            <Border Classes="qRow" Height="36" CornerRadius="6" Padding="10,0" Background="Transparent">
+            <Border Classes="qRow" Classes.current="{Binding IsCurrent}" Height="40" CornerRadius="6" Padding="10,0" Background="Transparent">
               <Border.ContextMenu>
                 <ContextMenu>
                   <MenuItem Header="Играть сейчас" Click="OnPlayNowClick"/>
@@ -36,7 +44,7 @@
               <Grid ColumnDefinitions="18,*">
                 <PathIcon Data="{StaticResource icon_play}" Width="12" Height="12" VerticalAlignment="Center"
                           IsVisible="{Binding IsCurrent}"/>
-                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
               </Grid>
             </Border>
           </DataTemplate>

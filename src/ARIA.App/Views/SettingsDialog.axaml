@@ -19,7 +19,7 @@
     <Style Selector="TextBlock.sectionTitle">
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
       <Setter Property="Margin" Value="0,0,0,10"/>
     </Style>
     <Style Selector="Button.action">
@@ -37,6 +37,9 @@
     </Style>
     <Style Selector="Button.action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+    <Style Selector="ListBox#SectionNav ListBoxItem">
+      <Setter Property="MinHeight" Value="34"/>
     </Style>
   </Window.Styles>
   <Grid RowDefinitions="Auto,*" Margin="18">

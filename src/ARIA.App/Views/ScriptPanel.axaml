@@ -9,9 +9,9 @@
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
     <Style Selector="Border.scriptLine.current">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
-      <Setter Property="BorderThickness" Value="3,0,0,0"/>
+      <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushSignal}"/>
+      <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
     <Style Selector="Border.scriptLine.editing">
       <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
@@ -24,12 +24,12 @@
       <Setter Property="Padding" Value="9,3"/>
     </Style>
     <Style Selector="Border.mention:pointerover">
-      <Setter Property="Background" Value="#343434"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
     <Style Selector="Border.mention.dangling">
-      <Setter Property="Background" Value="#232323"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
     </Style>
     <Style Selector="Button.scriptFooter">
       <Setter Property="MinHeight" Value="30"/>
@@ -102,7 +102,7 @@
                       <TextBlock Tag="ScriptText" Text="{Binding Text}" FontSize="13" TextWrapping="Wrap"
                                  IsVisible="{Binding HasText}"/>
                       <TextBlock Tag="ScriptText" Text="пустая строка…" FontSize="13" FontStyle="Italic"
-                                 Foreground="{StaticResource BrushFaint}" IsVisible="{Binding !HasText}"/>
+                                 Foreground="{StaticResource BrushDim}" IsVisible="{Binding !HasText}"/>
                       <ItemsControl ItemsSource="{Binding Mentions}" Margin="0,4,0,0">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate>

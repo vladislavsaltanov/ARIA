@@ -13,7 +13,7 @@
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-        <TextBlock Text="Проекты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+        <TextBlock Text="Проекты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushFg}" VerticalAlignment="Center"/>
       </StackPanel>
       <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Command="{Binding CreateProjectCommand}" ToolTip.Tip="Новый проект">
         <PathIcon Data="{StaticResource icon_plus}" Width="13" Height="13"/>
@@ -24,13 +24,13 @@
              ItemContainerTheme="{StaticResource PlainRowItem}">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:ProjectsViewModel+ProjectVm">
-          <Border Height="30" CornerRadius="6" Padding="12,0" Background="Transparent">
+          <Border Height="34" CornerRadius="6" Padding="12,0" Background="Transparent">
             <Border.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="Закрыть проект" Click="OnDeleteClick"/>
               </ContextMenu>
             </Border.ContextMenu>
-            <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
           </Border>
         </DataTemplate>
       </ListBox.ItemTemplate>

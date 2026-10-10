@@ -7,7 +7,7 @@
   <Border Classes="section" x:DataType="vms:MonitorsSectionVm" DataContext="{Binding Monitors}">
     <StackPanel>
       <TextBlock Text="Мониторы" Classes="sectionTitle"/>
-      <TextBlock Text="Активные веб-пульты: уровни подложки и метронома на клиента, отключение" FontSize="11" Foreground="{StaticResource BrushFaint}" Margin="0,0,0,10"/>
+      <TextBlock Text="Активные веб-пульты: уровни подложки и метронома на клиента, отключение" FontSize="11" Foreground="{StaticResource BrushDim}" Margin="0,0,0,10"/>
       <ItemsControl ItemsSource="{Binding Sessions}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vms:MonitorSessionVm">

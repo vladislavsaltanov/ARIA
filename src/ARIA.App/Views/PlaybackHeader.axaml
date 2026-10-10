@@ -29,9 +29,13 @@
   </UserControl.Styles>
   <Border x:Name="WaveformBorder" Classes="headerWave">
     <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,8">
-      <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
-                 FontFamily="{StaticResource MonoFont}" FontSize="36" FontWeight="SemiBold"
-                 Foreground="{StaticResource BrushFg}" HorizontalAlignment="Center"/>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" VerticalAlignment="Center">
+        <Ellipse Width="8" Height="8" Fill="{StaticResource BrushSignal}" VerticalAlignment="Center"
+                 IsVisible="{Binding ClockRunning}"/>
+        <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
+                   FontFamily="{StaticResource MonoFont}" FontSize="40" FontWeight="SemiBold"
+                   Foreground="{StaticResource BrushFg}" VerticalAlignment="Center"/>
+      </StackPanel>
       <TextBlock Grid.Row="1" x:Name="TimerSubBig" Text="{Binding TimerSubText}"
                  FontFamily="{StaticResource MonoFont}" FontSize="14"
                  Foreground="{StaticResource BrushDim}" HorizontalAlignment="Center" Margin="0,4,0,8"/>
@@ -62,7 +66,7 @@
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
         <Grid>
           <Canvas x:Name="WaveformCanvas" Background="Transparent">
-            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushFg}"
+            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushSignal}"
                        IsVisible="False"/>
           </Canvas>
         </Grid>

@@ -8,7 +8,7 @@
     <StackPanel Orientation="Horizontal" Spacing="12">
       <StackPanel VerticalAlignment="Center">
         <TextBlock Text="Часы" Classes="sectionTitle"/>
-        <TextBlock Text="elapsed сбрасывается только вручную" FontSize="11" Foreground="{StaticResource BrushFaint}"/>
+        <TextBlock Text="elapsed сбрасывается только вручную" FontSize="11" Foreground="{StaticResource BrushDim}"/>
       </StackPanel>
       <Button VerticalAlignment="Center" Classes="action" Content="Сбросить show clock"
               Command="{Binding ResetClockCommand}" x:Name="ResetClockButton"/>

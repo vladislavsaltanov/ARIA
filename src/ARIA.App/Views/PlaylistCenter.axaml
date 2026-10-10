@@ -135,7 +135,7 @@
       </ListBox.ItemTemplate>
     </ListBox>
     <TextBlock Text="Проектов нет — создайте кнопкой «+» в рейле «Проекты»"
-               FontSize="13" Foreground="{StaticResource BrushFaint}"
+               FontSize="13" Foreground="{StaticResource BrushDim}"
                HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-30,0,0"
                IsVisible="{Binding SelectedProject, Converter={x:Static ObjectConverters.IsNull}}"/>
     </Panel>
