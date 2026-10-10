@@ -5,13 +5,11 @@
              x:Class="Aria.App.Views.SettingsSections.ClockSection"
              x:DataType="vm:SettingsViewModel">
   <Border Classes="section" x:DataType="vms:ClockSectionVm" DataContext="{Binding Clock}">
-    <StackPanel Orientation="Horizontal" Spacing="12">
-      <StackPanel VerticalAlignment="Center">
-        <TextBlock Text="Часы" Classes="sectionTitle"/>
-        <TextBlock Text="elapsed сбрасывается только вручную" FontSize="11" Foreground="{StaticResource BrushDim}"/>
-      </StackPanel>
-      <Button VerticalAlignment="Center" Classes="action" Content="Сбросить show clock"
-              Command="{Binding ResetClockCommand}" x:Name="ResetClockButton"/>
+    <StackPanel>
+      <TextBlock Text="Часы шоу" Classes="sectionTitle"/>
+      <TextBlock Text="сбрасываются только вручную — пауза шоу их не трогает" Classes="hint" Margin="0,0,0,12"/>
+      <Button VerticalAlignment="Center" Classes="action" Content="Сбросить часы шоу"
+              Command="{Binding ResetClockCommand}" x:Name="ResetClockButton" HorizontalAlignment="Left"/>
     </StackPanel>
   </Border>
 </UserControl>

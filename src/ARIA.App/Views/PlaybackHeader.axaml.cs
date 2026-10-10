@@ -61,7 +61,7 @@ public partial class PlaybackHeader : UserControl
     }
 
     private void OnMonitorCleared() =>
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => WaveCursor.IsVisible = false);
+        Avalonia.Threading.Dispatcher.UIThread.Post(HidePlayhead);
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
@@ -122,7 +122,14 @@ public partial class PlaybackHeader : UserControl
         }
         _currentTrackId = trackId;
         _peaks = trackId is null ? null : _waveforms?.Load(trackId.Value);
-        WaveCursor.IsVisible = _peaks is not null;
+        if (_peaks is not null)
+        {
+            WaveCursor.IsVisible = true;
+        }
+        else
+        {
+            HidePlayhead();
+        }
         DrawWaveform();
     }
 
@@ -132,9 +139,27 @@ public partial class PlaybackHeader : UserControl
         {
             return;
         }
-        var fraction = FileFraction(snapshot.Deck, snapshot.FilePosition);
-        Canvas.SetLeft(WaveCursor, fraction * WaveformCanvas.Bounds.Width);
+        SetPlayhead(FileFraction(snapshot.Deck, snapshot.FilePosition));
+    }
+
+    private void SetPlayhead(double fraction)
+    {
+        var width = WaveformCanvas.Bounds.Width;
+        var at = Math.Clamp(fraction, 0.0, 1.0) * width;
+        Canvas.SetLeft(WaveCursor, at);
         WaveCursor.IsVisible = true;
+        WavePlayed.Width = at;
+        Canvas.SetLeft(WaveRemain, at);
+        WaveRemain.Width = Math.Max(0.0, width - at);
+        WavePlayed.IsVisible = true;
+        WaveRemain.IsVisible = true;
+    }
+
+    private void HidePlayhead()
+    {
+        WaveCursor.IsVisible = false;
+        WavePlayed.IsVisible = false;
+        WaveRemain.IsVisible = false;
     }
 
     private void DrawWaveform()
@@ -254,8 +279,7 @@ public partial class PlaybackHeader : UserControl
         }
         var fraction = Math.Clamp(point.X / width, 0.0, 1.0);
         _dragTarget = TimeSpan.FromSeconds(fraction * _latest.Deck.Duration.TotalSeconds);
-        Canvas.SetLeft(WaveCursor, fraction * width);
-        WaveCursor.IsVisible = true;
+        SetPlayhead(fraction);
     }
 
     private static double FileFraction(DeckContent deck, TimeSpan filePosition)

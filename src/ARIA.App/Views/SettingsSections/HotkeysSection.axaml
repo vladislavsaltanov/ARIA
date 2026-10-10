@@ -9,26 +9,26 @@
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Text="Жесты" Classes="sectionTitle"/>
         <Button Grid.Column="1" Classes="action" Content="сбросить" Command="{Binding ResetGesturesCommand}"
-                ToolTip.Tip="Вернуть умолчания" MinHeight="26" Padding="10,0" FontSize="11"/>
+                ToolTip.Tip="Вернуть умолчания" Height="26" Padding="10,0"/>
       </Grid>
       <ItemsControl ItemsSource="{Binding Gestures}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vms:HotkeysSectionVm+GestureRow">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,5">
               <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Label}" FontSize="13"/>
                 <TextBlock Text="{Binding Error}" FontSize="11" Foreground="{StaticResource BrushFaulted}"
                            IsVisible="{Binding HasError}"/>
               </StackPanel>
               <Button Grid.Column="1" x:Name="RecordButton" Content="{Binding RecordText}"
-                      FontFamily="{StaticResource MonoFont}" FontSize="12" MinWidth="120"
+                      FontFamily="{StaticResource MonoFont}" FontSize="12" MinWidth="130"
                       Classes="action" Click="OnRecordClick" ToolTip.Tip="Записать жест"/>
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
       <TextBlock Text="запись: кликните жест и нажмите клавиши; Esc — отмена; конфликты проверяются мгновенно"
-                 FontSize="11" Foreground="{StaticResource BrushFaint}" Margin="0,8,0,0"/>
+                 Classes="hint" Margin="0,10,0,0"/>
     </StackPanel>
   </Border>
 </UserControl>

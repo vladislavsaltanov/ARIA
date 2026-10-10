@@ -13,4 +13,7 @@
     <Project Path="tests/ARIA.Persistence.Tests/ARIA.Persistence.Tests.csproj" />
     <Project Path="tests/ARIA.Remote.Tests/ARIA.Remote.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Snapshots/Snapshots.csproj" />
+  </Folder>
 </Solution>

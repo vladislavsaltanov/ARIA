@@ -4,18 +4,49 @@
              x:Class="Aria.App.Views.RailProjects"
              x:DataType="vm:ProjectsViewModel">
   <UserControl.Styles>
+    <Style Selector="ListBox#ProjectNames ListBoxItem">
+      <Setter Property="MinHeight" Value="36"/>
+    </Style>
+    <Style Selector="ListBox#ProjectNames ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
     <Style Selector="ListBoxItem:selected TextBlock">
       <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+    <Style Selector="Button.railChip">
+      <Setter Property="Width" Value="26"/>
+      <Setter Property="Height" Value="26"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+    </Style>
+    <Style Selector="Button.railChip /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.railChip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,*" DragDrop.AllowDrop="True" DragDrop.Drop="OnRailDropped" DragDrop.DragOver="OnRailDragOver">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,10,8,6">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,12,8,8">
       <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
         <TextBlock Text="Проекты" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource BrushFg}" VerticalAlignment="Center"/>
       </StackPanel>
-      <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Command="{Binding CreateProjectCommand}" ToolTip.Tip="Новый проект">
+      <Button Grid.Column="1" Classes="railChip" Command="{Binding CreateProjectCommand}" ToolTip.Tip="Новый проект">
         <PathIcon Data="{StaticResource icon_plus}" Width="13" Height="13"/>
       </Button>
     </Grid>
@@ -24,13 +55,14 @@
              ItemContainerTheme="{StaticResource PlainRowItem}">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:ProjectsViewModel+ProjectVm">
-          <Border Height="34" CornerRadius="6" Padding="12,0" Background="Transparent">
+          <Border Height="36" CornerRadius="6" Padding="12,0" Background="Transparent">
             <Border.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="Закрыть проект" Click="OnDeleteClick"/>
               </ContextMenu>
             </Border.ContextMenu>
-            <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
           </Border>
         </DataTemplate>
       </ListBox.ItemTemplate>

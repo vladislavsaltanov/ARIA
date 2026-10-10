@@ -16,12 +16,15 @@
       <SolidColorBrush x:Key="BrushDim" Color="#8A8A8A"/>
       <SolidColorBrush x:Key="BrushFaint" Color="#565656"/>
       <SolidColorBrush x:Key="BrushFaulted" Color="#E5484D"/>
+      <SolidColorBrush x:Key="BrushFaultedSoft" Color="#281314"/>
       <SolidColorBrush x:Key="BrushSignal" Color="#E5A63B"/>
       <SolidColorBrush x:Key="BrushSignalSoft" Color="#2A2113"/>
       <SolidColorBrush x:Key="BrushOk" Color="#6FCF7B"/>
       <SolidColorBrush x:Key="BrushWave" Color="#565656"/>
       <SolidColorBrush x:Key="BrushWaveDim" Color="#2E2E2E"/>
+      <SolidColorBrush x:Key="BrushShade" Color="#B30F0F0F"/>
       <FontFamily x:Key="MonoFont">Menlo, Consolas, monospace</FontFamily>
+      <x:Double x:Key="TextControlPlaceholderOpacity">0.8</x:Double>
       <ControlTheme x:Key="PlainRowItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="0"/>
@@ -30,12 +33,54 @@
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
-    <FluentTheme />
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Dark" Accent="#E5A63B" RegionColor="#0F0F0F" ErrorText="#E5484D"/>
+      </FluentTheme.Palettes>
+    </FluentTheme>
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="SelectionBrush" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="SelectionForegroundBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="CaretBrush" Value="{StaticResource BrushSignal}"/>
+      <Setter Property="PlaceholderForeground" Value="{StaticResource BrushDim}"/>
+    </Style>
+    <Style Selector="TextBox /template/ ScrollViewer">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ScrollBar">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb">
+      <Setter Property="Background" Value="{StaticResource BrushLine}"/>
+      <Setter Property="CornerRadius" Value="3"/>
+      <Setter Property="MinHeight" Value="28"/>
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb:pointerover">
+      <Setter Property="Background" Value="{StaticResource BrushFaint}"/>
+    </Style>
+    <Style Selector="ToolTip">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Slider /template/ RepeatButton#PART_DecreaseButton">
+      <Setter Property="Background" Value="{StaticResource BrushSignal}"/>
+    </Style>
+    <Style Selector="Slider /template/ RepeatButton#PART_IncreaseButton">
+      <Setter Property="Background" Value="{StaticResource BrushLine}"/>
+    </Style>
+    <Style Selector="Slider /template/ Thumb">
+      <Setter Property="Background" Value="{StaticResource BrushFg}"/>
+    </Style>
+    <Style Selector="ProgressBar /template/ Border#PART_Indicator">
+      <Setter Property="CornerRadius" Value="2"/>
     </Style>
   </Application.Styles>
 </Application>

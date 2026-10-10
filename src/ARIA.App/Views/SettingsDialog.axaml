@@ -4,7 +4,7 @@
         x:Class="Aria.App.Views.SettingsDialog"
         x:DataType="vm:SettingsViewModel"
         Title="Настройки"
-        Width="700" Height="760" MinWidth="560" MinHeight="500"
+        Width="760" Height="780" MinWidth="560" MinHeight="500"
         Background="{StaticResource BrushBg}" Foreground="{StaticResource BrushFg}"
         CanResize="True">
   <Window.Styles>
@@ -13,14 +13,38 @@
       <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="8"/>
-      <Setter Property="Padding" Value="14"/>
+      <Setter Property="Padding" Value="16"/>
       <Setter Property="Margin" Value="0,0,0,12"/>
     </Style>
     <Style Selector="TextBlock.sectionTitle">
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBlock.groupLabel">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="LetterSpacing" Value="1.2"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
       <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+    <Style Selector="TextBlock.fieldLabel">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.value">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="HorizontalAlignment" Value="Right"/>
     </Style>
     <Style Selector="Button.action">
       <Setter Property="Height" Value="30"/>
@@ -30,26 +54,87 @@
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="FontSize" Value="12"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.action /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
     </Style>
     <Style Selector="Button.action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
     </Style>
+    <Style Selector="Button.action:disabled">
+      <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="MinHeight" Value="30"/>
+      <Setter Property="Padding" Value="10,0"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="ComboBoxItem">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="MinHeight" Value="30"/>
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="MinHeight" Value="26"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="ListBox#SectionNav">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+    </Style>
     <Style Selector="ListBox#SectionNav ListBoxItem">
-      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="MinHeight" Value="36"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+    </Style>
+    <Style Selector="ListBox#SectionNav ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="12,0"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="ListBox#SectionNav ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="ListBox#SectionNav ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+    <Style Selector="ListBox#SectionNav ListBoxItem:selected">
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Slider">
+      <Setter Property="MinHeight" Value="24"/>
     </Style>
   </Window.Styles>
-  <Grid RowDefinitions="Auto,*" Margin="18">
-    <TextBlock Text="Настройки" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,12"/>
-    <Grid Grid.Row="1" ColumnDefinitions="170,*">
-      <ListBox x:Name="SectionNav" SelectionChanged="OnSectionSelected"
-               Background="Transparent" BorderThickness="0" FontSize="13"/>
-      <ScrollViewer Grid.Column="1" Margin="14,0,0,0">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Margin="0,0,0,16">
+      <TextBlock Text="Настройки" FontSize="20" FontWeight="SemiBold"/>
+      <TextBlock Text="параметры шоу, движка и пульта" Classes="hint" Margin="0,4,0,0"/>
+    </StackPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="176,*">
+      <ListBox x:Name="SectionNav" SelectionChanged="OnSectionSelected" FontSize="13"/>
+      <ScrollViewer Grid.Column="1" Margin="18,0,0,0">
         <StackPanel x:Name="SectionHost"/>
       </ScrollViewer>
     </Grid>
+    <Border Grid.Row="2" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0" Margin="0,16,0,0"/>
   </Grid>
 </Window>
