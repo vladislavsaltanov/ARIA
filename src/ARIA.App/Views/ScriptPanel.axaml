@@ -14,7 +14,7 @@
       </Setter>
     </Style>
     <Style Selector="Border.scriptLine:pointerover">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
     </Style>
     <Style Selector="Border.scriptLine.current">
       <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>

@@ -21,7 +21,10 @@
       </Setter>
     </Style>
     <Style Selector="Border.plRow:pointerover">
-      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
+    </Style>
+    <Style Selector="ListBox#EntryList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="Border.plRow.linked">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
@@ -124,58 +127,55 @@
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
         </Button>
       </Grid>
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,8,10,0">
-        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0,8,10,0">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" Margin="0,7,0,0">
           <TextBlock Text="{Binding EntryCountText}" Classes="col" FontSize="11" Foreground="{StaticResource BrushDim}"
                      VerticalAlignment="Center"/>
           <TextBlock Text="{Binding ProjectIoStatus}" FontSize="12" Foreground="{StaticResource BrushDim}"
                      VerticalAlignment="Center"
                      IsVisible="{Binding ProjectIoStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
-        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                      Margin="12,0">
-          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
-            <Button x:Name="ImportAudioButton" Classes="chip"
-                    Command="{Binding ImportAudioCommand}" ToolTip.Tip="Добавить аудиофайлы в выбранный проект" VerticalAlignment="Center">
-              <TextBlock Text="+ Аудио" FontSize="12" VerticalAlignment="Center"/>
-            </Button>
-            <Button x:Name="ImportFolderButton" Classes="chip"
-                    Command="{Binding ImportAudioFolderCommand}" ToolTip.Tip="Добавить папку с аудио в выбранный проект" VerticalAlignment="Center">
-              <TextBlock Text="+ Папка" FontSize="12" VerticalAlignment="Center"/>
-            </Button>
-            <Border Width="1" Background="{StaticResource BrushLine}" Margin="6,6" VerticalAlignment="Stretch"/>
-            <Button x:Name="ImportProjectButton" Classes="chip"
-                    Command="{Binding ImportProjectCommand}" ToolTip.Tip="Импорт проекта из .aria-project.json" VerticalAlignment="Center">
-              <TextBlock Text="+ Проект" FontSize="12" VerticalAlignment="Center"/>
-            </Button>
-            <Button x:Name="ImportZipButton" Classes="chip"
-                    Command="{Binding ImportZipCommand}" ToolTip.Tip="Импорт проекта из .aria.zip" VerticalAlignment="Center">
-              <TextBlock Text="+ ZIP" FontSize="12" VerticalAlignment="Center"/>
-            </Button>
-            <Border Width="1" Background="{StaticResource BrushLine}" Margin="6,6" VerticalAlignment="Stretch"/>
-            <Button x:Name="ExportProjectButton" Classes="chip"
-                    Command="{Binding ExportProjectCommand}" ToolTip.Tip="Экспорт проекта в .aria-project.json" VerticalAlignment="Center">
-              <TextBlock Text="Экспорт" FontSize="12" VerticalAlignment="Center"/>
-            </Button>
-            <Button x:Name="ExportZipButton" Classes="chip"
-                    Command="{Binding ExportZipCommand}" ToolTip.Tip="Экспорт проекта в .aria.zip со звуком" VerticalAlignment="Center">
-              <TextBlock Text="ZIP" FontSize="12" VerticalAlignment="Center"/>
-            </Button>
-          </StackPanel>
-        </ScrollViewer>
-        <Grid Grid.Column="2" Width="230" Margin="12,0,0,0">
-          <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}"
-                    HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
-          <TextBox PlaceholderText="Поиск по списку" Text="{Binding CenterSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                   Padding="28,5,26,5" FontSize="12" Background="{StaticResource BrushSurfaceAlt}"
-                   BorderBrush="{StaticResource BrushLine}" MinHeight="30" CornerRadius="6" VerticalContentAlignment="Center"/>
-          <Button Classes="chipIcon" Width="24" Height="24" HorizontalAlignment="Right" VerticalAlignment="Center"
-                  Margin="0,0,3,0" Command="{Binding ClearSearchCommand}"
-                  IsVisible="{Binding CenterSearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                  ToolTip.Tip="Очистить поиск">
-            <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
+        <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,0,0,0">
+          <Button x:Name="ImportAudioButton" Classes="chip" Margin="0,0,6,6"
+                  Command="{Binding ImportAudioCommand}" ToolTip.Tip="Добавить аудиофайлы в выбранный проект" VerticalAlignment="Center">
+            <TextBlock Text="+ Аудио" FontSize="12" VerticalAlignment="Center"/>
           </Button>
-        </Grid>
+          <Button x:Name="ImportFolderButton" Classes="chip" Margin="0,0,6,6"
+                  Command="{Binding ImportAudioFolderCommand}" ToolTip.Tip="Добавить папку с аудио в выбранный проект" VerticalAlignment="Center">
+            <TextBlock Text="+ Папка" FontSize="12" VerticalAlignment="Center"/>
+          </Button>
+          <Border Width="14" Background="Transparent" Margin="0,0,0,0"/>
+          <Button x:Name="ImportProjectButton" Classes="chip" Margin="14,0,6,6"
+                  Command="{Binding ImportProjectCommand}" ToolTip.Tip="Импорт проекта из .aria-project.json" VerticalAlignment="Center">
+            <TextBlock Text="+ Проект" FontSize="12" VerticalAlignment="Center"/>
+          </Button>
+          <Button x:Name="ImportZipButton" Classes="chip" Margin="0,0,6,6"
+                  Command="{Binding ImportZipCommand}" ToolTip.Tip="Импорт проекта из .aria.zip" VerticalAlignment="Center">
+            <TextBlock Text="+ ZIP" FontSize="12" VerticalAlignment="Center"/>
+          </Button>
+          <Border Width="14" Background="Transparent" Margin="0,0,0,0"/>
+          <Button x:Name="ExportProjectButton" Classes="chip" Margin="14,0,6,6"
+                  Command="{Binding ExportProjectCommand}" ToolTip.Tip="Экспорт проекта в .aria-project.json" VerticalAlignment="Center">
+            <TextBlock Text="Экспорт" FontSize="12" VerticalAlignment="Center"/>
+          </Button>
+          <Button x:Name="ExportZipButton" Classes="chip" Margin="0,0,6,6"
+                  Command="{Binding ExportZipCommand}" ToolTip.Tip="Экспорт проекта в .aria.zip со звуком" VerticalAlignment="Center">
+            <TextBlock Text="ZIP" FontSize="12" VerticalAlignment="Center"/>
+          </Button>
+          <Grid Width="230" Margin="0,0,0,6" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource icon_search}" Width="14" Height="14" Foreground="{StaticResource BrushFaint}"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <TextBox PlaceholderText="Поиск по списку" Text="{Binding CenterSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="28,5,26,5" FontSize="12" Background="{StaticResource BrushSurfaceAlt}"
+                     BorderBrush="{StaticResource BrushLine}" MinHeight="30" CornerRadius="6" VerticalContentAlignment="Center"/>
+            <Button Classes="chipIcon" Width="24" Height="24" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Margin="0,0,3,0" Command="{Binding ClearSearchCommand}"
+                    IsVisible="{Binding CenterSearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    ToolTip.Tip="Очистить поиск">
+              <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
+            </Button>
+          </Grid>
+        </WrapPanel>
       </Grid>
     </Grid>
     <Grid Grid.Row="1" ColumnDefinitions="28,*,72,58,110,32" Margin="10,0,10,6" IsVisible="{Binding SelectedProject, Converter={x:Static ObjectConverters.IsNotNull}}">

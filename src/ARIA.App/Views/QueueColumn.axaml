@@ -13,7 +13,10 @@
       </Setter>
     </Style>
     <Style Selector="Border.qRow:pointerover">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
+    </Style>
+    <Style Selector="ListBox#QueueList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="Border.qRow.current">
       <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>

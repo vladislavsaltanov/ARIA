@@ -12,6 +12,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -79,6 +80,9 @@ internal static class SnapshotProgram
             Pump(TimeSpan.FromMilliseconds(400));
             Capture(window, Path.Combine(output, "main-states.png"), 1440, 900);
             Inspect(window, "main-states");
+            ProbeHover(window, output);
+            ProbeDragHold(window, output);
+            CaptureWidths(window, output);
             transport.IsPlaying = false;
             transport.StatusText = "STOP";
             Capture(window, Path.Combine(output, "main-min.png"), 1100, 700);
@@ -183,6 +187,7 @@ internal static class SnapshotProgram
         var handle = new StreamHandle(1);
         monitor.Bind(handle, new DeckContent(null, trackId, "Тема ARIA", null, EndAction.Pause, TimeSpan.FromSeconds(42), TimeSpan.Zero));
         monitor.Publish(handle, TimeSpan.FromSeconds(15));
+        _monitor = monitor;
         Find<PlaybackHeader>(window, "PlaybackHeader")?.Attach(monitor, store);
         transport.IsPlaying = true;
         transport.StatusText = "PLAY";
@@ -207,6 +212,84 @@ internal static class SnapshotProgram
         public void Dispose()
         {
         }
+    }
+
+    private static PlaybackMonitor? _monitor;
+
+    private static void ProbeHover(Window window, string output)
+    {
+        var plain = window.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("plRow") && !b.Classes.Contains("linked"))
+            .OrderBy(b => Box(b, window).Y).FirstOrDefault();
+        if (plain is null)
+        {
+            Report("hover: нет обычной строки плейлиста");
+            return;
+        }
+        var box = Box(plain, window);
+        window.MouseMove(new Point(box.X + (box.Width / 2), box.Y + (box.Height / 2)));
+        Pump(TimeSpan.FromMilliseconds(300));
+        var container = plain.GetVisualAncestors().OfType<ContentPresenter>().FirstOrDefault();
+        Report($"hover: rowBg={Brush(plain.Background)} containerBg={Brush(container?.Background)} rowY={box.Y:0} rowH={box.Height:0}");
+        Capture(window, Path.Combine(output, "hover.png"), 1440, 900);
+        var queuePlain = window.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("qRow") && !b.Classes.Contains("current"))
+            .OrderBy(b => Box(b, window).Y).FirstOrDefault();
+        if (queuePlain is not null)
+        {
+            var qbox = Box(queuePlain, window);
+            window.MouseMove(new Point(qbox.X + (qbox.Width / 2), qbox.Y + (qbox.Height / 2)));
+            Pump(TimeSpan.FromMilliseconds(300));
+            Report($"hover queue: rowBg={Brush(queuePlain.Background)} y={qbox.Y:0}");
+            Capture(window, Path.Combine(output, "hover-queue.png"), 1440, 900);
+        }
+        window.MouseMove(new Point(2, 2));
+        Pump(TimeSpan.FromMilliseconds(250));
+    }
+
+    private static void ProbeDragHold(Window window, string output)
+    {
+        var strip = Find<Control>(window, "WaveformStrip");
+        if (strip is null || _monitor is null)
+        {
+            Report("drag: нет полосы волны или монитора");
+            return;
+        }
+        var box = Box(strip, window);
+        var at = new Point(box.X + (box.Width * 0.6), box.Y + (box.Height / 2));
+        window.MouseDown(at, MouseButton.Left);
+        Pump(TimeSpan.FromMilliseconds(300));
+        _monitor.Publish(new StreamHandle(1), TimeSpan.FromSeconds(24));
+        Pump(TimeSpan.FromMilliseconds(700));
+        var cursor = Find<Control>(window, "WaveCursor");
+        var played = Find<Border>(window, "WavePlayed");
+        var expected = box.X + (box.Width * 0.6);
+        Report($"drag hold: cursorVisible={cursor?.IsVisible} cursorX={Box(cursor!, window).X:0} expectedX={expected:0} played={played?.Bounds.Width:0} playedVisible={played?.IsVisible}");
+        Capture(window, Path.Combine(output, "drag-hold.png"), 1440, 900);
+        window.MouseUp(at, MouseButton.Left);
+        Pump(TimeSpan.FromMilliseconds(300));
+    }
+
+    private static void CaptureWidths(Window window, string output)
+    {
+        foreach (var width in new[] { 1280, 1180, 1100 })
+        {
+            window.Width = width;
+            Pump(TimeSpan.FromMilliseconds(260));
+            var meters = Find<Border>(window, "MetersCluster");
+            var lufsValue = Find<TextBlock>(window, "LufsValue");
+            var lufsBar = Find<ProgressBar>(window, "LufsBar");
+            var levels = Find<StackPanel>(window, "LevelsGroup");
+            var panic = Find<Button>(window, "PanicButton");
+            var center = Find<Control>(window, "ProjectCenter");
+            var chips = window.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("chip")).ToList();
+            var maxChipRight = chips.Count == 0 ? 0.0 : chips.Max(c => Box(c, window).Right);
+            var centerRight = center is null ? 0.0 : Box(center, window).Right;
+            Report($"width {width}: meters=w{(meters?.Bounds.Width ?? 0):0} lufsValue={lufsValue?.IsVisible} lufsBar={lufsBar?.IsVisible} levels={levels?.IsVisible} panicRight={Box(panic!, window).Right:0} chips={chips.Count} maxChipRight={maxChipRight:0} centerRight={centerRight:0} overflow={maxChipRight > centerRight}");
+            Capture(window, Path.Combine(output, $"width-{width}.png"), width, 900);
+        }
+        window.Width = 1440;
+        Pump(TimeSpan.FromMilliseconds(200));
     }
 
     private static void Inspect(Window window, string label)

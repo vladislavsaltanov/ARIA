@@ -135,7 +135,7 @@ public partial class PlaybackHeader : UserControl
 
     private void UpdateCursor(PositionSnapshot snapshot)
     {
-        if (_peaks is null || WaveformCanvas.Bounds.Width <= 0)
+        if (_peaks is null || WaveformCanvas.Bounds.Width <= 0 || _dragging)
         {
             return;
         }

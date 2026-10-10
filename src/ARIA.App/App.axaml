@@ -10,6 +10,7 @@
       <SolidColorBrush x:Key="BrushBg" Color="#0F0F0F"/>
       <SolidColorBrush x:Key="BrushSurface" Color="#161616"/>
       <SolidColorBrush x:Key="BrushSurfaceAlt" Color="#1F1F1F"/>
+      <SolidColorBrush x:Key="BrushHover" Color="#1A1A1A"/>
       <SolidColorBrush x:Key="BrushSurfaceHi" Color="#2A2A2A"/>
       <SolidColorBrush x:Key="BrushLine" Color="#2C2C2C"/>
       <SolidColorBrush x:Key="BrushFg" Color="#ECECEC"/>

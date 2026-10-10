@@ -15,6 +15,9 @@
         </Transitions>
       </Setter>
     </Style>
+    <Style Selector="ListBox#ProjectNames ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
+    </Style>
     <Style Selector="ListBoxItem:selected TextBlock">
       <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
