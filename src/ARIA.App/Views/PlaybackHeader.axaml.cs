@@ -19,9 +19,6 @@ using Avalonia.Threading;
 
 public partial class PlaybackHeader : UserControl
 {
-    private const double MarkerHitRadius = 4.0;
-    private const double MarkerDragThreshold = 3.0;
-    private const double MarkerLabelGap = 28.0;
     private const double MarkerTimeRowHeight = 14.0;
     private const double MarkerWaveHeight = 56.0;
     private const double MarkerTextMaxWidth = 140.0;
@@ -264,7 +261,7 @@ public partial class PlaybackHeader : UserControl
         }
         var point = e.GetPosition(WaveformBorder);
         var properties = e.GetCurrentPoint(WaveformBorder).Properties;
-        var hit = MarkerAt(point.X);
+        var hit = MarkerAt(point.X, VisibleMarkers());
         if (properties.IsRightButtonPressed)
         {
             e.Handled = true;
@@ -309,14 +306,18 @@ public partial class PlaybackHeader : UserControl
         var point = e.GetPosition(WaveformBorder);
         if (_dragMarker is not null)
         {
-            if (!_markerDragging && Math.Abs(point.X - _markerPressPoint.X) >= MarkerDragThreshold)
+            if (!_markerDragging && Math.Abs(point.X - _markerPressPoint.X) >= MarkerLaneLayout.DragThreshold)
             {
                 _markerDragging = true;
             }
             if (_markerDragging)
             {
-                _markerDragTarget = PositionFor(point.X);
-                DrawMarkers();
+                var target = PositionFor(point.X);
+                if (target != _markerDragTarget)
+                {
+                    _markerDragTarget = target;
+                    DrawMarkers();
+                }
             }
             return;
         }
@@ -325,7 +326,7 @@ public partial class PlaybackHeader : UserControl
             DragCursor(point);
             return;
         }
-        UpdateHover(point.X);
+        UpdateHover(point.X, VisibleMarkers());
     }
 
     private void OnWaveReleased(object? sender, PointerReleasedEventArgs e)
@@ -402,11 +403,10 @@ public partial class PlaybackHeader : UserControl
         {
             return;
         }
-        var lastNamed = double.NegativeInfinity;
-        var names = new List<(TextBlock Block, double X)>();
+        var labels = MarkerLaneLayout.LabeledIndices(markers, duration, width);
         foreach (var marker in markers)
         {
-            var x = MarkerX(marker.Position, duration, width);
+            var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
             var brush = _hoverMarker is { } hover && hover == marker ? MarkerHoverBrush : MarkerBrush;
             MarkerCanvas.Children.Add(MarkerLine(x, brush));
             MarkerCanvas.Children.Add(MarkerDiamond(x, brush));
@@ -420,23 +420,22 @@ public partial class PlaybackHeader : UserControl
             };
             MarkerCanvas.Children.Add(time);
             Place(time, x, 0, width);
-            if (x - lastNamed >= MarkerLabelGap)
-            {
-                names.Add((new TextBlock
-                {
-                    Text = marker.Name,
-                    FontSize = 11,
-                    FontFamily = MonoFont,
-                    Foreground = brush,
-                    MaxWidth = MarkerTextMaxWidth,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    IsHitTestVisible = false,
-                }, x));
-                lastNamed = x;
-            }
         }
-        foreach (var (block, x) in names)
+        foreach (var index in labels)
         {
+            var marker = markers[index];
+            var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
+            var brush = _hoverMarker is { } hover && hover == marker ? MarkerHoverBrush : MarkerBrush;
+            var block = new TextBlock
+            {
+                Text = marker.Name,
+                FontSize = 11,
+                FontFamily = MonoFont,
+                Foreground = brush,
+                MaxWidth = MarkerTextMaxWidth,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                IsHitTestVisible = false,
+            };
             MarkerCanvas.Children.Add(block);
             Place(block, x, MarkerTimeRowHeight + MarkerWaveHeight, width);
         }
@@ -500,11 +499,6 @@ public partial class PlaybackHeader : UserControl
         Canvas.SetTop(control, top);
     }
 
-    private static double MarkerX(TimeSpan position, TimeSpan duration, double width)
-    {
-        var fraction = duration > TimeSpan.Zero ? position.TotalSeconds / duration.TotalSeconds : 0.0;
-        return Math.Clamp(fraction, 0.0, 1.0) * width;
-    }
 
     private static string FormatMarkerTime(TimeSpan position) =>
         $"{(int)position.TotalMinutes:00}:{position.Seconds:00}.{position.Milliseconds / 100}";
@@ -512,42 +506,23 @@ public partial class PlaybackHeader : UserControl
     private FontFamily MonoFont =>
         this.TryFindResource("MonoFont", out var value) && value is FontFamily family ? family : FontFamily.Default;
 
-    private Marker? MarkerAt(double x)
+    private Marker? MarkerAt(double x, ImmutableArray<Marker> markers)
     {
         var width = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        if (width <= 0 || duration <= TimeSpan.Zero)
-        {
-            return null;
-        }
-        Marker? best = null;
-        var bestDistance = double.MaxValue;
-        foreach (var marker in VisibleMarkers())
-        {
-            var distance = Math.Abs(MarkerX(marker.Position, duration, width) - x);
-            if (distance <= MarkerHitRadius && distance < bestDistance)
-            {
-                best = marker;
-                bestDistance = distance;
-            }
-        }
-        return best;
+        return MarkerLaneLayout.HitTest(markers, x, duration, width);
     }
 
     private TimeSpan PositionFor(double x)
     {
         var width = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        if (width <= 0 || duration <= TimeSpan.Zero)
-        {
-            return TimeSpan.Zero;
-        }
-        return TimeSpan.FromSeconds(Math.Clamp(x / width, 0.0, 1.0) * duration.TotalSeconds);
+        return MarkerLaneLayout.PositionFor(x, duration, width);
     }
 
-    private void UpdateHover(double x)
+    private void UpdateHover(double x, ImmutableArray<Marker> markers)
     {
-        var marker = MarkerAt(x);
+        var marker = MarkerAt(x, markers);
         if (marker == _hoverMarker)
         {
             return;
@@ -598,7 +573,7 @@ public partial class PlaybackHeader : UserControl
     {
         var width = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        var x = MarkerX(marker.Position, duration, width);
+        var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
         editor.Measure(Size.Infinity);
         var editorWidth = Math.Clamp(editor.DesiredSize.Width + 16.0, MarkerEditorMinWidth, MarkerEditorMaxWidth);
         editor.Width = editorWidth;
