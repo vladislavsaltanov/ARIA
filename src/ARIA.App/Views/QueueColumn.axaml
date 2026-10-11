@@ -3,19 +3,74 @@
              xmlns:vm="using:Aria.App.ViewModels"
              x:Class="Aria.App.Views.QueueColumn"
              x:DataType="vm:QueueViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.qRow">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.qRow:pointerover">
+      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
+    </Style>
+    <Style Selector="ListBox#QueueList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Border.qRow.current">
+      <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushSignal}"/>
+      <Setter Property="BorderThickness" Value="2,0,0,0"/>
+    </Style>
+    <Style Selector="Border.qRow.current PathIcon">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+    </Style>
+    <Style Selector="Border.qRow.current TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button.headerChip">
+      <Setter Property="MinHeight" Value="26"/>
+      <Setter Property="Padding" Value="8,0"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.headerChip /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.headerChip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+  </UserControl.Styles>
   <Border Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushLine}"
           BorderThickness="1" CornerRadius="8" Margin="14,10,14,10">
     <Grid RowDefinitions="Auto,*">
-      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="12,10,6,6">
-        <TextBlock Text="Очередь" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-        <Button Grid.Column="1" Classes="ghost" MinHeight="26" Padding="8,0" ToolTip.Tip="Очистить очередь"
-                Command="{Binding ClearQueueCommand}" Margin="0,0,2,0">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" Margin="12,10,6,8">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="Очередь" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <Border Background="{StaticResource BrushSurfaceHi}" CornerRadius="3" Padding="5,1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Items.Count}" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                       Foreground="{StaticResource BrushFg}"/>
+          </Border>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="headerChip" ToolTip.Tip="Очистить очередь"
+                Command="{Binding ClearQueueCommand}" Margin="0,0,4,0">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11" VerticalAlignment="Center"/>
             <TextBlock Text="Очистить" FontSize="11" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
-        <Button Grid.Column="2" x:Name="QueueCloseButton" Classes="ghost" Width="26" Height="26"
+        <Button Grid.Column="2" x:Name="QueueCloseButton" Classes="headerChip" Width="26" Height="26"
                 Click="OnCloseClick" ToolTip.Tip="Закрыть очередь">
           <PathIcon Data="{StaticResource icon_x}" Width="11" Height="11"/>
         </Button>
@@ -26,7 +81,7 @@
                ItemContainerTheme="{StaticResource PlainRowItem}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:QueueViewModel+QueueItemVm">
-            <Border Classes="qRow" Height="36" CornerRadius="6" Padding="10,0" Background="Transparent">
+            <Border Classes="qRow" Classes.current="{Binding IsCurrent}" Height="40" CornerRadius="6" Padding="10,0">
               <Border.ContextMenu>
                 <ContextMenu>
                   <MenuItem Header="Играть сейчас" Click="OnPlayNowClick"/>
@@ -36,7 +91,8 @@
               <Grid ColumnDefinitions="18,*">
                 <PathIcon Data="{StaticResource icon_play}" Width="12" Height="12" VerticalAlignment="Center"
                           IsVisible="{Binding IsCurrent}"/>
-                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="13" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="8,0,0,0"/>
               </Grid>
             </Border>
           </DataTemplate>

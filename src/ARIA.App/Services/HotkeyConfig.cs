@@ -24,6 +24,7 @@ public sealed record HotkeyConfig(ImmutableArray<HotkeyBinding> Bindings)
         new HotkeyBinding("Ctrl+L", "lock"),
         new HotkeyBinding("Ctrl+T", "toggle-script"),
         new HotkeyBinding("Ctrl+Shift+C", "reset-clock"),
+        new HotkeyBinding("Ctrl+Z", "undo"),
     ]);
 
     public static HotkeyConfig Load(string path)

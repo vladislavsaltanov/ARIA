@@ -14,6 +14,7 @@ public static class HotkeyCommands
         "panic" => new Panic(),
         "lock" => new SetLocked(!locked),
         "reset-clock" => new ResetShowClock(),
+        "undo" => new Undo(),
         _ => null,
     };
 }

@@ -71,6 +71,10 @@ public sealed record SetTrackBpm(TrackId Track, double? Bpm) : Command;
 
 public sealed record SetEntryAudio(EntryId Entry, TrackAudioSettings? Audio) : Command;
 
+public sealed record SetTrackMarkers(TrackId Track, ImmutableArray<Marker>? Markers) : Command;
+
+public sealed record SetEntryMarkers(EntryId Entry, ImmutableArray<Marker>? Markers) : Command;
+
 public sealed record StartPreviewTrack(TrackId Track) : Command;
 
 public sealed record StopPreview : Command;
@@ -145,3 +149,5 @@ public sealed record RestoreShow(
 public sealed record MergeTracks(ImmutableArray<Track> Tracks) : Command;
 
 public sealed record MarkMissing(ImmutableArray<TrackId> Tracks) : Command;
+
+public sealed record Undo : Command;

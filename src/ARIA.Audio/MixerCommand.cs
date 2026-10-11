@@ -11,7 +11,8 @@ internal enum CommandKind : byte
     SetMix,
     SetAudio,
     Seek,
+    SetMarkers,
     StopAll,
 }
 
-internal readonly record struct MixerCommand(CommandKind Kind, MixerVoice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix, TimeSpan Duration, long SeekFrame = 0, TrackAudioSettings? Audio = null);
+internal readonly record struct MixerCommand(CommandKind Kind, MixerVoice? Voice, StreamHandle Handle, TransportCommand Transport, MixParameters? Mix, TimeSpan Duration, long SeekFrame = 0, TrackAudioSettings? Audio = null, MarkerSpec[]? Markers = null);

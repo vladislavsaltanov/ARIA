@@ -10,17 +10,26 @@
         CanResize="True">
   <Window.Styles>
     <Style Selector="Button.railAction">
-      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="MinHeight" Value="36"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="Padding" Value="12,0"/>
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
     </Style>
     <Style Selector="Button.railAction /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.railAction:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
     </Style>
     <Style Selector="Button.railAction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
@@ -64,9 +73,11 @@
       <Border Grid.Column="0" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="*,Auto">
           <views:RailProjects Grid.Row="0" x:Name="RailProjects" />
-          <Button Grid.Row="1" x:Name="QueueButton" Classes="railAction" Margin="8,6,8,10" Click="OnQueueJumpClick">
+          <Button Grid.Row="1" x:Name="QueueButton" Classes="railAction" Margin="8,6,8,10" Click="OnQueueJumpClick"
+                  ToolTip.Tip="Очередь — то, что играет следующим">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" VerticalAlignment="Center"/>
+              <PathIcon Data="{StaticResource icon_list}" Width="15" Height="15" VerticalAlignment="Center"
+                        Foreground="{StaticResource BrushDim}"/>
               <TextBlock Text="Очередь" FontSize="13" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>

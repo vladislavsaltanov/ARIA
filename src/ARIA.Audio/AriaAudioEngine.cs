@@ -2,6 +2,7 @@ namespace Aria.Audio;
 
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 
@@ -135,6 +136,20 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         {
             _mixer.SetMix(mixerHandle, mix);
         }
+    }
+
+    public void SetMarkers(StreamHandle handle, ImmutableArray<MarkerSpec> markers)
+    {
+        if (!_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
+        {
+            return;
+        }
+        var array = markers.IsDefaultOrEmpty ? Array.Empty<MarkerSpec>() : markers.ToArray();
+        if (array.Length > 1)
+        {
+            Array.Sort(array, static (left, right) => left.Position.CompareTo(right.Position));
+        }
+        _mixer.SetMarkers(mixerHandle, array);
     }
 
     public void Seek(StreamHandle handle, TimeSpan position)

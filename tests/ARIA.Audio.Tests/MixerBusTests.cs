@@ -143,6 +143,111 @@ public sealed class MixerBusTests
     }
 
     [Fact]
+    public void MarkerStop_StopsAtSecondMarker_AfterStartBetweenThem()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var events = new List<StreamEvent>();
+        bus.Events += events.Add;
+        var output = new float[512];
+        var markers = ImmutableArray.Create(
+            new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Stop),
+            new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
+        bus.Seek(handle, 19200);
+
+        var frames = 0;
+        while (events.Count == 0 && frames < 48000)
+        {
+            bus.Render(output);
+            frames += 512;
+        }
+
+        var ended = Assert.Single(events);
+        Assert.Equal(StreamEndReason.StoppedByMarker, ended.Reason);
+        Assert.Equal(TimeSpan.FromSeconds(0.5), ended.MarkerPosition);
+        Assert.True(frames >= 4800, $"ended too early at {frames} frames");
+    }
+
+    [Fact]
+    public void MarkerStop_IgnoresMarkerAtStartPosition()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var events = new List<StreamEvent>();
+        bus.Events += events.Add;
+        var output = new float[512];
+        var markers = ImmutableArray.Create(new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
+        bus.Seek(handle, 24000);
+
+        for (var block = 0; block < 20; block++)
+        {
+            bus.Render(output);
+        }
+
+        Assert.Empty(events);
+        Assert.NotEqual(0f, output[0]);
+    }
+
+    [Fact]
+    public void MarkerStop_RearmsMarkerAfterSeekBack()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var events = new List<StreamEvent>();
+        bus.Events += events.Add;
+        var output = new float[512];
+        var markers = ImmutableArray.Create(
+            new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Stop),
+            new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+
+        var first = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
+        bus.Seek(first, 19200);
+        var frames = 0;
+        while (events.Count == 0 && frames < 48000)
+        {
+            bus.Render(output);
+            frames += 512;
+        }
+        Assert.Equal(TimeSpan.FromSeconds(0.5), Assert.Single(events).MarkerPosition);
+
+        events.Clear();
+        var second = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
+        bus.Seek(second, 12000);
+        frames = 0;
+        while (events.Count == 0 && frames < 48000)
+        {
+            bus.Render(output);
+            frames += 512;
+        }
+        var rearmed = Assert.Single(events);
+        Assert.Equal(StreamEndReason.StoppedByMarker, rearmed.Reason);
+        Assert.Equal(TimeSpan.FromSeconds(0.5), rearmed.MarkerPosition);
+    }
+
+    [Fact]
+    public void SetMarkers_AppliesToLiveVoice()
+    {
+        using var bus = new MixerBus(1, 48000, 512);
+        var events = new List<StreamEvent>();
+        bus.Events += events.Add;
+        var output = new float[512];
+        var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5)));
+        bus.Render(output);
+
+        bus.SetMarkers(handle, [new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Stop)]);
+
+        var frames = 0;
+        while (events.Count == 0 && frames < 48000)
+        {
+            bus.Render(output);
+            frames += 512;
+        }
+
+        var ended = Assert.Single(events);
+        Assert.Equal(StreamEndReason.StoppedByMarker, ended.Reason);
+        Assert.Equal(TimeSpan.FromSeconds(0.25), ended.MarkerPosition);
+    }
+
+    [Fact]
     public void CueOut_FiresCueOutReached_AndRemovesVoice()
     {
         using var bus = new MixerBus(1, 48000, 512);

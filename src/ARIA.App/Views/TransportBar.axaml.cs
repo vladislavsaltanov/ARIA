@@ -24,6 +24,15 @@ public partial class TransportBar : UserControl
     private void OnSettingsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         SettingsRequested?.Invoke(this, EventArgs.Empty);
 
+    private void OnControlsRowSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        var width = e.NewSize.Width;
+        MetersCluster.IsVisible = width >= 740;
+        LevelsGroup.IsVisible = width >= 940;
+        LufsBar.IsVisible = width >= 880;
+        LufsValue.IsVisible = width >= 820;
+    }
+
     public void ApplyGestures(HotkeyService hotkeys)
     {
         _hotkeys = hotkeys;

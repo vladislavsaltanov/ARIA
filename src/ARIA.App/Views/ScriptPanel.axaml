@@ -5,56 +5,128 @@
              x:Class="Aria.App.Views.ScriptPanel"
              x:DataType="vm:ScriptPanelViewModel">
   <UserControl.Styles>
+    <Style Selector="Border.scriptLine">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
     <Style Selector="Border.scriptLine:pointerover">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
     </Style>
     <Style Selector="Border.scriptLine.current">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
-      <Setter Property="BorderThickness" Value="3,0,0,0"/>
+      <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushSignal}"/>
+      <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
     <Style Selector="Border.scriptLine.editing">
       <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushDim}"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
+    <Style Selector="Button.scriptTime">
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+    </Style>
+    <Style Selector="Border.scriptLine.current Button.scriptTime">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+    </Style>
+    <Style Selector="Button.goHint">
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.scriptLine:pointerover Button.goHint">
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+    </Style>
+    <Style Selector="Border.scriptLine.current Button.goHint">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+    </Style>
     <Style Selector="Border.mention">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
-      <Setter Property="CornerRadius" Value="9"/>
-      <Setter Property="Padding" Value="9,3"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Padding" Value="8,2"/>
     </Style>
     <Style Selector="Border.mention:pointerover">
-      <Setter Property="Background" Value="#343434"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
     <Style Selector="Border.mention.dangling">
-      <Setter Property="Background" Value="#232323"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+    </Style>
+    <Style Selector="Border.mention.dangling TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
     </Style>
     <Style Selector="Button.scriptFooter">
       <Setter Property="MinHeight" Value="30"/>
       <Setter Property="Padding" Value="12,0"/>
-      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
-    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.scriptFooter /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.scriptFooter:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
     </Style>
-    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button.scriptFooter:disabled">
+      <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+    <Style Selector="ListBox#TabsList ListBoxItem">
+      <Setter Property="MinHeight" Value="26"/>
+      <Setter Property="Margin" Value="0,0,6,0"/>
+    </Style>
+    <Style Selector="ListBox#TabsList ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="CornerRadius" Value="13"/>
+      <Setter Property="Padding" Value="11,3"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="ListBox#TabsList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="ListBox#TabsList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+    <Style Selector="ListBox#TabsList ListBoxItem TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+    </Style>
+    <Style Selector="ListBox#TabsList ListBoxItem:selected TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
     </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,Auto,*,Auto" Tapped="OnPanelTapped">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
       <TextBox x:Name="ScriptNameBox" Text="{Binding SelectedScript.Name, Mode=OneWay}"
                FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center"
                Background="Transparent" BorderThickness="0" Padding="0"
                KeyDown="OnNameKeyDown" LostFocus="OnNameCommit"/>
-      <Button Grid.Column="1" x:Name="PaneCloseButton" Classes="ghost" Width="28" Height="28"
+      <Button Grid.Column="1" x:Name="PaneCloseButton" Classes="scriptFooter" Width="28" Height="28" Padding="0"
               Click="OnCloseClick" ToolTip.Tip="Скрыть панель — Ctrl+T">
         <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
       </Button>
     </Grid>
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8" IsVisible="{Binding HasScripts}">
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10" IsVisible="{Binding HasScripts}">
       <ListBox x:Name="TabsList" ItemsSource="{Binding Scripts}" SelectedItem="{Binding SelectedScript, Mode=OneWay}"
                SelectionChanged="OnTabSelection" Background="Transparent" BorderThickness="0" Padding="0">
         <ListBox.ItemsPanel>
@@ -64,11 +136,11 @@
         </ListBox.ItemsPanel>
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:ScriptPanelViewModel+ScriptVm">
-            <TextBlock Text="{Binding Name}" FontSize="12" Margin="0,0,8,0"/>
+            <TextBlock Text="{Binding Name}" FontSize="12"/>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-      <Button Grid.Column="1" Classes="ghost" Width="26" Height="26" Command="{Binding CreateScriptCommand}"
+      <Button Grid.Column="1" Classes="scriptFooter" Width="26" Height="26" Padding="0" Command="{Binding CreateScriptCommand}"
               ToolTip.Tip="Новый сценарий">
         <PathIcon Data="{StaticResource icon_plus}" Width="13" Height="13"/>
       </Button>
@@ -78,32 +150,32 @@
         <ItemsControl x:Name="LinesControl" ItemsSource="{Binding Lines}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <StackPanel Spacing="8"/>
+              <StackPanel Spacing="6"/>
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ScriptPanelViewModel+ScriptLineVm">
               <Border Classes="scriptLine" Classes.current="{Binding IsCurrent}" Classes.editing="{Binding IsEditing}"
-                      MinHeight="34" CornerRadius="6" Padding="8,6" Background="Transparent" Tapped="OnLineTapped">
+                      MinHeight="34" CornerRadius="6" Padding="8,6" Tapped="OnLineTapped">
                 <Grid>
                   <Grid ColumnDefinitions="78,*,24" IsVisible="{Binding !IsEditing}">
                     <Grid Grid.Column="0">
-                      <Button Tag="ScriptTime" Classes="ghost" FontFamily="{StaticResource MonoFont}" FontSize="12"
-                              Foreground="{StaticResource BrushDim}" Content="{Binding DisplayTime}"
+                      <Button Tag="ScriptTime" Classes="ghost scriptTime" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                              Content="{Binding DisplayTime}"
                               ToolTip.Tip="{Binding WallTimeTip}"
-                              HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"/>
-                      <Button Tag="ScriptGo" Classes="ghost goHint" Width="26" Height="26"
+                              HorizontalAlignment="Left" VerticalAlignment="Center" Margin="28,0,0,0" Click="OnExecuteClick"/>
+                      <Button Tag="ScriptGo" Classes="ghost goHint" Width="24" Height="24"
                               HorizontalAlignment="Left" VerticalAlignment="Center" Click="OnExecuteClick"
                               ToolTip.Tip="Исполнить строку">
-                        <PathIcon Data="{StaticResource icon_play}" Width="13" Height="13"/>
+                        <PathIcon Data="{StaticResource icon_play}" Width="12" Height="12"/>
                       </Button>
                     </Grid>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                       <TextBlock Tag="ScriptText" Text="{Binding Text}" FontSize="13" TextWrapping="Wrap"
                                  IsVisible="{Binding HasText}"/>
                       <TextBlock Tag="ScriptText" Text="пустая строка…" FontSize="13" FontStyle="Italic"
-                                 Foreground="{StaticResource BrushFaint}" IsVisible="{Binding !HasText}"/>
-                      <ItemsControl ItemsSource="{Binding Mentions}" Margin="0,4,0,0">
+                                 Foreground="{StaticResource BrushDim}" IsVisible="{Binding !HasText}"/>
+                      <ItemsControl ItemsSource="{Binding Mentions}" Margin="0,5,0,0">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>
@@ -121,7 +193,7 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                      <ItemsControl ItemsSource="{Binding Candidates}" Margin="0,4,0,0"
+                      <ItemsControl ItemsSource="{Binding Candidates}" Margin="0,5,0,0"
                                     IsVisible="{Binding CandidatesVisible}">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate>
@@ -149,7 +221,7 @@
                     <Grid Grid.Row="0" ColumnDefinitions="64,Auto" Margin="0,0,0,6">
                       <TextBox Text="{Binding EditTimeText, Mode=TwoWay}" FontFamily="{StaticResource MonoFont}"
                                FontSize="12" Padding="6,4" KeyDown="OnEditKeyDown"/>
-                      <Button Grid.Column="1" Tag="ScriptMark" Classes="ghost" MinHeight="26" Padding="10,0"
+                      <Button Grid.Column="1" Tag="ScriptMark" Classes="scriptFooter" MinHeight="26" Padding="10,0"
                               FontSize="11" Content="сейчас" Margin="8,0,0,0" Click="OnMarkNowClick"
                               ToolTip.Tip="Пометить текущее время шоу"/>
                     </Grid>
@@ -200,51 +272,54 @@
       </Grid>
     </ScrollViewer>
     <StackPanel Grid.Row="3" Margin="0,10,0,0">
-      <StackPanel IsVisible="{Binding ShowNoScripts}" Orientation="Horizontal" Spacing="8" Margin="0,20,0,0"
-                  HorizontalAlignment="Center">
-        <Button Classes="ghost scriptFooter"
-                VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                Command="{Binding CreateScriptCommand}" Content="+ Новый сценарий"/>
-        <Button x:Name="ImportScriptButtonEmpty" Classes="ghost scriptFooter"
-                VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                Command="{Binding ImportScriptCommand}" ToolTip.Tip="Импорт сценария из .aria-script.json" Content="Импорт"/>
+      <StackPanel IsVisible="{Binding ShowNoScripts}" Spacing="8" Margin="0,24,0,0" HorizontalAlignment="Center">
+        <PathIcon Data="{StaticResource icon_script}" Width="24" Height="24" Foreground="{StaticResource BrushFaint}"
+                  HorizontalAlignment="Center"/>
+        <TextBlock Text="Сценариев нет" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+          <Button Classes="scriptFooter"
+                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                  Command="{Binding CreateScriptCommand}" Content="+ Новый сценарий"/>
+          <Button x:Name="ImportScriptButtonEmpty" Classes="scriptFooter"
+                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                  Command="{Binding ImportScriptCommand}" ToolTip.Tip="Импорт сценария из .aria-script.json" Content="Импорт"/>
+        </StackPanel>
       </StackPanel>
-      <StackPanel IsVisible="{Binding ShowEmptyScript}" Spacing="6" Margin="0,20,0,0">
-        <TextBlock Text="Сценарий пуст" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource BrushFg}"/>
-        <TextBlock Text="Первая строка станет отсчётом шоу" FontSize="12" Foreground="{StaticResource BrushDim}"/>
+      <StackPanel IsVisible="{Binding ShowEmptyScript}" Spacing="6" Margin="0,24,0,0" HorizontalAlignment="Center">
+        <PathIcon Data="{StaticResource icon_script}" Width="24" Height="24" Foreground="{StaticResource BrushFaint}"
+                  HorizontalAlignment="Center"/>
+        <TextBlock Text="Сценарий пуст" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+        <TextBlock Text="Первая строка станет отсчётом шоу" FontSize="12" Foreground="{StaticResource BrushDim}"
+                   HorizontalAlignment="Center"/>
+        <Button Classes="scriptFooter" Margin="0,4,0,0" HorizontalAlignment="Center"
+                Command="{Binding AddLineCommand}" Content="+ строка"/>
       </StackPanel>
-      <Button Classes="ghost scriptFooter" Margin="0,6,0,0"
+      <Button Classes="scriptFooter" Margin="0,6,0,0" HorizontalAlignment="Stretch"
               VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
               Command="{Binding AddLineCommand}" Content="+ строка" IsVisible="{Binding HasScripts}"/>
       <Separator x:Name="ScriptFooterSeparator" Margin="0,10,0,6" IsVisible="{Binding HasScripts}"
                  Background="{StaticResource BrushLine}"/>
-      <StackPanel Orientation="Horizontal" Spacing="4">
-        <Button x:Name="NewScriptButton" Classes="ghost scriptFooter" IsVisible="{Binding HasScripts}"
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button x:Name="NewScriptButton" Classes="scriptFooter" IsVisible="{Binding HasScripts}"
                 Command="{Binding CreateScriptCommand}" ToolTip.Tip="Новый сценарий">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
             <PathIcon Data="{StaticResource icon_plus}" Width="12" Height="12" VerticalAlignment="Center"/>
-            <TextBlock Text="Новый" FontSize="13" VerticalAlignment="Center"/>
+            <TextBlock Text="Новый" FontSize="12" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
-        <Button x:Name="DeleteScriptButton" Classes="ghost scriptFooter" IsVisible="{Binding HasScripts}"
+        <Button x:Name="DeleteScriptButton" Classes="scriptFooter" IsVisible="{Binding HasScripts}"
                 Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="Удалить сценарий навсегда">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
             <PathIcon Data="{StaticResource icon_x}" Width="12" Height="12" VerticalAlignment="Center"/>
-            <TextBlock Text="Удалить" FontSize="13" VerticalAlignment="Center"/>
+            <TextBlock Text="Удалить" FontSize="12" VerticalAlignment="Center"/>
           </StackPanel>
         </Button>
-        <Button x:Name="ImportScriptButton" Classes="ghost scriptFooter" IsVisible="{Binding HasScripts}"
-                Command="{Binding ImportScriptCommand}" ToolTip.Tip="Импорт сценария из .aria-script.json">
-          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-            <TextBlock Text="Импорт" FontSize="13" VerticalAlignment="Center"/>
-          </StackPanel>
-        </Button>
-        <Button x:Name="ExportScriptButton" Classes="ghost scriptFooter" IsVisible="{Binding HasScripts}"
-                Command="{Binding ExportScriptCommand}" ToolTip.Tip="Экспорт сценария в .aria-script.json">
-          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-            <TextBlock Text="Экспорт" FontSize="13" VerticalAlignment="Center"/>
-          </StackPanel>
-        </Button>
+        <Button x:Name="ImportScriptButton" Classes="scriptFooter" IsVisible="{Binding HasScripts}"
+                Command="{Binding ImportScriptCommand}" Content="Импорт"
+                ToolTip.Tip="Импорт сценария из .aria-script.json"/>
+        <Button x:Name="ExportScriptButton" Classes="scriptFooter" IsVisible="{Binding HasScripts}"
+                Command="{Binding ExportScriptCommand}" Content="Экспорт"
+                ToolTip.Tip="Экспорт сценария в .aria-script.json"/>
       </StackPanel>
     </StackPanel>
   </Grid>

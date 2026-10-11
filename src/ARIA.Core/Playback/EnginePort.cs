@@ -50,7 +50,7 @@ public enum StreamEventKind
     Faulted,
 }
 
-public sealed record StreamEvent(StreamHandle Handle, StreamEventKind Kind, StreamEndReason Reason, string? Detail = null);
+public sealed record StreamEvent(StreamHandle Handle, StreamEventKind Kind, StreamEndReason Reason, string? Detail = null, TimeSpan MarkerPosition = default);
 
 public enum SourceOpenFault
 {
@@ -78,6 +78,10 @@ public interface IAudioEngine
     void Panic(PanicSpec spec);
 
     void DisposeStream(StreamHandle handle);
+
+    void SetMarkers(StreamHandle handle, ImmutableArray<MarkerSpec> markers)
+    {
+    }
 
     StreamHandle StartPreview(TrackSource source, StreamOptions options) => default;
 

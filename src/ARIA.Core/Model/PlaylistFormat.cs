@@ -12,6 +12,11 @@ public sealed record ProjectFileTransition(
     [property: JsonPropertyName("kind")] string Kind = "cut",
     [property: JsonPropertyName("seconds")] double? Seconds = null);
 
+public sealed record ProjectFileMarker(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("position")] double Position,
+    [property: JsonPropertyName("action")] string Action = "stop");
+
 public sealed record ProjectFileEntry(
     [property: JsonPropertyName("file")] string File,
     [property: JsonPropertyName("name")] string? Name = null,
@@ -23,7 +28,8 @@ public sealed record ProjectFileEntry(
     [property: JsonPropertyName("out")] ProjectFileFade? Out = null,
     [property: JsonPropertyName("cueIn")] double? CueIn = null,
     [property: JsonPropertyName("cueOut")] double? CueOut = null,
-    [property: JsonPropertyName("transition")] ProjectFileTransition? Transition = null);
+    [property: JsonPropertyName("transition")] ProjectFileTransition? Transition = null,
+    [property: JsonPropertyName("markers")] List<ProjectFileMarker>? Markers = null);
 
 public sealed record ProjectExportEntry(
     string File,
@@ -163,7 +169,8 @@ public static class ProjectFormat
             && entry.In is null
             && entry.Out is null
             && entry.CueIn is null
-            && entry.CueOut is null)
+            && entry.CueOut is null
+            && entry.Markers is null)
         {
             return null;
         }
@@ -176,7 +183,8 @@ public static class ProjectFormat
             entry.In is null ? null : ParseFade(entry.In),
             entry.Out is null ? null : ParseFade(entry.Out),
             entry.CueIn is null ? null : TimeSpan.FromSeconds(entry.CueIn.Value),
-            entry.CueOut is null ? null : TimeSpan.FromSeconds(entry.CueOut.Value));
+            entry.CueOut is null ? null : TimeSpan.FromSeconds(entry.CueOut.Value),
+            Markers: entry.Markers is null ? null : ToMarkers(entry.Markers));
     }
 
     private static ProjectFileEntry ToFileEntry(ProjectExportEntry entry) => new(
@@ -190,7 +198,13 @@ public static class ProjectFormat
         entry.Overrides?.Out is null ? null : ToFileFade(entry.Overrides.Out),
         entry.Overrides?.CueIn?.TotalSeconds,
         entry.Overrides?.CueOut?.TotalSeconds,
-        entry.Transition);
+        entry.Transition,
+        entry.Overrides?.Markers is null
+            ? null
+            : [.. entry.Overrides.Markers.Value.Select(m => new ProjectFileMarker(m.Name, m.Position.TotalSeconds, m.Action.ToString().ToLowerInvariant()))]);
+
+    private static ImmutableArray<Marker> ToMarkers(List<ProjectFileMarker> markers) =>
+        [.. markers.Select(m => new Marker(m.Name, TimeSpan.FromSeconds(m.Position), ParseMarkerAction(m.Action)))];
 
     private static ProjectFileFade ToFileFade(Fade fade) =>
         new(fade.Duration.TotalSeconds, fade.Curve.ToString().ToLowerInvariant());
@@ -229,6 +243,22 @@ public static class ProjectFormat
         {
             throw new ProjectFormatException($"bad-entry: переход отрицательный: {entry.File}");
         }
+        var markerReason = MarkerValidation.Validate(
+            entry.Markers is null ? [] : ToMarkers(entry.Markers),
+            TimeSpan.MaxValue);
+        if (markerReason is not null)
+        {
+            throw new ProjectFormatException($"bad-marker: {markerReason}");
+        }
+    }
+
+    private static MarkerAction ParseMarkerAction(string value)
+    {
+        if (Enum.TryParse<MarkerAction>(value, ignoreCase: true, out var action))
+        {
+            return action;
+        }
+        throw new ProjectFormatException($"bad-marker: неизвестное действие: {value}");
     }
 
     private static EndAction ParseEnd(string value)

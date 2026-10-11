@@ -1,6 +1,5 @@
 namespace Aria.Persistence.Tests;
 
-using System.Collections.Immutable;
 using Aria.Core.Model;
 
 public sealed class LibraryStoreTests : IDisposable
@@ -142,6 +141,93 @@ public sealed class LibraryStoreTests : IDisposable
 
             var track = Assert.Single(tracks);
             Assert.Equal(t1.Id, track.Id);
+        }
+    }
+
+    [Fact]
+    public void RoundTrip_PreservesEntryOverridesMarkers()
+    {
+        var t1 = TestFactory.Track("one");
+        var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(
+            Name: "Буря",
+            Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Stop)]));
+        var project = new Project(ProjectId.New(), "Спектакль", [entry]);
+
+        using (var store = new SqliteLibraryStore(_path))
+        {
+            store.Upsert([t1], [project]);
+        }
+        using (var store = new SqliteLibraryStore(_path))
+        {
+            var (_, projects) = store.Load();
+
+            var loaded = Assert.Single(projects).Entries[0];
+            Assert.Equal("Буря", loaded.Overrides!.Name);
+            var marker = Assert.Single(loaded.Overrides.Markers!.Value);
+            Assert.Equal("гром", marker.Name);
+            Assert.Equal(TimeSpan.FromSeconds(30), marker.Position);
+            Assert.Equal(MarkerAction.Stop, marker.Action);
+        }
+    }
+
+    [Fact]
+    public void Load_OverridesWithoutMarkers_ReadsMarkersAsNull()
+    {
+        var t1 = TestFactory.Track("one");
+        var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(Name: "Без меток"));
+        var project = new Project(ProjectId.New(), "Спектакль", [entry]);
+
+        using (var store = new SqliteLibraryStore(_path))
+        {
+            store.Upsert([t1], [project]);
+        }
+        using (var store = new SqliteLibraryStore(_path))
+        {
+            var (_, projects) = store.Load();
+
+            var loaded = Assert.Single(projects).Entries[0];
+            Assert.NotNull(loaded.Overrides);
+            Assert.Null(loaded.Overrides!.Markers);
+        }
+    }
+
+    [Fact]
+    public void Snapshot_RoundTrip_PreservesEntryOverridesMarkers()
+    {
+        var snapshotPath = Path.Combine(Path.GetTempPath(), $"aria-snap-{Guid.NewGuid():N}.json");
+        try
+        {
+            var t1 = TestFactory.Track("one");
+            var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(
+                Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Stop)]));
+            var project = new Project(ProjectId.New(), "Спектакль", [entry]);
+            var document = new ShowDocument(
+                [t1], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
+
+            using (var store = new JsonSnapshotStore(snapshotPath))
+            {
+                store.Save(document);
+            }
+            using (var store = new JsonSnapshotStore(snapshotPath))
+            {
+                var loaded = store.LoadLatest();
+
+                Assert.NotNull(loaded);
+                var loadedEntry = Assert.Single(Assert.Single(loaded.Projects).Entries);
+                var marker = Assert.Single(loadedEntry.Overrides!.Markers!.Value);
+                Assert.Equal("гром", marker.Name);
+                Assert.Equal(TimeSpan.FromSeconds(30), marker.Position);
+            }
+        }
+        finally
+        {
+            foreach (var suffix in new[] { "", ".tmp" })
+            {
+                if (File.Exists(snapshotPath + suffix))
+                {
+                    File.Delete(snapshotPath + suffix);
+                }
+            }
         }
     }
 

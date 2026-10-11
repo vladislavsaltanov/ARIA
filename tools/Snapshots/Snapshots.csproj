@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Aria.Snapshots</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Headless" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ARIA.App\ARIA.App.csproj" />
+  </ItemGroup>
+</Project>

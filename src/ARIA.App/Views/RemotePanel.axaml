@@ -4,29 +4,94 @@
              x:Class="Aria.App.Views.RemotePanel"
              x:DataType="vm:RemotePanelViewModel"
              Background="{StaticResource BrushBg}">
-  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" Margin="24" MaxWidth="560">
-    <TextBlock Text="ПУЛЬТ" Foreground="#EDEDED" FontSize="22" FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
-    <Border Background="#FFFFFF" Padding="12" HorizontalAlignment="Center" IsVisible="{Binding HasInfo}">
-      <Image Source="{Binding QrImage}" Width="232" Height="232" />
-    </Border>
-    <TextBlock Text="LAN-адрес не найден" IsVisible="{Binding !HasInfo}" Foreground="{StaticResource BrushDim}"
-               FontSize="16" FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
-    <SelectableTextBlock Text="{Binding UrlText}" Foreground="#F2F2F2" FontSize="15" FontFamily="Consolas, Menlo"
-                         TextWrapping="Wrap" TextAlignment="Center" />
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-      <TextBlock Text="ИДЕНТИФИКАТОР" Foreground="{StaticResource BrushDim}" FontSize="12" FontFamily="Consolas, Menlo" VerticalAlignment="Center" />
-      <SelectableTextBlock Text="{Binding IdentifierText}" Foreground="#EDEDED" FontSize="17" FontFamily="Consolas, Menlo" />
+  <UserControl.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="18"/>
+    </Style>
+    <Style Selector="TextBlock.cardTitle">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="LetterSpacing" Value="1.5"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+    </Style>
+    <Style Selector="TextBlock.key">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="LetterSpacing" Value="1"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="MinWidth" Value="110"/>
+    </Style>
+    <Style Selector="Button.action">
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Padding" Value="14,0"/>
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.action /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+    </Style>
+  </UserControl.Styles>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" Margin="24" MaxWidth="620">
+      <StackPanel Spacing="6" HorizontalAlignment="Center">
+        <TextBlock x:Name="RemoteTitle" Text="ПУЛЬТ" Foreground="{StaticResource BrushFg}" FontSize="22"
+                   FontFamily="{StaticResource MonoFont}" LetterSpacing="3" HorizontalAlignment="Center"/>
+        <TextBlock Text="браузер в той же локальной сети — тот же шоу-пульт" Foreground="{StaticResource BrushDim}"
+                   FontSize="12" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <Border Classes="card" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="14">
+          <TextBlock Text="ПОДКЛЮЧЕНИЕ" Classes="cardTitle"/>
+          <Border Background="#FFFFFF" Padding="12" HorizontalAlignment="Center" CornerRadius="4" IsVisible="{Binding HasInfo}">
+            <Image Source="{Binding QrImage}" Width="232" Height="232" />
+          </Border>
+          <TextBlock Text="LAN-адрес не найден" IsVisible="{Binding !HasInfo}" Foreground="{StaticResource BrushDim}"
+                     FontSize="15" FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Center" />
+          <SelectableTextBlock Text="{Binding UrlText}" Foreground="{StaticResource BrushFg}" FontSize="15"
+                               FontFamily="{StaticResource MonoFont}" TextWrapping="Wrap" TextAlignment="Center"/>
+          <TextBlock Text="отсканируйте QR или откройте адрес в браузере" Foreground="{StaticResource BrushDim}"
+                     FontSize="11" TextAlignment="Center"/>
+        </StackPanel>
+      </Border>
+      <Border Classes="card" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="12">
+          <TextBlock Text="ДОСТУП" Classes="cardTitle"/>
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="ИДЕНТИФИКАТОР" Classes="key"/>
+            <SelectableTextBlock Grid.Column="1" Text="{Binding IdentifierText}" Foreground="{StaticResource BrushFg}"
+                                 FontSize="16" FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center"/>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="ПАРОЛЬ" Classes="key"/>
+            <SelectableTextBlock Grid.Column="1" Text="{Binding PasswordText}" Foreground="{StaticResource BrushFg}"
+                                 FontSize="16" FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center"/>
+          </Grid>
+          <Button Command="{Binding ResetPasswordCommand}" Classes="action" Content="новый пароль" HorizontalAlignment="Left"/>
+          <TextBlock Text="пульт сохраняет пару в браузере; сброс пароля делает старый QR недействительным — пересканируйте"
+                     Foreground="{StaticResource BrushDim}" FontSize="11" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding MdnsStatus}" Foreground="{StaticResource BrushDim}" FontSize="12"
+                     FontFamily="{StaticResource MonoFont}"/>
+        </StackPanel>
+      </Border>
     </StackPanel>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-      <TextBlock Text="ПАРОЛЬ" Foreground="{StaticResource BrushDim}" FontSize="12" FontFamily="Consolas, Menlo" VerticalAlignment="Center" />
-      <SelectableTextBlock Text="{Binding PasswordText}" Foreground="#EDEDED" FontSize="17" FontFamily="Consolas, Menlo" />
-    </StackPanel>
-    <Button Command="{Binding ResetPasswordCommand}" Content="новый пароль"
-            Background="#1A1A1A" Foreground="#EDEDED" BorderBrush="{StaticResource BrushSurfaceHi}" Padding="18 8"
-            FontFamily="Consolas, Menlo" HorizontalAlignment="Center" />
-    <TextBlock Text="пульт сохраняет пару в браузере; сброс пароля делает старый QR недействительным — пересканируйте"
-               Foreground="{StaticResource BrushDim}" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="460" />
-    <TextBlock Text="{Binding MdnsStatus}" Foreground="{StaticResource BrushDim}" FontSize="13" FontFamily="Consolas, Menlo"
-               HorizontalAlignment="Center" />
-  </StackPanel>
+  </ScrollViewer>
 </UserControl>

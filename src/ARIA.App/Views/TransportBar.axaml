@@ -16,16 +16,34 @@
     </Style>
     <Style Selector="Button.bar /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
     </Style>
     <Style Selector="Button.bar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
     </Style>
+    <Style Selector="Button.bar.playing /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushSignal}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.bar.playing">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+    </Style>
+    <Style Selector="Button.bar:disabled">
+      <Setter Property="Opacity" Value="0.35"/>
+    </Style>
     <Style Selector="Button.panic">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="{StaticResource BrushFaulted}"/>
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
       <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="FontSize" Value="15"/>
-      <Setter Property="Padding" Value="14,0"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="LetterSpacing" Value="1.5"/>
+      <Setter Property="Padding" Value="18,0"/>
       <Setter Property="Height" Value="44"/>
       <Setter Property="CornerRadius" Value="4"/>
       <Setter Property="BorderThickness" Value="2"/>
@@ -34,12 +52,20 @@
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.panic /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Background" Value="{StaticResource BrushFaultedSoft}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BrushFaulted}"/>
       <Setter Property="BorderThickness" Value="2"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.panic:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
     </Style>
     <Style Selector="Button.panic:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#281314"/>
+      <Setter Property="Background" Value="{StaticResource BrushFaultedSoft}"/>
     </Style>
     <Style Selector="Button.panic:pressed">
       <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -47,72 +73,136 @@
         <Setter Property="Background" Value="{StaticResource BrushFaulted}"/>
       </Style>
     </Style>
+    <Style Selector="Button.panic:disabled">
+      <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+    <Style Selector="Border.cluster">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="BorderThickness" Value="1,0,0,0"/>
+      <Setter Property="Padding" Value="16,0,0,0"/>
+      <Setter Property="Margin" Value="12,10,0,10"/>
+    </Style>
+    <Style Selector="TextBlock.barLabel">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.barValue">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.stateChip">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
+      <Setter Property="CornerRadius" Value="3"/>
+      <Setter Property="Padding" Value="7,2"/>
+      <Setter Property="MinWidth" Value="52"/>
+    </Style>
+    <Style Selector="Border.stateChip.playing">
+      <Setter Property="Background" Value="{StaticResource BrushSignalSoft}"/>
+    </Style>
+    <Style Selector="Border.stateChip.playing TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushSignal}"/>
+    </Style>
+    <Style Selector="Border.stateChip.faulted">
+      <Setter Property="Background" Value="{StaticResource BrushFaultedSoft}"/>
+    </Style>
+    <Style Selector="Border.stateChip.faulted TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource BrushFaulted}"/>
+    </Style>
   </UserControl.Styles>
   <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,1,0,0">
     <Grid RowDefinitions="Auto,Auto,*">
-      <ProgressBar Grid.Row="0" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
-                   Height="3" Background="Transparent" Foreground="{StaticResource BrushFg}" Opacity="0.85"
-                   BorderThickness="0" CornerRadius="0" Margin="0,0,0,16"/>
-      <StackPanel Grid.Row="1" Margin="14,0,10,8">
-        <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-        <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
+      <ProgressBar Grid.Row="0" x:Name="PositionBar" Minimum="0" Maximum="1" Value="{Binding PositionFraction}"
+                   Height="3" Background="{StaticResource BrushLine}" Foreground="{StaticResource BrushSignal}"
+                   BorderThickness="0" CornerRadius="0"/>
+      <StackPanel Grid.Row="1" Margin="16,10,14,6">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="16,0,0,0">
+            <TextBlock Text="{Binding Remaining, StringFormat='−{0}'}" Classes="barValue" FontSize="13"
+                       Foreground="{StaticResource BrushFg}" VerticalAlignment="Center"/>
+            <Border Classes="stateChip" Classes.playing="{Binding IsPlaying}" Classes.faulted="{Binding Panicked}"
+                    VerticalAlignment="Center">
+              <TextBlock Text="{Binding StatusText}" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                         LetterSpacing="1" Foreground="{StaticResource BrushFg}" HorizontalAlignment="Center"/>
+            </Border>
+          </StackPanel>
+        </Grid>
       </StackPanel>
-      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,0,10,16">
-        <Button Grid.Column="0" x:Name="PlayPauseButton" Classes="bar" Width="44" Height="44"
-                Command="{Binding TogglePlayPauseCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
-          <Panel>
-            <PathIcon Data="{StaticResource icon_play}" Width="20" Height="20" IsVisible="{Binding !IsPlaying}"/>
-            <PathIcon Data="{StaticResource icon_pause}" Width="20" Height="20" IsVisible="{Binding IsPlaying}"/>
-          </Panel>
-        </Button>
-        <Button Grid.Column="1" x:Name="StopButton" Classes="bar" Width="44" Height="44"
-                Command="{Binding StopCommand}" VerticalAlignment="Center" Margin="0,0,7,0">
-          <PathIcon Data="{StaticResource icon_stop}" Width="18" Height="18"/>
-        </Button>
-        <Button Grid.Column="2" x:Name="NextButton" Classes="bar" Width="44" Height="44"
-                Command="{Binding NextCommand}" VerticalAlignment="Center" Margin="0,0,6,0">
-          <PathIcon Data="{StaticResource icon_next}" Width="20" Height="20"/>
-        </Button>
-        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
-          <TextBlock Text="{Binding LufsText}" FontFamily="{StaticResource MonoFont}" FontSize="13"
-                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-          <ProgressBar Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Width="44" Height="4"
-                       Background="{StaticResource BrushLine}" Foreground="{Binding LufsBarBrush}"
-                       VerticalAlignment="Center" BorderThickness="0"/>
-          <TextBlock Text="L" FontFamily="{StaticResource MonoFont}" FontSize="10"
-                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-          <ProgressBar x:Name="LevelLeftBar" Minimum="0" Maximum="1" Value="{Binding LevelLeft}" Width="30" Height="4"
-                       Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
-                       VerticalAlignment="Center" BorderThickness="0"/>
-          <TextBlock Text="R" FontFamily="{StaticResource MonoFont}" FontSize="10"
-                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-          <ProgressBar x:Name="LevelRightBar" Minimum="0" Maximum="1" Value="{Binding LevelRight}" Width="30" Height="4"
-                       Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
-                       VerticalAlignment="Center" BorderThickness="0"/>
-        </StackPanel>
-        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
-          <Button x:Name="MuteButton" Classes="bar" Width="30" Height="30" Command="{Binding ToggleMuteCommand}">
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="14,0,14,14" SizeChanged="OnControlsRowSizeChanged">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Grid.Column="0" x:Name="PlayPauseButton" Classes="bar" Classes.playing="{Binding IsPlaying}" Width="48" Height="48"
+                  Command="{Binding TogglePlayPauseCommand}" VerticalAlignment="Center" ToolTip.Tip="Играть / пауза">
             <Panel>
-              <PathIcon Data="{StaticResource icon_volume}" Width="17" Height="17" IsVisible="{Binding !Muted}"/>
-              <PathIcon Data="{StaticResource icon_volume_off}" Width="17" Height="17" IsVisible="{Binding Muted}"/>
+              <PathIcon Data="{StaticResource icon_play}" Width="20" Height="20" IsVisible="{Binding !IsPlaying}"/>
+              <PathIcon Data="{StaticResource icon_pause}" Width="20" Height="20" IsVisible="{Binding IsPlaying}"/>
             </Panel>
           </Button>
-          <Slider Width="120" Minimum="0" Maximum="125" Value="{Binding VolumePercent, Mode=TwoWay}"
-                  ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center" Margin="0,-3,0,3"/>
-          <TextBlock Text="{Binding VolumePercentText}" FontSize="12"
-                     Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" MinWidth="38"/>
+          <Button x:Name="StopButton" Classes="bar" Width="44" Height="44"
+                  Command="{Binding StopCommand}" VerticalAlignment="Center" ToolTip.Tip="Стоп">
+            <PathIcon Data="{StaticResource icon_stop}" Width="18" Height="18"/>
+          </Button>
+          <Button x:Name="NextButton" Classes="bar" Width="44" Height="44"
+                  Command="{Binding NextCommand}" VerticalAlignment="Center" ToolTip.Tip="Следующий трек">
+            <PathIcon Data="{StaticResource icon_next}" Width="20" Height="20"/>
+          </Button>
         </StackPanel>
-        <Button Grid.Column="6" x:Name="LockIcon" Classes="bar" Width="44" Height="44"
-                Command="{Binding ToggleLockCommand}" VerticalAlignment="Center" Margin="0,0,14,0">
-          <PathIcon Data="{StaticResource icon_lock}" Width="18" Height="18"
-                    Foreground="{Binding LockBrush}"/>
-        </Button>
-        <Button Grid.Column="7" x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
-                Click="OnSettingsClick">
-          <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
-        </Button>
-        <Button Grid.Column="8" x:Name="PanicButton" Classes="panic" Content="PANIC"
-                Command="{Binding PanicCommand}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+        <Border Grid.Column="1" x:Name="MetersCluster" Classes="cluster" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+            <TextBlock Text="LUFS" Classes="barLabel"/>
+            <TextBlock x:Name="LufsValue" Text="{Binding LufsText}" Classes="barValue" VerticalAlignment="Center"/>
+            <ProgressBar x:Name="LufsBar" Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Width="40" Height="5"
+                         Background="{StaticResource BrushLine}" Foreground="{Binding LufsBarBrush}"
+                         VerticalAlignment="Center" BorderThickness="0"/>
+            <StackPanel x:Name="LevelsGroup" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+              <TextBlock Text="L" Classes="barLabel"/>
+              <ProgressBar x:Name="LevelLeftBar" Minimum="0" Maximum="1" Value="{Binding LevelLeft}" Width="30" Height="5"
+                           Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
+                           VerticalAlignment="Center" BorderThickness="0"/>
+              <TextBlock Text="R" Classes="barLabel"/>
+              <ProgressBar x:Name="LevelRightBar" Minimum="0" Maximum="1" Value="{Binding LevelRight}" Width="30" Height="5"
+                           Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
+                           VerticalAlignment="Center" BorderThickness="0"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="cluster">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button x:Name="MuteButton" Classes="bar" Width="30" Height="30" Command="{Binding ToggleMuteCommand}"
+                    ToolTip.Tip="Выключить / вернуть звук">
+              <Panel>
+                <PathIcon Data="{StaticResource icon_volume}" Width="17" Height="17" IsVisible="{Binding !Muted}"/>
+                <PathIcon Data="{StaticResource icon_volume_off}" Width="17" Height="17" IsVisible="{Binding Muted}"/>
+              </Panel>
+            </Button>
+            <Slider Width="120" Minimum="0" Maximum="125" Value="{Binding VolumePercent, Mode=TwoWay}"
+                    ToolTip.Tip="{Binding VolumeDbText}" VerticalAlignment="Center" Margin="0,-3,0,3"/>
+            <TextBlock Text="{Binding VolumePercentText}" Classes="barValue" MinWidth="38"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="3" Classes="cluster">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button x:Name="LockIcon" Classes="bar" Width="44" Height="44"
+                    Command="{Binding ToggleLockCommand}" VerticalAlignment="Center" ToolTip.Tip="Блокировка управления">
+              <PathIcon Data="{StaticResource icon_lock}" Width="18" Height="18"
+                        Foreground="{Binding LockBrush}"/>
+            </Button>
+            <Button x:Name="SettingsButton" Classes="bar" Width="44" Height="44" VerticalAlignment="Center"
+                    Click="OnSettingsClick" ToolTip.Tip="Настройки">
+              <PathIcon Data="{StaticResource icon_settings}" Width="18" Height="18"/>
+            </Button>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="4" Classes="cluster" Padding="16,0,0,0">
+          <Button x:Name="PanicButton" Classes="panic" Content="PANIC"
+                  Command="{Binding PanicCommand}" VerticalAlignment="Center"/>
+        </Border>
       </Grid>
     </Grid>
   </Border>

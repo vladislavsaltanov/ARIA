@@ -6,36 +6,69 @@
   <UserControl.Styles>
     <Style Selector="Border.headerWave">
       <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
     </Style>
     <Style Selector="Border.headerWave:pointerover">
       <Setter Property="Cursor" Value="Hand"/>
     </Style>
     <Style Selector="Button.clockBtn">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="10,0"/>
-      <Setter Property="MinHeight" Value="28"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Padding" Value="11,0"/>
+      <Setter Property="MinHeight" Value="32"/>
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Foreground" Value="{StaticResource BrushDim}"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
+    <Style Selector="Button.clockBtn /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.clockBtn:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+    </Style>
     <Style Selector="Button.clockBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
     <Style Selector="Button.clockBtn:disabled">
-      <Setter Property="Opacity" Value="0.35"/>
+      <Setter Property="Opacity" Value="0.28"/>
+    </Style>
+    <Style Selector="StackPanel.clockControls">
+      <Setter Property="Opacity" Value="0.72"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.headerWave:pointerover StackPanel.clockControls">
+      <Setter Property="Opacity" Value="1"/>
     </Style>
   </UserControl.Styles>
-  <Border x:Name="WaveformBorder" Classes="headerWave">
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,8">
-      <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
-                 FontFamily="{StaticResource MonoFont}" FontSize="36" FontWeight="SemiBold"
-                 Foreground="{StaticResource BrushFg}" HorizontalAlignment="Center"/>
+  <Border x:Name="WaveformBorder" Classes="headerWave" BorderBrush="{StaticResource BrushLine}" BorderThickness="0,0,0,1">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,6">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" VerticalAlignment="Center">
+        <Ellipse x:Name="ClockDot" Width="8" Height="8" Fill="{StaticResource BrushSignal}" VerticalAlignment="Center"
+                 IsVisible="{Binding ClockRunning}"/>
+        <TextBlock x:Name="ShowClockBig" Text="{Binding ShowClockText}"
+                   FontFamily="{StaticResource MonoFont}" FontSize="40" FontWeight="SemiBold"
+                   Foreground="{StaticResource BrushFg}" VerticalAlignment="Center"/>
+      </StackPanel>
       <TextBlock Grid.Row="1" x:Name="TimerSubBig" Text="{Binding TimerSubText}"
-                 FontFamily="{StaticResource MonoFont}" FontSize="14"
-                 Foreground="{StaticResource BrushDim}" HorizontalAlignment="Center" Margin="0,4,0,8"/>
-      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4" Margin="0,0,0,8">
+                 FontFamily="{StaticResource MonoFont}" FontSize="13"
+                 Foreground="{StaticResource BrushDim}" HorizontalAlignment="Center" Margin="0,4,0,10"/>
+      <StackPanel Grid.Row="2" Classes="clockControls" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6" Margin="0,0,0,10">
         <Button x:Name="StartClockButton" Classes="clockBtn" Command="{Binding StartClockCommand}"
                 IsEnabled="{Binding !ClockRunning}" ToolTip.Tip="Запустить часы шоу">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -58,13 +91,19 @@
           </StackPanel>
         </Button>
       </StackPanel>
-      <Border Grid.Row="3" x:Name="WaveformStrip" Height="56" Background="Transparent"
+      <Border Grid.Row="3" x:Name="WaveformStrip" Background="Transparent"
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
-        <Grid>
-          <Canvas x:Name="WaveformCanvas" Background="Transparent">
-            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushFg}"
+        <Grid RowDefinitions="14,56,14">
+          <Canvas x:Name="WaveformCanvas" Grid.Row="1" Background="Transparent">
+            <Border x:Name="WavePlayed" Height="56" Width="0" Background="{StaticResource BrushSignal}" Opacity="0.35"
+                    IsVisible="False" IsHitTestVisible="False" Canvas.Left="0"/>
+            <Border x:Name="WaveRemain" Height="56" Width="0" Background="{StaticResource BrushShade}"
+                    IsVisible="False" IsHitTestVisible="False" Canvas.Left="0"/>
+            <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushSignal}"
                        IsVisible="False"/>
           </Canvas>
+          <Canvas x:Name="MarkerCanvas" Grid.Row="0" Grid.RowSpan="3" IsHitTestVisible="False"/>
+          <Canvas x:Name="MarkerEditorCanvas" Grid.Row="0" Grid.RowSpan="3"/>
         </Grid>
       </Border>
     </Grid>
