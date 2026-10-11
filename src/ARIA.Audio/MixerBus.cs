@@ -135,6 +135,12 @@ public sealed class MixerBus : IDisposable
     public void Seek(StreamHandle handle, long frameIndex)
         => _commands.Enqueue(new MixerCommand(CommandKind.Seek, null, handle, default, null, default, frameIndex));
 
+    public void SetMarkers(StreamHandle handle, MarkerSpec[] markers)
+    {
+        ArgumentNullException.ThrowIfNull(markers);
+        _commands.Enqueue(new MixerCommand(CommandKind.SetMarkers, null, handle, default, null, default, 0, null, markers));
+    }
+
     public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, bool enabled)
     {
         var pauseFrames = enabled && pauseFade > TimeSpan.Zero
@@ -253,6 +259,9 @@ public sealed class MixerBus : IDisposable
                 case CommandKind.Seek:
                     ApplySeek(FindVoice(command.Handle), command.SeekFrame);
                     break;
+                case CommandKind.SetMarkers:
+                    ApplyMarkers(FindVoice(command.Handle), command.Markers!);
+                    break;
                 case CommandKind.StopAll:
                     ApplyStopAll(command.Duration);
                     break;
@@ -344,6 +353,15 @@ public sealed class MixerBus : IDisposable
         voice.StartFrame = frameIndex;
     }
 
+    private static void ApplyMarkers(MixerVoice? voice, MarkerSpec[] markers)
+    {
+        if (voice is null || voice.RemoveRequested)
+        {
+            return;
+        }
+        voice.Markers = markers;
+    }
+
     private void ApplyMix(MixerVoice? voice, MixParameters mix)
     {
         if (voice is null || voice.RemoveRequested)
@@ -414,13 +432,14 @@ public sealed class MixerBus : IDisposable
             }
             var contributionFrames = read;
             StreamEndReason? reason = null;
+            var markerPosition = default(TimeSpan);
             if (fader.StopWhenDone && !wasCompleted && fader.HasCompleted)
             {
                 reason = StreamEndReason.FadeCompleted;
             }
             else
             {
-                var cutoff = ScanCutoff(voice, read, out var scanReason);
+                var cutoff = ScanCutoff(voice, read, out var scanReason, out markerPosition);
                 if (cutoff >= 0)
                 {
                     contributionFrames = cutoff;
@@ -439,7 +458,7 @@ public sealed class MixerBus : IDisposable
             }
             if (reason.HasValue)
             {
-                EndVoice(voice, reason.Value);
+                EndVoice(voice, reason.Value, markerPosition);
             }
             var contributionSamples = contributionFrames * _channels;
             for (var sample = 0; sample < contributionSamples; sample++)
@@ -450,26 +469,38 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private int ScanCutoff(MixerVoice voice, int frames, out StreamEndReason reason)
+    private int ScanCutoff(MixerVoice voice, int frames, out StreamEndReason reason, out TimeSpan markerPosition)
     {
         reason = default;
+        markerPosition = default;
         var markers = voice.Markers;
-        var hasMarker = markers.Length > 0;
         var hasCueOut = voice.HasCueOut;
+        var cueIn = voice.CueInSeconds;
+        var start = voice.StartFrame;
+        var markerIndex = -1;
+        var blockStart = cueIn + start / (double)_sampleRate;
+        for (var index = 0; index < markers.Length; index++)
+        {
+            if (markers[index].Position.TotalSeconds > blockStart)
+            {
+                markerIndex = index;
+                break;
+            }
+        }
+        var hasMarker = markerIndex >= 0;
         if (!hasMarker && !hasCueOut)
         {
             return -1;
         }
-        var markerPos = hasMarker ? markers[0].Position.TotalSeconds : 0.0;
+        var markerPos = hasMarker ? markers[markerIndex].Position.TotalSeconds : 0.0;
         var cueOutPos = voice.CueOutSeconds;
-        var cueIn = voice.CueInSeconds;
-        var start = voice.StartFrame;
         for (var frame = 0; frame < frames; frame++)
         {
             var filePos = cueIn + (start + frame) / (double)_sampleRate;
             if (hasMarker && filePos >= markerPos)
             {
                 reason = StreamEndReason.StoppedByMarker;
+                markerPosition = markers[markerIndex].Position;
                 return frame;
             }
             if (hasCueOut && filePos >= cueOutPos)
@@ -481,14 +512,14 @@ public sealed class MixerBus : IDisposable
         return -1;
     }
 
-    private void EndVoice(MixerVoice voice, StreamEndReason reason)
+    private void EndVoice(MixerVoice voice, StreamEndReason reason, TimeSpan markerPosition = default)
     {
         if (voice.Dead)
         {
             return;
         }
         voice.Dead = true;
-        Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Ended, reason));
+        Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Ended, reason, null, markerPosition));
     }
 
     private void FailVoice(MixerVoice voice)

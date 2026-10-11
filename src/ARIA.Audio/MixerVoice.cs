@@ -20,7 +20,7 @@ internal sealed class MixerVoice
 
     public bool BypassPan { get; set; }
 
-    public required MarkerSpec[] Markers { get; init; }
+    public required MarkerSpec[] Markers { get; set; }
 
     public required double CueInSeconds { get; init; }
 
