@@ -1,6 +1,7 @@
 # Метки на seek-панели — дизайн
 
 Дата: 2026-10-12. Режим: Operate. Поверхность: PlaybackHeader (волна).
+Статус: реализовано; отклонения от плана — в конце документа.
 
 ## Намерение
 
@@ -154,9 +155,10 @@ void SetMarkers(StreamHandle handle, ImmutableArray<MarkerSpec> markers); // def
   получает `MarkerFloor` (по умолчанию ноль). При остановке по метке
   `MarkerFloor` = позиция сработавшей метки (`StreamEvent.MarkerPosition`),
   а в движок уходят только метки с `Position > MarkerFloor`. Сбрасывается в
-  ноль на `SeekTo`, `JumpTo`, `Replay`, `Stop` и смене вхождения. Без этого
-  после автостопа повторный Play снова упирается в ту же метку — трек
-  становится непроходимым.
+  ноль на `SeekTo`, `JumpTo`, `Stop`, команду `Replay` и смене вхождения,
+  но НЕ на `EndAction.Replay`: иначе петля на той же метке крутилась бы
+  вечно. Без флора после автостопа повторный Play снова упирается в ту же
+  метку — трек становится непроходимым.
 - `SetMarkers` меняет метки живого потока: без переармливания, без разрыва
   звука, ноль аллокаций в Render.
 
@@ -271,6 +273,11 @@ void SetMarkers(StreamHandle handle, ImmutableArray<MarkerSpec> markers); // def
 
 ## Риски
 
+- `DeckContent.Markers` по умолчанию `default(ImmutableArray<Marker>)`, а
+  сериализатор состояния (дельта кадры пульта) на таком значении падает с
+  `InvalidOperationException: This operation cannot be performed on a default
+  instance of ImmutableArray<T>`. Поэтому все места продукта (`Content`,
+  `PeekNext`) и тесты, сериализующие состояние, обязаны передавать метки.
 - 28px — эвристика; на узком окне (1100px) и 3-минутном файле метки
   скучиваются и имена пропадают. Лечится зумом волны — не в этом срезе.
 - Изменение поведения движка (переход за метку) затрагивает тех, кто уже
@@ -279,3 +286,15 @@ void SetMarkers(StreamHandle handle, ImmutableArray<MarkerSpec> markers); // def
   существующих файлов с меткой на `CueIn`.
 - Стек отмены в памяти: падение приложения отмену теряет, метки уже
   сохранены.
+
+## Отклонения от плана (реализовано так)
+
+- Флор автостопа снимается командой `Replay`, а не в `RestartCurrent`:
+  Play после автостопа с `EndAction.Stop` идёт через `RestartCurrent`, и
+  сброс там убивал бы весь флор.
+- `RefreshCurrentSettings` дополнительно перепривязывает монитор к дескриптору
+  (`_monitor.Bind`): иначе `CheckPreRoll` сравнивает свежий `Content` со
+  старым биндингом и пре-ролл кроссфейда ломается после правки меток на ходу.
+- `PeekNext` передаёт метки в `DeckContent`: без этого падали дельта-кадры
+  пульта (см. риск про `default(ImmutableArray)`).
+- `PlaybackChannelTests` строит тестовые деки с `Markers: []`.
