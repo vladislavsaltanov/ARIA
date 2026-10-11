@@ -30,7 +30,8 @@ public sealed record DeckContent(
     TimeSpan Duration,
     TimeSpan CueIn,
     TimeSpan? CueOut = null,
-    double? Bpm = null);
+    double? Bpm = null,
+    ImmutableArray<Marker> Markers = default);
 
 public sealed record TransportState(
     TransportStatus Status,

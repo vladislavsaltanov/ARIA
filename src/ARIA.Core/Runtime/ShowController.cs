@@ -14,6 +14,7 @@ public sealed class ShowController : IShowHandler
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
     private const double ClickBpmMin = 20.0;
+    private const int UndoDepth = 64;
 
     private const int SessionNameMaxLength = 64;
     private const double ClickBpmMax = 300.0;
@@ -33,6 +34,7 @@ public sealed class ShowController : IShowHandler
     private int _cursor;
 
     private readonly List<QueueItem> _queue = [];
+    private readonly List<Command> _undo = [];
 
     private TransportStatus _status = TransportStatus.Stopped;
     private DeckInstance? _current;
@@ -44,6 +46,7 @@ public sealed class ShowController : IShowHandler
     private (long Seq, DeckInstance Deck)? _pendingOpen;
     private bool _atEndBoundary;
     private bool _panicked;
+    private bool _applyingUndo;
 
     private double _masterGainDb;
     private bool _muted;
@@ -172,6 +175,9 @@ public sealed class ShowController : IShowHandler
             case SetEntryOverrides setEntryOverrides:
                 OnSetEntryOverrides(client, seq, setEntryOverrides);
                 break;
+            case SetEntryMarkers setEntryMarkers:
+                OnSetEntryMarkers(client, seq, setEntryMarkers);
+                break;
             case MoveQueueItem moveQueueItem:
                 OnMoveQueueItem(client, seq, moveQueueItem);
                 break;
@@ -192,6 +198,12 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetTrackBpm setTrackBpm:
                 OnSetTrackBpm(client, seq, setTrackBpm);
+                break;
+            case SetTrackMarkers setTrackMarkers:
+                OnSetTrackMarkers(client, seq, setTrackMarkers);
+                break;
+            case Undo:
+                OnUndo(client, seq);
                 break;
             case SetEntryAudio setEntryAudio:
                 OnSetEntryAudio(client, seq, setEntryAudio);
@@ -667,6 +679,10 @@ public sealed class ShowController : IShowHandler
                 _current.Handle = null;
             }
         }
+        if (_current is { } stopped)
+        {
+            stopped.MarkerFloor = TimeSpan.Zero;
+        }
         _pendingOpen = null;
         SetStatus(TransportStatus.Stopped);
         _atEndBoundary = false;
@@ -703,6 +719,7 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "nothing-to-replay");
             return;
         }
+        _current.MarkerFloor = TimeSpan.Zero;
         RestartCurrent();
     }
 
@@ -723,6 +740,7 @@ public sealed class ShowController : IShowHandler
         {
             filePosition = end;
         }
+        deck.MarkerFloor = TimeSpan.Zero;
         if (_status == TransportStatus.Playing && _smoothing.Enabled && _smoothing.SeekFade > TimeSpan.Zero)
         {
             SeekWithCrossfade(deck, filePosition);
@@ -740,9 +758,7 @@ public sealed class ShowController : IShowHandler
         _retired.Add(old);
         _monitor?.Unbind(old);
         var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut, settings.Audio);
-        var options = new StreamOptions(
-            StreamBus.Main,
-            settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
+        var options = new StreamOptions(StreamBus.Main, ArmedMarkers(deck));
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
         deck.StartAt = filePosition;
@@ -1170,9 +1186,7 @@ public sealed class ShowController : IShowHandler
         }
         var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
         var source = new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio);
-        var options = new StreamOptions(
-            StreamBus.Preview,
-            settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
+        var options = new StreamOptions(StreamBus.Preview, ArmedMarkers(settings.Markers, TimeSpan.Zero));
         _engine.StartPreview(source, options);
     }
 
@@ -1311,6 +1325,138 @@ public sealed class ShowController : IShowHandler
         }
         EmitShow();
     }
+
+    private void OnSetTrackMarkers(ClientId client, long seq, SetTrackMarkers command)
+    {
+        if (!_trackMap.TryGetValue(command.Track, out var existing))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var markers = NormalizeMarkers(command.Markers);
+        if (MarkerValidation.Validate(markers ?? [], existing.Duration) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        if (!_applyingUndo)
+        {
+            PushUndo(new SetTrackMarkers(command.Track, existing.Defaults.Markers));
+        }
+        var updated = existing with { Defaults = existing.Defaults with { Markers = markers } };
+        _tracks = _tracks.Replace(existing, updated);
+        _trackMap[command.Track] = updated;
+        EmitShow();
+        if (_current?.Track.Id == command.Track)
+        {
+            RefreshCurrentSettings();
+        }
+    }
+
+    private void OnSetEntryMarkers(ClientId client, long seq, SetEntryMarkers command)
+    {
+        if (!_entryMap.TryGetValue(command.Entry, out var location))
+        {
+            Reject(client, seq, "unknown-entry");
+            return;
+        }
+        var project = location.Project;
+        var entry = project.Entries[location.Index];
+        if (!_trackMap.TryGetValue(entry.TrackId, out var track))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        var markers = NormalizeMarkers(command.Markers);
+        if (MarkerValidation.Validate(markers ?? [], track.Duration) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        if (!_applyingUndo)
+        {
+            PushUndo(new SetEntryMarkers(command.Entry, entry.Overrides?.Markers));
+        }
+        var overrides = NormalizeOverrides((entry.Overrides ?? new ProjectOverrides()) with { Markers = markers });
+        var entries = project.Entries.SetItem(location.Index, entry with { Overrides = overrides });
+        _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
+        RebuildEntryMap();
+        EmitShow();
+        if (_current?.Entry is { } currentEntry && currentEntry == command.Entry)
+        {
+            RefreshCurrentSettings();
+        }
+    }
+
+    private void OnUndo(ClientId client, long seq)
+    {
+        if (_undo.Count == 0)
+        {
+            Reject(client, seq, "nothing-to-undo");
+            return;
+        }
+        var index = _undo.Count - 1;
+        var command = _undo[index];
+        _undo.RemoveAt(index);
+        _applyingUndo = true;
+        try
+        {
+            Handle(client, seq, command);
+        }
+        finally
+        {
+            _applyingUndo = false;
+        }
+    }
+
+    private void PushUndo(Command command)
+    {
+        _undo.Add(command);
+        if (_undo.Count > UndoDepth)
+        {
+            _undo.RemoveAt(0);
+        }
+    }
+
+    private void RefreshCurrentSettings()
+    {
+        if (_current is not { } deck || !_trackMap.TryGetValue(deck.Track.Id, out var track))
+        {
+            return;
+        }
+        var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
+            ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+            : EffectiveSettings.ForTrack(track, _defaultEndAction);
+        _current = new DeckInstance
+        {
+            Entry = deck.Entry,
+            Track = track,
+            Settings = settings,
+            Handle = deck.Handle,
+            StartAt = deck.StartAt,
+            MarkerFloor = deck.MarkerFloor,
+        };
+        if (deck.Handle is { } handle)
+        {
+            _monitor?.Bind(handle, Content(_current));
+            _engine.SetMarkers(handle, ArmedMarkers(_current));
+        }
+        EmitTransport();
+    }
+
+    private static ImmutableArray<Marker>? NormalizeMarkers(ImmutableArray<Marker>? markers) =>
+        markers is { IsDefaultOrEmpty: false } value ? value : null;
+
+    private static ProjectOverrides? NormalizeOverrides(ProjectOverrides overrides) =>
+        overrides is { Name: null, Color: null, Note: null, GainDb: null, EndAction: null, In: null, Out: null, CueIn: null, CueOut: null, Audio: null, Markers: null }
+            ? null
+            : overrides;
+
+    private static ImmutableArray<MarkerSpec> ArmedMarkers(DeckInstance deck) =>
+        ArmedMarkers(deck.Settings.Markers, deck.MarkerFloor);
+
+    private static ImmutableArray<MarkerSpec> ArmedMarkers(ImmutableArray<Marker> markers, TimeSpan floor) =>
+        [.. markers.Where(m => m.Position > floor).Select(m => new MarkerSpec(m.Name, m.Position, m.Action))];
 
     private void OnNormalizeTrack(ClientId client, long seq, NormalizeTrack command)
     {
@@ -1808,6 +1954,10 @@ public sealed class ShowController : IShowHandler
             FaultCurrent(e.Detail);
             return;
         }
+        if (e.Reason == StreamEndReason.StoppedByMarker)
+        {
+            _current!.MarkerFloor = e.MarkerPosition;
+        }
 
         switch (e.Reason)
         {
@@ -1963,9 +2113,7 @@ public sealed class ShowController : IShowHandler
         var settings = deck.Settings;
         deck.StartAt = settings.CueIn;
         var source = new TrackSource(deck.Track.FilePath, settings.CueIn, settings.CueOut, settings.Audio);
-        var options = new StreamOptions(
-            StreamBus.Main,
-            settings.Markers.Select(m => new MarkerSpec(m.Name, m.Position, m.Action)).ToImmutableArray());
+        var options = new StreamOptions(StreamBus.Main, ArmedMarkers(deck));
         var engine = _engine;
         if (_marshal is not { } marshal)
         {
@@ -2120,7 +2268,8 @@ public sealed class ShowController : IShowHandler
         deck.Track.Duration,
         deck.StartAt,
         deck.Settings.CueOut,
-        deck.Track.Defaults.Bpm);
+        deck.Track.Defaults.Bpm,
+        deck.Settings.Markers);
 
     private DeckContent? PeekNext()
     {
@@ -2131,7 +2280,7 @@ public sealed class ShowController : IShowHandler
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
-            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm);
+            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm, settings.Markers);
         }
 
         if (_activeProjectId is { } projectId)
@@ -2142,7 +2291,7 @@ public sealed class ShowController : IShowHandler
                 var entry = project.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
                 var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
-                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm);
+                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm, settings.Markers);
             }
         }
         return null;
@@ -2245,5 +2394,6 @@ public sealed class ShowController : IShowHandler
         public required PlaybackSettings Settings { get; set; }
         public StreamHandle? Handle { get; set; }
         public TimeSpan StartAt { get; set; }
+        public TimeSpan MarkerFloor { get; set; }
     }
 }

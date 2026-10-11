@@ -1,5 +1,6 @@
 namespace Aria.Core.Tests;
 
+using System.Collections.Immutable;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 
@@ -29,6 +30,7 @@ public sealed class FakeEngine : IAudioEngine
     public List<bool> PreviewMutes { get; } = [];
     public List<GlobalAudioSettings> GlobalAudios { get; } = [];
     public List<(StreamHandle Handle, TrackAudioSettings Audio)> VoiceAudios { get; } = [];
+    public List<(StreamHandle Handle, ImmutableArray<MarkerSpec> Markers)> MarkerSets { get; } = [];
     public Func<string, double> ScanLufs { get; set; } = _ => double.NaN;
     public List<string> ScannedPaths { get; } = [];
     public List<(PreviewSessionHandle Session, TrackSource Source)> SessionTracks { get; } = [];
@@ -109,6 +111,8 @@ public sealed class FakeEngine : IAudioEngine
 
     public void SetVoiceAudio(StreamHandle handle, TrackAudioSettings audio) => VoiceAudios.Add((handle, audio));
 
+    public void SetMarkers(StreamHandle handle, ImmutableArray<MarkerSpec> markers) => MarkerSets.Add((handle, markers));
+
     public void StartSessionTrack(PreviewSessionHandle session, TrackSource source) => SessionTracks.Add((session, source));
 
     public void RenameSession(PreviewSessionHandle session, string name)
@@ -155,8 +159,8 @@ public sealed class FakeEngine : IAudioEngine
 
     public FakeStream? Last => Created.Count > 0 ? Created[^1] : null;
 
-    public void End(StreamHandle handle, StreamEndReason reason) =>
-        Events?.Invoke(new StreamEvent(handle, StreamEventKind.Ended, reason));
+    public void End(StreamHandle handle, StreamEndReason reason, TimeSpan markerPosition = default) =>
+        Events?.Invoke(new StreamEvent(handle, StreamEventKind.Ended, reason, null, markerPosition));
 
     public void Fault(StreamHandle handle, string detail = "decode-failure") =>
         Events?.Invoke(new StreamEvent(handle, StreamEventKind.Faulted, StreamEndReason.Faulted, detail));

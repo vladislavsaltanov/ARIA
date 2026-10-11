@@ -29,7 +29,7 @@ public static class EffectiveSettings
             Out: o?.Out ?? d.Out ?? Fade.None,
             CueIn: o?.CueIn ?? TimeSpan.Zero,
             CueOut: o?.CueOut,
-            Markers: d.Markers ?? ImmutableArray<Marker>.Empty,
+            Markers: o?.Markers ?? d.Markers ?? ImmutableArray<Marker>.Empty,
             Audio: o?.Audio ?? d.Audio ?? TrackAudioSettings.Default);
     }
 

@@ -80,7 +80,8 @@ public sealed class PlaybackChannelTests : IAsyncLifetime
             null,
             EndAction.Advance,
             TimeSpan.FromSeconds(10),
-            TimeSpan.FromSeconds(1));
+            TimeSpan.FromSeconds(1),
+            Markers: []);
         _monitor.Bind(new StreamHandle(1), deck);
 
         _monitor.Publish(new StreamHandle(1), TimeSpan.FromSeconds(2));
@@ -104,7 +105,8 @@ public sealed class PlaybackChannelTests : IAsyncLifetime
             null,
             EndAction.Advance,
             TimeSpan.FromSeconds(10),
-            TimeSpan.FromSeconds(1));
+            TimeSpan.FromSeconds(1),
+            Markers: []);
         _monitor.Bind(new StreamHandle(1), deck);
 
         _monitor.Publish(new StreamHandle(1), TimeSpan.FromSeconds(2));
