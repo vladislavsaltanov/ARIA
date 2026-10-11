@@ -277,6 +277,11 @@ internal static class CommandCodec
         {
             endAction = Enum.TryParse<EndAction>(endActionElement.GetString(), ignoreCase: true, out var parsed) ? parsed : null;
         }
+        ImmutableArray<Marker>? markers = null;
+        if (element.TryGetProperty("markers", out var markersElement) && markersElement.ValueKind == JsonValueKind.Array)
+        {
+            markers = [.. markersElement.EnumerateArray().Select(ParseMarker)];
+        }
         return new ProjectOverrides(
             Name: StringOrNullOf(element, "name"),
             Color: StringOrNullOf(element, "color"),
@@ -286,8 +291,12 @@ internal static class CommandCodec
             In: fadeIn,
             Out: fadeOut,
             CueIn: TicksOf(element, "cue_in_ticks") is { } cueIn ? new TimeSpan(cueIn) : null,
-            CueOut: TicksOf(element, "cue_out_ticks") is { } cueOut ? new TimeSpan(cueOut) : null);
+            CueOut: TicksOf(element, "cue_out_ticks") is { } cueOut ? new TimeSpan(cueOut) : null,
+            Markers: markers);
     }
+
+    private static Marker ParseMarker(JsonElement element) =>
+        new(StringOrNullOf(element, "name") ?? string.Empty, new TimeSpan(TicksOf(element, "position_ticks") ?? 0), (MarkerAction)IntOf(element, "action"));
 
     private static Guid GuidOf(JsonElement element, string name) =>
         Guid.Parse(element.GetProperty(name).GetString()!);

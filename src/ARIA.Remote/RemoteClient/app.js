@@ -1060,6 +1060,8 @@
     if (cueOut !== "")
       overrides.cue_out_ticks = Math.round(Number(cueOut) * 10000);
     if (endAction) overrides.end_action = endAction;
+    if (entry.overrides && entry.overrides.markers)
+      overrides.markers = entry.overrides.markers;
     if (Object.keys(overrides).length === 0) {
       send("set_entry_overrides", { entry: entry.id });
     } else {
