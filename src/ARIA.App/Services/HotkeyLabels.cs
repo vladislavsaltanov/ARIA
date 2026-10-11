@@ -12,6 +12,7 @@ public static class HotkeyLabels
         "lock" => "Заблокировать управление",
         "toggle-script" => "Панель сценария",
         "reset-clock" => "Сбросить show clock",
+        "undo" => "Отменить правку меток",
         "settings" => "Настройки",
         _ => action,
     };

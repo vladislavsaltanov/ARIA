@@ -118,6 +118,15 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private TrackId? currentTrackId;
 
+    [ObservableProperty]
+    private EntryId? currentEntryId;
+
+    [ObservableProperty]
+    private TimeSpan currentDuration;
+
+    [ObservableProperty]
+    private ImmutableArray<Marker> markers = [];
+
     public TransportViewModel(
         ICommandBus bus,
         PlaybackMonitor? monitor = null,
@@ -234,6 +243,44 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
 
     public void SeekToFilePosition(TimeSpan filePosition) => Submit(new SeekTo(filePosition));
 
+    public void PlaceMarker(TimeSpan position, string name) =>
+        SubmitMarkers(Sorted(EffectiveMarkers.Add(new Marker(name, position, MarkerAction.Stop))));
+
+    public void RenameMarker(Marker marker, string name) =>
+        SubmitMarkers(Sorted(Replace(marker, marker with { Name = name })));
+
+    public void MoveMarker(Marker marker, TimeSpan position) =>
+        SubmitMarkers(Sorted(Replace(marker, marker with { Position = position })));
+
+    public void RemoveMarker(Marker marker)
+    {
+        var index = EffectiveMarkers.IndexOf(marker);
+        SubmitMarkers(index < 0 ? EffectiveMarkers : EffectiveMarkers.RemoveAt(index));
+    }
+
+    private ImmutableArray<Marker> EffectiveMarkers => Markers.IsDefaultOrEmpty ? [] : Markers;
+
+    private ImmutableArray<Marker> Replace(Marker marker, Marker updated)
+    {
+        var index = EffectiveMarkers.IndexOf(marker);
+        return index < 0 ? EffectiveMarkers : EffectiveMarkers.SetItem(index, updated);
+    }
+
+    private static ImmutableArray<Marker> Sorted(ImmutableArray<Marker> markers) =>
+        [.. markers.OrderBy(marker => marker.Position)];
+
+    private void SubmitMarkers(ImmutableArray<Marker> markers)
+    {
+        if (CurrentEntryId is { } entry)
+        {
+            Submit(new SetEntryMarkers(entry, markers));
+        }
+        else if (CurrentTrackId is { } track)
+        {
+            Submit(new SetTrackMarkers(track, markers));
+        }
+    }
+
     private void Post(Action work)
     {
         if (_sync is { } sync)
@@ -284,6 +331,10 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
         };
         DisplayName = state.Current is null ? "—" : Truncate(TrackDisplay(state.Current));
         CurrentTrackId = state.Current?.TrackId;
+        CurrentEntryId = state.Current?.EntryId;
+        CurrentDuration = state.Current?.Duration ?? TimeSpan.Zero;
+        var currentMarkers = state.Current?.Markers ?? default;
+        Markers = currentMarkers.IsDefaultOrEmpty ? [] : currentMarkers;
         NextLine = state.Next is null ? "—" : Truncate($"Далее: {TrackDisplay(state.Next)}");
         Panicked = state.Status == TransportStatus.Panicked;
         _playing = state.Status == TransportStatus.Playing;

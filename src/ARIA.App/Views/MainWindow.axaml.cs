@@ -287,7 +287,7 @@ public partial class MainWindow : Window
         {
             return;
         }
-        if (_hotkeys.TryHandle(HotkeyInput.GestureFor(e.Key, e.KeyModifiers)))
+        if (!IsTextInput(e.Source) && _hotkeys.TryHandle(HotkeyInput.GestureFor(e.Key, e.KeyModifiers)))
         {
             e.Handled = true;
         }

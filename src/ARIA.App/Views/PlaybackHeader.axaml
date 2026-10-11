@@ -91,10 +91,10 @@
           </StackPanel>
         </Button>
       </StackPanel>
-      <Border Grid.Row="3" x:Name="WaveformStrip" Height="56" Background="Transparent"
+      <Border Grid.Row="3" x:Name="WaveformStrip" Background="Transparent"
               HorizontalAlignment="Stretch" VerticalAlignment="Center">
-        <Grid>
-          <Canvas x:Name="WaveformCanvas" Background="Transparent">
+        <Grid RowDefinitions="14,56,14">
+          <Canvas x:Name="WaveformCanvas" Grid.Row="1" Background="Transparent">
             <Border x:Name="WavePlayed" Height="56" Width="0" Background="{StaticResource BrushSignal}" Opacity="0.35"
                     IsVisible="False" IsHitTestVisible="False" Canvas.Left="0"/>
             <Border x:Name="WaveRemain" Height="56" Width="0" Background="{StaticResource BrushShade}"
@@ -102,6 +102,8 @@
             <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushSignal}"
                        IsVisible="False"/>
           </Canvas>
+          <Canvas x:Name="MarkerCanvas" Grid.Row="0" Grid.RowSpan="3" IsHitTestVisible="False"/>
+          <Canvas x:Name="MarkerEditorCanvas" Grid.Row="0" Grid.RowSpan="3"/>
         </Grid>
       </Border>
     </Grid>

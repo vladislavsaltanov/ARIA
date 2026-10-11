@@ -9,7 +9,7 @@ public sealed partial class HotkeysSectionVm : ObservableObject
 {
     public static readonly IReadOnlyList<string> GestureActions =
     [
-        "play", "pause", "panic", "next", "replay", "lock", "toggle-script", "reset-clock",
+        "play", "pause", "panic", "next", "replay", "lock", "toggle-script", "reset-clock", "undo",
     ];
 
     private readonly HotkeyService _hotkeys;
