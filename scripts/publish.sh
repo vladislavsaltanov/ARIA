@@ -2,6 +2,7 @@
 set -e
 cd "$(dirname "$0")/.."
 RID="${1:-osx-arm64}"
+VERSION="${2:-0.3.1}"
 
 sh native/aria-shim/build.sh "$RID"
 
@@ -32,7 +33,7 @@ osx-*)
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   cp -R "publish/$RID/stage/." "$APP/Contents/MacOS/"
   mv "$APP/Contents/MacOS/ARIA.App" "$APP/Contents/MacOS/ARIA"
-  cat >"$APP/Contents/Info.plist" <<'PLIST'
+  cat >"$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -41,7 +42,7 @@ osx-*)
   <key>CFBundleIdentifier</key><string>io.aria.showplayer</string>
   <key>CFBundleName</key><string>ARIA</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.3.1</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
 </dict>
 </plist>
 PLIST
