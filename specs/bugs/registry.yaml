@@ -115,9 +115,9 @@
   scope: dnd-import
   summary: Дроп на плейлист не показывает импортированные треки
   file: specs/bugs/BUG-dnd-playlist-drop.md
-  status: needs-confirmation
-  verified: 2026-09-27
-  evidence: fix in code; SCOPE_LATEST S3 requires user confirmation before closing
+  status: fixed
+  verified: 2026-10-17
+  evidence: fix in code; user confirmed close 2026-10-17
 
 - bug_id: BUG-fault-advance-import-noise
   date: 2026-09-16
