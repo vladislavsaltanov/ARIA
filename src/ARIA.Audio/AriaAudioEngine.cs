@@ -145,9 +145,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             return;
         }
         var array = markers.IsDefaultOrEmpty ? Array.Empty<MarkerSpec>() : markers.ToArray();
-        if (array.Length > 1)
+        for (var index = 1; index < array.Length; index++)
         {
-            Array.Sort(array, static (left, right) => left.Position.CompareTo(right.Position));
+            System.Diagnostics.Debug.Assert(array[index - 1].Position <= array[index].Position);
         }
         _mixer.SetMarkers(mixerHandle, array);
     }

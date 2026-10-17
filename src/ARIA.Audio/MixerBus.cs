@@ -202,9 +202,9 @@ public sealed class MixerBus : IDisposable
     private MixerVoice CreateVoice(StreamHandle handle, VoiceConfig config)
     {
         var markers = config.Markers.IsDefaultOrEmpty ? Array.Empty<MarkerSpec>() : config.Markers.ToArray();
-        if (markers.Length > 1)
+        for (var index = 1; index < markers.Length; index++)
         {
-            Array.Sort(markers, static (left, right) => left.Position.CompareTo(right.Position));
+            System.Diagnostics.Debug.Assert(markers[index - 1].Position <= markers[index].Position);
         }
         var fadeIn = config.FadeIn;
         var fadeInFrames = fadeIn is null || fadeIn.Duration <= TimeSpan.Zero
@@ -358,6 +358,10 @@ public sealed class MixerBus : IDisposable
         if (voice is null || voice.RemoveRequested)
         {
             return;
+        }
+        for (var index = 1; index < markers.Length; index++)
+        {
+            System.Diagnostics.Debug.Assert(markers[index - 1].Position <= markers[index].Position);
         }
         voice.Markers = markers;
     }

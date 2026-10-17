@@ -50,30 +50,12 @@ public sealed class PlaybackHeaderHeadlessTests
             Assert.NotNull(header.FindControl<Button>("ResetClockButton"));
             window.Close();
 
-            var controller = new RecordingController();
-            using var bus = new CommandBus(controller, BusMode.Inline);
-            using var viewModel = new TransportViewModel(bus);
-            var dragHeader = new Views.PlaybackHeader { DataContext = viewModel };
-            var dragWindow = new Window { Width = 700, Height = 300, Content = dragHeader };
-            dragWindow.Show();
-
+            using var lane = new TestLane(TestTrack.Id, status: TransportStatus.Stopped);
+            var dragHeader = lane.Header;
+            var dragWindow = lane.Window;
+            var controller = lane.Controller;
             var strip = dragHeader.FindControl<Border>("WaveformStrip");
             Assert.NotNull(strip);
-
-            var store = new MemoryWaveformStore();
-            var points = ImmutableArray.CreateBuilder<PeakPoint>();
-            for (var index = 0; index < 500; index++)
-            {
-                points.Add(new PeakPoint(-0.5f, 0.5f));
-            }
-            store.Save(new WaveformPeaks(TestTrack.Id, 25, 48000, points.ToImmutable()));
-            var monitor = new PlaybackMonitor();
-            var deck = new DeckContent(null, TestTrack.Id, "test", null, EndAction.Pause, TimeSpan.FromSeconds(90), TimeSpan.Zero);
-            monitor.Bind(new StreamHandle(1), deck);
-            monitor.Publish(new StreamHandle(1), TimeSpan.FromSeconds(30));
-            dragHeader.Attach(monitor, store);
-
-            dragWindow.UpdateLayout();
             var cursor = dragHeader.FindControl<Rectangle>("WaveCursor");
             Assert.NotNull(cursor);
             Assert.True(cursor.IsVisible);
@@ -105,73 +87,12 @@ public sealed class PlaybackHeaderHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            var controller = new RecordingController();
-            using var bus = new CommandBus(controller, BusMode.Inline);
-            using var viewModel = new TransportViewModel(bus);
-            var header = new Views.PlaybackHeader { DataContext = viewModel };
-            var window = new Window { Width = 700, Height = 300, Content = header };
-            window.Show();
-
-            var store = new MemoryWaveformStore();
-            var points = ImmutableArray.CreateBuilder<PeakPoint>();
-            for (var index = 0; index < 100; index++)
-            {
-                points.Add(new PeakPoint(-0.5f, 0.5f));
-            }
-            store.Save(new WaveformPeaks(TestTrack.Id, 25, 48000, points.ToImmutable()));
-            var monitor = new PlaybackMonitor();
-            header.Attach(monitor, store);
-
-            window.UpdateLayout();
-            var canvas = header.FindControl<Canvas>("WaveformCanvas");
+            using var lane = new TestLane(TestTrack.Id, status: TransportStatus.Stopped, peaks: 100, bindMonitor: false);
+            var canvas = lane.Header.FindControl<Canvas>("WaveformCanvas");
             Assert.NotNull(canvas);
             Assert.True(canvas.Children.Count > 0);
-
-            window.Close();
             return 0;
         }, CancellationToken.None);
     }
 
-    private sealed class RecordingController : IShowHandler
-    {
-        private static readonly DeckContent TestDeck = new(
-            null,
-            TestTrack.Id,
-            "test",
-            null,
-            EndAction.Pause,
-            TimeSpan.FromSeconds(90),
-            TimeSpan.Zero);
-
-        private readonly ShowSnapshot _snapshot = new(
-            0,
-            new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty, EndAction.Advance),
-            0,
-            new TransportState(TransportStatus.Stopped, TestDeck, null, []),
-            0,
-            new QueueState([]),
-            0,
-            new MixerState(0, false, TimeSpan.FromMilliseconds(100), Smoothing.Default));
-
-        public List<Command> Received { get; } = [];
-
-        public Action<StateEvent>? Emitted { get; set; }
-
-        public void Handle(ClientId client, long seq, Command command) => Received.Add(command);
-
-        public ShowSnapshot Snapshot() => _snapshot;
-    }
-
-    private sealed class MemoryWaveformStore : IWaveformStore
-    {
-        private readonly Dictionary<TrackId, WaveformPeaks> _peaks = [];
-
-        public void Save(WaveformPeaks peaks) => _peaks[peaks.TrackId] = peaks;
-
-        public WaveformPeaks? Load(TrackId trackId) => _peaks.GetValueOrDefault(trackId);
-
-        public void Dispose()
-        {
-        }
-    }
 }
