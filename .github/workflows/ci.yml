@@ -22,7 +22,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
@@ -43,7 +43,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
@@ -61,13 +61,13 @@ jobs:
           done
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}
           path: "**/*.trx"
       - name: Upload build log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-log-${{ matrix.os }}
           path: build.binlog
@@ -75,7 +75,7 @@ jobs:
     needs: build-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
@@ -93,7 +93,7 @@ jobs:
     needs: build-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install mingw for win-x64 shim
         run: sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64
       - name: Install zig compiler
@@ -105,7 +105,7 @@ jobs:
       - name: Build win-x64 shim
         run: sh native/aria-shim/build.sh win-x64
       - name: Upload shims
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shims-linux-windows
           path: |
@@ -115,13 +115,13 @@ jobs:
     needs: build-test
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build osx-arm64 shim
         run: sh native/aria-shim/build.sh osx-arm64
       - name: Build osx-x64 shim
         run: sh native/aria-shim/build.sh osx-x64
       - name: Upload shims
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shims-macos
           path: |
@@ -131,7 +131,7 @@ jobs:
     needs: [build-test, native-macos]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
@@ -140,7 +140,7 @@ jobs:
       - name: Run selftest
         run: publish/osx-arm64/ARIA.app/Contents/MacOS/ARIA --selftest
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-osx-arm64
           path: publish/osx-arm64/ARIA.app
@@ -148,7 +148,7 @@ jobs:
     needs: [build-test, native-linux-windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
@@ -165,7 +165,7 @@ jobs:
       - name: Run selftest
         run: publish/linux-x64/ARIA/aria --selftest
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-linux-x64
           path: publish/linux-x64/aria-linux-x64.tar.gz
@@ -173,7 +173,7 @@ jobs:
     needs: [build-test, native-linux-windows]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
@@ -202,23 +202,23 @@ jobs:
           -DestinationPath publish/win-x64/aria-win-x64.zip
           -Force
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-win-x64
           path: publish/win-x64/aria-win-x64.zip
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: lycheeverse/lychee-action@v2
         with:
           args: >
@@ -232,8 +232,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
   pr-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
