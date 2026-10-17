@@ -61,13 +61,13 @@ jobs:
           done
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}
           path: "**/*.trx"
       - name: Upload build log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-log-${{ matrix.os }}
           path: build.binlog
@@ -105,7 +105,7 @@ jobs:
       - name: Build win-x64 shim
         run: sh native/aria-shim/build.sh win-x64
       - name: Upload shims
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shims-linux-windows
           path: |
@@ -121,7 +121,7 @@ jobs:
       - name: Build osx-x64 shim
         run: sh native/aria-shim/build.sh osx-x64
       - name: Upload shims
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shims-macos
           path: |
@@ -140,7 +140,7 @@ jobs:
       - name: Run selftest
         run: publish/osx-arm64/ARIA.app/Contents/MacOS/ARIA --selftest
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-osx-arm64
           path: publish/osx-arm64/ARIA.app
@@ -165,7 +165,7 @@ jobs:
       - name: Run selftest
         run: publish/linux-x64/ARIA/aria --selftest
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-linux-x64
           path: publish/linux-x64/aria-linux-x64.tar.gz
@@ -202,7 +202,7 @@ jobs:
           -DestinationPath publish/win-x64/aria-win-x64.zip
           -Force
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-win-x64
           path: publish/win-x64/aria-win-x64.zip
