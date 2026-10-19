@@ -244,7 +244,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     public void SeekToFilePosition(TimeSpan filePosition) => Submit(new SeekTo(filePosition));
 
     public void PlaceMarker(TimeSpan position, string name) =>
-        SubmitMarkers(Sorted(EffectiveMarkers.Add(new Marker(name, position, MarkerAction.Pause))));
+        SubmitMarkers(Sorted(EffectiveMarkers.Add(new Marker(name, position, MarkerAction.None))));
 
     public void RenameMarker(Marker marker, string name) =>
         SubmitMarkers(Sorted(Replace(marker, marker with { Name = name })));

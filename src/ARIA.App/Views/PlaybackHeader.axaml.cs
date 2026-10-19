@@ -817,7 +817,7 @@ public partial class PlaybackHeader : UserControl
         {
             return;
         }
-        var marker = new Marker(NextMarkerName(), PositionFor(x), MarkerAction.Pause);
+        var marker = new Marker(NextMarkerName(), PositionFor(x), MarkerAction.None);
         _pendingMarker = marker;
         DrawMarkers();
         OpenEditor(marker);

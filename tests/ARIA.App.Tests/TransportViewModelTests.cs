@@ -457,6 +457,7 @@ public sealed class TransportViewModelTests
 
         vm.PlaceMarker(TimeSpan.FromSeconds(10), "привал");
         var marker = Assert.Single(vm.Markers);
+        Assert.Equal(MarkerAction.None, marker.Action);
 
         vm.SetMarkerAction(marker, MarkerAction.RepeatFromPrevious);
 

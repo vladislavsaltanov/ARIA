@@ -59,7 +59,7 @@ public enum MarkerAction { Pause, None, RepeatFromPrevious, Restart }
    **GREEN**: ветка restart.
    **verify**: `dotnet test tests/ARIA.Core.Tests --filter MarkerRestart`
 6. **RED**: обновление `MarkerStop_TriggersEndAction` → `MarkerPause_HoldsCurrentTrack` + переименование `MarkerAction.Stop` → Pause по src/tests (MODIFIED: метка больше не advance'ит).
-   **GREEN**: ожидание Paused + тот же трек; `PlaceMarker`/BeginMarker default Pause.
+   **GREEN**: ожидание Paused + тот же трек; `PlaceMarker`/BeginMarker default None.
    **verify**: `dotnet test tests/ARIA.Core.Tests --filter MarkerStop_TriggersEndAction`
 7. **RED**: UI — ховер 500мс над меткой открывает попап выбора действия, 4 русских лейбла «Проезд / Пауза / Повтор от прошлой / С начала» (context7: `Enum.GetValues<T>()` + `SelectedItem` + record-обёртка с `ItemTemplate` для лейблов, `/avaloniaui/avalonia-docs` ComboBox how-to).
    **GREEN**: `TransportViewModel.SetMarkerAction` + ховер-попап в `PlaybackHeader` (`DispatcherTimer` 500мс, закрытие на смене ховера/exit/прессе) + хинт.
