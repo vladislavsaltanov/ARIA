@@ -28,6 +28,7 @@ public partial class PlaybackHeader : UserControl
     private const double MarkerEditorMinWidth = 80.0;
     private const string MarkerHint = "ЛКМ — перейти · 2×ЛКМ — переименовать · ПКМ — удалить · ПКМ+протяжка — сдвинуть · навести — действие";
     private const double MarkerActionDelayMs = 500.0;
+    private const double MarkerCloseDelayMs = 150.0;
 
     private static readonly IBrush WaveBrush = new ImmutableSolidColorBrush(Color.Parse("#ECECEC"));
     private static readonly IBrush MarkerBrush = new ImmutableSolidColorBrush(Color.Parse("#8A8A8A"));
@@ -45,8 +46,11 @@ public partial class PlaybackHeader : UserControl
     private Marker? _hoverMarker;
     private DispatcherTimer? _hoverTimer;
     private Marker? _hoverTimerMarker;
+    private DispatcherTimer? _closeTimer;
     private Popup? _actionPopup;
     private Marker? _actionMarker;
+
+    internal bool IsActionPopupOpen => _actionPopup?.IsOpen == true;
     private static readonly MarkerAction[] MarkerActions = [MarkerAction.None, MarkerAction.Pause, MarkerAction.RepeatFromPrevious, MarkerAction.Restart];
     private Marker? _dragMarker;
     private bool _markerDragging;
@@ -64,6 +68,8 @@ public partial class PlaybackHeader : UserControl
         WaveformBorder.PointerExited += OnWaveExited;
         _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(MarkerActionDelayMs) };
         _hoverTimer.Tick += OnHoverTimerTick;
+        _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(MarkerCloseDelayMs) };
+        _closeTimer.Tick += OnCloseTimerTick;
         WaveformBorder.PointerReleased += OnWaveReleased;
         WaveformBorder.PointerCaptureLost += OnWaveCaptureLost;
         WaveformCanvas.SizeChanged += OnWaveCanvasSizeChanged;
@@ -266,6 +272,8 @@ public partial class PlaybackHeader : UserControl
 
     private void OnWavePressed(object? sender, PointerPressedEventArgs e)
     {
+        _hoverTimer?.Stop();
+        _hoverTimerMarker = null;
         CloseActionPopup();
         if (_peaks is null || _latest is null || _viewModel is null)
         {
@@ -540,8 +548,13 @@ public partial class PlaybackHeader : UserControl
             return;
         }
         _hoverMarker = marker;
+        if (marker is null)
+        {
+            RestartCloseTimer();
+            DrawMarkers();
+            return;
+        }
         CloseActionPopup();
-        ToolTip.SetTip(WaveformBorder, marker is null ? null : MarkerHint);
         DrawMarkers();
         RestartHoverTimer();
     }
@@ -567,7 +580,7 @@ public partial class PlaybackHeader : UserControl
         _hoverTimer?.Stop();
         var marker = _hoverTimerMarker;
         _hoverTimerMarker = null;
-        if (marker is null || _editor is not null || _dragMarker is not null)
+        if (marker is null || _editor is not null || _dragMarker is not null || _dragging)
         {
             return;
         }
@@ -583,10 +596,29 @@ public partial class PlaybackHeader : UserControl
         _hoverMarker = null;
         _hoverTimer?.Stop();
         _hoverTimerMarker = null;
-        CloseActionPopup();
-        ToolTip.SetTip(WaveformBorder, null);
+        RestartCloseTimer();
         DrawMarkers();
     }
+
+    private void RestartCloseTimer()
+    {
+        if (_closeTimer is null || _actionPopup is null)
+        {
+            return;
+        }
+        _closeTimer.Stop();
+        _closeTimer.Start();
+    }
+
+    private void OnCloseTimerTick(object? sender, EventArgs e)
+    {
+        _closeTimer?.Stop();
+        CloseActionPopup();
+    }
+
+    private void OnPopupEntered(object? sender, PointerEventArgs e) => _closeTimer?.Stop();
+
+    private void OnPopupExited(object? sender, PointerEventArgs e) => RestartCloseTimer();
 
     private static string ActionLabel(MarkerAction action) => action switch
     {
@@ -605,6 +637,14 @@ public partial class PlaybackHeader : UserControl
             return;
         }
         var panel = new StackPanel { Spacing = 2, MinWidth = 170 };
+        var closer = new Button
+        {
+            Content = "×",
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            Padding = new Thickness(8, 0, 8, 0),
+        };
+        closer.Click += OnPopupCloseClick;
+        panel.Children.Add(closer);
         foreach (var action in MarkerActions)
         {
             var button = new Button
@@ -620,6 +660,16 @@ public partial class PlaybackHeader : UserControl
             button.Click += OnActionClick;
             panel.Children.Add(button);
         }
+        var footer = new TextBlock
+        {
+            Text = MarkerHint,
+            FontSize = 10,
+            Foreground = MarkerBrush,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 260,
+            Margin = new Thickness(0, 4, 0, 0),
+        };
+        panel.Children.Add(footer);
         var background = MarkerBrush;
         if (this.TryFindResource("BrushSurface", out var surface) && surface is IBrush surfaceBrush)
         {
@@ -639,13 +689,13 @@ public partial class PlaybackHeader : UserControl
             Placement = PlacementMode.AnchorAndGravity,
             PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.TopLeft,
             PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.BottomRight,
-            IsLightDismissEnabled = true,
             Child = frame,
         };
+        frame.PointerEntered += OnPopupEntered;
+        frame.PointerExited += OnPopupExited;
         _actionPopup = popup;
         _actionMarker = marker;
         PositionActionPopup(popup, marker, panel);
-        ToolTip.SetTip(WaveformBorder, null);
         popup.Open();
     }
 
@@ -657,8 +707,9 @@ public partial class PlaybackHeader : UserControl
         var popupWidth = content.DesiredSize.Width;
         var borderWidth = WaveformBorder.Bounds.Width;
         popup.HorizontalOffset = Math.Clamp(x - (popupWidth / 2.0), 0.0, Math.Max(0.0, borderWidth - popupWidth));
-        var anchor = MarkerEditorCanvas.TranslatePoint(new Point(0, MarkerTimeRowHeight), WaveformBorder);
-        popup.VerticalOffset = anchor?.Y ?? MarkerTimeRowHeight;
+        var strip = WaveformStrip;
+        var anchor = strip.TranslatePoint(new Point(x, strip.Bounds.Height), WaveformBorder);
+        popup.VerticalOffset = anchor?.Y ?? (MarkerTimeRowHeight + MarkerWaveHeight + 14.0);
     }
 
     private void OnActionClick(object? sender, RoutedEventArgs e)
@@ -672,25 +723,35 @@ public partial class PlaybackHeader : UserControl
         DrawMarkers();
     }
 
+    private void OnPopupCloseClick(object? sender, RoutedEventArgs e)
+    {
+        _hoverMarker = null;
+        CloseActionPopup();
+        DrawMarkers();
+    }
+
     private void CloseActionPopup()
     {
+        _closeTimer?.Stop();
         if (_actionPopup is { } popup)
         {
             popup.Close();
-            if (popup.Child is Border { Child: StackPanel panel })
+            if (popup.Child is Border frame)
             {
-                foreach (var button in panel.Children.OfType<Button>())
+                frame.PointerEntered -= OnPopupEntered;
+                frame.PointerExited -= OnPopupExited;
+                if (frame.Child is StackPanel panel)
                 {
-                    button.Click -= OnActionClick;
+                    foreach (var button in panel.Children.OfType<Button>())
+                    {
+                        button.Click -= OnActionClick;
+                        button.Click -= OnPopupCloseClick;
+                    }
                 }
             }
         }
         _actionPopup = null;
         _actionMarker = null;
-        if (_hoverMarker is not null)
-        {
-            ToolTip.SetTip(WaveformBorder, MarkerHint);
-        }
     }
 
     private void BeginMarker(double x)

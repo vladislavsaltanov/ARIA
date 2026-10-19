@@ -78,8 +78,20 @@ public enum MarkerAction { Pause, None, RepeatFromPrevious, Restart }
 - [x] Entry EndAction применяется только на Completed/CueOutReached, не на метках
 - [x] Legacy-данные (Stop=0) открываются как Pause; legacy `"stop"` в project-файлах парсится в Pause
 - [x] UI меняет действие метки (ховер-попап 500мс); remote roundtrip цел (int-каст без смены формата)
-- [x] `dotnet test` весь солюшен зелёный, 0 warnings (Core 352, Persistence 49, App 419, Audio 190, Remote 116)
+- [x] `dotnet test` весь солюшен зелёный, 0 warnings (Core 352, Persistence 49, App 420, Audio 190, Remote 116)
 
 ## Resolution
 
 Shipped: `MarkerAction` = Pause(0)/None/RepeatFromPrevious/Restart; legacy `Stop` переименован в `Pause`, значение 0 сохранено. `StoppedByMarker` отделён от `Completed`/`CueOutReached` → `ApplyMarkerAction` (fallback Pause); None фильтруется в `ArmedMarkers` (движок не тронут). Пауза: floor+`ResumeAt`=fired, Play продолжает с метки (`JumpDeckTo`); seek/стоп/реплей чистят `ResumeAt`. UI: ховер 500мс → попап 4 действий, `SetMarkerAction` в VM, хинт дополнен. Tests: `MarkerActionTests` (5), `MarkerFloor_SkipsFiredMarkerOnResume`, `MarkerPause_HoldsCurrentTrack`, `Import_LegacyStopAction_MapsToPause`, `SetMarkerAction_UpdatesMarkerThroughBus`; Core 352 зелёных. Попап не покрыт headless-тестом (таймер) — ручная проверка: навести, подождать, выбрать.
+
+## Follow-up 2026-10-19: popup flicker (overlay under cursor)
+
+Symptom: hover-popup opened over the marker, the cursor ended up over the popup,
+WaveformBorder fired PointerExited, popup closed instantly.
+
+Fix: popup anchored below the tape (WaveformStrip bottom-left, gravity bottom-right),
+no IsLightDismiss; close only via x-button, action click, press, or 150ms grace timer
+that starts on border/popup PointerExited and cancels on popup PointerEntered or
+re-hover. Gesture hint moved from border tooltip into popup footer.
+RED: `MarkerActionPopupHeadlessTests.HoverThenBorderExit_PopupStaysOpenDuringGrace`
+failed on 446b58b (closed synchronously), green after fix.
