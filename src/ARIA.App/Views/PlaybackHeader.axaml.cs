@@ -16,6 +16,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Controls.Primitives;
+using Avalonia.Styling;
 using System.Linq;
 using Avalonia.Threading;
 
@@ -51,6 +52,8 @@ public partial class PlaybackHeader : UserControl
     private Marker? _actionMarker;
 
     internal bool IsActionPopupOpen => _actionPopup?.IsOpen == true;
+
+    internal Control? ActionPopupContent => _actionPopup?.Child;
     private static readonly MarkerAction[] MarkerActions = [MarkerAction.None, MarkerAction.Pause, MarkerAction.RepeatFromPrevious, MarkerAction.Restart];
     private Marker? _dragMarker;
     private bool _markerDragging;
@@ -622,7 +625,7 @@ public partial class PlaybackHeader : UserControl
 
     private static string ActionLabel(MarkerAction action) => action switch
     {
-        MarkerAction.None => "Проезд",
+        MarkerAction.None => "Ничего",
         MarkerAction.Pause => "Пауза",
         MarkerAction.RepeatFromPrevious => "Повтор от прошлой",
         MarkerAction.Restart => "С начала",
@@ -689,7 +692,11 @@ public partial class PlaybackHeader : UserControl
             Placement = PlacementMode.AnchorAndGravity,
             PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.TopLeft,
             PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.BottomRight,
-            Child = frame,
+            Child = new ThemeVariantScope
+            {
+                RequestedThemeVariant = ThemeVariant.Dark,
+                Child = frame,
+            },
         };
         frame.PointerEntered += OnPopupEntered;
         frame.PointerExited += OnPopupExited;
@@ -736,7 +743,7 @@ public partial class PlaybackHeader : UserControl
         if (_actionPopup is { } popup)
         {
             popup.Close();
-            if (popup.Child is Border frame)
+            if (popup.Child is ThemeVariantScope scope && scope.Child is Border frame)
             {
                 frame.PointerEntered -= OnPopupEntered;
                 frame.PointerExited -= OnPopupExited;
