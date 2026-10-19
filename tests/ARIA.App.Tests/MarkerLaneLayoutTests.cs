@@ -73,7 +73,7 @@ public sealed class MarkerLaneLayoutTests
         var builder = ImmutableArray.CreateBuilder<Marker>(items.Length);
         foreach (var (name, seconds) in items)
         {
-            builder.Add(new Marker(name, TimeSpan.FromSeconds(seconds), MarkerAction.Stop));
+            builder.Add(new Marker(name, TimeSpan.FromSeconds(seconds), MarkerAction.Pause));
         }
         return builder.ToImmutable();
     }

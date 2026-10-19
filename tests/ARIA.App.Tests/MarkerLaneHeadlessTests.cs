@@ -196,5 +196,5 @@ public sealed class MarkerLaneHeadlessTests
     }
 
     private static Marker Marker(string name, double seconds) =>
-        new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Stop);
+        new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Pause);
 }

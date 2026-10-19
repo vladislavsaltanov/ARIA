@@ -14,8 +14,8 @@ public sealed class ProjectFormatMarkerTests
                 "/audio/one.flac",
                 new ProjectOverrides(Markers:
                 [
-                    new Marker("начало", TimeSpan.FromSeconds(12.5), MarkerAction.Stop),
-                    new Marker("финал", TimeSpan.FromSeconds(90), MarkerAction.Stop),
+                    new Marker("начало", TimeSpan.FromSeconds(12.5), MarkerAction.Pause),
+                    new Marker("финал", TimeSpan.FromSeconds(90), MarkerAction.Pause),
                 ])));
 
         var json = ProjectFormat.Export("Вечер", entries);
@@ -27,9 +27,18 @@ public sealed class ProjectFormatMarkerTests
         Assert.Equal(2, markers.Length);
         Assert.Equal("начало", markers[0].Name);
         Assert.Equal(TimeSpan.FromSeconds(12.5), markers[0].Position);
-        Assert.Equal(MarkerAction.Stop, markers[0].Action);
+        Assert.Equal(MarkerAction.Pause, markers[0].Action);
         Assert.Equal("финал", markers[1].Name);
         Assert.Equal(TimeSpan.FromSeconds(90), markers[1].Position);
+    }
+
+    [Fact]
+    public void Import_LegacyStopAction_MapsToPause()
+    {
+        const string json = "{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\",\"markers\":[{\"name\":\"привал\",\"position\":10,\"action\":\"stop\"}]}]}";
+        var document = ProjectFormat.Import(json);
+        var overrides = ProjectFormat.ToOverrides(document.Entries[0]);
+        Assert.Equal(MarkerAction.Pause, Assert.Single(overrides!.Markers!.Value).Action);
     }
 
     [Fact]

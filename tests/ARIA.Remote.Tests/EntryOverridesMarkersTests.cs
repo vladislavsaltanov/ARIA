@@ -23,7 +23,7 @@ public sealed class EntryOverridesMarkersTests
         var marker = Assert.Single(parsed.Overrides.Markers!.Value);
         Assert.Equal("гром", marker.Name);
         Assert.Equal(TimeSpan.FromSeconds(30), marker.Position);
-        Assert.Equal(MarkerAction.Stop, marker.Action);
+        Assert.Equal(MarkerAction.Pause, marker.Action);
     }
 
     [Fact]

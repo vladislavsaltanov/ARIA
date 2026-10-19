@@ -7,7 +7,7 @@ public sealed class EffectiveSettingsTests
     [Fact]
     public void NoOverride_InheritsTrackDefaults()
     {
-        var marker = new Marker("end", TimeSpan.FromSeconds(30), MarkerAction.Stop);
+        var marker = new Marker("end", TimeSpan.FromSeconds(30), MarkerAction.Pause);
         var track = TestShow.Track(
             "line",
             EndAction.Pause,
@@ -89,8 +89,8 @@ public sealed class EffectiveSettingsTests
     [Fact]
     public void EntryMarkers_OverrideTrackMarkers()
     {
-        var trackMarker = new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Stop);
-        var entryMarker = new Marker("entry", TimeSpan.FromSeconds(20), MarkerAction.Stop);
+        var trackMarker = new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Pause);
+        var entryMarker = new Marker("entry", TimeSpan.FromSeconds(20), MarkerAction.Pause);
         var track = TestShow.Track("line", markers: [trackMarker]);
         var entry = TestShow.Entry(track, new ProjectOverrides(Markers: [entryMarker]));
 
@@ -102,7 +102,7 @@ public sealed class EffectiveSettingsTests
     [Fact]
     public void EmptyEntryMarkers_ClearTrackMarkers()
     {
-        var track = TestShow.Track("line", markers: [new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Stop)]);
+        var track = TestShow.Track("line", markers: [new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Pause)]);
         var entry = TestShow.Entry(track, new ProjectOverrides(Markers: []));
 
         var settings = EffectiveSettings.Resolve(entry, track);
@@ -113,7 +113,7 @@ public sealed class EffectiveSettingsTests
     [Fact]
     public void NullEntryMarkers_InheritTrackMarkers()
     {
-        var trackMarker = new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Stop);
+        var trackMarker = new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Pause);
         var track = TestShow.Track("line", markers: [trackMarker]);
         var entry = TestShow.Entry(track, new ProjectOverrides(GainDb: -3));
 

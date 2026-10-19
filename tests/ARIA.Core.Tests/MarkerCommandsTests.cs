@@ -8,7 +8,7 @@ using Aria.Core.State;
 public sealed class MarkerCommandsTests
 {
     private static Marker Mark(string name = "метка", double seconds = 30) =>
-        new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Stop);
+        new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Pause);
 
     [Fact]
     public void SetTrackMarkers_UpdatesTrackAndEmitsShow()
@@ -73,7 +73,7 @@ public sealed class MarkerCommandsTests
         var project = TestShow.Project("Main", TestShow.Entry(track));
         h.Submit(new LoadShow([track], [project], project.Id));
 
-        var seq = h.Submit(new SetTrackMarkers(track.Id, [new Marker("", TimeSpan.FromSeconds(10), MarkerAction.Stop)]));
+        var seq = h.Submit(new SetTrackMarkers(track.Id, [new Marker("", TimeSpan.FromSeconds(10), MarkerAction.Pause)]));
 
         Assert.Equal("marker-name-empty", h.RejectionOf(seq)?.Reason);
         h.Submit(new Play());
@@ -163,10 +163,10 @@ public sealed class MarkerCommandsTests
     }
 
     [Fact]
-    public void MarkerFloor_SkipsFiredMarkerOnReplay()
+    public void MarkerFloor_SkipsFiredMarkerOnResume()
     {
         using var h = new Harness();
-        var track = TestShow.Track("storm", end: EndAction.Stop, markers: [Mark("first", 0.5), Mark("second", 2)]);
+        var track = TestShow.Track("storm", markers: [Mark("first", 0.5), Mark("second", 2)]);
         var project = TestShow.Project("Main", TestShow.Entry(track));
         h.Submit(new LoadShow([track], [project], project.Id));
         h.Submit(new SetSmoothing(Smoothing.Default with { Enabled = true, SeekFade = TimeSpan.FromMilliseconds(350) }));
@@ -174,9 +174,10 @@ public sealed class MarkerCommandsTests
         Assert.Equal(2, h.Engine.Last!.Options.Markers.Length);
 
         h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(0.5));
-        Assert.Equal(TransportStatus.Stopped, h.Transport.Status);
+        Assert.Equal(TransportStatus.Paused, h.Transport.Status);
 
         h.Submit(new Play());
+        Assert.Equal(TimeSpan.FromSeconds(0.5), h.Engine.Last!.Source.CueIn);
         Assert.Equal("second", Assert.Single(h.Engine.Last!.Options.Markers).Name);
 
         h.Submit(new SeekTo(TimeSpan.Zero));
