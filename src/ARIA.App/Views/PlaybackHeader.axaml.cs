@@ -50,6 +50,7 @@ public partial class PlaybackHeader : UserControl
     private DispatcherTimer? _closeTimer;
     private Popup? _actionPopup;
     private Marker? _actionMarker;
+    private IBrush _actionHoverBrush = new ImmutableSolidColorBrush(Color.Parse("#1F1F1F"));
 
     internal bool IsActionPopupOpen => _actionPopup?.IsOpen == true;
 
@@ -640,11 +641,25 @@ public partial class PlaybackHeader : UserControl
             return;
         }
         var panel = new StackPanel { Spacing = 2, MinWidth = 170 };
+        var foreground = MarkerHoverBrush;
+        if (this.TryFindResource("BrushFg", out var fg) && fg is IBrush fgBrush)
+        {
+            foreground = fgBrush;
+        }
+        _actionHoverBrush = new ImmutableSolidColorBrush(Color.Parse("#1F1F1F"));
+        if (this.TryFindResource("BrushSurfaceAlt", out var alt) && alt is IBrush altBrush)
+        {
+            _actionHoverBrush = altBrush;
+        }
         var closer = new Button
         {
             Content = "×",
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
             Padding = new Thickness(8, 0, 8, 0),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Foreground = MarkerBrush,
+            FontSize = 12,
         };
         closer.Click += OnPopupCloseClick;
         panel.Children.Add(closer);
@@ -655,12 +670,22 @@ public partial class PlaybackHeader : UserControl
                 Content = ActionLabel(action),
                 Tag = action,
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 6, 10, 6),
+                MinHeight = 28,
+                FontSize = 13,
+                Foreground = foreground,
             };
             if (action == marker.Action)
             {
                 button.FontWeight = FontWeight.Bold;
             }
             button.Click += OnActionClick;
+            button.PointerEntered += OnActionButtonEntered;
+            button.PointerExited += OnActionButtonExited;
             panel.Children.Add(button);
         }
         var footer = new TextBlock
@@ -678,10 +703,17 @@ public partial class PlaybackHeader : UserControl
         {
             background = surfaceBrush;
         }
+        var line = MarkerBrush;
+        if (this.TryFindResource("BrushLine", out var lineRes) && lineRes is IBrush lineBrush)
+        {
+            line = lineBrush;
+        }
         var frame = new Border
         {
             Child = panel,
             Background = background,
+            BorderBrush = line,
+            BorderThickness = new Thickness(1),
             Padding = new Thickness(6),
             CornerRadius = new CornerRadius(6),
         };
@@ -730,6 +762,22 @@ public partial class PlaybackHeader : UserControl
         DrawMarkers();
     }
 
+    private void OnActionButtonEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is Button button)
+        {
+            button.Background = _actionHoverBrush;
+        }
+    }
+
+    private void OnActionButtonExited(object? sender, PointerEventArgs e)
+    {
+        if (sender is Button button)
+        {
+            button.Background = Brushes.Transparent;
+        }
+    }
+
     private void OnPopupCloseClick(object? sender, RoutedEventArgs e)
     {
         _hoverMarker = null;
@@ -753,6 +801,8 @@ public partial class PlaybackHeader : UserControl
                     {
                         button.Click -= OnActionClick;
                         button.Click -= OnPopupCloseClick;
+                        button.PointerEntered -= OnActionButtonEntered;
+                        button.PointerExited -= OnActionButtonExited;
                     }
                 }
             }
