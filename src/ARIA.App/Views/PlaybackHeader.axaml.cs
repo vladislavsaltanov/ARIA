@@ -15,6 +15,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Controls.Primitives;
 using System.Linq;
 using Avalonia.Threading;
 
@@ -44,7 +45,7 @@ public partial class PlaybackHeader : UserControl
     private Marker? _hoverMarker;
     private DispatcherTimer? _hoverTimer;
     private Marker? _hoverTimerMarker;
-    private Border? _actionPopup;
+    private Popup? _actionPopup;
     private Marker? _actionMarker;
     private static readonly MarkerAction[] MarkerActions = [MarkerAction.None, MarkerAction.Pause, MarkerAction.RepeatFromPrevious, MarkerAction.Restart];
     private Marker? _dragMarker;
@@ -624,28 +625,40 @@ public partial class PlaybackHeader : UserControl
         {
             background = surfaceBrush;
         }
-        var popup = new Border
+        var frame = new Border
         {
             Child = panel,
             Background = background,
             Padding = new Thickness(6),
             CornerRadius = new CornerRadius(6),
         };
-        MarkerEditorCanvas.Children.Add(popup);
+        panel.Measure(Size.Infinity);
+        var popup = new Popup
+        {
+            PlacementTarget = WaveformBorder,
+            Placement = PlacementMode.AnchorAndGravity,
+            PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.TopLeft,
+            PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.BottomRight,
+            IsLightDismissEnabled = true,
+            Child = frame,
+        };
         _actionPopup = popup;
         _actionMarker = marker;
-        PositionActionPopup(popup, marker);
+        PositionActionPopup(popup, marker, panel);
+        ToolTip.SetTip(WaveformBorder, null);
+        popup.Open();
     }
 
-    private void PositionActionPopup(Border popup, Marker marker)
+    private void PositionActionPopup(Popup popup, Marker marker, Control content)
     {
-        var width = MarkerEditorCanvas.Bounds.Width;
+        var waveWidth = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
-        popup.Measure(Size.Infinity);
-        var popupWidth = popup.DesiredSize.Width;
-        Canvas.SetLeft(popup, Math.Clamp(x - (popupWidth / 2.0), 0.0, Math.Max(0.0, width - popupWidth)));
-        Canvas.SetTop(popup, MarkerTimeRowHeight);
+        var x = MarkerLaneLayout.MarkerX(marker.Position, duration, waveWidth);
+        var popupWidth = content.DesiredSize.Width;
+        var borderWidth = WaveformBorder.Bounds.Width;
+        popup.HorizontalOffset = Math.Clamp(x - (popupWidth / 2.0), 0.0, Math.Max(0.0, borderWidth - popupWidth));
+        var anchor = MarkerEditorCanvas.TranslatePoint(new Point(0, MarkerTimeRowHeight), WaveformBorder);
+        popup.VerticalOffset = anchor?.Y ?? MarkerTimeRowHeight;
     }
 
     private void OnActionClick(object? sender, RoutedEventArgs e)
@@ -663,17 +676,21 @@ public partial class PlaybackHeader : UserControl
     {
         if (_actionPopup is { } popup)
         {
-            if (popup.Child is StackPanel panel)
+            popup.Close();
+            if (popup.Child is Border { Child: StackPanel panel })
             {
                 foreach (var button in panel.Children.OfType<Button>())
                 {
                     button.Click -= OnActionClick;
                 }
             }
-            MarkerEditorCanvas.Children.Remove(popup);
         }
         _actionPopup = null;
         _actionMarker = null;
+        if (_hoverMarker is not null)
+        {
+            ToolTip.SetTip(WaveformBorder, MarkerHint);
+        }
     }
 
     private void BeginMarker(double x)
