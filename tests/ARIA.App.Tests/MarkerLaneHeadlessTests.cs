@@ -20,7 +20,6 @@ public sealed class MarkerLaneHeadlessTests
 {
     private static readonly TrackId TestTrackId = TrackId.New();
     private static readonly EntryId TestEntryId = EntryId.New();
-    private static readonly TimeSpan TrackDuration = TimeSpan.FromSeconds(90);
 
     private readonly HeadlessUnitTestSession _session;
 
@@ -34,7 +33,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: []);
+            using var lane = new TestLane(TestTrackId, null, []);
             lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
             Dispatcher.UIThread.RunJobs();
 
@@ -58,7 +57,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: true, markers: []);
+            using var lane = new TestLane(TestTrackId, TestEntryId, []);
             lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
             Dispatcher.UIThread.RunJobs();
             lane.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
@@ -75,7 +74,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: []);
+            using var lane = new TestLane(TestTrackId, null, []);
             lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
             Dispatcher.UIThread.RunJobs();
             Assert.Single(lane.EditorCanvas.Children);
@@ -93,7 +92,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: [Marker("вход", 45)]);
+            using var lane = new TestLane(TestTrackId, null, [Marker("вход", 45)]);
             lane.Window.MouseDown(lane.PointAt(45), MouseButton.Left);
             lane.Window.MouseUp(lane.PointAt(45), MouseButton.Left);
 
@@ -108,7 +107,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: [Marker("вход", 45)]);
+            using var lane = new TestLane(TestTrackId, null, [Marker("вход", 45)]);
             lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
             lane.Window.MouseUp(lane.PointAt(45), MouseButton.Right);
 
@@ -123,7 +122,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: [Marker("вход", 45)]);
+            using var lane = new TestLane(TestTrackId, null, [Marker("вход", 45)]);
             lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
             lane.Window.MouseMove(lane.PointAt(67.5), RawInputModifiers.RightMouseButton);
             lane.Window.MouseUp(lane.PointAt(67.5), MouseButton.Right);
@@ -141,7 +140,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: [Marker("вход", 45)]);
+            using var lane = new TestLane(TestTrackId, null, [Marker("вход", 45)]);
             lane.Window.MouseDown(lane.PointAt(22.5), MouseButton.Left);
             lane.Window.MouseUp(lane.PointAt(22.5), MouseButton.Left);
 
@@ -156,7 +155,7 @@ public sealed class MarkerLaneHeadlessTests
     {
         await _session.Dispatch(() =>
         {
-            using var lane = new Lane(withEntry: false, markers: [Marker("первая", 45), Marker("вторая", 45.05)]);
+            using var lane = new TestLane(TestTrackId, null, [Marker("первая", 45), Marker("вторая", 45.05)]);
             var texts = lane.MarkerCanvas.Children.OfType<TextBlock>().ToList();
 
             Assert.Equal(2, texts.Count(text => text.FontSize == 10));
@@ -196,112 +195,23 @@ public sealed class MarkerLaneHeadlessTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task MarkerEditor_StaysWithinStripBounds()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var lane = new TestLane(TestTrackId, null, []);
+            lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
+            Dispatcher.UIThread.RunJobs();
+            var editor = Assert.IsType<TextBox>(Assert.Single(lane.EditorCanvas.Children));
+            lane.Window.UpdateLayout();
+            var bottom = Canvas.GetTop(editor) + editor.Bounds.Height;
+            Assert.True(bottom <= lane.EditorCanvas.Bounds.Height + 1,
+                $"editor overflows strip: bottom={bottom}, strip={lane.EditorCanvas.Bounds.Height}");
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static Marker Marker(string name, double seconds) =>
-        new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Stop);
-
-    private sealed class Lane : IDisposable
-    {
-        public Lane(bool withEntry, ImmutableArray<Marker> markers)
-        {
-            Controller = new RecordingController(withEntry, markers);
-            Bus = new CommandBus(Controller, BusMode.Inline);
-            ViewModel = new TransportViewModel(Bus);
-            Header = new Views.PlaybackHeader { DataContext = ViewModel };
-            Window = new Window { Width = 700, Height = 300, Content = Header };
-            Window.Show();
-            var store = new MemoryWaveformStore();
-            var points = ImmutableArray.CreateBuilder<PeakPoint>();
-            for (var index = 0; index < 500; index++)
-            {
-                points.Add(new PeakPoint(-0.5f, 0.5f));
-            }
-            store.Save(new WaveformPeaks(TestTrackId, 25, 48000, points.ToImmutable()));
-            var monitor = new PlaybackMonitor();
-            monitor.Bind(new StreamHandle(1), Controller.Deck);
-            monitor.Publish(new StreamHandle(1), TimeSpan.FromSeconds(30));
-            Header.Attach(monitor, store);
-            Window.UpdateLayout();
-        }
-
-        public RecordingController Controller { get; }
-
-        public CommandBus Bus { get; }
-
-        public TransportViewModel ViewModel { get; }
-
-        public Views.PlaybackHeader Header { get; }
-
-        public Window Window { get; }
-
-        public Canvas MarkerCanvas => Header.FindControl<Canvas>("MarkerCanvas")!;
-
-        public Canvas EditorCanvas => Header.FindControl<Canvas>("MarkerEditorCanvas")!;
-
-        public Point PointAt(double seconds)
-        {
-            var canvas = Header.FindControl<Canvas>("WaveformCanvas")!;
-            var strip = Header.FindControl<Border>("WaveformStrip")!;
-            var x = canvas.Bounds.Width * seconds / TrackDuration.TotalSeconds;
-            return strip.TranslatePoint(new Point(x, 28), Window) ?? new Point(x, 28);
-        }
-
-        public void Dispose()
-        {
-            Window.Close();
-            ViewModel.Dispose();
-            Bus.Dispose();
-        }
-    }
-
-    private sealed class RecordingController : IShowHandler
-    {
-        private readonly ShowSnapshot _snapshot;
-
-        public RecordingController(bool withEntry, ImmutableArray<Marker> markers)
-        {
-            Deck = new DeckContent(
-                withEntry ? TestEntryId : null,
-                TestTrackId,
-                "test",
-                null,
-                EndAction.Pause,
-                TrackDuration,
-                TimeSpan.Zero,
-                null,
-                null,
-                markers);
-            _snapshot = new ShowSnapshot(
-                0,
-                new ShowState([], null, false, new ShowClockState(TimeSpan.Zero, false), [], TrackDigest.Empty, EndAction.Advance),
-                0,
-                new TransportState(TransportStatus.Playing, Deck, null, []),
-                0,
-                new QueueState([]),
-                0,
-                new MixerState(0, false, TimeSpan.FromMilliseconds(100), Smoothing.Default));
-        }
-
-        public DeckContent Deck { get; }
-
-        public List<Command> Received { get; } = [];
-
-        public Action<StateEvent>? Emitted { get; set; }
-
-        public void Handle(ClientId client, long seq, Command command) => Received.Add(command);
-
-        public ShowSnapshot Snapshot() => _snapshot;
-    }
-
-    private sealed class MemoryWaveformStore : IWaveformStore
-    {
-        private readonly Dictionary<TrackId, WaveformPeaks> _peaks = [];
-
-        public void Save(WaveformPeaks peaks) => _peaks[peaks.TrackId] = peaks;
-
-        public WaveformPeaks? Load(TrackId trackId) => _peaks.GetValueOrDefault(trackId);
-
-        public void Dispose()
-        {
-        }
-    }
+        new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Pause);
 }

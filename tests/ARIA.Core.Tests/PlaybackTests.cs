@@ -417,10 +417,10 @@ public sealed class PlaybackTests
     }
 
     [Fact]
-    public void MarkerStop_TriggersEndAction_AndMarkerReachesEngine()
+    public void MarkerPause_HoldsCurrentTrack_AndMarkerReachesEngine()
     {
         using var h = new Harness();
-        var marker = new Marker("storm-end", TimeSpan.FromSeconds(90), MarkerAction.Stop);
+        var marker = new Marker("storm-end", TimeSpan.FromSeconds(90), MarkerAction.Pause);
         var t1 = TestShow.Track("storm", markers: [marker]);
         var t2 = TestShow.Track("calm");
         var p = TestShow.Project("Main", TestShow.Entry(t1), TestShow.Entry(t2));
@@ -431,9 +431,10 @@ public sealed class PlaybackTests
         var spec = Assert.Single(first.Options.Markers);
         Assert.Equal("storm-end", spec.Name);
 
-        h.Engine.End(first.Handle, StreamEndReason.StoppedByMarker);
+        h.Engine.End(first.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(90));
 
-        Assert.Equal(t2.Id, h.Transport.Current!.TrackId);
+        Assert.Equal(TransportStatus.Paused, h.Transport.Status);
+        Assert.Equal(t1.Id, h.Transport.Current!.TrackId);
     }
 
     [Fact]

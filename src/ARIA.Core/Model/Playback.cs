@@ -36,7 +36,10 @@ public sealed record Smoothing(bool Enabled, TimeSpan ManualCrossfade, TimeSpan 
 
 public enum MarkerAction
 {
-    Stop,
+    Pause,
+    None,
+    RepeatFromPrevious,
+    Restart,
 }
 
 public sealed record Marker(string Name, TimeSpan Position, MarkerAction Action);

@@ -115,9 +115,9 @@
   scope: dnd-import
   summary: Дроп на плейлист не показывает импортированные треки
   file: specs/bugs/BUG-dnd-playlist-drop.md
-  status: needs-confirmation
-  verified: 2026-09-27
-  evidence: fix in code; SCOPE_LATEST S3 requires user confirmation before closing
+  status: fixed
+  verified: 2026-10-17
+  evidence: fix in code; user confirmed close 2026-10-17
 
 - bug_id: BUG-fault-advance-import-noise
   date: 2026-09-16
@@ -163,3 +163,12 @@
   verified: 2026-09-27
   evidence: src/ARIA.Core/Runtime/ShowController.cs:1786 ApplyEndAction drains queue first; tests/ARIA.App.Tests/EntryEndActionMenuTests.cs, tests/ARIA.Core.Tests/DefaultEndActionTests.cs
 
+
+- bug_id: BUG-2026-10-19-marker-restart
+  date: 2026-10-19
+  severity: high
+  priority: high
+  scope: marker-action
+  summary: Достижение метки перезапускает трек; нет переопределяемого действия метки (None/Pause/RepeatPrev/Restart)
+  file: specs/bugs/BUG-2026-10-19-marker-restart.md
+  status: open

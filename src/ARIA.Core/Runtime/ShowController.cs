@@ -613,14 +613,22 @@ public sealed class ShowController : IShowHandler
                 AdvanceFromBoundary();
                 break;
             case TransportStatus.Paused:
-                if (_current?.Handle is not { } handle)
+                if (_current?.Handle is { } handle)
+                {
+                    _engine.Transport(handle, TransportCommand.Play);
+                    SetStatus(TransportStatus.Playing);
+                    EmitTransport();
+                }
+                else if (_current?.ResumeAt is { } resumeAt)
+                {
+                    _current.ResumeAt = null;
+                    JumpDeckTo(_current, resumeAt);
+                }
+                else
                 {
                     Reject(client, seq, "no-active-stream");
                     return;
                 }
-                _engine.Transport(handle, TransportCommand.Play);
-                SetStatus(TransportStatus.Playing);
-                EmitTransport();
                 break;
             case TransportStatus.Stopped:
                 if (_current is null)
@@ -629,6 +637,11 @@ public sealed class ShowController : IShowHandler
                     {
                         Reject(client, seq, "nothing-to-play");
                     }
+                }
+                else if (_current.ResumeAt is { } resumeAt)
+                {
+                    _current.ResumeAt = null;
+                    JumpDeckTo(_current, resumeAt);
                 }
                 else
                 {
@@ -682,6 +695,7 @@ public sealed class ShowController : IShowHandler
         if (_current is { } stopped)
         {
             stopped.MarkerFloor = TimeSpan.Zero;
+            stopped.ResumeAt = null;
         }
         _pendingOpen = null;
         SetStatus(TransportStatus.Stopped);
@@ -720,6 +734,7 @@ public sealed class ShowController : IShowHandler
             return;
         }
         _current.MarkerFloor = TimeSpan.Zero;
+        _current.ResumeAt = null;
         RestartCurrent();
     }
 
@@ -741,6 +756,7 @@ public sealed class ShowController : IShowHandler
             filePosition = end;
         }
         deck.MarkerFloor = TimeSpan.Zero;
+        deck.ResumeAt = null;
         if (_status == TransportStatus.Playing && _smoothing.Enabled && _smoothing.SeekFade > TimeSpan.Zero)
         {
             SeekWithCrossfade(deck, filePosition);
@@ -1435,6 +1451,7 @@ public sealed class ShowController : IShowHandler
             Handle = deck.Handle,
             StartAt = deck.StartAt,
             MarkerFloor = deck.MarkerFloor,
+            ResumeAt = deck.ResumeAt,
         };
         if (deck.Handle is { } handle)
         {
@@ -1456,7 +1473,7 @@ public sealed class ShowController : IShowHandler
         ArmedMarkers(deck.Settings.Markers, deck.MarkerFloor);
 
     private static ImmutableArray<MarkerSpec> ArmedMarkers(ImmutableArray<Marker> markers, TimeSpan floor) =>
-        [.. markers.Where(m => m.Position > floor).Select(m => new MarkerSpec(m.Name, m.Position, m.Action))];
+        [.. markers.Where(m => m.Action != MarkerAction.None && m.Position > floor).Select(m => new MarkerSpec(m.Name, m.Position, m.Action))];
 
     private void OnNormalizeTrack(ClientId client, long seq, NormalizeTrack command)
     {
@@ -1956,14 +1973,16 @@ public sealed class ShowController : IShowHandler
         }
         if (e.Reason == StreamEndReason.StoppedByMarker)
         {
-            _current!.MarkerFloor = e.MarkerPosition;
+            ApplyMarkerAction(e.MarkerPosition);
+            return;
         }
 
         switch (e.Reason)
         {
             case StreamEndReason.Completed:
             case StreamEndReason.CueOutReached:
-            case StreamEndReason.StoppedByMarker:
+                _current!.MarkerFloor = TimeSpan.Zero;
+                _current.ResumeAt = null;
                 if (_current!.Settings.EndAction == EndAction.Advance
                     && _smoothing.Enabled
                     && _smoothing.AutoCrossfade > TimeSpan.Zero)
@@ -2174,6 +2193,94 @@ public sealed class ShowController : IShowHandler
         }
         _pendingOpen = null;
         FaultCurrent(SourceOpenFault.Unknown.ToString());
+    }
+
+    private void ApplyMarkerAction(TimeSpan markerPosition)
+    {
+        var deck = _current!;
+        var marker = FindMarker(deck, markerPosition);
+        deck.MarkerFloor = markerPosition;
+        deck.ResumeAt = null;
+        switch (marker?.Action ?? MarkerAction.Pause)
+        {
+            case MarkerAction.None:
+            case MarkerAction.Pause:
+                deck.ResumeAt = markerPosition;
+                PauseDeckAt(deck, markerPosition);
+                break;
+            case MarkerAction.RepeatFromPrevious:
+                JumpDeckTo(deck, RepeatTarget(deck, markerPosition));
+                break;
+            case MarkerAction.Restart:
+                JumpDeckTo(deck, deck.Settings.CueIn);
+                break;
+        }
+    }
+
+    private static Marker? FindMarker(DeckInstance deck, TimeSpan markerPosition)
+    {
+        foreach (var marker in deck.Settings.Markers)
+        {
+            if (marker.Position == markerPosition)
+            {
+                return marker;
+            }
+        }
+        return null;
+    }
+
+    private static TimeSpan RepeatTarget(DeckInstance deck, TimeSpan markerPosition)
+    {
+        var target = deck.Settings.CueIn;
+        foreach (var marker in deck.Settings.Markers)
+        {
+            if (marker.Position < markerPosition && marker.Position > target)
+            {
+                target = marker.Position;
+            }
+        }
+        return target;
+    }
+
+    private void PauseDeckAt(DeckInstance deck, TimeSpan filePosition)
+    {
+        if (deck.Handle is { } old)
+        {
+            _engine.Transport(old, TransportCommand.Stop);
+            _engine.DisposeStream(old);
+            _retired.Remove(old);
+            _monitor?.Unbind(old);
+            deck.Handle = null;
+        }
+        deck.StartAt = filePosition;
+        SetStatus(TransportStatus.Paused);
+        _atEndBoundary = false;
+        EmitTransport();
+    }
+
+    private void JumpDeckTo(DeckInstance deck, TimeSpan filePosition)
+    {
+        if (deck.Handle is { } old)
+        {
+            _engine.Transport(old, TransportCommand.Stop);
+            _engine.DisposeStream(old);
+            _retired.Remove(old);
+            _monitor?.Unbind(old);
+            deck.Handle = null;
+        }
+        deck.MarkerFloor = filePosition;
+        deck.StartAt = filePosition;
+        var settings = deck.Settings;
+        var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut, settings.Audio);
+        var handle = _engine.StartStream(source, new StreamOptions(StreamBus.Main, ArmedMarkers(deck)));
+        deck.Handle = handle;
+        _monitor?.Bind(handle, Content(deck));
+        _engine.SetMix(handle, new MixParameters(settings.GainDb, null));
+        _engine.Transport(handle, TransportCommand.Play);
+        SetStatus(TransportStatus.Playing);
+        _atEndBoundary = false;
+        _preRolled = false;
+        EmitTransport();
     }
 
     private void RestartCurrent()
@@ -2395,5 +2502,6 @@ public sealed class ShowController : IShowHandler
         public StreamHandle? Handle { get; set; }
         public TimeSpan StartAt { get; set; }
         public TimeSpan MarkerFloor { get; set; }
+        public TimeSpan? ResumeAt { get; set; }
     }
 }

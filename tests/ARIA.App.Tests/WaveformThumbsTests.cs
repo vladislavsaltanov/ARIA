@@ -29,14 +29,8 @@ public sealed class WaveformThumbsTests
     {
         await _session.Dispatch(() =>
         {
-            var store = new MemoryWaveformStore();
             var id = TrackId.New();
-            var points = ImmutableArray.CreateBuilder<PeakPoint>();
-            for (var i = 0; i < 250; i++)
-            {
-                points.Add(new PeakPoint(-0.5f, 0.5f));
-            }
-            store.Save(new WaveformPeaks(id, 25, 48000, points.ToImmutable()));
+            var store = MemoryWaveformStore.Seeded(id, 250);
             var thumbs = new WaveformThumbs(store);
 
             var first = thumbs.For(id);
@@ -48,16 +42,4 @@ public sealed class WaveformThumbsTests
         }, CancellationToken.None);
     }
 
-    private sealed class MemoryWaveformStore : IWaveformStore
-    {
-        private readonly Dictionary<TrackId, WaveformPeaks> _peaks = [];
-
-        public void Save(WaveformPeaks peaks) => _peaks[peaks.TrackId] = peaks;
-
-        public WaveformPeaks? Load(TrackId trackId) => _peaks.GetValueOrDefault(trackId);
-
-        public void Dispose()
-        {
-        }
-    }
 }

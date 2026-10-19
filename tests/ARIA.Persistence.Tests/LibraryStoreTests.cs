@@ -21,7 +21,7 @@ public sealed class LibraryStoreTests : IDisposable
     [Fact]
     public void RoundTrip_PreservesTracksProjectsAndOverrides()
     {
-        var marker = new Marker("storm-end", TimeSpan.FromSeconds(90), MarkerAction.Stop);
+        var marker = new Marker("storm-end", TimeSpan.FromSeconds(90), MarkerAction.Pause);
         var t1 = new Track(
             TrackId.New(), "/audio/one.flac", "one", TimeSpan.FromMinutes(3),
             new TrackDefaults(GainDb: -2, EndAction: EndAction.Pause,
@@ -62,7 +62,7 @@ public sealed class LibraryStoreTests : IDisposable
             var loadedMarker = loaded1.Defaults.Markers!.Value.Single();
             Assert.Equal("storm-end", loadedMarker.Name);
             Assert.Equal(TimeSpan.FromSeconds(90), loadedMarker.Position);
-            Assert.Equal(MarkerAction.Stop, loadedMarker.Action);
+            Assert.Equal(MarkerAction.Pause, loadedMarker.Action);
 
             var t2defaults = tracks.Single(t => t.Id == t2.Id).Defaults;
             Assert.Equal(0, t2defaults.GainDb);
@@ -150,7 +150,7 @@ public sealed class LibraryStoreTests : IDisposable
         var t1 = TestFactory.Track("one");
         var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(
             Name: "Буря",
-            Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Stop)]));
+            Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Pause)]));
         var project = new Project(ProjectId.New(), "Спектакль", [entry]);
 
         using (var store = new SqliteLibraryStore(_path))
@@ -166,7 +166,7 @@ public sealed class LibraryStoreTests : IDisposable
             var marker = Assert.Single(loaded.Overrides.Markers!.Value);
             Assert.Equal("гром", marker.Name);
             Assert.Equal(TimeSpan.FromSeconds(30), marker.Position);
-            Assert.Equal(MarkerAction.Stop, marker.Action);
+            Assert.Equal(MarkerAction.Pause, marker.Action);
         }
     }
 
@@ -199,7 +199,7 @@ public sealed class LibraryStoreTests : IDisposable
         {
             var t1 = TestFactory.Track("one");
             var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(
-                Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Stop)]));
+                Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Pause)]));
             var project = new Project(ProjectId.New(), "Спектакль", [entry]);
             var document = new ShowDocument(
                 [t1], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);

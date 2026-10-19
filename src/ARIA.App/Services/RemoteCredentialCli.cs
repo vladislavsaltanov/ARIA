@@ -32,7 +32,7 @@ public static class RemoteCredentialCli
             return 0;
         }
         var credentials = store.Load();
-        Console.WriteLine($"ARIA remote pairing: identifier={credentials.Identifier} password={credentials.Password}");
+        Console.WriteLine($"ARIA remote pairing: identifier={credentials.Identifier} password=<set>");
         return 0;
     }
 

@@ -444,4 +444,23 @@ public sealed class TransportViewModelTests
 
         Assert.Equal("Осенний дождь", vm.DisplayName);
     }
+
+    [Fact]
+    public void SetMarkerAction_UpdatesMarkerThroughBus()
+    {
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        var track = new Track(TrackId.New(), "/audio/marks.flac", "marks", TimeSpan.FromMinutes(3), new TrackDefaults());
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
+        using var vm = new TransportViewModel(bus);
+        vm.PlayCommand.Execute(null);
+
+        vm.PlaceMarker(TimeSpan.FromSeconds(10), "привал");
+        var marker = Assert.Single(vm.Markers);
+        Assert.Equal(MarkerAction.None, marker.Action);
+
+        vm.SetMarkerAction(marker, MarkerAction.RepeatFromPrevious);
+
+        Assert.Equal(MarkerAction.RepeatFromPrevious, Assert.Single(vm.Markers).Action);
+    }
 }

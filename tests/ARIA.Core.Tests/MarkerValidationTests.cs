@@ -8,7 +8,7 @@ public sealed class MarkerValidationTests
     private static readonly TimeSpan Duration = TimeSpan.FromMinutes(3);
 
     private static ImmutableArray<Marker> One(string name = "метка", TimeSpan? position = null) =>
-        [new Marker(name, position ?? TimeSpan.FromSeconds(30), MarkerAction.Stop)];
+        [new Marker(name, position ?? TimeSpan.FromSeconds(30), MarkerAction.Pause)];
 
     [Fact]
     public void EmptyMarkers_AreValid() => Assert.Null(MarkerValidation.Validate([], Duration));
@@ -44,8 +44,8 @@ public sealed class MarkerValidationTests
     {
         ImmutableArray<Marker> markers =
         [
-            new Marker("первая", TimeSpan.FromSeconds(30), MarkerAction.Stop),
-            new Marker("вторая", TimeSpan.FromSeconds(30), MarkerAction.Stop),
+            new Marker("первая", TimeSpan.FromSeconds(30), MarkerAction.Pause),
+            new Marker("вторая", TimeSpan.FromSeconds(30), MarkerAction.Pause),
         ];
 
         Assert.Equal("marker-position-duplicate", MarkerValidation.Validate(markers, Duration));
@@ -57,7 +57,7 @@ public sealed class MarkerValidationTests
         var markers = ImmutableArray.CreateBuilder<Marker>();
         for (var index = 0; index < 65; index++)
         {
-            markers.Add(new Marker($"метка {index}", TimeSpan.FromSeconds(index), MarkerAction.Stop));
+            markers.Add(new Marker($"метка {index}", TimeSpan.FromSeconds(index), MarkerAction.Pause));
         }
 
         Assert.Equal("marker-too-many", MarkerValidation.Validate(markers.ToImmutable(), Duration));
@@ -69,7 +69,7 @@ public sealed class MarkerValidationTests
         var markers = ImmutableArray.CreateBuilder<Marker>();
         for (var index = 0; index < 64; index++)
         {
-            markers.Add(new Marker($"метка {index}", TimeSpan.FromSeconds(index), MarkerAction.Stop));
+            markers.Add(new Marker($"метка {index}", TimeSpan.FromSeconds(index), MarkerAction.Pause));
         }
 
         Assert.Null(MarkerValidation.Validate(markers.ToImmutable(), Duration));

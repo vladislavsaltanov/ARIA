@@ -15,19 +15,21 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Controls.Primitives;
+using Avalonia.Styling;
+using System.Linq;
 using Avalonia.Threading;
 
 public partial class PlaybackHeader : UserControl
 {
-    private const double MarkerHitRadius = 4.0;
-    private const double MarkerDragThreshold = 3.0;
-    private const double MarkerLabelGap = 28.0;
     private const double MarkerTimeRowHeight = 14.0;
     private const double MarkerWaveHeight = 56.0;
     private const double MarkerTextMaxWidth = 140.0;
     private const double MarkerEditorMaxWidth = 200.0;
     private const double MarkerEditorMinWidth = 80.0;
-    private const string MarkerHint = "ЛКМ — перейти · 2×ЛКМ — переименовать · ПКМ — удалить · ПКМ+протяжка — сдвинуть";
+    private const string MarkerHint = "ЛКМ — перейти · 2×ЛКМ — переименовать · ПКМ — удалить · ПКМ+протяжка — сдвинуть · навести — действие";
+    private const double MarkerActionDelayMs = 500.0;
+    private const double MarkerCloseDelayMs = 150.0;
 
     private static readonly IBrush WaveBrush = new ImmutableSolidColorBrush(Color.Parse("#ECECEC"));
     private static readonly IBrush MarkerBrush = new ImmutableSolidColorBrush(Color.Parse("#8A8A8A"));
@@ -43,6 +45,17 @@ public partial class PlaybackHeader : UserControl
     private TimeSpan _dragTarget;
     private Marker? _pendingMarker;
     private Marker? _hoverMarker;
+    private DispatcherTimer? _hoverTimer;
+    private Marker? _hoverTimerMarker;
+    private DispatcherTimer? _closeTimer;
+    private Popup? _actionPopup;
+    private Marker? _actionMarker;
+    private IBrush _actionHoverBrush = new ImmutableSolidColorBrush(Color.Parse("#1F1F1F"));
+
+    internal bool IsActionPopupOpen => _actionPopup?.IsOpen == true;
+
+    internal Control? ActionPopupContent => _actionPopup?.Child;
+    private static readonly MarkerAction[] MarkerActions = [MarkerAction.None, MarkerAction.Pause, MarkerAction.RepeatFromPrevious, MarkerAction.Restart];
     private Marker? _dragMarker;
     private bool _markerDragging;
     private Point _markerPressPoint;
@@ -56,6 +69,11 @@ public partial class PlaybackHeader : UserControl
         DataContextChanged += OnDataContextChanged;
         WaveformBorder.PointerPressed += OnWavePressed;
         WaveformBorder.PointerMoved += OnWaveMoved;
+        WaveformBorder.PointerExited += OnWaveExited;
+        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(MarkerActionDelayMs) };
+        _hoverTimer.Tick += OnHoverTimerTick;
+        _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(MarkerCloseDelayMs) };
+        _closeTimer.Tick += OnCloseTimerTick;
         WaveformBorder.PointerReleased += OnWaveReleased;
         WaveformBorder.PointerCaptureLost += OnWaveCaptureLost;
         WaveformCanvas.SizeChanged += OnWaveCanvasSizeChanged;
@@ -258,13 +276,16 @@ public partial class PlaybackHeader : UserControl
 
     private void OnWavePressed(object? sender, PointerPressedEventArgs e)
     {
+        _hoverTimer?.Stop();
+        _hoverTimerMarker = null;
+        CloseActionPopup();
         if (_peaks is null || _latest is null || _viewModel is null)
         {
             return;
         }
         var point = e.GetPosition(WaveformBorder);
         var properties = e.GetCurrentPoint(WaveformBorder).Properties;
-        var hit = MarkerAt(point.X);
+        var hit = MarkerAt(point.X, VisibleMarkers());
         if (properties.IsRightButtonPressed)
         {
             e.Handled = true;
@@ -309,14 +330,18 @@ public partial class PlaybackHeader : UserControl
         var point = e.GetPosition(WaveformBorder);
         if (_dragMarker is not null)
         {
-            if (!_markerDragging && Math.Abs(point.X - _markerPressPoint.X) >= MarkerDragThreshold)
+            if (!_markerDragging && Math.Abs(point.X - _markerPressPoint.X) >= MarkerLaneLayout.DragThreshold)
             {
                 _markerDragging = true;
             }
             if (_markerDragging)
             {
-                _markerDragTarget = PositionFor(point.X);
-                DrawMarkers();
+                var target = PositionFor(point.X);
+                if (target != _markerDragTarget)
+                {
+                    _markerDragTarget = target;
+                    DrawMarkers();
+                }
             }
             return;
         }
@@ -325,7 +350,7 @@ public partial class PlaybackHeader : UserControl
             DragCursor(point);
             return;
         }
-        UpdateHover(point.X);
+        UpdateHover(point.X, VisibleMarkers());
     }
 
     private void OnWaveReleased(object? sender, PointerReleasedEventArgs e)
@@ -402,11 +427,10 @@ public partial class PlaybackHeader : UserControl
         {
             return;
         }
-        var lastNamed = double.NegativeInfinity;
-        var names = new List<(TextBlock Block, double X)>();
+        var labels = MarkerLaneLayout.LabeledIndices(markers, duration, width);
         foreach (var marker in markers)
         {
-            var x = MarkerX(marker.Position, duration, width);
+            var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
             var brush = _hoverMarker is { } hover && hover == marker ? MarkerHoverBrush : MarkerBrush;
             MarkerCanvas.Children.Add(MarkerLine(x, brush));
             MarkerCanvas.Children.Add(MarkerDiamond(x, brush));
@@ -420,23 +444,22 @@ public partial class PlaybackHeader : UserControl
             };
             MarkerCanvas.Children.Add(time);
             Place(time, x, 0, width);
-            if (x - lastNamed >= MarkerLabelGap)
-            {
-                names.Add((new TextBlock
-                {
-                    Text = marker.Name,
-                    FontSize = 11,
-                    FontFamily = MonoFont,
-                    Foreground = brush,
-                    MaxWidth = MarkerTextMaxWidth,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    IsHitTestVisible = false,
-                }, x));
-                lastNamed = x;
-            }
         }
-        foreach (var (block, x) in names)
+        foreach (var index in labels)
         {
+            var marker = markers[index];
+            var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
+            var brush = _hoverMarker is { } hover && hover == marker ? MarkerHoverBrush : MarkerBrush;
+            var block = new TextBlock
+            {
+                Text = marker.Name,
+                FontSize = 11,
+                FontFamily = MonoFont,
+                Foreground = brush,
+                MaxWidth = MarkerTextMaxWidth,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                IsHitTestVisible = false,
+            };
             MarkerCanvas.Children.Add(block);
             Place(block, x, MarkerTimeRowHeight + MarkerWaveHeight, width);
         }
@@ -500,11 +523,6 @@ public partial class PlaybackHeader : UserControl
         Canvas.SetTop(control, top);
     }
 
-    private static double MarkerX(TimeSpan position, TimeSpan duration, double width)
-    {
-        var fraction = duration > TimeSpan.Zero ? position.TotalSeconds / duration.TotalSeconds : 0.0;
-        return Math.Clamp(fraction, 0.0, 1.0) * width;
-    }
 
     private static string FormatMarkerTime(TimeSpan position) =>
         $"{(int)position.TotalMinutes:00}:{position.Seconds:00}.{position.Milliseconds / 100}";
@@ -512,49 +530,293 @@ public partial class PlaybackHeader : UserControl
     private FontFamily MonoFont =>
         this.TryFindResource("MonoFont", out var value) && value is FontFamily family ? family : FontFamily.Default;
 
-    private Marker? MarkerAt(double x)
+    private Marker? MarkerAt(double x, ImmutableArray<Marker> markers)
     {
         var width = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        if (width <= 0 || duration <= TimeSpan.Zero)
-        {
-            return null;
-        }
-        Marker? best = null;
-        var bestDistance = double.MaxValue;
-        foreach (var marker in VisibleMarkers())
-        {
-            var distance = Math.Abs(MarkerX(marker.Position, duration, width) - x);
-            if (distance <= MarkerHitRadius && distance < bestDistance)
-            {
-                best = marker;
-                bestDistance = distance;
-            }
-        }
-        return best;
+        return MarkerLaneLayout.HitTest(markers, x, duration, width);
     }
 
     private TimeSpan PositionFor(double x)
     {
         var width = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        if (width <= 0 || duration <= TimeSpan.Zero)
-        {
-            return TimeSpan.Zero;
-        }
-        return TimeSpan.FromSeconds(Math.Clamp(x / width, 0.0, 1.0) * duration.TotalSeconds);
+        return MarkerLaneLayout.PositionFor(x, duration, width);
     }
 
-    private void UpdateHover(double x)
+    private void UpdateHover(double x, ImmutableArray<Marker> markers)
     {
-        var marker = MarkerAt(x);
+        var marker = MarkerAt(x, markers);
         if (marker == _hoverMarker)
         {
             return;
         }
         _hoverMarker = marker;
-        ToolTip.SetTip(WaveformBorder, marker is null ? null : MarkerHint);
+        if (marker is null)
+        {
+            RestartCloseTimer();
+            DrawMarkers();
+            return;
+        }
+        CloseActionPopup();
         DrawMarkers();
+        RestartHoverTimer();
+    }
+
+    private void RestartHoverTimer()
+    {
+        if (_hoverTimer is null)
+        {
+            return;
+        }
+        _hoverTimer.Stop();
+        var marker = _hoverMarker;
+        if (marker is null || _editor is not null || _dragMarker is not null)
+        {
+            return;
+        }
+        _hoverTimerMarker = marker;
+        _hoverTimer.Start();
+    }
+
+    private void OnHoverTimerTick(object? sender, EventArgs e)
+    {
+        _hoverTimer?.Stop();
+        var marker = _hoverTimerMarker;
+        _hoverTimerMarker = null;
+        if (marker is null || _editor is not null || _dragMarker is not null || _dragging)
+        {
+            return;
+        }
+        if (_hoverMarker is null || !_hoverMarker.Equals(marker) || VisibleMarkers().IndexOf(marker) < 0)
+        {
+            return;
+        }
+        OpenActionPopup(marker);
+    }
+
+    private void OnWaveExited(object? sender, PointerEventArgs e)
+    {
+        _hoverMarker = null;
+        _hoverTimer?.Stop();
+        _hoverTimerMarker = null;
+        RestartCloseTimer();
+        DrawMarkers();
+    }
+
+    private void RestartCloseTimer()
+    {
+        if (_closeTimer is null || _actionPopup is null)
+        {
+            return;
+        }
+        _closeTimer.Stop();
+        _closeTimer.Start();
+    }
+
+    private void OnCloseTimerTick(object? sender, EventArgs e)
+    {
+        _closeTimer?.Stop();
+        CloseActionPopup();
+    }
+
+    private void OnPopupEntered(object? sender, PointerEventArgs e) => _closeTimer?.Stop();
+
+    private void OnPopupExited(object? sender, PointerEventArgs e) => RestartCloseTimer();
+
+    private static string ActionLabel(MarkerAction action) => action switch
+    {
+        MarkerAction.None => "Ничего",
+        MarkerAction.Pause => "Пауза",
+        MarkerAction.RepeatFromPrevious => "Повтор от прошлой",
+        MarkerAction.Restart => "С начала",
+        _ => action.ToString(),
+    };
+
+    private void OpenActionPopup(Marker marker)
+    {
+        CloseActionPopup();
+        if (_viewModel is null)
+        {
+            return;
+        }
+        var panel = new StackPanel { Spacing = 2, MinWidth = 170 };
+        var foreground = MarkerHoverBrush;
+        if (this.TryFindResource("BrushFg", out var fg) && fg is IBrush fgBrush)
+        {
+            foreground = fgBrush;
+        }
+        _actionHoverBrush = new ImmutableSolidColorBrush(Color.Parse("#1F1F1F"));
+        if (this.TryFindResource("BrushSurfaceAlt", out var alt) && alt is IBrush altBrush)
+        {
+            _actionHoverBrush = altBrush;
+        }
+        var signal = MarkerHoverBrush;
+        if (this.TryFindResource("BrushSignal", out var sig) && sig is IBrush sigBrush)
+        {
+            signal = sigBrush;
+        }
+        var closer = new Button
+        {
+            Content = "×",
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            Padding = new Thickness(8, 0, 8, 0),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Foreground = MarkerBrush,
+            FontSize = 12,
+            VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        };
+        closer.Click += OnPopupCloseClick;
+        panel.Children.Add(closer);
+        foreach (var action in MarkerActions)
+        {
+            var button = new Button
+            {
+                Content = ActionLabel(action),
+                Tag = action,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 6, 10, 6),
+                MinHeight = 28,
+                FontSize = 13,
+                Foreground = foreground,
+            };
+            if (action == marker.Action)
+            {
+                button.FontWeight = FontWeight.Bold;
+                button.Foreground = signal;
+            }
+            button.Click += OnActionClick;
+            button.PointerEntered += OnActionButtonEntered;
+            button.PointerExited += OnActionButtonExited;
+            panel.Children.Add(button);
+        }
+        var footer = new TextBlock
+        {
+            Text = MarkerHint,
+            FontSize = 10,
+            Foreground = MarkerBrush,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 260,
+            Margin = new Thickness(0, 4, 0, 0),
+        };
+        panel.Children.Add(footer);
+        var background = MarkerBrush;
+        if (this.TryFindResource("BrushSurface", out var surface) && surface is IBrush surfaceBrush)
+        {
+            background = surfaceBrush;
+        }
+        var line = MarkerBrush;
+        if (this.TryFindResource("BrushLine", out var lineRes) && lineRes is IBrush lineBrush)
+        {
+            line = lineBrush;
+        }
+        var frame = new Border
+        {
+            Child = panel,
+            Background = background,
+            BorderBrush = line,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(6),
+            CornerRadius = new CornerRadius(6),
+        };
+        panel.Measure(Size.Infinity);
+        var popup = new Popup
+        {
+            PlacementTarget = WaveformBorder,
+            Placement = PlacementMode.AnchorAndGravity,
+            PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.TopLeft,
+            PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.BottomRight,
+            Child = new ThemeVariantScope
+            {
+                RequestedThemeVariant = ThemeVariant.Dark,
+                Child = frame,
+            },
+        };
+        frame.PointerEntered += OnPopupEntered;
+        frame.PointerExited += OnPopupExited;
+        _actionPopup = popup;
+        _actionMarker = marker;
+        PositionActionPopup(popup, marker, panel);
+        popup.Open();
+    }
+
+    private void PositionActionPopup(Popup popup, Marker marker, Control content)
+    {
+        var waveWidth = WaveformCanvas.Bounds.Width;
+        var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
+        var x = MarkerLaneLayout.MarkerX(marker.Position, duration, waveWidth);
+        var popupWidth = content.DesiredSize.Width;
+        var borderWidth = WaveformBorder.Bounds.Width;
+        popup.HorizontalOffset = Math.Clamp(x - (popupWidth / 2.0), 0.0, Math.Max(0.0, borderWidth - popupWidth));
+        var strip = WaveformStrip;
+        var anchor = strip.TranslatePoint(new Point(x, strip.Bounds.Height), WaveformBorder);
+        popup.VerticalOffset = anchor?.Y ?? (MarkerTimeRowHeight + MarkerWaveHeight + 14.0);
+    }
+
+    private void OnActionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: MarkerAction action } && _actionMarker is { } marker && _viewModel is not null)
+        {
+            _viewModel.SetMarkerAction(marker, action);
+        }
+        _hoverMarker = null;
+        CloseActionPopup();
+        DrawMarkers();
+    }
+
+    private void OnActionButtonEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is Button button)
+        {
+            button.Background = _actionHoverBrush;
+        }
+    }
+
+    private void OnActionButtonExited(object? sender, PointerEventArgs e)
+    {
+        if (sender is Button button)
+        {
+            button.Background = Brushes.Transparent;
+        }
+    }
+
+    private void OnPopupCloseClick(object? sender, RoutedEventArgs e)
+    {
+        _hoverMarker = null;
+        CloseActionPopup();
+        DrawMarkers();
+    }
+
+    private void CloseActionPopup()
+    {
+        _closeTimer?.Stop();
+        if (_actionPopup is { } popup)
+        {
+            popup.Close();
+            if (popup.Child is ThemeVariantScope scope && scope.Child is Border frame)
+            {
+                frame.PointerEntered -= OnPopupEntered;
+                frame.PointerExited -= OnPopupExited;
+                if (frame.Child is StackPanel panel)
+                {
+                    foreach (var button in panel.Children.OfType<Button>())
+                    {
+                        button.Click -= OnActionClick;
+                        button.Click -= OnPopupCloseClick;
+                        button.PointerEntered -= OnActionButtonEntered;
+                        button.PointerExited -= OnActionButtonExited;
+                    }
+                }
+            }
+        }
+        _actionPopup = null;
+        _actionMarker = null;
     }
 
     private void BeginMarker(double x)
@@ -563,7 +825,7 @@ public partial class PlaybackHeader : UserControl
         {
             return;
         }
-        var marker = new Marker(NextMarkerName(), PositionFor(x), MarkerAction.Stop);
+        var marker = new Marker(NextMarkerName(), PositionFor(x), MarkerAction.None);
         _pendingMarker = marker;
         DrawMarkers();
         OpenEditor(marker);
@@ -574,6 +836,7 @@ public partial class PlaybackHeader : UserControl
 
     private void OpenEditor(Marker marker)
     {
+        CloseActionPopup();
         CloseEditor();
         var editor = new TextBox
         {
@@ -598,12 +861,13 @@ public partial class PlaybackHeader : UserControl
     {
         var width = WaveformCanvas.Bounds.Width;
         var duration = _viewModel?.CurrentDuration ?? TimeSpan.Zero;
-        var x = MarkerX(marker.Position, duration, width);
+        var x = MarkerLaneLayout.MarkerX(marker.Position, duration, width);
         editor.Measure(Size.Infinity);
         var editorWidth = Math.Clamp(editor.DesiredSize.Width + 16.0, MarkerEditorMinWidth, MarkerEditorMaxWidth);
         editor.Width = editorWidth;
+        var editorTop = MarkerTimeRowHeight + Math.Max(0.0, (MarkerWaveHeight - editor.DesiredSize.Height) / 2.0);
         Canvas.SetLeft(editor, Math.Clamp(x - (editorWidth / 2.0), 0.0, Math.Max(0.0, width - editorWidth)));
-        Canvas.SetTop(editor, MarkerTimeRowHeight + MarkerWaveHeight);
+        Canvas.SetTop(editor, editorTop);
     }
 
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)

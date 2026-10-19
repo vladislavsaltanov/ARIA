@@ -88,7 +88,7 @@ public sealed class MixerBusTests
         var events = new List<StreamEvent>();
         bus.Events += events.Add;
         var output = new float[512];
-        var markers = ImmutableArray.Create(new MarkerSpec("stop", TimeSpan.FromSeconds(0.02), MarkerAction.Stop));
+        var markers = ImmutableArray.Create(new MarkerSpec("stop", TimeSpan.FromSeconds(0.02), MarkerAction.Pause));
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
 
         bus.Render(output);
@@ -121,7 +121,7 @@ public sealed class MixerBusTests
         var events = new List<StreamEvent>();
         bus.Events += events.Add;
         var output = new float[512];
-        var markers = ImmutableArray.Create(new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+        var markers = ImmutableArray.Create(new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Pause));
         bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
 
         var frames = 0;
@@ -150,8 +150,8 @@ public sealed class MixerBusTests
         bus.Events += events.Add;
         var output = new float[512];
         var markers = ImmutableArray.Create(
-            new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Stop),
-            new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+            new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Pause),
+            new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Pause));
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
         bus.Seek(handle, 19200);
 
@@ -175,7 +175,7 @@ public sealed class MixerBusTests
         var events = new List<StreamEvent>();
         bus.Events += events.Add;
         var output = new float[512];
-        var markers = ImmutableArray.Create(new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+        var markers = ImmutableArray.Create(new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Pause));
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
         bus.Seek(handle, 24000);
 
@@ -196,8 +196,8 @@ public sealed class MixerBusTests
         bus.Events += events.Add;
         var output = new float[512];
         var markers = ImmutableArray.Create(
-            new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Stop),
-            new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Stop));
+            new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Pause),
+            new MarkerSpec("half", TimeSpan.FromSeconds(0.5), MarkerAction.Pause));
 
         var first = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5), markers: markers));
         bus.Seek(first, 19200);
@@ -233,7 +233,7 @@ public sealed class MixerBusTests
         var handle = bus.AddVoice(Config(new SineSource(1, 48000, 1000, 0.5)));
         bus.Render(output);
 
-        bus.SetMarkers(handle, [new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Stop)]);
+        bus.SetMarkers(handle, [new MarkerSpec("quarter", TimeSpan.FromSeconds(0.25), MarkerAction.Pause)]);
 
         var frames = 0;
         while (events.Count == 0 && frames < 48000)

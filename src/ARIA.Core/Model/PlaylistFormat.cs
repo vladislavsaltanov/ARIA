@@ -254,6 +254,10 @@ public static class ProjectFormat
 
     private static MarkerAction ParseMarkerAction(string value)
     {
+        if (string.Equals(value, "stop", StringComparison.OrdinalIgnoreCase))
+        {
+            return MarkerAction.Pause;
+        }
         if (Enum.TryParse<MarkerAction>(value, ignoreCase: true, out var action))
         {
             return action;
