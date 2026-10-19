@@ -195,6 +195,23 @@ public sealed class MarkerLaneHeadlessTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task MarkerEditor_StaysWithinStripBounds()
+    {
+        await _session.Dispatch(() =>
+        {
+            using var lane = new TestLane(TestTrackId, null, []);
+            lane.Window.MouseDown(lane.PointAt(45), MouseButton.Right);
+            Dispatcher.UIThread.RunJobs();
+            var editor = Assert.IsType<TextBox>(Assert.Single(lane.EditorCanvas.Children));
+            lane.Window.UpdateLayout();
+            var bottom = Canvas.GetTop(editor) + editor.Bounds.Height;
+            Assert.True(bottom <= lane.EditorCanvas.Bounds.Height + 1,
+                $"editor overflows strip: bottom={bottom}, strip={lane.EditorCanvas.Bounds.Height}");
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static Marker Marker(string name, double seconds) =>
         new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Pause);
 }

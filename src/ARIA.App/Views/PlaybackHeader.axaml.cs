@@ -857,8 +857,9 @@ public partial class PlaybackHeader : UserControl
         editor.Measure(Size.Infinity);
         var editorWidth = Math.Clamp(editor.DesiredSize.Width + 16.0, MarkerEditorMinWidth, MarkerEditorMaxWidth);
         editor.Width = editorWidth;
+        var editorTop = MarkerTimeRowHeight + Math.Max(0.0, (MarkerWaveHeight - editor.DesiredSize.Height) / 2.0);
         Canvas.SetLeft(editor, Math.Clamp(x - (editorWidth / 2.0), 0.0, Math.Max(0.0, width - editorWidth)));
-        Canvas.SetTop(editor, MarkerTimeRowHeight + MarkerWaveHeight);
+        Canvas.SetTop(editor, editorTop);
     }
 
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)
