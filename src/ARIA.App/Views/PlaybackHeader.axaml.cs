@@ -651,6 +651,11 @@ public partial class PlaybackHeader : UserControl
         {
             _actionHoverBrush = altBrush;
         }
+        var signal = MarkerHoverBrush;
+        if (this.TryFindResource("BrushSignal", out var sig) && sig is IBrush sigBrush)
+        {
+            signal = sigBrush;
+        }
         var closer = new Button
         {
             Content = "×",
@@ -660,6 +665,7 @@ public partial class PlaybackHeader : UserControl
             BorderThickness = new Thickness(0),
             Foreground = MarkerBrush,
             FontSize = 12,
+            VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
         };
         closer.Click += OnPopupCloseClick;
         panel.Children.Add(closer);
@@ -671,6 +677,7 @@ public partial class PlaybackHeader : UserControl
                 Tag = action,
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 CornerRadius = new CornerRadius(4),
@@ -682,6 +689,7 @@ public partial class PlaybackHeader : UserControl
             if (action == marker.Action)
             {
                 button.FontWeight = FontWeight.Bold;
+                button.Foreground = signal;
             }
             button.Click += OnActionClick;
             button.PointerEntered += OnActionButtonEntered;
