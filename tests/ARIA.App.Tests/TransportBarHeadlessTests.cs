@@ -105,6 +105,12 @@ public sealed class TransportBarHeadlessTests
                     $"{control.Name} bottom {bottom:F1} exceeds bar height {bar.Bounds.Height:F1}");
             }
 
+            foreach (var label in new[] { bar.FindControl<TextBlock>("LevelLeftLabel")!, bar.FindControl<TextBlock>("LevelRightLabel")! })
+            {
+                Assert.True(label.Bounds.Height >= label.DesiredSize.Height - 1,
+                    $"{label.Name} clipped: arranged {label.Bounds.Height:F1} < desired {label.DesiredSize.Height:F1}");
+            }
+
             var barRight = left.TranslatePoint(new Point(left.Bounds.Width, 0), bar)!.Value.X;
             var valueLeft = value.TranslatePoint(new Point(0, 0), bar)!.Value.X;
             Assert.True(valueLeft < barRight, "LUFS value should sit left of the meters column");
