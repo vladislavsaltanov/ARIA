@@ -1,6 +1,7 @@
 namespace Aria.App.Tests;
 
 using Aria.App.Views;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 
@@ -69,6 +70,44 @@ public sealed class TransportBarHeadlessTests
             viewModel.LevelRight = 0.3;
             Assert.Equal(0.8, left.Value);
             Assert.Equal(0.3, right.Value);
+
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task TransportBar_MetersFit_Inside_BarHeight()
+    {
+        await _session.Dispatch(() =>
+        {
+            var window = new Views.MainWindow(null);
+            window.Show();
+            window.UpdateLayout();
+
+            var bar = window.FindControl<Views.TransportBar>("TransportBar");
+            Assert.NotNull(bar);
+            var value = bar.FindControl<TextBlock>("LufsValue");
+            var left = bar.FindControl<ProgressBar>("LevelLeftBar");
+            var right = bar.FindControl<ProgressBar>("LevelRightBar");
+            Assert.NotNull(value);
+            Assert.NotNull(left);
+            Assert.NotNull(right);
+            Assert.True(left.IsVisible);
+            Assert.True(right.IsVisible);
+            Assert.True(value.IsVisible);
+
+            var meters = new Control[] { value, left, right };
+            foreach (var control in meters)
+            {
+                var bottom = control.TranslatePoint(new Point(0, control.Bounds.Height), bar)!.Value.Y;
+                Assert.True(bottom <= bar.Bounds.Height - 2,
+                    $"{control.Name} bottom {bottom:F1} exceeds bar height {bar.Bounds.Height:F1}");
+            }
+
+            var barRight = left.TranslatePoint(new Point(left.Bounds.Width, 0), bar)!.Value.X;
+            var valueLeft = value.TranslatePoint(new Point(0, 0), bar)!.Value.X;
+            Assert.True(valueLeft < barRight, "LUFS value should sit left of the meters column");
 
             window.Close();
             return 0;
