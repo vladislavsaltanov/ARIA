@@ -154,23 +154,23 @@
           </Button>
         </StackPanel>
         <Border Grid.Column="1" x:Name="MetersCluster" Classes="cluster" HorizontalAlignment="Left">
-          <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-            <TextBlock Text="LUFS" Classes="barLabel"/>
-            <TextBlock x:Name="LufsValue" Text="{Binding LufsText}" Classes="barValue" VerticalAlignment="Center"/>
-            <ProgressBar x:Name="LufsBar" Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Width="40" Height="5"
+          <Grid ColumnDefinitions="Auto,88" RowDefinitions="Auto,Auto,Auto" VerticalAlignment="Center">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <TextBlock Text="LUFS" Classes="barLabel"/>
+              <TextBlock x:Name="LufsValue" Text="{Binding LufsText}" Classes="barValue" MinWidth="40" VerticalAlignment="Center"/>
+            </StackPanel>
+            <ProgressBar Grid.Column="1" x:Name="LufsBar" Minimum="0" Maximum="1" Value="{Binding LufsLevel}" Height="5"
                          Background="{StaticResource BrushLine}" Foreground="{Binding LufsBarBrush}"
                          VerticalAlignment="Center" BorderThickness="0"/>
-            <StackPanel x:Name="LevelsGroup" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-              <TextBlock Text="L" Classes="barLabel"/>
-              <ProgressBar x:Name="LevelLeftBar" Minimum="0" Maximum="1" Value="{Binding LevelLeft}" Width="30" Height="5"
-                           Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
-                           VerticalAlignment="Center" BorderThickness="0"/>
-              <TextBlock Text="R" Classes="barLabel"/>
-              <ProgressBar x:Name="LevelRightBar" Minimum="0" Maximum="1" Value="{Binding LevelRight}" Width="30" Height="5"
-                           Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
-                           VerticalAlignment="Center" BorderThickness="0"/>
-            </StackPanel>
-          </StackPanel>
+            <TextBlock Grid.Row="1" x:Name="LevelLeftLabel" Text="L" Classes="barLabel" HorizontalAlignment="Right" Margin="0,4,8,0"/>
+            <ProgressBar Grid.Row="1" Grid.Column="1" x:Name="LevelLeftBar" Minimum="0" Maximum="1" Value="{Binding LevelLeft}" Height="3"
+                         Margin="0,4,0,0" Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
+                         VerticalAlignment="Center" BorderThickness="0"/>
+            <TextBlock Grid.Row="2" x:Name="LevelRightLabel" Text="R" Classes="barLabel" HorizontalAlignment="Right" Margin="0,4,8,0"/>
+            <ProgressBar Grid.Row="2" Grid.Column="1" x:Name="LevelRightBar" Minimum="0" Maximum="1" Value="{Binding LevelRight}" Height="3"
+                         Margin="0,4,0,0" Background="{StaticResource BrushLine}" Foreground="{Binding LevelBarBrush}"
+                         VerticalAlignment="Center" BorderThickness="0"/>
+          </Grid>
         </Border>
         <Border Grid.Column="2" Classes="cluster">
           <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

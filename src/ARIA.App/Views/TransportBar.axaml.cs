@@ -28,9 +28,13 @@ public partial class TransportBar : UserControl
     {
         var width = e.NewSize.Width;
         MetersCluster.IsVisible = width >= 740;
-        LevelsGroup.IsVisible = width >= 940;
         LufsBar.IsVisible = width >= 880;
         LufsValue.IsVisible = width >= 820;
+        var levels = width >= 940;
+        LevelLeftLabel.IsVisible = levels;
+        LevelLeftBar.IsVisible = levels;
+        LevelRightLabel.IsVisible = levels;
+        LevelRightBar.IsVisible = levels;
     }
 
     public void ApplyGestures(HotkeyService hotkeys)

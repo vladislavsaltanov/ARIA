@@ -34,8 +34,10 @@ public sealed class TransportBarHeadlessTests
             Assert.NotNull(window.FindControl<Views.ProjectCenter>("ProjectCenter"));
             var center = window.FindControl<Views.ProjectCenter>("ProjectCenter");
             Assert.NotNull(center);
-            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ImportProjectButton"));
-            Assert.NotNull(center.FindControl<Avalonia.Controls.Button>("ExportProjectButton"));
+            var playlist = center.FindControl<Avalonia.Controls.Panel>("PlaylistArea");
+            Assert.NotNull(playlist);
+            Assert.NotNull(playlist.ContextMenu);
+            Assert.NotEmpty(playlist.ContextMenu!.Items);
             Assert.NotNull(window.FindControl<Views.QueueColumn>("QueueColumn"));
             Assert.Null(window.FindControl<Avalonia.Controls.Border>("HelpOverlay"));
             Assert.Null(window.FindControl<Avalonia.Controls.Grid>("HotkeyTable"));
