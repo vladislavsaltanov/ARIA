@@ -183,3 +183,12 @@
   status: fixed
   verified: 2026-10-20
   evidence: ShowController RestartDeck/OnSeekTo; MarkerActionTests.cs
+
+- bug_id: BUG-2026-10-20-ci-retry-budget
+  date: 2026-10-20
+  severity: low
+  priority: medium
+  scope: ci-flake
+  summary: "Один ретрай на весь солюшен: два независимых флейка роняют PR"
+  file: specs/bugs/BUG-2026-10-20-ci-retry-budget.md
+  status: open
