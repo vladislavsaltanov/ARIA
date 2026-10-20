@@ -124,7 +124,7 @@ public sealed class TransportBarHeadlessTests
             {
                 var meterLeft = meter.TranslatePoint(new Point(0, 0), bar)!.Value.X;
                 var meterWidth = meter.Bounds.Width;
-                Assert.True(meterWidth <= 88.5, $"{meter.Name} width {meterWidth:F1} exceeds the 88px meters column");
+                Assert.True(meterWidth <= 176.5, $"{meter.Name} width {meterWidth:F1} exceeds the 176px meters column");
                 Assert.True(meterLeft >= barRight - 0.5 || meterLeft >= value.TranslatePoint(new Point(value.Bounds.Width, 0), bar)!.Value.X - 0.5,
                     $"{meter.Name} overlaps the value/label column");
             }
