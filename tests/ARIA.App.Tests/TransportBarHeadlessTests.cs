@@ -115,6 +115,24 @@ public sealed class TransportBarHeadlessTests
             var valueLeft = value.TranslatePoint(new Point(0, 0), bar)!.Value.X;
             Assert.True(valueLeft < barRight, "LUFS value should sit left of the meters column");
 
+            var lufsBar = bar.FindControl<ProgressBar>("LufsBar");
+            Assert.NotNull(lufsBar);
+            var labelLeft = bar.FindControl<TextBlock>("LevelLeftLabel")!;
+            var labelRight = bar.FindControl<TextBlock>("LevelRightLabel")!;
+            var bars = new[] { lufsBar!, left, right };
+            foreach (var meter in bars)
+            {
+                var meterLeft = meter.TranslatePoint(new Point(0, 0), bar)!.Value.X;
+                var meterWidth = meter.Bounds.Width;
+                Assert.True(meterWidth <= 88.5, $"{meter.Name} width {meterWidth:F1} exceeds the 88px meters column");
+                Assert.True(meterLeft >= barRight - 0.5 || meterLeft >= value.TranslatePoint(new Point(value.Bounds.Width, 0), bar)!.Value.X - 0.5,
+                    $"{meter.Name} overlaps the value/label column");
+            }
+            Assert.True(labelLeft.TranslatePoint(new Point(labelLeft.Bounds.Width, 0), bar)!.Value.X <= left.TranslatePoint(new Point(0, 0), bar)!.Value.X + 0.5,
+                "L label overlaps the left meter");
+            Assert.True(labelRight.TranslatePoint(new Point(labelRight.Bounds.Width, 0), bar)!.Value.X <= right.TranslatePoint(new Point(0, 0), bar)!.Value.X + 0.5,
+                "R label overlaps the right meter");
+
             window.Close();
             return 0;
         }, CancellationToken.None);
