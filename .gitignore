@@ -483,5 +483,9 @@ $RECYCLE.BIN/
 .pi/
 .scratch/
 
+# Agent working docs: superpowers plans/specs and one-shot UX reports are local-only. docs/adr stays tracked.
+/docs/superpowers/
+/docs/ux-polish-*.md
+
 # Local convenience copy written by native/aria-shim/build.sh (osx-arm64 only); canonical prebuilt shims live in runtimes/*/native/
 native/aria-shim/libaria_shim.dylib
