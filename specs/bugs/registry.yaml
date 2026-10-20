@@ -192,3 +192,12 @@
   summary: "Один ретрай на весь солюшен: два независимых флейка роняют PR"
   file: specs/bugs/BUG-2026-10-20-ci-retry-budget.md
   status: open
+
+- bug_id: BUG-2026-10-20-ci-pr-title-gate
+  date: 2026-10-20
+  severity: low
+  priority: medium
+  scope: ci-gate
+  summary: "Джоб pr-title требует conventional-заголовок PR"
+  file: specs/bugs/BUG-2026-10-20-ci-pr-title-gate.md
+  status: open
