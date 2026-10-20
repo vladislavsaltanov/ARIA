@@ -777,13 +777,14 @@ public sealed class ShowController : IShowHandler
         var old = deck.Handle!.Value;
         _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
         _retired.Add(old);
-        _monitor?.Unbind(old);
         var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut, settings.Audio);
         var options = new StreamOptions(StreamBus.Main, ArmedMarkers(deck));
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
         deck.StartAt = filePosition;
         _monitor?.Bind(handle, Content(deck));
+        _monitor?.Publish(handle, TimeSpan.Zero);
+        _monitor?.Unbind(old);
         _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
         _engine.Transport(handle, TransportCommand.Play);
         _preRolled = false;
@@ -2260,12 +2261,12 @@ public sealed class ShowController : IShowHandler
 
     private void RestartDeck(DeckInstance deck, TimeSpan filePosition, TransportStatus status)
     {
-        if (deck.Handle is { } old)
+        StreamHandle? previous = deck.Handle;
+        if (previous is { } old)
         {
             _engine.Transport(old, TransportCommand.Stop);
             _engine.DisposeStream(old);
             _retired.Remove(old);
-            _monitor?.Unbind(old);
             deck.Handle = null;
         }
         deck.StartAt = filePosition;
@@ -2274,6 +2275,11 @@ public sealed class ShowController : IShowHandler
         var handle = _engine.StartStream(source, new StreamOptions(StreamBus.Main, ArmedMarkers(deck)));
         deck.Handle = handle;
         _monitor?.Bind(handle, Content(deck));
+        _monitor?.Publish(handle, TimeSpan.Zero);
+        if (previous is { } unbound)
+        {
+            _monitor?.Unbind(unbound);
+        }
         _engine.SetMix(handle, new MixParameters(settings.GainDb, null));
         if (status == TransportStatus.Playing)
         {
