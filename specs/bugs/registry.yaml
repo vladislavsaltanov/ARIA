@@ -172,3 +172,14 @@
   summary: Достижение метки перезапускает трек; нет переопределяемого действия метки (None/Pause/RepeatPrev/Restart)
   file: specs/bugs/BUG-2026-10-19-marker-restart.md
   status: open
+
+- bug_id: BUG-2026-10-20-marker-pause-seek
+  date: 2026-10-20
+  severity: medium
+  priority: high
+  scope: marker-action
+  summary: Seek после паузы на метке отвергается или откатывает позицию
+  file: specs/bugs/BUG-2026-10-20-marker-pause-seek.md
+  status: fixed
+  verified: 2026-10-20
+  evidence: ShowController RestartDeck/OnSeekTo; MarkerActionTests.cs
