@@ -107,7 +107,7 @@ public sealed class AppHost : IAsyncDisposable
 
         Outputs = CreateOutputService();
         Outputs.Changed += OnOutputChanged;
-        var sink = _sinkFactory?.Invoke() ?? CreateMainSink();
+        var sink = CreateMainSink();
         var factory = _sourceFactory?.Invoke() ?? new MiniaudioSourceFactory(SampleRate, Channels);
         SourceFactory = factory;
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
@@ -115,6 +115,8 @@ public sealed class AppHost : IAsyncDisposable
         _importer = new TrackImporter(_decoderFactory, WaveformScanner);
         PreviewTap = new PreviewTap(SampleRate * 2, Channels);
         _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters, CreatePreviewSink(), PreviewTap);
+        _engine.MainOutputStalled += OnMainOutputStalled;
+        _engine.RenderFaulted += OnRenderFaulted;
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
         _controller = controller;
@@ -179,23 +181,105 @@ public sealed class AppHost : IAsyncDisposable
 
     private void OnOutputChanged()
     {
-        if (_engine is null || _rebuildingSink)
+        if (_engine is null)
         {
             return;
         }
-        _rebuildingSink = true;
-        try
+        lock (_sinkGate)
         {
-            _engine.ReplaceSink(CreateMainSink());
-            _engine.ReplacePreviewSink(CreatePreviewSink());
-        }
-        finally
-        {
-            _rebuildingSink = false;
+            if (_rebuildingSink)
+            {
+                return;
+            }
+            _rebuildingSink = true;
+            try
+            {
+                _engine.ReplaceSink(CreateMainSink());
+                _engine.ReplacePreviewSink(CreatePreviewSink());
+            }
+            finally
+            {
+                _rebuildingSink = false;
+            }
         }
     }
 
+    private readonly object _sinkGate = new();
     private bool _rebuildingSink;
+    private int _mainStalled;
+    private int _reconnecting;
+    private long _renderFaults;
+
+    internal static TimeSpan ReconnectInterval { get; set; } = TimeSpan.FromSeconds(2);
+
+    private void OnMainOutputStalled(bool stalled)
+    {
+        Volatile.Write(ref _mainStalled, stalled ? 1 : 0);
+        if (!stalled)
+        {
+            _log.Info("audio.output_recovered");
+            return;
+        }
+        _log.Warn("audio.output_stalled", new Dictionary<string, string> { ["device"] = Outputs.SelectedId });
+        if (Interlocked.Exchange(ref _reconnecting, 1) == 0)
+        {
+            _ = Task.Run(ReconnectWhileStalledAsync);
+        }
+    }
+
+    private async Task ReconnectWhileStalledAsync()
+    {
+        try
+        {
+            while (Volatile.Read(ref _mainStalled) == 1 && !_disposed && _engine is { } engine)
+            {
+                TryReconnectMainOutput(engine);
+                await Task.Delay(ReconnectInterval).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _reconnecting, 0);
+        }
+    }
+
+    private void TryReconnectMainOutput(AriaAudioEngine engine)
+    {
+        try
+        {
+            lock (_sinkGate)
+            {
+                _rebuildingSink = true;
+                try
+                {
+                    Outputs.NotifyDeviceFault("Выход не отвечал, переподключение");
+                    engine.ReplaceSink(CreateMainSink());
+                }
+                finally
+                {
+                    _rebuildingSink = false;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            _log.Error("audio.reconnect_failed", new Dictionary<string, string> { ["error"] = e.Message });
+        }
+    }
+
+    private void OnRenderFaulted(Exception error)
+    {
+        var count = Interlocked.Increment(ref _renderFaults);
+        if (count <= 10 || count % 1000 == 0)
+        {
+            _log.Error("audio.render_fault", new Dictionary<string, string>
+            {
+                ["type"] = error.GetType().FullName ?? "unknown",
+                ["message"] = error.Message,
+                ["count"] = count.ToString(),
+            });
+        }
+    }
 
     private byte[]? SavedDeviceBytes(string id)
     {
@@ -215,6 +299,10 @@ public sealed class AppHost : IAsyncDisposable
 
     private IAudioSink CreateMainSink()
     {
+        if (_sinkFactory is { } factory)
+        {
+            return factory();
+        }
         var deviceId = SavedDeviceBytes(Outputs.SelectedId);
         if (deviceId is null)
         {
@@ -237,8 +325,8 @@ public sealed class AppHost : IAsyncDisposable
         {
             var deviceId = SavedDeviceBytes(Outputs.SelectedPreviewId);
             return deviceId is null
-                ? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames)
-                : new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId);
+                ? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, writeTimeout: TimeSpan.Zero)
+                : new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId, TimeSpan.Zero);
         }
         catch (Exception e) when (e is InvalidOperationException or DllNotFoundException)
         {

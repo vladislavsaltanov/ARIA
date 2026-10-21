@@ -216,3 +216,14 @@
   status: fixed
   verified: 2026-10-21
   evidence: src/ARIA.Core/Runtime/ShowController.cs _earlyEvents; tests/ARIA.Core.Tests/EarlyFaultTests.cs
+
+- bug_id: BUG-2026-10-21-output-stall
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: audio-output
+  summary: Пропавшее устройство вешает поток рендера навсегда; зависшая прослушка глушит зал; исключение в рендере роняет процесс
+  file: specs/bugs/BUG-2026-10-21-output-stall.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Audio/RingWriter.cs; src/ARIA.Audio/AriaAudioEngine.cs RenderOnce/TrackStall; src/ARIA.App/AppHost.cs ReconnectWhileStalledAsync; tests/ARIA.Audio.Tests/OutputStallTests.cs; tests/ARIA.App.Tests/OutputReconnectTests.cs
