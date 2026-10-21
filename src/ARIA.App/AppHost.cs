@@ -101,9 +101,9 @@ public sealed class AppHost : IAsyncDisposable
         if (env is not null || stored.LogEnabled)
         {
             _log = new FileAppLog(LogPath, env is null ? stored.LogLevel : AppLogConfig.ReadMinLevel(env));
-            InstallFatalHandlers();
             LogStarted();
         }
+        InstallFatalHandlers();
 
         Outputs = CreateOutputService();
         Outputs.Changed += OnOutputChanged;
@@ -371,15 +371,13 @@ public sealed class AppHost : IAsyncDisposable
         if (enabled && _log is NullAppLog)
         {
             _log = new FileAppLog(LogPath, SettingsStore.Load().LogLevel);
-            InstallFatalHandlers();
             LogStarted();
         }
         else if (!enabled && _log is FileAppLog file)
         {
             _log.Info("host.stopped");
-            RemoveFatalHandlers();
-            file.Dispose();
             _log = NullAppLog.Instance;
+            file.Dispose();
         }
     }
 
@@ -416,13 +414,36 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    public void ReportUiFault(Exception error) => _log.Error("ui.unhandled", new Dictionary<string, string>
+    {
+        ["type"] = error.GetType().FullName ?? "unknown",
+        ["message"] = error.Message,
+        ["at"] = error.StackTrace?.Split('\n', 2)[0].Trim() ?? string.Empty,
+    });
+
+    internal void OnFatal(object error)
+    {
+        _log.Error("fatal.unhandled", new Dictionary<string, string>
+        {
+            ["type"] = error.GetType().FullName ?? "unknown",
+            ["message"] = (error as Exception)?.Message ?? "unknown",
+        });
+        try
+        {
+            _autosaver?.FlushNow();
+        }
+        catch (Exception)
+        {
+        }
+    }
+
     private void InstallFatalHandlers()
     {
-        _unhandled = (_, e) => _log.Error("fatal.unhandled", new Dictionary<string, string>
+        if (_unhandled is not null)
         {
-            ["type"] = e.ExceptionObject.GetType().FullName ?? "unknown",
-            ["message"] = (e.ExceptionObject as Exception)?.Message ?? "unknown",
-        });
+            return;
+        }
+        _unhandled = (_, e) => OnFatal(e.ExceptionObject);
         _unobserved = (_, e) =>
         {
             _log.Error("fatal.unobserved", new Dictionary<string, string>

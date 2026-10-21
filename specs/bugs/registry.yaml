@@ -238,3 +238,14 @@
   status: fixed
   verified: 2026-10-21
   evidence: src/ARIA.Persistence/SnapshotStore.cs; src/ARIA.Persistence/ShowDocumentRepair.cs; src/ARIA.Persistence/ShowAutosaver.cs LibraryUnchanged; tests/ARIA.Persistence.Tests/SnapshotDurabilityTests.cs; tests/ARIA.App.Tests/AppHostRecoveryTests.cs
+
+- bug_id: BUG-2026-10-21-ui-fault-crash
+  date: 2026-10-21
+  severity: high
+  priority: high
+  scope: app-lifecycle
+  summary: Исключение на UI-потоке роняет процесс; fatal без автосохранения; сбой старта — процесс без окна
+  file: specs/bugs/BUG-2026-10-21-ui-fault-crash.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.App/App.axaml.cs OnUiUnhandledException/ShowStartupFailure; src/ARIA.App/AppHost.cs OnFatal; tests/ARIA.App.Tests/AppHostFatalTests.cs

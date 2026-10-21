@@ -22,6 +22,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Dispatcher.UIThread.UnhandledException += OnUiUnhandledException;
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var dataDirectory = DefaultDataDirectory();
@@ -52,8 +53,57 @@ public partial class App : Application
         string dataDirectory,
         RemoteCredentials credentials)
     {
-        await host.StartAsync();
-        await Dispatcher.UIThread.InvokeAsync(() => Compose(desktop, host, dataDirectory, credentials));
+        try
+        {
+            await host.StartAsync();
+            await Dispatcher.UIThread.InvokeAsync(() => Compose(desktop, host, dataDirectory, credentials));
+        }
+        catch (Exception e)
+        {
+            host.ReportUiFault(e);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (desktop.MainWindow is null)
+                {
+                    ShowStartupFailure(desktop, e);
+                }
+            });
+        }
+    }
+
+    private static void OnUiUnhandledException(object? sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        Host?.ReportUiFault(e.Exception);
+        e.Handled = true;
+    }
+
+    private static void ShowStartupFailure(IClassicDesktopStyleApplicationLifetime desktop, Exception error)
+    {
+        var close = new Avalonia.Controls.Button { Content = "Закрыть", Margin = new Avalonia.Thickness(0, 12, 0, 0) };
+        var window = new Avalonia.Controls.Window
+        {
+            Title = "ARIA не запустилась",
+            Width = 480,
+            SizeToContent = Avalonia.Controls.SizeToContent.Height,
+            CanResize = false,
+            Content = new Avalonia.Controls.StackPanel
+            {
+                Margin = new Avalonia.Thickness(16),
+                Children =
+                {
+                    new Avalonia.Controls.TextBlock
+                    {
+                        Text = $"Не удалось запустить движок: {error.Message}\n\nШоу на диске не тронуто. Проверьте аудиоустройство и права на папку данных, затем перезапустите ARIA.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
+                    close,
+                },
+            },
+        };
+        close.Click += (_, _) => window.Close();
+        window.Closed += (_, _) => desktop.Shutdown(1);
+        desktop.MainWindow = window;
+        window.Show();
     }
 
     private static void Compose(
