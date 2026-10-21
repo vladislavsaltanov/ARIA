@@ -163,10 +163,10 @@ public partial class App : Application
             }
             if (sync is null)
             {
-                _ = ShowLibraryErrorDialog(owner, error.Message);
+                ShowLibraryErrorNotice(owner, error.Message);
                 return;
             }
-            sync.Post(_ => _ = ShowLibraryErrorDialog(owner, error.Message), null);
+            sync.Post(_ => ShowLibraryErrorNotice(owner, error.Message), null);
         };
         window.Show();
 
@@ -207,27 +207,33 @@ public partial class App : Application
         }
     }
 
-    private static async Task ShowLibraryErrorDialog(Avalonia.Controls.Window owner, string detail)
+    internal static Avalonia.Controls.Window ShowLibraryErrorNotice(Avalonia.Controls.Window owner, string detail)
     {
         var ok = new Avalonia.Controls.Button { Content = "Понятно", Margin = new Avalonia.Thickness(0, 12, 0, 0) };
-        var dialog = new Avalonia.Controls.Window
+        var notice = new Avalonia.Controls.Window
         {
             Title = "Библиотека не сохраняется",
             Width = 420,
             SizeToContent = Avalonia.Controls.SizeToContent.Height,
             CanResize = false,
+            ShowActivated = false,
             Content = new Avalonia.Controls.StackPanel
             {
                 Margin = new Avalonia.Thickness(16),
                 Children =
                 {
-                    new Avalonia.Controls.TextBlock { Text = "Не удалось записать библиотеку: " + detail, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Avalonia.Controls.TextBlock
+                    {
+                        Text = "Не удалось записать библиотеку: " + detail + "\n\nВоспроизведение продолжается, шоу сохраняется отдельно. Проверьте место на диске.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
                     ok,
                 },
             },
         };
-        ok.Click += (_, _) => dialog.Close();
-        await dialog.ShowDialog(owner);
+        ok.Click += (_, _) => notice.Close();
+        notice.Show(owner);
+        return notice;
     }
 
     private static string DefaultDataDirectory()
