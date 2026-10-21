@@ -102,6 +102,9 @@
             <Rectangle x:Name="WaveCursor" Width="2" Height="56" Fill="{StaticResource BrushSignal}"
                        IsVisible="False"/>
           </Canvas>
+          <TextBlock x:Name="IdleHint" Grid.Row="1" Text="{Binding IdleHint}" IsVisible="{Binding !HasCurrent}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12"
+                     Foreground="{StaticResource BrushDim}" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"/>
           <Canvas x:Name="MarkerCanvas" Grid.Row="0" Grid.RowSpan="3" IsHitTestVisible="False"/>
           <Canvas x:Name="MarkerEditorCanvas" Grid.Row="0" Grid.RowSpan="3"/>
         </Grid>

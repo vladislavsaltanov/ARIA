@@ -103,7 +103,7 @@ internal static class SnapshotProgram
         {
             if (_host is { } running)
             {
-                running.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                Task.Run(() => running.DisposeAsync().AsTask()).GetAwaiter().GetResult();
             }
             TryDelete(dataDirectory);
         }
@@ -189,6 +189,7 @@ internal static class SnapshotProgram
         monitor.Publish(handle, TimeSpan.FromSeconds(15));
         _monitor = monitor;
         Find<PlaybackHeader>(window, "PlaybackHeader")?.Attach(monitor, store);
+        transport.CurrentTrackId = trackId;
         transport.IsPlaying = true;
         transport.StatusText = "PLAY";
         foreach (var row in window.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("plRow")).Take(1))

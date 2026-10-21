@@ -22,6 +22,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Dispatcher.UIThread.UnhandledException += OnUiUnhandledException;
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var dataDirectory = DefaultDataDirectory();
@@ -38,7 +39,7 @@ public partial class App : Application
             desktop.ShutdownRequested += (_, _) =>
             {
                 _announcer?.Dispose();
-                host.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(3));
+                Task.Run(() => host.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(3));
             };
             _ = ComposeAsync(desktop, host, remoteOptions, dataDirectory, credentials);
         }
@@ -52,8 +53,57 @@ public partial class App : Application
         string dataDirectory,
         RemoteCredentials credentials)
     {
-        await host.StartAsync();
-        await Dispatcher.UIThread.InvokeAsync(() => Compose(desktop, host, dataDirectory, credentials));
+        try
+        {
+            await host.StartAsync();
+            await Dispatcher.UIThread.InvokeAsync(() => Compose(desktop, host, dataDirectory, credentials));
+        }
+        catch (Exception e)
+        {
+            host.ReportUiFault(e);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (desktop.MainWindow is null)
+                {
+                    ShowStartupFailure(desktop, e);
+                }
+            });
+        }
+    }
+
+    private static void OnUiUnhandledException(object? sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        Host?.ReportUiFault(e.Exception);
+        e.Handled = true;
+    }
+
+    private static void ShowStartupFailure(IClassicDesktopStyleApplicationLifetime desktop, Exception error)
+    {
+        var close = new Avalonia.Controls.Button { Content = "Закрыть", Margin = new Avalonia.Thickness(0, 12, 0, 0) };
+        var window = new Avalonia.Controls.Window
+        {
+            Title = "ARIA не запустилась",
+            Width = 480,
+            SizeToContent = Avalonia.Controls.SizeToContent.Height,
+            CanResize = false,
+            Content = new Avalonia.Controls.StackPanel
+            {
+                Margin = new Avalonia.Thickness(16),
+                Children =
+                {
+                    new Avalonia.Controls.TextBlock
+                    {
+                        Text = $"Не удалось запустить движок: {error.Message}\n\nШоу на диске не тронуто. Проверьте аудиоустройство и права на папку данных, затем перезапустите ARIA.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
+                    close,
+                },
+            },
+        };
+        close.Click += (_, _) => window.Close();
+        window.Closed += (_, _) => desktop.Shutdown(1);
+        desktop.MainWindow = window;
+        window.Show();
     }
 
     private static void Compose(
@@ -113,10 +163,10 @@ public partial class App : Application
             }
             if (sync is null)
             {
-                _ = ShowLibraryErrorDialog(owner, error.Message);
+                ShowLibraryErrorNotice(owner, error.Message);
                 return;
             }
-            sync.Post(_ => _ = ShowLibraryErrorDialog(owner, error.Message), null);
+            sync.Post(_ => ShowLibraryErrorNotice(owner, error.Message), null);
         };
         window.Show();
 
@@ -157,27 +207,33 @@ public partial class App : Application
         }
     }
 
-    private static async Task ShowLibraryErrorDialog(Avalonia.Controls.Window owner, string detail)
+    internal static Avalonia.Controls.Window ShowLibraryErrorNotice(Avalonia.Controls.Window owner, string detail)
     {
         var ok = new Avalonia.Controls.Button { Content = "Понятно", Margin = new Avalonia.Thickness(0, 12, 0, 0) };
-        var dialog = new Avalonia.Controls.Window
+        var notice = new Avalonia.Controls.Window
         {
             Title = "Библиотека не сохраняется",
             Width = 420,
             SizeToContent = Avalonia.Controls.SizeToContent.Height,
             CanResize = false,
+            ShowActivated = false,
             Content = new Avalonia.Controls.StackPanel
             {
                 Margin = new Avalonia.Thickness(16),
                 Children =
                 {
-                    new Avalonia.Controls.TextBlock { Text = "Не удалось записать библиотеку: " + detail, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Avalonia.Controls.TextBlock
+                    {
+                        Text = "Не удалось записать библиотеку: " + detail + "\n\nВоспроизведение продолжается, шоу сохраняется отдельно. Проверьте место на диске.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
                     ok,
                 },
             },
         };
-        ok.Click += (_, _) => dialog.Close();
-        await dialog.ShowDialog(owner);
+        ok.Click += (_, _) => notice.Close();
+        notice.Show(owner);
+        return notice;
     }
 
     private static string DefaultDataDirectory()

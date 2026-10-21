@@ -3,6 +3,7 @@ namespace Aria.Audio;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 
@@ -46,6 +47,15 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     private int _handleCounter;
     private int _currentHandle;
+    private int _mainOffset;
+    private int _mainPending;
+    private long _stallSince;
+    private bool _stallReported;
+    private long _previewClock;
+    private int _consecutiveFaults;
+    private readonly long _blockTicks;
+    private static readonly long StallThresholdTicks = Stopwatch.Frequency / 2;
+    private const int MaxPreviewCatchUpBlocks = 4;
 
     public AriaAudioEngine(
         ISourceFactory sourceFactory,
@@ -83,11 +93,16 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _preview = new MixerBus(channels, sampleRate, blockSizeFrames);
         _previewBlock = new float[blockSizeFrames * channels];
         _preview.Events += ForwardEvent;
+        _blockTicks = Math.Max(1, Stopwatch.Frequency * blockSizeFrames / sampleRate);
         _renderThread = new Thread(RenderLoop) { IsBackground = true, Name = "aria-render" };
         _renderThread.Start();
     }
 
     public event Action<StreamEvent>? Events;
+
+    public event Action<bool>? MainOutputStalled;
+
+    public event Action<Exception>? RenderFaulted;
 
     public StreamHandle StartStream(TrackSource source, StreamOptions options)
     {
@@ -334,19 +349,123 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         while (!_cts.Token.IsCancellationRequested)
         {
-            DrainPendingSinks();
-            EmitFaults();
+            try
+            {
+                RenderOnce();
+                _consecutiveFaults = 0;
+            }
+            catch (Exception e)
+            {
+                RecoverFromFault(e);
+            }
+        }
+    }
+
+    private void RenderOnce()
+    {
+        DrainPendingSinks();
+        EmitFaults();
+        if (_mainPending == 0)
+        {
             _mixer.Render(_block);
             _mainTap.Publish(_block);
             ApplyMasterChain();
             PublishMeter();
-            var accepted = _sink.Write(_block);
-            if (accepted < _block.Length)
-            {
-                Thread.Sleep(1);
-            }
+            _mainOffset = 0;
+            _mainPending = _block.Length;
+        }
+        var accepted = Math.Clamp(_sink.Write(_block.AsSpan(_mainOffset, _mainPending)), 0, _mainPending);
+        _mainOffset += accepted;
+        _mainPending -= accepted;
+        if (_mainPending == 0)
+        {
+            ClearStall();
             RenderPreview();
+            _previewClock = Stopwatch.GetTimestamp();
             PublishPosition();
+            return;
+        }
+        if (TrackStall(Stopwatch.GetTimestamp()))
+        {
+            RenderPreviewWhileStalled();
+        }
+        PublishPosition();
+        Thread.Sleep(1);
+    }
+
+    private bool TrackStall(long now)
+    {
+        if (_stallSince == 0)
+        {
+            _stallSince = now;
+            return false;
+        }
+        if (now - _stallSince < StallThresholdTicks)
+        {
+            return false;
+        }
+        if (!_stallReported)
+        {
+            _stallReported = true;
+            _previewClock = now;
+            RaiseStall(true);
+        }
+        return true;
+    }
+
+    private void ClearStall()
+    {
+        _stallSince = 0;
+        if (_stallReported)
+        {
+            _stallReported = false;
+            RaiseStall(false);
+        }
+    }
+
+    private void RaiseStall(bool stalled)
+    {
+        try
+        {
+            MainOutputStalled?.Invoke(stalled);
+        }
+        catch (Exception e)
+        {
+            RaiseFault(e);
+        }
+    }
+
+    private void RenderPreviewWhileStalled()
+    {
+        var now = Stopwatch.GetTimestamp();
+        for (var blocks = 0; blocks < MaxPreviewCatchUpBlocks && now - _previewClock >= _blockTicks; blocks++)
+        {
+            RenderPreview();
+            _previewClock += _blockTicks;
+        }
+        if (now - _previewClock >= _blockTicks)
+        {
+            _previewClock = now;
+        }
+    }
+
+    private void RecoverFromFault(Exception e)
+    {
+        _mainPending = 0;
+        Array.Clear(_block);
+        _consecutiveFaults = Math.Min(_consecutiveFaults + 1, 20);
+        RaiseFault(e);
+        Thread.Sleep(5 * _consecutiveFaults);
+    }
+
+    private void RaiseFault(Exception e)
+    {
+        try
+        {
+            RenderFaulted?.Invoke(e);
+        }
+        catch (Exception)
+        {
         }
     }
 
@@ -435,6 +554,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             {
                 var old = Interlocked.Exchange(ref _sink, pending.Sink);
                 SessionMixer.RetireDisposable(old);
+                _stallSince = 0;
             }
         }
     }

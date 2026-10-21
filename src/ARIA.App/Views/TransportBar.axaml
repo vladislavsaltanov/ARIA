@@ -125,7 +125,7 @@
             <TextBlock Text="{Binding NextLine}" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="16,0,0,0">
-            <TextBlock Text="{Binding Remaining, StringFormat='−{0}'}" Classes="barValue" FontSize="13"
+            <TextBlock Text="{Binding RemainingText}" Classes="barValue" FontSize="13"
                        Foreground="{StaticResource BrushFg}" VerticalAlignment="Center"/>
             <Border Classes="stateChip" Classes.playing="{Binding IsPlaying}" Classes.faulted="{Binding Panicked}"
                     VerticalAlignment="Center">

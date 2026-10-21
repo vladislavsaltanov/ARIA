@@ -101,13 +101,13 @@ public sealed class AppHost : IAsyncDisposable
         if (env is not null || stored.LogEnabled)
         {
             _log = new FileAppLog(LogPath, env is null ? stored.LogLevel : AppLogConfig.ReadMinLevel(env));
-            InstallFatalHandlers();
             LogStarted();
         }
+        InstallFatalHandlers();
 
         Outputs = CreateOutputService();
         Outputs.Changed += OnOutputChanged;
-        var sink = _sinkFactory?.Invoke() ?? CreateMainSink();
+        var sink = CreateMainSink();
         var factory = _sourceFactory?.Invoke() ?? new MiniaudioSourceFactory(SampleRate, Channels);
         SourceFactory = factory;
         _decoderFactory = factory as MiniaudioSourceFactory ?? new MiniaudioSourceFactory(SampleRate, Channels);
@@ -115,11 +115,13 @@ public sealed class AppHost : IAsyncDisposable
         _importer = new TrackImporter(_decoderFactory, WaveformScanner);
         PreviewTap = new PreviewTap(SampleRate * 2, Channels);
         _engine = new AriaAudioEngine(factory, Monitor, SampleRate, Channels, BlockSizeFrames, sink, Meters, CreatePreviewSink(), PreviewTap);
+        _engine.MainOutputStalled += OnMainOutputStalled;
+        _engine.RenderFaulted += OnRenderFaulted;
 
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
         _controller = controller;
 
-        Bus = _ownedBus = new CommandBus(controller, BusMode.Pumped);
+        Bus = _ownedBus = new CommandBus(controller, BusMode.Pumped, new CurrentLog(() => _log));
         _busRef = _ownedBus;
         _busEvents = Bus.Subscribe(OnBusEvent);
 
@@ -129,8 +131,18 @@ public sealed class AppHost : IAsyncDisposable
         _autosaver = new ShowAutosaver(Bus, _snapshots, TimeSpan.FromMilliseconds(500), () => Tracks, _library, _log, OnLibrarySaveFailed);
 
         var document = _snapshots.LoadLatest();
-        if (document is { } saved)
+        if (document is { } loaded)
         {
+            var saved = ShowDocumentRepair.Repair(loaded);
+            if (!ReferenceEquals(saved, loaded))
+            {
+                _log.Warn("snapshot.repaired", new Dictionary<string, string>
+                {
+                    ["tracks"] = $"{loaded.Tracks.Length}->{saved.Tracks.Length}",
+                    ["entries"] = $"{loaded.Projects.Sum(p => p.Entries.Length)}->{saved.Projects.Sum(p => p.Entries.Length)}",
+                    ["queue"] = $"{loaded.Queue.Length}->{saved.Queue.Length}",
+                });
+            }
             Submit(new RestoreShow(saved.Tracks, saved.Projects, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
             Submit(new SetGlobalAudio(saved.EffectiveGlobal));
         }
@@ -179,23 +191,105 @@ public sealed class AppHost : IAsyncDisposable
 
     private void OnOutputChanged()
     {
-        if (_engine is null || _rebuildingSink)
+        if (_engine is null)
         {
             return;
         }
-        _rebuildingSink = true;
-        try
+        lock (_sinkGate)
         {
-            _engine.ReplaceSink(CreateMainSink());
-            _engine.ReplacePreviewSink(CreatePreviewSink());
-        }
-        finally
-        {
-            _rebuildingSink = false;
+            if (_rebuildingSink)
+            {
+                return;
+            }
+            _rebuildingSink = true;
+            try
+            {
+                _engine.ReplaceSink(CreateMainSink());
+                _engine.ReplacePreviewSink(CreatePreviewSink());
+            }
+            finally
+            {
+                _rebuildingSink = false;
+            }
         }
     }
 
+    private readonly object _sinkGate = new();
     private bool _rebuildingSink;
+    private int _mainStalled;
+    private int _reconnecting;
+    private long _renderFaults;
+
+    internal static TimeSpan ReconnectInterval { get; set; } = TimeSpan.FromSeconds(2);
+
+    private void OnMainOutputStalled(bool stalled)
+    {
+        Volatile.Write(ref _mainStalled, stalled ? 1 : 0);
+        if (!stalled)
+        {
+            _log.Info("audio.output_recovered");
+            return;
+        }
+        _log.Warn("audio.output_stalled", new Dictionary<string, string> { ["device"] = Outputs.SelectedId });
+        if (Interlocked.Exchange(ref _reconnecting, 1) == 0)
+        {
+            _ = Task.Run(ReconnectWhileStalledAsync);
+        }
+    }
+
+    private async Task ReconnectWhileStalledAsync()
+    {
+        try
+        {
+            while (Volatile.Read(ref _mainStalled) == 1 && !_disposed && _engine is { } engine)
+            {
+                TryReconnectMainOutput(engine);
+                await Task.Delay(ReconnectInterval).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _reconnecting, 0);
+        }
+    }
+
+    private void TryReconnectMainOutput(AriaAudioEngine engine)
+    {
+        try
+        {
+            lock (_sinkGate)
+            {
+                _rebuildingSink = true;
+                try
+                {
+                    Outputs.NotifyDeviceFault("Выход не отвечал, переподключение");
+                    engine.ReplaceSink(CreateMainSink());
+                }
+                finally
+                {
+                    _rebuildingSink = false;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            _log.Error("audio.reconnect_failed", new Dictionary<string, string> { ["error"] = e.Message });
+        }
+    }
+
+    private void OnRenderFaulted(Exception error)
+    {
+        var count = Interlocked.Increment(ref _renderFaults);
+        if (count <= 10 || count % 1000 == 0)
+        {
+            _log.Error("audio.render_fault", new Dictionary<string, string>
+            {
+                ["type"] = error.GetType().FullName ?? "unknown",
+                ["message"] = error.Message,
+                ["count"] = count.ToString(),
+            });
+        }
+    }
 
     private byte[]? SavedDeviceBytes(string id)
     {
@@ -215,6 +309,10 @@ public sealed class AppHost : IAsyncDisposable
 
     private IAudioSink CreateMainSink()
     {
+        if (_sinkFactory is { } factory)
+        {
+            return factory();
+        }
         var deviceId = SavedDeviceBytes(Outputs.SelectedId);
         if (deviceId is null)
         {
@@ -237,14 +335,20 @@ public sealed class AppHost : IAsyncDisposable
         {
             var deviceId = SavedDeviceBytes(Outputs.SelectedPreviewId);
             return deviceId is null
-                ? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames)
-                : new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId);
+                ? new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, writeTimeout: TimeSpan.Zero)
+                : new MiniaudioSink(SampleRate, Channels, BlockSizeFrames, 0, deviceId, TimeSpan.Zero);
         }
         catch (Exception e) when (e is InvalidOperationException or DllNotFoundException)
         {
             Outputs.NotifyPreviewFault("Прослушка недоступна, используется системное");
             return new NullSink(SampleRate, Channels);
         }
+    }
+
+    private sealed class CurrentLog(Func<IAppLog> current) : IAppLog
+    {
+        public void Write(LogLevel level, string message, IReadOnlyDictionary<string, string>? data = null) =>
+            current().Write(level, message, data);
     }
 
     private sealed class EmptyLister : IAudioOutputLister
@@ -267,15 +371,13 @@ public sealed class AppHost : IAsyncDisposable
         if (enabled && _log is NullAppLog)
         {
             _log = new FileAppLog(LogPath, SettingsStore.Load().LogLevel);
-            InstallFatalHandlers();
             LogStarted();
         }
         else if (!enabled && _log is FileAppLog file)
         {
             _log.Info("host.stopped");
-            RemoveFatalHandlers();
-            file.Dispose();
             _log = NullAppLog.Instance;
+            file.Dispose();
         }
     }
 
@@ -312,13 +414,36 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    public void ReportUiFault(Exception error) => _log.Error("ui.unhandled", new Dictionary<string, string>
+    {
+        ["type"] = error.GetType().FullName ?? "unknown",
+        ["message"] = error.Message,
+        ["at"] = error.StackTrace?.Split('\n', 2)[0].Trim() ?? string.Empty,
+    });
+
+    internal void OnFatal(object error)
+    {
+        _log.Error("fatal.unhandled", new Dictionary<string, string>
+        {
+            ["type"] = error.GetType().FullName ?? "unknown",
+            ["message"] = (error as Exception)?.Message ?? "unknown",
+        });
+        try
+        {
+            _autosaver?.FlushNow();
+        }
+        catch (Exception)
+        {
+        }
+    }
+
     private void InstallFatalHandlers()
     {
-        _unhandled = (_, e) => _log.Error("fatal.unhandled", new Dictionary<string, string>
+        if (_unhandled is not null)
         {
-            ["type"] = e.ExceptionObject.GetType().FullName ?? "unknown",
-            ["message"] = (e.ExceptionObject as Exception)?.Message ?? "unknown",
-        });
+            return;
+        }
+        _unhandled = (_, e) => OnFatal(e.ExceptionObject);
         _unobserved = (_, e) =>
         {
             _log.Error("fatal.unobserved", new Dictionary<string, string>
@@ -602,12 +727,12 @@ public sealed class AppHost : IAsyncDisposable
         }
         if (Remote is { } remote)
         {
-            await remote.DisposeAsync();
+            await remote.DisposeAsync().ConfigureAwait(false);
         }
         _ownedBus?.Dispose();
         if (_engine is { } engine)
         {
-            await Task.Run(engine.Dispose);
+            await Task.Run(engine.Dispose).ConfigureAwait(false);
         }
         _snapshots?.Dispose();
         _library?.Dispose();

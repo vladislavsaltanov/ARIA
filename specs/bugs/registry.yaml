@@ -172,3 +172,102 @@
   summary: Достижение метки перезапускает трек; нет переопределяемого действия метки (None/Pause/RepeatPrev/Restart)
   file: specs/bugs/BUG-2026-10-19-marker-restart.md
   status: open
+
+- bug_id: BUG-2026-10-21-bus-pump-death
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: control-bus
+  summary: Исключение в обработчике/подписчике убивает насос команд — PANIC и всё управление молча игнорируются
+  file: specs/bugs/BUG-2026-10-21-bus-pump-death.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/CommandBus.cs Dispatch/Run/Publish; tests/ARIA.Core.Tests/BusResilienceTests.cs
+
+- bug_id: BUG-2026-10-21-snapshot-race
+  date: 2026-10-21
+  severity: high
+  priority: high
+  scope: control-bus
+  summary: Snapshot() с UI/таймера/Remote читает изменяемые коллекции контроллера (Collection was modified)
+  file: specs/bugs/BUG-2026-10-21-snapshot-race.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/CommandBus.cs RefreshPublished; tests/ARIA.Core.Tests/BusResilienceTests.cs
+
+- bug_id: BUG-2026-10-21-normalize-blocks-control
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: audio-normalize
+  summary: Замер LUFS на Control-потоке замораживает PANIC/Stop/EndAction на секунды; PANIC ждёт бэклог
+  file: specs/bugs/BUG-2026-10-21-normalize-blocks-control.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/ShowController.cs ScanLufsThen; tests/ARIA.Core.Tests/NormalizeOffControlThreadTests.cs
+
+- bug_id: BUG-2026-10-21-early-fault-dropped
+  date: 2026-10-21
+  severity: high
+  priority: high
+  scope: audio-fault
+  summary: Faulted до CompleteOpen теряется — битый трек «играет» в тишине
+  file: specs/bugs/BUG-2026-10-21-early-fault-dropped.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/ShowController.cs _earlyEvents; tests/ARIA.Core.Tests/EarlyFaultTests.cs
+
+- bug_id: BUG-2026-10-21-output-stall
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: audio-output
+  summary: Пропавшее устройство вешает поток рендера навсегда; зависшая прослушка глушит зал; исключение в рендере роняет процесс
+  file: specs/bugs/BUG-2026-10-21-output-stall.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Audio/RingWriter.cs; src/ARIA.Audio/AriaAudioEngine.cs RenderOnce/TrackStall; src/ARIA.App/AppHost.cs ReconnectWhileStalledAsync; tests/ARIA.Audio.Tests/OutputStallTests.cs; tests/ARIA.App.Tests/OutputReconnectTests.cs
+
+- bug_id: BUG-2026-10-21-show-snapshot-loss
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: persistence
+  summary: Битый/несогласованный show.json → пустое шоу, автосейв затирает данные; без fsync; библиотека переписывается каждую секунду
+  file: specs/bugs/BUG-2026-10-21-show-snapshot-loss.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Persistence/SnapshotStore.cs; src/ARIA.Persistence/ShowDocumentRepair.cs; src/ARIA.Persistence/ShowAutosaver.cs LibraryUnchanged; tests/ARIA.Persistence.Tests/SnapshotDurabilityTests.cs; tests/ARIA.App.Tests/AppHostRecoveryTests.cs
+
+- bug_id: BUG-2026-10-21-ui-fault-crash
+  date: 2026-10-21
+  severity: high
+  priority: high
+  scope: app-lifecycle
+  summary: Исключение на UI-потоке роняет процесс; fatal без автосохранения; сбой старта — процесс без окна
+  file: specs/bugs/BUG-2026-10-21-ui-fault-crash.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.App/App.axaml.cs OnUiUnhandledException/ShowStartupFailure; src/ARIA.App/AppHost.cs OnFatal; tests/ARIA.App.Tests/AppHostFatalTests.cs
+
+- bug_id: BUG-2026-10-21-remote-robustness
+  date: 2026-10-21
+  severity: medium
+  priority: medium
+  scope: remote
+  summary: Сериализация шоу на Control-потоке без пультов; безлимитная очередь медленного клиента; кириллица рвётся на фрагментах; seq<=0 рвёт соединение
+  file: specs/bugs/BUG-2026-10-21-remote-robustness.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Remote/RemoteHost.cs; tests/ARIA.Remote.Tests/RemoteRobustnessTests.cs
+
+- bug_id: BUG-2026-10-21-shutdown-deadlock
+  date: 2026-10-21
+  severity: medium
+  priority: medium
+  scope: app-lifecycle
+  summary: DisposeAsync на UI-контексте — дедлок; выход ждёт 3 с, движок/устройства/БД не закрываются
+  file: specs/bugs/BUG-2026-10-21-shutdown-deadlock.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.App/AppHost.cs DisposeAsync; src/ARIA.App/App.axaml.cs ShutdownRequested; tests/ARIA.App.Tests/ShutdownDeadlockTests.cs

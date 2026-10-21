@@ -15,7 +15,7 @@ public sealed class ShowAutosaverTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var suffix in new[] { "", ".tmp" })
+        foreach (var suffix in new[] { "", ".tmp", ".bak" })
         {
             var file = _path + suffix;
             if (File.Exists(file))

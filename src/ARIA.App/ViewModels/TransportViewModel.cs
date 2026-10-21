@@ -59,10 +59,20 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private string displayName = "—";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RemainingText))]
     private string remaining = "--:--";
 
+    public bool HasCurrent => CurrentTrackId is not null;
+
+    public string RemainingText => Remaining == "--:--" ? Remaining : "−" + Remaining;
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IdleHint))]
     private string nextLine = "—";
+
+    public string IdleHint => NextLine == "—"
+        ? "Нет трека в эфире · перетащите файлы в плейлист"
+        : $"Нет трека в эфире · {NextLine}";
 
     [ObservableProperty]
     private bool panicked;
@@ -116,6 +126,7 @@ public sealed partial class TransportViewModel : ObservableObject, IDisposable
     private double positionFraction;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCurrent))]
     private TrackId? currentTrackId;
 
     [ObservableProperty]

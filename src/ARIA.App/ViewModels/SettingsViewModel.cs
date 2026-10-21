@@ -54,7 +54,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Hotkeys = new HotkeysSectionVm(hotkeys, hotkeysPath);
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         Clock = new ClockSectionVm(Submit);
-        Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId, outputs);
+        Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId, outputs, sync);
         Monitors = new MonitorsSectionVm(Submit, monitorSessions ?? (() => []), sync);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();

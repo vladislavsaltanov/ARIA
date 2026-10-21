@@ -146,8 +146,15 @@ public sealed class FileAppLog : IAppLog, IDisposable
 
     private void CloseWriter()
     {
-        _writer?.Dispose();
+        var writer = _writer;
         _writer = null;
+        try
+        {
+            writer?.Dispose();
+        }
+        catch (Exception)
+        {
+        }
     }
 
     private static string Render(LogLevel level, string message, IReadOnlyDictionary<string, string>? data)
