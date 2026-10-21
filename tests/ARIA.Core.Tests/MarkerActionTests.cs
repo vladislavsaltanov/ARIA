@@ -47,6 +47,108 @@ public sealed class MarkerActionTests
     }
 
     [Fact]
+    public void MarkerPause_LeavesPausedStreamAtMarker()
+    {
+        using var h = new Harness();
+        var track = TestShow.Track("storm", markers: [Mark("привал", 30)]);
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
+        h.Submit(new Play());
+
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(30));
+
+        Assert.Equal(TransportStatus.Paused, h.Transport.Status);
+        Assert.Equal(TimeSpan.FromSeconds(30), h.Engine.Last!.Source.CueIn);
+        Assert.DoesNotContain(TransportCommand.Play, h.Engine.Last!.Transports);
+    }
+
+    [Fact]
+    public void SeekTo_AfterMarkerPause_SeeksFromMarkerPosition()
+    {
+        using var h = new Harness();
+        var track = TestShow.Track("storm", markers: [Mark("привал", 30)]);
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
+        h.Submit(new Play());
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(30));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(60)));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        Assert.Equal(TimeSpan.FromSeconds(30), Assert.Single(h.Engine.Last!.Seeks));
+    }
+
+    [Fact]
+    public void SeekTo_BeforeMarker_RestartsStreamAtTarget()
+    {
+        using var h = new Harness();
+        var track = TestShow.Track("storm", markers: [Mark("привал", 30)]);
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
+        h.Submit(new Play());
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(30));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(10)));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        Assert.Equal(TimeSpan.FromSeconds(10), h.Engine.Last!.Source.CueIn);
+        Assert.Empty(h.Engine.Last!.Seeks);
+    }
+
+    [Fact]
+    public void SeekTo_BeforeMarker_ThenPlay_PlaysFromTarget()
+    {
+        using var h = new Harness();
+        var track = TestShow.Track("storm", markers: [Mark("привал", 30)]);
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
+        h.Submit(new Play());
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(30));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(10)));
+        h.Submit(new Play());
+
+        Assert.Equal(TransportStatus.Playing, h.Transport.Status);
+        Assert.Equal(TimeSpan.FromSeconds(10), h.Engine.Last!.Source.CueIn);
+        Assert.Contains(TransportCommand.Play, h.Engine.Last!.Transports);
+    }
+
+    [Fact]
+    public void SeekTo_AfterEndActionPause_RestartsStreamAtTarget()
+    {
+        using var h = new Harness();
+        var track = TestShow.Track("one", end: EndAction.Pause);
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
+        h.Submit(new Play());
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.Completed);
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        Assert.Equal(TimeSpan.FromSeconds(30), h.Engine.Last!.Source.CueIn);
+    }
+
+    [Fact]
+    public void SeekTo_Backwards_KeepsMonitorPosition()
+    {
+        using var h = new Harness(new PlaybackMonitor());
+        var cleared = 0;
+        h.Monitor!.Cleared += () => cleared++;
+        var track = TestShow.Track("storm", markers: [Mark("привал", 30)]);
+        var project = TestShow.Project("Main", TestShow.Entry(track));
+        h.Submit(new LoadShow([track], [project], project.Id));
+        h.Submit(new Play());
+        h.Monitor.Publish(h.Engine.Last!.Handle, TimeSpan.FromSeconds(5));
+        h.Engine.End(h.Engine.Last!.Handle, StreamEndReason.StoppedByMarker, TimeSpan.FromSeconds(30));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(10)));
+
+        Assert.Equal(0, cleared);
+        Assert.Equal(TimeSpan.FromSeconds(10), h.Monitor.Latest!.FilePosition);
+    }
+
+    [Fact]
     public void MarkerRepeatFromPrevious_LoopsSegment()
     {
         using var h = new Harness();

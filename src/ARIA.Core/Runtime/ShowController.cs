@@ -751,7 +751,7 @@ public sealed class ShowController : IShowHandler
 
     private void OnSeekTo(ClientId client, long seq, SeekTo command)
     {
-        if (_status is not (TransportStatus.Playing or TransportStatus.Paused) || _current is not { Handle: { } handle, Settings: { } settings } deck)
+        if (_status is not (TransportStatus.Playing or TransportStatus.Paused) || _current is not { Settings: { } settings } deck)
         {
             Reject(client, seq, "nothing-to-seek");
             return;
@@ -773,8 +773,13 @@ public sealed class ShowController : IShowHandler
             SeekWithCrossfade(deck, filePosition);
             return;
         }
-        _engine.Seek(handle, filePosition - deck.StartAt);
-        _preRolled = false;
+        if (deck.Handle is { } handle && filePosition >= deck.StartAt)
+        {
+            _engine.Seek(handle, filePosition - deck.StartAt);
+            _preRolled = false;
+            return;
+        }
+        RestartDeck(deck, filePosition, _status);
     }
 
     private void SeekWithCrossfade(DeckInstance deck, TimeSpan filePosition)
@@ -783,13 +788,14 @@ public sealed class ShowController : IShowHandler
         var old = deck.Handle!.Value;
         _engine.SetMix(old, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.Out.Curve, SilenceDb, StopWhenDone: true)));
         _retired.Add(old);
-        _monitor?.Unbind(old);
         var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut, settings.Audio);
         var options = new StreamOptions(StreamBus.Main, ArmedMarkers(deck));
         var handle = _engine.StartStream(source, options);
         deck.Handle = handle;
         deck.StartAt = filePosition;
         _monitor?.Bind(handle, Content(deck));
+        _monitor?.Publish(handle, TimeSpan.Zero);
+        _monitor?.Unbind(old);
         _engine.SetMix(handle, new MixParameters(settings.GainDb, new FadeSpec(_smoothing.SeekFade, settings.In.Curve, settings.GainDb, StopWhenDone: false)));
         _engine.Transport(handle, TransportCommand.Play);
         _preRolled = false;
@@ -2318,40 +2324,42 @@ public sealed class ShowController : IShowHandler
 
     private void PauseDeckAt(DeckInstance deck, TimeSpan filePosition)
     {
-        if (deck.Handle is { } old)
-        {
-            _engine.Transport(old, TransportCommand.Stop);
-            _engine.DisposeStream(old);
-            _retired.Remove(old);
-            _monitor?.Unbind(old);
-            deck.Handle = null;
-        }
-        deck.StartAt = filePosition;
-        SetStatus(TransportStatus.Paused);
-        _atEndBoundary = false;
-        EmitTransport();
+        RestartDeck(deck, filePosition, TransportStatus.Paused);
     }
 
     private void JumpDeckTo(DeckInstance deck, TimeSpan filePosition)
     {
-        if (deck.Handle is { } old)
+        deck.MarkerFloor = filePosition;
+        RestartDeck(deck, filePosition, TransportStatus.Playing);
+    }
+
+    private void RestartDeck(DeckInstance deck, TimeSpan filePosition, TransportStatus status)
+    {
+        StreamHandle? previous = deck.Handle;
+        if (previous is { } old)
         {
             _engine.Transport(old, TransportCommand.Stop);
             _engine.DisposeStream(old);
             _retired.Remove(old);
-            _monitor?.Unbind(old);
             deck.Handle = null;
         }
-        deck.MarkerFloor = filePosition;
         deck.StartAt = filePosition;
         var settings = deck.Settings;
         var source = new TrackSource(deck.Track.FilePath, filePosition, settings.CueOut, settings.Audio);
         var handle = _engine.StartStream(source, new StreamOptions(StreamBus.Main, ArmedMarkers(deck)));
         deck.Handle = handle;
         _monitor?.Bind(handle, Content(deck));
+        _monitor?.Publish(handle, TimeSpan.Zero);
+        if (previous is { } unbound)
+        {
+            _monitor?.Unbind(unbound);
+        }
         _engine.SetMix(handle, new MixParameters(settings.GainDb, null));
-        _engine.Transport(handle, TransportCommand.Play);
-        SetStatus(TransportStatus.Playing);
+        if (status == TransportStatus.Playing)
+        {
+            _engine.Transport(handle, TransportCommand.Play);
+        }
+        SetStatus(status);
         _atEndBoundary = false;
         _preRolled = false;
         EmitTransport();

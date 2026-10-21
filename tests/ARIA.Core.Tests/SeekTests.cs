@@ -2,6 +2,7 @@ namespace Aria.Core.Tests;
 
 using Aria.Core.Commands;
 using Aria.Core.Model;
+using Aria.Core.Playback;
 using Aria.Core.State;
 
 public sealed class SeekTests
@@ -59,6 +60,31 @@ public sealed class SeekTests
 
         Assert.Empty(h.Events.OfType<Rejected>());
         Assert.Equal(TimeSpan.FromSeconds(30), Assert.Single(h.Engine.Last!.Seeks));
+    }
+
+    [Fact]
+    public void SeekTo_WithCrossfade_KeepsMonitorPosition()
+    {
+        using var h = new Harness(new PlaybackMonitor());
+        var cleared = 0;
+        h.Monitor!.Cleared += () => cleared++;
+        var t1 = TestShow.Track("one");
+        var p = TestShow.Project("Main", TestShow.Entry(t1));
+        h.Submit(new LoadShow([t1], [p], p.Id));
+        h.Submit(new SetSmoothing(new Smoothing(
+            true,
+            TimeSpan.FromMilliseconds(400),
+            TimeSpan.FromMilliseconds(900),
+            TimeSpan.FromMilliseconds(250),
+            TimeSpan.FromMilliseconds(300),
+            TimeSpan.FromMilliseconds(350))));
+        h.Submit(new Play());
+        h.Monitor!.Publish(h.Engine.Last!.Handle, TimeSpan.FromSeconds(5));
+
+        h.Submit(new SeekTo(TimeSpan.FromSeconds(30)));
+
+        Assert.Equal(0, cleared);
+        Assert.Equal(TimeSpan.FromSeconds(30), h.Monitor.Latest!.FilePosition);
     }
 
     [Fact]
