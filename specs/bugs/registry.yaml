@@ -227,3 +227,14 @@
   status: fixed
   verified: 2026-10-21
   evidence: src/ARIA.Audio/RingWriter.cs; src/ARIA.Audio/AriaAudioEngine.cs RenderOnce/TrackStall; src/ARIA.App/AppHost.cs ReconnectWhileStalledAsync; tests/ARIA.Audio.Tests/OutputStallTests.cs; tests/ARIA.App.Tests/OutputReconnectTests.cs
+
+- bug_id: BUG-2026-10-21-show-snapshot-loss
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: persistence
+  summary: Битый/несогласованный show.json → пустое шоу, автосейв затирает данные; без fsync; библиотека переписывается каждую секунду
+  file: specs/bugs/BUG-2026-10-21-show-snapshot-loss.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Persistence/SnapshotStore.cs; src/ARIA.Persistence/ShowDocumentRepair.cs; src/ARIA.Persistence/ShowAutosaver.cs LibraryUnchanged; tests/ARIA.Persistence.Tests/SnapshotDurabilityTests.cs; tests/ARIA.App.Tests/AppHostRecoveryTests.cs

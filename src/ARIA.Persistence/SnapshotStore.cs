@@ -39,28 +39,53 @@ public sealed class JsonSnapshotStore : ISnapshotStore
 
     public void Save(ShowDocument document)
     {
-        var dto = ToDto(document);
-        var json = JsonSerializer.Serialize(dto, Options);
+        var json = JsonSerializer.SerializeToUtf8Bytes(ToDto(document), Options);
         var tempPath = _path + ".tmp";
-        File.WriteAllText(tempPath, json);
-        File.Move(tempPath, _path, overwrite: true);
+        using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            stream.Write(json);
+            stream.Flush(flushToDisk: true);
+        }
+        if (File.Exists(_path))
+        {
+            File.Replace(tempPath, _path, BackupPath, ignoreMetadataErrors: true);
+        }
+        else
+        {
+            File.Move(tempPath, _path, overwrite: true);
+        }
     }
 
-    public ShowDocument? LoadLatest()
+    public ShowDocument? LoadLatest() => TryLoad(_path) ?? TryLoad(BackupPath);
+
+    private string BackupPath => _path + ".bak";
+
+    private static ShowDocument? TryLoad(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+        try
+        {
+            var dto = JsonSerializer.Deserialize<ShowDocumentDto>(File.ReadAllBytes(path), Options);
+            return dto?.ToDomain();
+        }
+        catch (Exception e) when (e is not OutOfMemoryException)
+        {
+            Quarantine(path);
+            return null;
+        }
+    }
+
+    private static void Quarantine(string path)
     {
         try
         {
-            if (!File.Exists(_path))
-            {
-                return null;
-            }
-            var json = File.ReadAllText(_path);
-            var dto = JsonSerializer.Deserialize<ShowDocumentDto>(json, Options);
-            return dto?.ToDomain();
+            File.Copy(path, $"{path}.corrupt-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}", overwrite: false);
         }
-        catch (Exception e) when (e is JsonException or IOException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return null;
         }
     }
 
@@ -124,10 +149,10 @@ internal sealed class ShowDocumentDto
     public DateTimeOffset SavedAt { get; set; }
 
     public ShowDocument ToDomain() => new(
-        [.. Tracks.Select(TrackMapper.ToDomain)],
-        [.. (Projects.Count > 0 ? Projects : (LegacyPlaylists ?? [])).Select(ProjectMapper.ToDomain)],
+        [.. (Tracks ?? []).Select(TrackMapper.ToDomain)],
+        [.. (Projects is { Count: > 0 } ? Projects : (LegacyPlaylists ?? [])).Select(ProjectMapper.ToDomain)],
         ActiveId is null ? null : new ProjectId(ActiveId.Value),
-        [.. Queue.Select(q => new QueueItem(
+        [.. (Queue ?? []).Select(q => new QueueItem(
             q.EntryId is null ? null : new EntryId(q.EntryId.Value),
             new TrackId(q.TrackId),
             q.DisplayName,

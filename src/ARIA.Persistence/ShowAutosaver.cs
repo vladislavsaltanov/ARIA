@@ -18,6 +18,9 @@ public sealed class ShowAutosaver : IDisposable
     private readonly IDisposable _subscription;
     private readonly object _gate = new();
     private System.Threading.Timer? _timer;
+    private bool _disposed;
+    private ImmutableArray<Track> _upsertedTracks;
+    private ImmutableArray<Project> _upsertedProjects;
 
     public ShowAutosaver(ICommandBus bus, ISnapshotStore store, TimeSpan debounce, Func<ImmutableArray<Track>>? tracksSource = null, ILibraryStore? libraryStore = null, IAppLog? log = null, Action<Exception>? libraryError = null)
     {
@@ -35,6 +38,10 @@ public sealed class ShowAutosaver : IDisposable
     {
         lock (_gate)
         {
+            if (_disposed)
+            {
+                return;
+            }
             TrySave();
         }
     }
@@ -44,6 +51,7 @@ public sealed class ShowAutosaver : IDisposable
         _subscription.Dispose();
         lock (_gate)
         {
+            _disposed = true;
             _timer?.Dispose();
             _timer = null;
         }
@@ -99,15 +107,18 @@ public sealed class ShowAutosaver : IDisposable
             DateTimeOffset.UtcNow,
             snapshot.Mixer.EffectiveGlobal);
         _store.Save(document);
-        if (_libraryStore is not null && !tracks.IsEmpty)
+        if (_libraryStore is not null && !tracks.IsEmpty && !LibraryUnchanged(tracks, snapshot.Show.Projects))
         {
             try
             {
                 _libraryStore.Upsert(tracks, snapshot.Show.Projects);
                 _libraryFailed = false;
+                _upsertedTracks = tracks;
+                _upsertedProjects = snapshot.Show.Projects;
             }
             catch (Exception e)
             {
+                _upsertedTracks = default;
                 _log.Error("library.upsert_failed", new Dictionary<string, string> { ["error"] = e.Message });
                 if (!_libraryFailed)
                 {
@@ -117,4 +128,7 @@ public sealed class ShowAutosaver : IDisposable
             }
         }
     }
+
+    private bool LibraryUnchanged(ImmutableArray<Track> tracks, ImmutableArray<Project> projects) =>
+        !_upsertedTracks.IsDefault && _upsertedTracks == tracks && _upsertedProjects == projects;
 }

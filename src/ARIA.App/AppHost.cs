@@ -131,8 +131,18 @@ public sealed class AppHost : IAsyncDisposable
         _autosaver = new ShowAutosaver(Bus, _snapshots, TimeSpan.FromMilliseconds(500), () => Tracks, _library, _log, OnLibrarySaveFailed);
 
         var document = _snapshots.LoadLatest();
-        if (document is { } saved)
+        if (document is { } loaded)
         {
+            var saved = ShowDocumentRepair.Repair(loaded);
+            if (!ReferenceEquals(saved, loaded))
+            {
+                _log.Warn("snapshot.repaired", new Dictionary<string, string>
+                {
+                    ["tracks"] = $"{loaded.Tracks.Length}->{saved.Tracks.Length}",
+                    ["entries"] = $"{loaded.Projects.Sum(p => p.Entries.Length)}->{saved.Projects.Sum(p => p.Entries.Length)}",
+                    ["queue"] = $"{loaded.Queue.Length}->{saved.Queue.Length}",
+                });
+            }
             Submit(new RestoreShow(saved.Tracks, saved.Projects, saved.ActiveId, saved.Queue, saved.MasterGainDb, saved.PanicFade, saved.ClockElapsed, saved.ClockRunning, saved.Scripts));
             Submit(new SetGlobalAudio(saved.EffectiveGlobal));
         }
