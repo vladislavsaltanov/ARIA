@@ -27,6 +27,8 @@ public sealed class RemoteHost : IAsyncDisposable
 {
     private const int DedupeWindow = 256;
     private const int FailedAuthDelayMs = 300;
+    private const int MaxMessageBytes = 1024 * 1024;
+    private const int OutboundCapacity = 2048;
 
     private readonly ICommandBus _bus;
     private readonly RemoteOptions _options;
@@ -223,13 +225,13 @@ public sealed class RemoteHost : IAsyncDisposable
             await socket.CloseAsync(WebSocketCloseStatus.InternalServerError, null, CancellationToken.None);
             return;
         }
-        connection.Outbound.Writer.TryWrite(snapshotFrame);
+        Enqueue(connection, snapshotFrame);
         _connections[connection.Id] = connection;
         var sender = Task.Run(() => SendLoopAsync(connection));
         try
         {
             var buffer = new byte[16 * 1024];
-            var message = new StringBuilder();
+            using var message = new MemoryStream();
             while (socket.State == WebSocketState.Open && !_shutdown.IsCancellationRequested)
             {
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), connection.Lifetime.Token);
@@ -238,11 +240,16 @@ public sealed class RemoteHost : IAsyncDisposable
                     await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
                     break;
                 }
-                message.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                if (message.Length + result.Count > MaxMessageBytes)
+                {
+                    await socket.CloseAsync(WebSocketCloseStatus.MessageTooBig, null, CancellationToken.None);
+                    break;
+                }
+                message.Write(buffer, 0, result.Count);
                 if (result.EndOfMessage)
                 {
-                    HandleFrame(connection, message.ToString());
-                    message.Clear();
+                    HandleFrame(connection, Encoding.UTF8.GetString(message.GetBuffer(), 0, (int)message.Length));
+                    message.SetLength(0);
                 }
             }
         }
@@ -292,6 +299,11 @@ public sealed class RemoteHost : IAsyncDisposable
         {
             return;
         }
+        if (seq <= 0)
+        {
+            TrySend(connection, new { Event = "rejected", Seq = seq, Reason = "bad-seq" });
+            return;
+        }
         if (command is null)
         {
             TrySend(connection, new { Event = "rejected", Seq = seq, Reason = "unknown-command" });
@@ -303,6 +315,10 @@ public sealed class RemoteHost : IAsyncDisposable
 
     private void OnStateEvent(StateEvent e)
     {
+        if (_connections.IsEmpty)
+        {
+            return;
+        }
         switch (e)
         {
             case Rejected rejected:
@@ -347,13 +363,19 @@ public sealed class RemoteHost : IAsyncDisposable
                 {
                     continue;
                 }
-                if (monitor?.Latest is { } latest)
+                try
                 {
-                    Broadcast(PositionFrame(latest));
+                    if (monitor?.Latest is { } latest)
+                    {
+                        Broadcast(PositionFrame(latest));
+                    }
+                    if (meters?.Latest is { } lufs)
+                    {
+                        Broadcast(LufsFrame(lufs));
+                    }
                 }
-                if (meters?.Latest is { } lufs)
+                catch (Exception e) when (e is not OperationCanceledException)
                 {
-                    Broadcast(LufsFrame(lufs));
                 }
             }
         }
@@ -387,7 +409,7 @@ public sealed class RemoteHost : IAsyncDisposable
     {
         foreach (var connection in _connections.Values)
         {
-            connection.Outbound.Writer.TryWrite(frame);
+            Enqueue(connection, frame);
         }
     }
 
@@ -398,13 +420,21 @@ public sealed class RemoteHost : IAsyncDisposable
         {
             if (connection.Client == client)
             {
-                connection.Outbound.Writer.TryWrite(payload);
+                Enqueue(connection, payload);
             }
         }
     }
 
-    private void TrySend(Connection connection, object frame) =>
-        connection.Outbound.Writer.TryWrite(JsonSerializer.Serialize(frame, JsonOptions));
+    private static void TrySend(Connection connection, object frame) =>
+        Enqueue(connection, JsonSerializer.Serialize(frame, JsonOptions));
+
+    private static void Enqueue(Connection connection, string frame)
+    {
+        if (!connection.Outbound.Writer.TryWrite(frame))
+        {
+            connection.Lifetime.Cancel();
+        }
+    }
 
     private async Task DisposeAsyncCore()
     {
@@ -447,7 +477,11 @@ public sealed class RemoteHost : IAsyncDisposable
 
         public WebSocket Socket { get; }
 
-        public Channel<string> Outbound { get; } = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+        public Channel<string> Outbound { get; } = Channel.CreateBounded<string>(new BoundedChannelOptions(OutboundCapacity)
+        {
+            SingleReader = true,
+            FullMode = BoundedChannelFullMode.Wait,
+        });
 
         public ClientId? Client { get; set; }
 

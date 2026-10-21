@@ -249,3 +249,14 @@
   status: fixed
   verified: 2026-10-21
   evidence: src/ARIA.App/App.axaml.cs OnUiUnhandledException/ShowStartupFailure; src/ARIA.App/AppHost.cs OnFatal; tests/ARIA.App.Tests/AppHostFatalTests.cs
+
+- bug_id: BUG-2026-10-21-remote-robustness
+  date: 2026-10-21
+  severity: medium
+  priority: medium
+  scope: remote
+  summary: Сериализация шоу на Control-потоке без пультов; безлимитная очередь медленного клиента; кириллица рвётся на фрагментах; seq<=0 рвёт соединение
+  file: specs/bugs/BUG-2026-10-21-remote-robustness.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Remote/RemoteHost.cs; tests/ARIA.Remote.Tests/RemoteRobustnessTests.cs
