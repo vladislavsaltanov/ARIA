@@ -39,7 +39,7 @@ public partial class App : Application
             desktop.ShutdownRequested += (_, _) =>
             {
                 _announcer?.Dispose();
-                host.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(3));
+                Task.Run(() => host.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(3));
             };
             _ = ComposeAsync(desktop, host, remoteOptions, dataDirectory, credentials);
         }

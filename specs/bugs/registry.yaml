@@ -260,3 +260,14 @@
   status: fixed
   verified: 2026-10-21
   evidence: src/ARIA.Remote/RemoteHost.cs; tests/ARIA.Remote.Tests/RemoteRobustnessTests.cs
+
+- bug_id: BUG-2026-10-21-shutdown-deadlock
+  date: 2026-10-21
+  severity: medium
+  priority: medium
+  scope: app-lifecycle
+  summary: DisposeAsync на UI-контексте — дедлок; выход ждёт 3 с, движок/устройства/БД не закрываются
+  file: specs/bugs/BUG-2026-10-21-shutdown-deadlock.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.App/AppHost.cs DisposeAsync; src/ARIA.App/App.axaml.cs ShutdownRequested; tests/ARIA.App.Tests/ShutdownDeadlockTests.cs

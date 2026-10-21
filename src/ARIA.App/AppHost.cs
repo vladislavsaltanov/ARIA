@@ -727,12 +727,12 @@ public sealed class AppHost : IAsyncDisposable
         }
         if (Remote is { } remote)
         {
-            await remote.DisposeAsync();
+            await remote.DisposeAsync().ConfigureAwait(false);
         }
         _ownedBus?.Dispose();
         if (_engine is { } engine)
         {
-            await Task.Run(engine.Dispose);
+            await Task.Run(engine.Dispose).ConfigureAwait(false);
         }
         _snapshots?.Dispose();
         _library?.Dispose();

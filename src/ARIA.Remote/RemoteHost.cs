@@ -461,8 +461,8 @@ public sealed class RemoteHost : IAsyncDisposable
         }
         if (_app is not null)
         {
-            await _app.StopAsync();
-            await _app.DisposeAsync();
+            await _app.StopAsync().ConfigureAwait(false);
+            await _app.DisposeAsync().ConfigureAwait(false);
         }
     }
 
