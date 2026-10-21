@@ -14,7 +14,7 @@
 ## Fix
 
 - `ScanLufsThen`: скан в `Task.Run`, применение через marshal. Без marshal (Inline-тесты) выполняется синхронно, как раньше. Применение заново ищет трек и сверяет `FilePath`; исчезнувший трек отклоняется как `unknown-track`.
-- `CommandBus`: PANIC идёт приоритетной полосой и обгоняет бэклог очереди.
+- `CommandBus`: PANIC идёт приоритетной полосой и обгоняет бэклог очереди; звуковые команды, поданные до паники и ещё стоящие в очереди, отклоняются `superseded-by-panic` (ADR 0011). Найдено флаком: PANIC обгонял `LoadShow`.
 - `CommandBus`: насос — выделенный поток `aria-control`, а не продолжения на тред-пуле: голодание пула (импорт, сканы, HTTP) больше не задерживает управление. Найдено флаком в полном прогоне.
 
 ## Acceptance Criteria
@@ -23,3 +23,4 @@
 - [x] Медленный скан проекта не блокирует PANIC (`NormalizeProject_SlowScan_KeepsPanicResponsive`)
 - [x] Трек, исчезнувший за время скана, не воскресает (`NormalizeTrack_TrackRemovedDuringScan_RejectsInsteadOfResurrecting`)
 - [x] PANIC обгоняет очередь (`BusResilienceTests.Panic_OvertakesQueuedBacklog`)
+- [x] Play, поданный до PANIC, не включает звук после неё; правки сохраняются (`Panic_OvertakingQueuedPlay_SupersedesIt_ButKeepsEdits`)

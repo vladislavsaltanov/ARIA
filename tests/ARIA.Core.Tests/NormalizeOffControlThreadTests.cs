@@ -43,6 +43,11 @@ public sealed class NormalizeOffControlThreadTests : IDisposable
         _project = TestShow.Project("Main", TestShow.Entry(_first), TestShow.Entry(_second));
         Submit(new LoadShow([_first, _second], [_project], _project.Id));
         Submit(new SetGlobalAudio(GlobalAudioSettings.Default with { NormalizeEnabled = true }));
+        var deadline = Environment.TickCount64 + 10_000;
+        while (!_bus.Snapshot().Mixer.EffectiveGlobal.NormalizeEnabled && Environment.TickCount64 < deadline)
+        {
+            Thread.Sleep(5);
+        }
     }
 
     [Fact]

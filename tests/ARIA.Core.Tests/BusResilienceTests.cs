@@ -76,7 +76,7 @@ public sealed class BusResilienceTests
         await handler.Blocked.Task.WaitAsync(Wait);
         for (var seq = 2; seq < 50; seq++)
         {
-            bus.Submit(Harness.Client, seq, new Play());
+            bus.Submit(Harness.Client, seq, new CreateProject($"p{seq}"));
         }
         bus.Submit(Harness.Client, 50, new Panic());
         handler.Release.Set();
@@ -86,6 +86,35 @@ public sealed class BusResilienceTests
         var order = handler.Handled.Select(c => c.GetType()).ToList();
         Assert.Equal(typeof(SetMasterGain), order[0]);
         Assert.Equal(typeof(Panic), order[1]);
+    }
+
+    [Fact]
+    public async Task Panic_OvertakingQueuedPlay_SupersedesIt_ButKeepsEdits()
+    {
+        var handler = new ScriptedHandler { BlockOn = typeof(SetMasterGain) };
+        using var bus = new CommandBus(handler, BusMode.Pumped);
+        var rejections = new ConcurrentQueue<Rejected>();
+        bus.Subscribe(e =>
+        {
+            if (e is Rejected r)
+            {
+                rejections.Enqueue(r);
+            }
+        });
+
+        bus.Submit(Harness.Client, 1, new SetMasterGain(-6));
+        await handler.Blocked.Task.WaitAsync(Wait);
+        bus.Submit(Harness.Client, 2, new Play());
+        bus.Submit(Harness.Client, 3, new CreateProject("Edit"));
+        bus.Submit(Harness.Client, 4, new Panic());
+        bus.Submit(Harness.Client, 5, new Play());
+        handler.Release.Set();
+
+        await handler.WaitForCountAsync(4, Wait);
+        var order = handler.Handled.Select(c => c.GetType()).ToList();
+        Assert.Equal([typeof(SetMasterGain), typeof(Panic), typeof(CreateProject), typeof(Play)], order);
+        Assert.Equal(2, Assert.Single(rejections).Seq);
+        Assert.Equal("superseded-by-panic", rejections.Single().Reason);
     }
 
     [Fact]

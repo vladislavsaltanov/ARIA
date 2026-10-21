@@ -28,6 +28,8 @@ public sealed class CommandBus : ICommandBus, IDisposable
     private CancellationTokenSource? _cts;
     private Thread? _pump;
     private ShowSnapshot _published;
+    private long _panicsSubmitted;
+    private long _panicsHandled;
 
     public CommandBus(IShowHandler handler, BusMode mode = BusMode.Pumped, IAppLog? log = null)
     {
@@ -50,14 +52,13 @@ public sealed class CommandBus : ICommandBus, IDisposable
             Dispatch(client, seq, command);
             return;
         }
-        var envelope = new Envelope { Client = client, Seq = seq, Command = command };
         if (command is Panic)
         {
-            _urgent.Enqueue(envelope);
+            _urgent.Enqueue(new Envelope { Client = client, Seq = seq, Command = command, PanicEpoch = Interlocked.Increment(ref _panicsSubmitted) });
             _channel.Writer.TryWrite(Wake);
             return;
         }
-        _channel.Writer.TryWrite(envelope);
+        _channel.Writer.TryWrite(new Envelope { Client = client, Seq = seq, Command = command, PanicEpoch = Volatile.Read(ref _panicsSubmitted) });
     }
 
     public void Post(Action work)
@@ -194,6 +195,11 @@ public sealed class CommandBus : ICommandBus, IDisposable
                     DrainUrgent();
                     if (item is Envelope envelope)
                     {
+                        if (envelope.PanicEpoch < _panicsHandled && StartsSound(envelope.Command))
+                        {
+                            Publish(new Rejected(envelope.Client, envelope.Seq, "superseded-by-panic"));
+                            continue;
+                        }
                         Dispatch(envelope.Client, envelope.Seq, envelope.Command);
                         RefreshPublished();
                     }
@@ -213,10 +219,14 @@ public sealed class CommandBus : ICommandBus, IDisposable
     {
         while (_urgent.TryDequeue(out var urgent))
         {
+            _panicsHandled = urgent.PanicEpoch;
             Dispatch(urgent.Client, urgent.Seq, urgent.Command);
             RefreshPublished();
         }
     }
+
+    private static bool StartsSound(Command command) =>
+        command is Play or Next or Replay or SeekTo or JumpTo or PlayTrack or StartPreviewTrack or StartSessionTrack;
 
     private void Unsubscribe(Action<StateEvent> observer)
     {
@@ -231,6 +241,7 @@ public sealed class CommandBus : ICommandBus, IDisposable
         public required ClientId Client { get; init; }
         public required long Seq { get; init; }
         public required Command Command { get; init; }
+        public long PanicEpoch { get; init; }
     }
 
     private sealed class Subscription(CommandBus bus, Action<StateEvent> observer) : IDisposable
