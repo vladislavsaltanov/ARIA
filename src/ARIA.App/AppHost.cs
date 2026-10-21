@@ -119,7 +119,7 @@ public sealed class AppHost : IAsyncDisposable
         var controller = new ShowController(_engine, Monitor, MarshalEngineEvent);
         _controller = controller;
 
-        Bus = _ownedBus = new CommandBus(controller, BusMode.Pumped);
+        Bus = _ownedBus = new CommandBus(controller, BusMode.Pumped, new CurrentLog(() => _log));
         _busRef = _ownedBus;
         _busEvents = Bus.Subscribe(OnBusEvent);
 
@@ -245,6 +245,12 @@ public sealed class AppHost : IAsyncDisposable
             Outputs.NotifyPreviewFault("Прослушка недоступна, используется системное");
             return new NullSink(SampleRate, Channels);
         }
+    }
+
+    private sealed class CurrentLog(Func<IAppLog> current) : IAppLog
+    {
+        public void Write(LogLevel level, string message, IReadOnlyDictionary<string, string>? data = null) =>
+            current().Write(level, message, data);
     }
 
     private sealed class EmptyLister : IAudioOutputLister

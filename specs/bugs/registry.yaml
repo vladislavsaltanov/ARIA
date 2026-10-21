@@ -172,3 +172,47 @@
   summary: Достижение метки перезапускает трек; нет переопределяемого действия метки (None/Pause/RepeatPrev/Restart)
   file: specs/bugs/BUG-2026-10-19-marker-restart.md
   status: open
+
+- bug_id: BUG-2026-10-21-bus-pump-death
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: control-bus
+  summary: Исключение в обработчике/подписчике убивает насос команд — PANIC и всё управление молча игнорируются
+  file: specs/bugs/BUG-2026-10-21-bus-pump-death.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/CommandBus.cs Dispatch/Run/Publish; tests/ARIA.Core.Tests/BusResilienceTests.cs
+
+- bug_id: BUG-2026-10-21-snapshot-race
+  date: 2026-10-21
+  severity: high
+  priority: high
+  scope: control-bus
+  summary: Snapshot() с UI/таймера/Remote читает изменяемые коллекции контроллера (Collection was modified)
+  file: specs/bugs/BUG-2026-10-21-snapshot-race.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/CommandBus.cs RefreshPublished; tests/ARIA.Core.Tests/BusResilienceTests.cs
+
+- bug_id: BUG-2026-10-21-normalize-blocks-control
+  date: 2026-10-21
+  severity: critical
+  priority: high
+  scope: audio-normalize
+  summary: Замер LUFS на Control-потоке замораживает PANIC/Stop/EndAction на секунды; PANIC ждёт бэклог
+  file: specs/bugs/BUG-2026-10-21-normalize-blocks-control.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/ShowController.cs ScanLufsThen; tests/ARIA.Core.Tests/NormalizeOffControlThreadTests.cs
+
+- bug_id: BUG-2026-10-21-early-fault-dropped
+  date: 2026-10-21
+  severity: high
+  priority: high
+  scope: audio-fault
+  summary: Faulted до CompleteOpen теряется — битый трек «играет» в тишине
+  file: specs/bugs/BUG-2026-10-21-early-fault-dropped.md
+  status: fixed
+  verified: 2026-10-21
+  evidence: src/ARIA.Core/Runtime/ShowController.cs _earlyEvents; tests/ARIA.Core.Tests/EarlyFaultTests.cs

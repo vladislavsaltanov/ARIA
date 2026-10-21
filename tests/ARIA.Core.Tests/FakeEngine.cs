@@ -31,6 +31,7 @@ public sealed class FakeEngine : IAudioEngine
     public List<GlobalAudioSettings> GlobalAudios { get; } = [];
     public List<(StreamHandle Handle, TrackAudioSettings Audio)> VoiceAudios { get; } = [];
     public List<(StreamHandle Handle, ImmutableArray<MarkerSpec> Markers)> MarkerSets { get; } = [];
+    public bool FaultBeforeOpenReturns { get; set; }
     public Func<string, double> ScanLufs { get; set; } = _ => double.NaN;
     public List<string> ScannedPaths { get; } = [];
     public List<(PreviewSessionHandle Session, TrackSource Source)> SessionTracks { get; } = [];
@@ -53,6 +54,10 @@ public sealed class FakeEngine : IAudioEngine
         var stream = new FakeStream(handle, source, options);
         _streams[handle] = stream;
         Created.Add(stream);
+        if (FaultBeforeOpenReturns)
+        {
+            Fault(handle);
+        }
         return handle;
     }
 
