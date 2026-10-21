@@ -26,12 +26,14 @@ public sealed partial class AudioSectionVm : ObservableObject
     private bool _previewMuted;
     private readonly Func<ProjectId?>? _activeProject;
     private readonly AudioOutputService? _outputs;
+    private readonly SynchronizationContext? _sync;
     private bool _measuringProject;
     private string _normalizeProjectStatus = "Не измерялся";
 
-    public AudioSectionVm(Action<Command> submit, Func<ProjectId?>? activeProject = null, AudioOutputService? outputs = null)
+    public AudioSectionVm(Action<Command> submit, Func<ProjectId?>? activeProject = null, AudioOutputService? outputs = null, SynchronizationContext? sync = null)
     {
         _submit = submit;
+        _sync = sync;
         _activeProject = activeProject;
         _outputs = outputs;
         EqBands = [.. AudioEq.DefaultFrequencies.Select((f, i) => new EqBandVm(BandLabel(i, f), f, 0, SubmitGlobal))];
@@ -82,6 +84,16 @@ public sealed partial class AudioSectionVm : ObservableObject
     public string PreviewOutputStatus => _outputs?.PreviewStatus ?? string.Empty;
 
     private void OnOutputsChanged()
+    {
+        if (_sync is { } sync && SynchronizationContext.Current != sync)
+        {
+            sync.Post(_ => RaiseOutputsChanged(), null);
+            return;
+        }
+        RaiseOutputsChanged();
+    }
+
+    private void RaiseOutputsChanged()
     {
         OnPropertyChanged(nameof(Outputs));
         OnPropertyChanged(nameof(SelectedOutputId));

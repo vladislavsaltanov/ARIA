@@ -299,7 +299,7 @@
               Command="{Binding AddLineCommand}" Content="+ строка" IsVisible="{Binding HasScripts}"/>
       <Separator x:Name="ScriptFooterSeparator" Margin="0,10,0,6" IsVisible="{Binding HasScripts}"
                  Background="{StaticResource BrushLine}"/>
-      <StackPanel Orientation="Horizontal" Spacing="6">
+      <WrapPanel x:Name="ScriptFooterActions" Orientation="Horizontal" ItemSpacing="6" LineSpacing="6">
         <Button x:Name="NewScriptButton" Classes="scriptFooter" IsVisible="{Binding HasScripts}"
                 Command="{Binding CreateScriptCommand}" ToolTip.Tip="Новый сценарий">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
@@ -320,7 +320,7 @@
         <Button x:Name="ExportScriptButton" Classes="scriptFooter" IsVisible="{Binding HasScripts}"
                 Command="{Binding ExportScriptCommand}" Content="Экспорт"
                 ToolTip.Tip="Экспорт сценария в .aria-script.json"/>
-      </StackPanel>
+      </WrapPanel>
     </StackPanel>
   </Grid>
 </UserControl>

@@ -44,6 +44,7 @@ public sealed class ShowController : IShowHandler
     private readonly TimeSpan _openTimeout;
     private long _openSeq;
     private (long Seq, DeckInstance Deck)? _pendingOpen;
+    private readonly Dictionary<StreamHandle, StreamEvent> _earlyEvents = [];
     private bool _atEndBoundary;
     private bool _panicked;
     private bool _applyingUndo;
@@ -295,11 +296,21 @@ public sealed class ShowController : IShowHandler
         }
     }
 
-    public TrackAudioSettings? TrackAudio(TrackId id) =>
-        _trackMap.TryGetValue(id, out var track) ? track.Defaults.Audio : null;
+    public TrackAudioSettings? TrackAudio(TrackId id) => FindPublishedTrack(id)?.Defaults.Audio;
 
-    public double? TrackBpm(TrackId id) =>
-        _trackMap.TryGetValue(id, out var track) ? track.Defaults.Bpm : null;
+    public double? TrackBpm(TrackId id) => FindPublishedTrack(id)?.Defaults.Bpm;
+
+    private Track? FindPublishedTrack(TrackId id)
+    {
+        foreach (var track in _tracks)
+        {
+            if (track.Id == id)
+            {
+                return track;
+            }
+        }
+        return null;
+    }
 
     public ImmutableArray<Track> Tracks => _tracks;
 
@@ -1493,14 +1504,23 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-track");
             return;
         }
-        var measured = _engine.ScanTrackLufs(existing.FilePath);
-        if (double.IsNaN(measured))
+        ScanLufsThen([(existing.Id, existing.FilePath)], scans => ApplyTrackScan(client, seq, scans[0]));
+    }
+
+    private void ApplyTrackScan(ClientId client, long seq, LufsScan scan)
+    {
+        if (!_trackMap.TryGetValue(scan.Track, out var existing))
+        {
+            Reject(client, seq, "unknown-track");
+            return;
+        }
+        if (double.IsNaN(scan.Lufs) || existing.FilePath != scan.FilePath)
         {
             Reject(client, seq, "lufs-scan-failed");
             return;
         }
         var current = existing.Defaults.Audio ?? TrackAudioSettings.Default;
-        var adjusted = current with { MeasuredLufs = measured, NormalizeEnabled = true };
+        var adjusted = current with { MeasuredLufs = scan.Lufs, NormalizeEnabled = true };
         if (AudioValidation.ValidateTrack(adjusted) is { } reason)
         {
             Reject(client, seq, reason);
@@ -1508,8 +1528,8 @@ public sealed class ShowController : IShowHandler
         }
         var updated = existing with { Defaults = existing.Defaults with { Audio = adjusted } };
         _tracks = _tracks.Replace(existing, updated);
-        _trackMap[command.Track] = updated;
-        if (_current?.Track.Id == command.Track)
+        _trackMap[scan.Track] = updated;
+        if (_current?.Track.Id == scan.Track)
         {
             PushCurrentAudio();
         }
@@ -1535,39 +1555,81 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "nothing-to-normalize");
             return;
         }
+        var targets = ids
+            .Where(_trackMap.ContainsKey)
+            .Select(id => (id, _trackMap[id].FilePath))
+            .ToArray();
+        ScanLufsThen(targets, scans => ApplyProjectScans(client, seq, scans));
+    }
+
+    private void ApplyProjectScans(ClientId client, long seq, IReadOnlyList<LufsScan> scans)
+    {
         var changed = false;
-        foreach (var id in ids)
+        var touchedCurrent = false;
+        foreach (var scan in scans)
         {
-            if (!_trackMap.TryGetValue(id, out var existing))
-            {
-                continue;
-            }
-            var measured = _engine.ScanTrackLufs(existing.FilePath);
-            if (double.IsNaN(measured))
+            if (double.IsNaN(scan.Lufs) || !_trackMap.TryGetValue(scan.Track, out var existing) || existing.FilePath != scan.FilePath)
             {
                 continue;
             }
             var audio = existing.Defaults.Audio ?? TrackAudioSettings.Default;
-            var adjusted = audio with { MeasuredLufs = measured, NormalizeEnabled = true };
+            var adjusted = audio with { MeasuredLufs = scan.Lufs, NormalizeEnabled = true };
             if (AudioValidation.ValidateTrack(adjusted) is not null)
             {
                 continue;
             }
             var updated = existing with { Defaults = existing.Defaults with { Audio = adjusted } };
             _tracks = _tracks.Replace(existing, updated);
-            _trackMap[id] = updated;
+            _trackMap[scan.Track] = updated;
             changed = true;
+            touchedCurrent |= _current?.Track.Id == scan.Track;
         }
         if (!changed)
         {
             Reject(client, seq, "lufs-scan-failed");
             return;
         }
-        if (_current is not null && ids.Contains(_current.Track.Id))
+        if (touchedCurrent)
         {
             PushCurrentAudio();
         }
         EmitShow();
+    }
+
+    private sealed record LufsScan(TrackId Track, string FilePath, double Lufs);
+
+    private void ScanLufsThen(IReadOnlyList<(TrackId Track, string FilePath)> targets, Action<IReadOnlyList<LufsScan>> apply)
+    {
+        var engine = _engine;
+        if (_marshal is not { } marshal)
+        {
+            apply(MeasureLufs(engine, targets));
+            return;
+        }
+        _ = Task.Run(() => MeasureLufs(engine, targets)).ContinueWith(
+            task => marshal(() => apply(task.Status == TaskStatus.RanToCompletion
+                ? task.Result
+                : [.. targets.Select(t => new LufsScan(t.Track, t.FilePath, double.NaN))])),
+            TaskScheduler.Default);
+    }
+
+    private static LufsScan[] MeasureLufs(IAudioEngine engine, IReadOnlyList<(TrackId Track, string FilePath)> targets)
+    {
+        var scans = new LufsScan[targets.Count];
+        for (var i = 0; i < targets.Count; i++)
+        {
+            double measured;
+            try
+            {
+                measured = engine.ScanTrackLufs(targets[i].FilePath);
+            }
+            catch (Exception)
+            {
+                measured = double.NaN;
+            }
+            scans[i] = new LufsScan(targets[i].Track, targets[i].FilePath, measured);
+        }
+        return scans;
     }
 
     private void RefreshCurrentEndAction()
@@ -1967,6 +2029,11 @@ public sealed class ShowController : IShowHandler
             _retired.Remove(e.Handle);
             _engine.DisposeStream(e.Handle);
             _monitor?.Unbind(e.Handle);
+            return;
+        }
+        if (_pendingOpen is not null)
+        {
+            _earlyEvents[e.Handle] = e;
         }
     }
 
@@ -2174,6 +2241,7 @@ public sealed class ShowController : IShowHandler
         {
             if (task.Status == TaskStatus.RanToCompletion)
             {
+                _earlyEvents.Remove(task.Result);
                 _engine.DisposeStream(task.Result);
             }
             else
@@ -2185,10 +2253,16 @@ public sealed class ShowController : IShowHandler
         _pendingOpen = null;
         if (task.Status != TaskStatus.RanToCompletion)
         {
+            _earlyEvents.Clear();
             FaultCurrent(SourceOpenFault.Unknown.ToString());
             return;
         }
         FinishOpen(deck, task.Result, auto, lead);
+        if (_earlyEvents.Remove(task.Result, out var early))
+        {
+            OnStreamEvent(early);
+        }
+        _earlyEvents.Clear();
     }
 
     private void OpenExpired(long seq, DeckInstance deck)

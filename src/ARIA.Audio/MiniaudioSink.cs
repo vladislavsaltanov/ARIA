@@ -8,13 +8,21 @@ public sealed class MiniaudioSink : IAudioSink, IDisposable
     private readonly float[] _scratch;
     private readonly GCHandle _scratchHandle;
     private readonly int _blockSizeFrames;
+    private readonly TimeSpan _writeTimeout;
+    private readonly Func<int> _space;
+    private readonly FrameWriter _writer;
     private IntPtr _engine;
 
-    public MiniaudioSink(int sampleRate, int channels, int blockSizeFrames, int backend = 0, byte[]? deviceId = null)
+    public static readonly TimeSpan DefaultWriteTimeout = TimeSpan.FromMilliseconds(20);
+
+    public MiniaudioSink(int sampleRate, int channels, int blockSizeFrames, int backend = 0, byte[]? deviceId = null, TimeSpan? writeTimeout = null)
     {
         SampleRate = sampleRate;
         Channels = channels;
         _blockSizeFrames = blockSizeFrames;
+        _writeTimeout = writeTimeout ?? DefaultWriteTimeout;
+        _space = () => AriaShim.EngineSpace(_engine);
+        _writer = WriteChunk;
         _scratch = new float[Math.Max(1, blockSizeFrames * channels)];
         _scratchHandle = GCHandle.Alloc(_scratch, GCHandleType.Pinned);
         IntPtr engine;
@@ -43,25 +51,13 @@ public sealed class MiniaudioSink : IAudioSink, IDisposable
 
     public long PlayedFrames => AriaShim.EnginePlayedFrames(_engine);
 
-    public int Write(ReadOnlySpan<float> samples)
+    public int Write(ReadOnlySpan<float> samples) =>
+        RingWriter.Write(samples, Channels, _blockSizeFrames, _writeTimeout, _space, _writer);
+
+    private int WriteChunk(ReadOnlySpan<float> chunk, int frames)
     {
-        var total = 0;
-        while (total < samples.Length)
-        {
-            var space = AriaShim.EngineSpace(_engine);
-            var remaining = samples.Length - total;
-            var acceptedFrames = Math.Min(Math.Min(remaining / Channels, space), _blockSizeFrames);
-            if (acceptedFrames <= 0)
-            {
-                Thread.Sleep(1);
-                continue;
-            }
-            var acceptedSamples = acceptedFrames * Channels;
-            samples.Slice(total, acceptedSamples).CopyTo(_scratch);
-            var writtenFrames = AriaShim.EngineWrite(_engine, _scratchHandle.AddrOfPinnedObject(), acceptedFrames);
-            total += writtenFrames * Channels;
-        }
-        return total;
+        chunk.CopyTo(_scratch);
+        return AriaShim.EngineWrite(_engine, _scratchHandle.AddrOfPinnedObject(), frames);
     }
 
     public void Flush() => AriaShim.EngineFlush(_engine);
