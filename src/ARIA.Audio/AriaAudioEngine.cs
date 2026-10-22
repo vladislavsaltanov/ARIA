@@ -44,6 +44,8 @@ public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposa
     private readonly int _sampleRate;
     private readonly int _channels;
     private readonly SessionMixer _sessionMixer;
+    private readonly TestClickGenerator _testClickGenerator;
+    private int _testClick;
     private ClockSlot _clockSlot;
     private int _sinkGeneration;
     private long _sinkWrittenFrames;
@@ -93,6 +95,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposa
         _sampleRate = sampleRate;
         _channels = channels;
         _sessionMixer = new SessionMixer(sourceFactory, sampleRate, channels, blockSizeFrames);
+        _testClickGenerator = new TestClickGenerator(sampleRate, channels);
         _previewSink = previewSink ?? new NullSink(sampleRate, channels);
         _preview = new MixerBus(channels, sampleRate, blockSizeFrames);
         _previewBlock = new float[blockSizeFrames * channels];
@@ -103,6 +106,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposa
     }
 
     public event Action<StreamEvent>? Events;
+
+    public MixReportRing Reports { get; } = new();
+
+    public bool TestClickEnabled => Volatile.Read(ref _testClick) == 1;
+
+    public void SetTestClick(bool enabled) => Volatile.Write(ref _testClick, enabled ? 1 : 0);
 
     public event Action<bool>? MainOutputStalled;
 
@@ -394,6 +403,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposa
         if (_mainPending == 0)
         {
             _mixer.Render(_block);
+            PublishReport();
             _mainTap.Publish(_block);
             ApplyMasterChain();
             PublishMeter();
@@ -418,6 +428,28 @@ public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposa
         }
         PublishPosition();
         Thread.Sleep(1);
+    }
+
+    private void PublishReport()
+    {
+        var report = _mixer.LastReport;
+        if (Volatile.Read(ref _testClick) == 1)
+        {
+            foreach (var voice in report)
+            {
+                if (voice.Active && !voice.Ended)
+                {
+                    Volatile.Write(ref _testClick, 0);
+                    break;
+                }
+            }
+        }
+        var testClick = Volatile.Read(ref _testClick) == 1;
+        if (testClick)
+        {
+            _testClickGenerator.Mix(_block, _sinkWrittenFrames);
+        }
+        Reports.Publish(_sinkWrittenFrames, _sinkGeneration, report, _mixer.LastReportOverflow, testClick);
     }
 
     private bool TrackStall(long now)
