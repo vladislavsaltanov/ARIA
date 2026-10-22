@@ -160,6 +160,7 @@ internal sealed class OverridesDto
     public long? CueOutTicks { get; set; }
     public List<MarkerDto>? Markers { get; set; }
     public TrackAudioDto? Audio { get; set; }
+    public Guid? Backing { get; set; }
 }
 
 internal sealed class EntryDto
@@ -246,6 +247,7 @@ internal static class ProjectMapper
                     ? null
                     : [.. overrides.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
                 Audio = AudioMapper.ToDto(overrides.Audio),
+                Backing = overrides.Backing?.Value,
             };
 
     public static ProjectOverrides? ToDomain(OverridesDto? dto) =>
@@ -264,7 +266,8 @@ internal static class ProjectMapper
                 Markers: dto.Markers is null
                     ? null
                     : [.. dto.Markers.Select(m => new Marker(m.Name, new TimeSpan(m.PositionTicks), (MarkerAction)m.Action))],
-                Audio: AudioMapper.ToDomain(dto.Audio));
+                Audio: AudioMapper.ToDomain(dto.Audio),
+                Backing: dto.Backing is { } backing ? new TrackId(backing) : null);
 
     public static EntryDto ToDto(ProjectEntry entry) => new()
     {

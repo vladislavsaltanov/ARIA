@@ -302,7 +302,8 @@ internal static class CommandCodec
             Out: fadeOut,
             CueIn: TicksOf(element, "cue_in_ticks") is { } cueIn ? new TimeSpan(cueIn) : null,
             CueOut: TicksOf(element, "cue_out_ticks") is { } cueOut ? new TimeSpan(cueOut) : null,
-            Markers: markers);
+            Markers: markers,
+            Backing: StringOrNullOf(element, "backing") is { } backing && Guid.TryParse(backing, out var backingId) ? new TrackId(backingId) : null);
     }
 
     private static Marker ParseMarker(JsonElement element) =>

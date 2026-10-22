@@ -18,6 +18,7 @@ public sealed record ProjectOverrides(
     TimeSpan? CueIn = null,
     TimeSpan? CueOut = null,
     TrackAudioSettings? Audio = null,
-    ImmutableArray<Marker>? Markers = null);
+    ImmutableArray<Marker>? Markers = null,
+    TrackId? Backing = null);
 
 public sealed record Project(ProjectId Id, string Name, ImmutableArray<ProjectEntry> Entries);

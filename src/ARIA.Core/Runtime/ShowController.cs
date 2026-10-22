@@ -1131,6 +1131,11 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
+        if (command.Overrides?.Backing is { } backing && !_trackMap.ContainsKey(backing))
+        {
+            Reject(client, seq, "unknown-backing");
+            return;
+        }
         var project = location.Project;
         var entry = project.Entries[location.Index];
         var entries = project.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
@@ -1645,11 +1650,11 @@ public sealed class ShowController : IShowHandler
         var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
             ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
             : EffectiveSettings.ForTrack(track, _defaultEndAction);
-        if (settings.EndAction == deck.Settings.EndAction)
+        if (settings.EndAction == deck.Settings.EndAction && settings.Backing == deck.Settings.Backing)
         {
             return;
         }
-        deck.Settings = deck.Settings with { EndAction = settings.EndAction };
+        deck.Settings = deck.Settings with { EndAction = settings.EndAction, Backing = settings.Backing };
         EmitTransport();
     }
 
@@ -2458,7 +2463,8 @@ public sealed class ShowController : IShowHandler
         deck.StartAt,
         deck.Settings.CueOut,
         deck.Track.Defaults.Grid,
-        deck.Settings.Markers);
+        deck.Settings.Markers,
+        deck.Settings.Backing);
 
     private DeckContent? PeekNext()
     {
@@ -2469,7 +2475,7 @@ public sealed class ShowController : IShowHandler
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
-            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers);
+            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers, settings.Backing);
         }
 
         if (_activeProjectId is { } projectId)
@@ -2480,7 +2486,7 @@ public sealed class ShowController : IShowHandler
                 var entry = project.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
                 var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
-                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers);
+                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers, settings.Backing);
             }
         }
         return null;
@@ -2505,6 +2511,10 @@ public sealed class ShowController : IShowHandler
             foreach (var entry in project.Entries)
             {
                 Add(entry.TrackId);
+                if (entry.Overrides?.Backing is { } backing)
+                {
+                    Add(backing);
+                }
             }
         }
         foreach (var item in _queue)

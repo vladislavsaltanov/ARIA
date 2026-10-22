@@ -1062,6 +1062,8 @@
     if (endAction) overrides.end_action = endAction;
     if (entry.overrides && entry.overrides.markers)
       overrides.markers = entry.overrides.markers;
+    if (entry.overrides && entry.overrides.backing)
+      overrides.backing = entry.overrides.backing;
     if (Object.keys(overrides).length === 0) {
       send("set_entry_overrides", { entry: entry.id });
     } else {

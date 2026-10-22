@@ -121,4 +121,21 @@ public sealed class EffectiveSettingsTests
 
         Assert.Equal(trackMarker, Assert.Single(settings.Markers));
     }
+
+    [Fact]
+    public void Resolve_Backing_FromOverrides()
+    {
+        var track = TestShow.Track("song");
+        var backing = TrackId.New();
+        var entry = TestShow.Entry(track, new ProjectOverrides(Backing: backing));
+
+        Assert.Equal(backing, EffectiveSettings.Resolve(entry, track).Backing);
+        Assert.Null(EffectiveSettings.Resolve(TestShow.Entry(track), track).Backing);
+    }
+
+    [Fact]
+    public void ForTrack_Backing_Null()
+    {
+        Assert.Null(EffectiveSettings.ForTrack(TestShow.Track("song")).Backing);
+    }
 }
