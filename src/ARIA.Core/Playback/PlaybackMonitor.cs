@@ -43,6 +43,14 @@ public sealed class PlaybackMonitor
         }
     }
 
+    public bool TryGetDeck(StreamHandle handle, out DeckContent deck)
+    {
+        lock (_gate)
+        {
+            return _bindings.TryGetValue(handle, out deck!);
+        }
+    }
+
     public void Unbind(StreamHandle handle)
     {
         bool cleared;

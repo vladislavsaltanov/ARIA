@@ -197,4 +197,26 @@ public sealed class PlaybackMonitorTests
 
         Assert.Null(monitor.Latest);
     }
+
+    [Fact]
+    public void TryGetDeck_Bound_True()
+    {
+        var monitor = new PlaybackMonitor();
+        var deck = new DeckContent(null, TrackId.New(), "song", null, EndAction.Stop, TimeSpan.FromMinutes(2), TimeSpan.FromSeconds(1));
+        monitor.Bind(new StreamHandle(5), deck);
+
+        Assert.True(monitor.TryGetDeck(new StreamHandle(5), out var found));
+        Assert.Equal(deck, found);
+    }
+
+    [Fact]
+    public void TryGetDeck_Unbound_False()
+    {
+        var monitor = new PlaybackMonitor();
+        monitor.Bind(new StreamHandle(5), new DeckContent(null, TrackId.New(), "song", null, EndAction.Stop, TimeSpan.FromMinutes(2), TimeSpan.Zero));
+        monitor.Unbind(new StreamHandle(5));
+
+        Assert.False(monitor.TryGetDeck(new StreamHandle(5), out _));
+        Assert.False(monitor.TryGetDeck(new StreamHandle(6), out _));
+    }
 }
