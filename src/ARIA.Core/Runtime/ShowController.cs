@@ -1358,7 +1358,14 @@ public sealed class ShowController : IShowHandler
                 Track = updated,
                 Settings = _current.Settings,
                 Handle = _current.Handle,
+                StartAt = _current.StartAt,
+                MarkerFloor = _current.MarkerFloor,
+                ResumeAt = _current.ResumeAt,
             };
+            if (_current.Handle is { } handle)
+            {
+                _monitor?.Bind(handle, Content(_current));
+            }
             EmitTransport();
         }
         EmitShow();
@@ -1655,6 +1662,10 @@ public sealed class ShowController : IShowHandler
             return;
         }
         deck.Settings = deck.Settings with { EndAction = settings.EndAction, Backing = settings.Backing };
+        if (deck.Handle is { } handle)
+        {
+            _monitor?.Bind(handle, Content(deck));
+        }
         EmitTransport();
     }
 

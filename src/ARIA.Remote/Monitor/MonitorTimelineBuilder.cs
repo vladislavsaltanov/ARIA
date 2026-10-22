@@ -43,7 +43,7 @@ internal sealed class MonitorTimelineBuilder
         for (var index = 0; index < report.Count; index++)
         {
             var voice = report.Voices[index];
-            if (!_bindingCache.ContainsKey(voice.Tag) && _bindings(new StreamHandle(voice.Tag)) is { } deck)
+            if (_bindings(new StreamHandle(voice.Tag)) is { } deck)
             {
                 _bindingCache[voice.Tag] = deck;
             }
@@ -96,7 +96,7 @@ internal sealed class MonitorTimelineBuilder
                 endFrame,
                 FadeOf(report)));
             MarkSeen(track, nowUs);
-            if (report.Active && !report.StopWhenDone && GridOf(deck) is { } grid)
+            if (!report.StopWhenDone && !report.Ended && GridOf(deck) is { } grid)
             {
                 gridCandidates.Add((tag, grid, cueInFrames));
             }

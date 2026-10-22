@@ -170,6 +170,20 @@ public sealed class MonitorTimelineBuilderTests
     }
 
     [Fact]
+    public void Build_Grid_PausedVoiceStillProvidesGrid()
+    {
+        var song = AddTrack("song", new BeatGrid(120, 4, TimeSpan.Zero));
+        _bindings[1] = Deck(song);
+        var builder = Builder();
+        builder.Apply(Report(0, Voice(1, 48000, active: false)));
+
+        var message = builder.Build(Clock(), UsAt(0), false)!;
+
+        Assert.Equal(1, message.Grid!.Voice);
+        Assert.False(Assert.Single(message.Voices).Playing);
+    }
+
+    [Fact]
     public void Build_Grid_FallsBackToBackingGrid()
     {
         var song = AddTrack("song");
@@ -215,6 +229,22 @@ public sealed class MonitorTimelineBuilderTests
         builder.Apply(Report(512, Voice(1, 96000, epoch: 1)));
 
         Assert.NotNull(builder.Build(clock, now + 10_000, false));
+    }
+
+    [Fact]
+    public void Build_RefreshesBindingOnApply()
+    {
+        var song = AddTrack("song", new BeatGrid(120, 4, TimeSpan.Zero));
+        _bindings[1] = Deck(song);
+        var builder = Builder();
+        var clock = Clock();
+        builder.Apply(Report(0, Voice(1, 0)));
+        Assert.Equal(120, builder.Build(clock, UsAt(0), false)!.Grid!.Bpm);
+
+        _bindings[1] = Deck(song) with { Grid = new BeatGrid(90, 3, TimeSpan.Zero) };
+        builder.Apply(Report(512, Voice(1, 512)));
+
+        Assert.Equal(new GridTimeline(1, 90, 3, 0), builder.Build(clock, UsAt(512), false)!.Grid);
     }
 
     [Fact]
