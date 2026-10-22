@@ -13,8 +13,11 @@ public sealed class GainNode : IDspNode
 
     public GainNode(double initialDb) => SetGainDb(initialDb);
 
+    public double GainDb { get; private set; }
+
     public void SetGainDb(double db)
     {
+        GainDb = db;
         var linear = Math.Pow(10.0, db / 20.0);
         Volatile.Write(ref _linearBits, BitConverter.DoubleToInt64Bits(linear));
     }
@@ -61,6 +64,14 @@ public sealed class FaderNode : IDspNode
     public int RampFrames { get; }
 
     public bool StopWhenDone { get; }
+
+    public double From => _from;
+
+    public double To => _to;
+
+    public FadeCurve Curve => _curve;
+
+    public double Progress => _t;
 
     public bool HasCompleted { get; private set; }
 

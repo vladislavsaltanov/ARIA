@@ -45,10 +45,16 @@ public sealed record VoiceConfig(
     TimeSpan CueIn,
     TimeSpan? CueOut,
     TrackAudioSettings? Audio = null,
-    bool StartInactive = false);
+    bool StartInactive = false,
+    int Tag = 0);
 
 public sealed class MixerBus : IDisposable
 {
+    public const int MaxReportVoices = 16;
+
+    private readonly VoiceReport[] _report = new VoiceReport[MaxReportVoices];
+    private int _reportCount;
+    private bool _reportOverflow;
     private readonly int _channels;
     private readonly int _sampleRate;
     private readonly int _blockSizeFrames;
@@ -81,6 +87,10 @@ public sealed class MixerBus : IDisposable
     public float PeakRight { get; private set; }
 
     public event Action<StreamEvent>? Events;
+
+    public ReadOnlySpan<VoiceReport> LastReport => _report.AsSpan(0, _reportCount);
+
+    public bool LastReportOverflow => _reportOverflow;
 
     public StreamHandle AddVoice(VoiceConfig config)
     {
@@ -169,6 +179,7 @@ public sealed class MixerBus : IDisposable
             return 0;
         }
         DrainCommands();
+        CaptureReport();
         output.Clear();
         var processed = 0;
         while (processed < totalFrames)
@@ -213,6 +224,7 @@ public sealed class MixerBus : IDisposable
         return new MixerVoice
         {
             Handle = handle,
+            Tag = config.Tag,
             Source = config.Source,
             Scratch = new float[_blockSizeFrames * _channels],
             Fader = new FaderNode(fadeInFrames, fadeIn?.Curve ?? FadeCurve.Linear, 0.0, 1.0, stopWhenDone: false),
@@ -282,6 +294,7 @@ public sealed class MixerBus : IDisposable
             {
                 continue;
             }
+            voice.Epoch++;
             if (fadeDuration > TimeSpan.Zero)
             {
                 var rampFrames = Math.Max(1, (int)Math.Round(fadeDuration.TotalSeconds * _sampleRate));
@@ -300,6 +313,7 @@ public sealed class MixerBus : IDisposable
         {
             return;
         }
+        voice.Epoch++;
         switch (command)
         {
             case TransportCommand.Play:
@@ -351,6 +365,7 @@ public sealed class MixerBus : IDisposable
         }
         voice.Source.Seek(frameIndex);
         voice.StartFrame = frameIndex;
+        voice.Epoch++;
     }
 
     private static void ApplyMarkers(MixerVoice? voice, MarkerSpec[] markers)
@@ -376,6 +391,7 @@ public sealed class MixerBus : IDisposable
         {
             return;
         }
+        voice.Epoch++;
         var rampFrames = fade.Duration <= TimeSpan.Zero
             ? 0
             : Math.Max(1, (int)Math.Round(fade.Duration.TotalSeconds * _sampleRate));
@@ -462,7 +478,7 @@ public sealed class MixerBus : IDisposable
             }
             if (reason.HasValue)
             {
-                EndVoice(voice, reason.Value, markerPosition);
+                EndVoice(voice, reason.Value, markerPosition, voice.StartFrame + contributionFrames);
             }
             var contributionSamples = contributionFrames * _channels;
             for (var sample = 0; sample < contributionSamples; sample++)
@@ -516,13 +532,18 @@ public sealed class MixerBus : IDisposable
         return -1;
     }
 
-    private void EndVoice(MixerVoice voice, StreamEndReason reason, TimeSpan markerPosition = default)
+    private void EndVoice(MixerVoice voice, StreamEndReason reason, TimeSpan markerPosition = default, long endSourceFrame = -1)
     {
         if (voice.Dead)
         {
             return;
         }
         voice.Dead = true;
+        if (voice.ReportIndex >= 0 && endSourceFrame >= 0)
+        {
+            _report[voice.ReportIndex].Ended = true;
+            _report[voice.ReportIndex].EndSourceFrame = endSourceFrame;
+        }
         Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Ended, reason, null, markerPosition));
     }
 
@@ -533,7 +554,48 @@ public sealed class MixerBus : IDisposable
             return;
         }
         voice.Dead = true;
+        if (voice.ReportIndex >= 0)
+        {
+            _report[voice.ReportIndex].Ended = true;
+            _report[voice.ReportIndex].EndSourceFrame = voice.StartFrame;
+        }
         Events?.Invoke(new StreamEvent(voice.Handle, StreamEventKind.Faulted, StreamEndReason.Faulted));
+    }
+
+    private void CaptureReport()
+    {
+        _reportCount = 0;
+        _reportOverflow = false;
+        for (var index = 0; index < _voices.Count; index++)
+        {
+            var voice = _voices[index];
+            if (_reportCount == MaxReportVoices)
+            {
+                voice.ReportIndex = -1;
+                _reportOverflow = true;
+                continue;
+            }
+            var ended = voice.Dead || voice.RemoveRequested;
+            var fader = voice.Fader;
+            voice.ReportIndex = _reportCount;
+            _report[_reportCount++] = new VoiceReport
+            {
+                Tag = voice.Tag,
+                SourceFrame = voice.StartFrame,
+                Active = voice.Active && !ended,
+                PauseWhenFaded = voice.PauseWhenFaded,
+                Ended = ended,
+                EndSourceFrame = ended ? voice.StartFrame : -1,
+                GainDb = voice.Gain.GainDb,
+                FadeFrom = fader.From,
+                FadeTo = fader.To,
+                FadeProgress = fader.Progress,
+                FadeFrames = fader.RampFrames,
+                FadeCurve = fader.Curve,
+                StopWhenDone = fader.StopWhenDone,
+                Epoch = voice.Epoch,
+            };
+        }
     }
 
     private MixerVoice? FindVoice(StreamHandle handle)
