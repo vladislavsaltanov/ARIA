@@ -13,6 +13,7 @@ using Aria.Core.Commands;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
+using Aria.Remote.Monitor;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -36,6 +37,9 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly MeterMonitor? _meters;
     private readonly PreviewTap? _previewTap;
     private readonly IAudioEngine? _engine;
+    private readonly MonitorFeed? _monitorFeed;
+    private MonitorHub? _monitorHub;
+    private MonitorPublisher? _monitorPublisher;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly ConcurrentDictionary<string, RemoteRole> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -58,8 +62,9 @@ public sealed class RemoteHost : IAsyncDisposable
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null, IAudioEngine? engine = null)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null, IAudioEngine? engine = null, MonitorFeed? monitorFeed = null)
     {
+        _monitorFeed = monitorFeed;
         _bus = bus;
         _options = options;
         _monitor = monitor;
@@ -69,6 +74,8 @@ public sealed class RemoteHost : IAsyncDisposable
     }
 
     public Uri HttpEndpoint { get; private set; } = new("http://127.0.0.1:0/");
+
+    public MonitorHub? Monitor => _monitorHub;
 
     public Uri WebsocketEndpoint { get; private set; } = new("ws://127.0.0.1:0/ws");
 
@@ -90,6 +97,7 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
         app.MapGet("/preview", PreviewAsync);
         app.MapPost("/preview/open", OpenPreviewSessionAsync);
+        app.MapGet("/monitor/ws", (HttpContext context) => HandleMonitorSocket(context));
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
@@ -101,6 +109,13 @@ public sealed class RemoteHost : IAsyncDisposable
         HttpEndpoint = new Uri($"http://127.0.0.1:{port}/");
         WebsocketEndpoint = new Uri($"ws://127.0.0.1:{port}/ws");
 
+        if (_monitorFeed is { } feed)
+        {
+            _monitorHub = new MonitorHub(JsonOptions);
+            _monitorPublisher = new MonitorPublisher(feed, _monitorHub, _ => true);
+            _monitorPublisher.SetTransport(_bus.Snapshot().Transport);
+            _monitorPublisher.Start();
+        }
         _subscription = _bus.Subscribe(OnStateEvent);
         if (_monitor is not null || _meters is not null)
         {
@@ -168,6 +183,28 @@ public sealed class RemoteHost : IAsyncDisposable
                 _sessionTokens.TryRemove(token, out _);
             }
         }
+        _monitorHub?.Revoke(RemoteRole.Listen);
+    }
+
+    private async Task HandleMonitorSocket(HttpContext context)
+    {
+        if (!TryGetRole(context.Request.Query["token"], out var role))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (_monitorHub is not { } hub)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        if (!context.WebSockets.IsWebSocketRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        await hub.HandleAsync(socket, role, _shutdown.Token);
     }
 
     private int ControlAccessStatus(string? token)
@@ -343,6 +380,10 @@ public sealed class RemoteHost : IAsyncDisposable
 
     private void OnStateEvent(StateEvent e)
     {
+        if (e is TransportDelta transport)
+        {
+            _monitorPublisher?.SetTransport(transport.State);
+        }
         if (_connections.IsEmpty)
         {
             return;
@@ -472,6 +513,8 @@ public sealed class RemoteHost : IAsyncDisposable
         }
         _shutdown.Cancel();
         _subscription?.Dispose();
+        _monitorPublisher?.Dispose();
+        _monitorHub?.CloseAll();
         if (_positionTask is { } position)
         {
             try

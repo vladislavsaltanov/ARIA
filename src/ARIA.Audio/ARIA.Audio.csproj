@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="ARIA.Audio.Tests" />
+    <InternalsVisibleTo Include="ARIA.Remote.Tests" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ARIA.Core\ARIA.Core.csproj" />
