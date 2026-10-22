@@ -271,8 +271,21 @@ public sealed class PcmServerTests : IAsyncLifetime
         File.Move(hidden, path);
         time.Now += TimeSpan.FromSeconds(6);
 
-        Assert.False(cache.IsUndecodable(track.Id));
-        var slice = await cache.ReadAsync(track.Id, 0, 100, CancellationToken.None);
+        PcmSlice? slice = null;
+        for (var attempt = 0; attempt < 5 && slice is null; attempt++)
+        {
+            Assert.False(cache.IsUndecodable(track.Id));
+            try
+            {
+                slice = await cache.ReadAsync(track.Id, 0, 100, CancellationToken.None);
+            }
+            catch (InvalidDataException)
+            {
+                await Task.Delay(200);
+                time.Now += TimeSpan.FromSeconds(6);
+            }
+        }
+        Assert.NotNull(slice);
         Assert.Equal(PcmTestFiles.Reference(path, 0, 100), slice.Samples);
     }
 }

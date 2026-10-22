@@ -16,6 +16,8 @@ public sealed class MonitorHub
     private const int NameMaxLength = 64;
     private const WebSocketCloseStatus TryAgainLater = (WebSocketCloseStatus)1013;
 
+    private static readonly TimeSpan CloseHandshakeTimeout = TimeSpan.FromSeconds(2);
+
     private readonly JsonSerializerOptions _json;
     private readonly ConcurrentDictionary<string, Connection> _connections = [];
     private int _counter;
@@ -108,7 +110,7 @@ public sealed class MonitorHub
         {
             var buffer = new byte[4096];
             using var message = new MemoryStream();
-            while (socket.State == WebSocketState.Open && !connection.Lifetime.IsCancellationRequested)
+            while (socket.State is WebSocketState.Open or WebSocketState.CloseSent && !connection.Lifetime.IsCancellationRequested)
             {
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), connection.Lifetime.Token);
                 if (result.MessageType == WebSocketMessageType.Close || message.Length + result.Count > MaxMessageBytes)
@@ -208,7 +210,7 @@ public sealed class MonitorHub
                         break;
                     case CloseFrame close:
                         await connection.Socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, close.Reason, CancellationToken.None);
-                        connection.Lifetime.Cancel();
+                        connection.Lifetime.CancelAfter(CloseHandshakeTimeout);
                         return;
                 }
             }

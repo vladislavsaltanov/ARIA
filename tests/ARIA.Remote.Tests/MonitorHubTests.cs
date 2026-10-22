@@ -193,4 +193,34 @@ public sealed class MonitorHubTests : IAsyncLifetime
 
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Kick_SlowClient_StillReceivesKickedThenGracefulClose()
+    {
+        using var socket = new ClientWebSocket();
+        await socket.ConnectAsync(new Uri($"{MonitorSocket}?token={await TokenAsync(_pair.ListenPassword)}"), CancellationToken.None);
+        var buffer = new byte[4096];
+        var welcome = await socket.ReceiveAsync(buffer, CancellationToken.None);
+        using var welcomeBody = JsonDocument.Parse(Encoding.UTF8.GetString(buffer, 0, welcome.Count));
+        var id = welcomeBody.RootElement.GetProperty("listener").GetString()!;
+
+        _host.Monitor!.Kick(id);
+        await Task.Delay(700);
+
+        var frames = new List<string>();
+        WebSocketReceiveResult result;
+        do
+        {
+            result = await socket.ReceiveAsync(buffer, new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+            if (result.MessageType == WebSocketMessageType.Text)
+            {
+                frames.Add(Encoding.UTF8.GetString(buffer, 0, result.Count));
+            }
+        }
+        while (result.MessageType != WebSocketMessageType.Close);
+
+        Assert.Contains(frames, frame => Type(JsonDocument.Parse(frame).RootElement) is "kicked");
+        Assert.Equal(WebSocketCloseStatus.NormalClosure, result.CloseStatus);
+        await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+    }
 }
