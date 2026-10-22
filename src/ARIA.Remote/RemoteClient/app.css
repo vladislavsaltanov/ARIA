@@ -82,7 +82,7 @@ body {
 .next.scroll,
 .queue-name.scroll,
 .entry-name.scroll,
-.playlist-name.scroll {
+.project-name.scroll {
   text-overflow: clip;
 }
 .mq {
@@ -316,23 +316,40 @@ body {
   gap: 12px;
   margin-bottom: 8px;
 }
-.preview-audio {
-  width: 100%;
-}
-.click-label {
-  display: flex;
+.now-bpm {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--dim);
+}
+.now-bpm-input {
+  width: 96px;
+  flex: none;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.now-bpm-input:disabled {
+  opacity: 0.4;
+}
+.monitor-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
   color: var(--text);
+  font-size: 13px;
+  letter-spacing: 3px;
+  text-decoration: none;
 }
-.click-num {
-  width: 84px;
-  flex: none;
-}
-.click-beats {
-  width: 64px;
-  flex: none;
+.monitor-link:active {
+  background: var(--line);
 }
 
 .queue h2 {
@@ -542,6 +559,12 @@ body {
   text-underline-offset: 3px;
 }
 
+.playlists h2 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
 .playlists {
   margin-bottom: 20px;
 }
@@ -555,14 +578,14 @@ body {
 .playlist.active {
   border-color: var(--warn);
 }
-.playlist-head {
+.project-head {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   padding: 12px;
 }
-.playlist-name {
+.project-name {
   flex: 1;
   min-width: 0;
   font-size: 16px;
@@ -572,7 +595,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.playlist-badge {
+.project-badge {
   font-size: 10px;
   letter-spacing: 1px;
   color: var(--warn);
@@ -580,7 +603,7 @@ body {
   border-radius: 4px;
   padding: 2px 6px;
 }
-.playlist-body {
+.project-body {
   padding: 0 12px 12px;
   border-top: 1px solid var(--line);
 }
@@ -615,7 +638,7 @@ body {
   font-size: 13px;
   padding: 10px 0;
 }
-.playlist-create {
+.project-create {
   display: block;
   width: 100%;
   min-height: 48px;
@@ -627,7 +650,7 @@ body {
   font-size: 14px;
   letter-spacing: 1px;
 }
-.playlist-create:active {
+.project-create:active {
   border-color: var(--dim);
 }
 .mini {

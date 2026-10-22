@@ -29,6 +29,7 @@
       <div class="title" id="title">—</div>
       <div class="next" id="next">далее: —</div>
       <div class="elapsed" id="elapsed">0:00</div>
+      <label class="now-bpm">BPM <input id="now-bpm" class="inline-input now-bpm-input" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="—" disabled></label>
       <div class="seek" id="seek"><div id="seek-fill" class="seek-fill"></div></div>
     </section>
 
@@ -79,40 +80,14 @@
     </section>
 
     <section class="preview">
-      <h2>МОНИТОР (НАУШНИКИ)</h2>
+      <h2>ПРЕДПРОСЛУШКА</h2>
       <div class="preview-row">
-        <button id="btn-preview-play" class="pad">▶<span>СТАРТ</span></button>
-        <button id="btn-preview-stop" class="pad">■<span>СТОП</span></button>
         <input id="preview-gain" class="master" type="range" min="0" max="125" step="1" value="100">
         <button id="btn-preview-mute" class="mute">MUTE</button>
       </div>
-      <audio id="preview-audio" class="preview-audio" controls preload="none"></audio>
     </section>
 
-    <section class="click">
-      <h2>МЕТРОНОМ <button id="btn-click-toggle" class="mute">ВЫКЛ</button></h2>
-      <div class="preview-row">
-        <label class="click-label">Пульт <input id="click-name" class="inline-input click-name" type="text" maxlength="64" placeholder="Имя пульта"></label>
-      </div>
-      <div class="preview-row">
-        <label class="click-label">BPM <input id="click-bpm" class="inline-input click-num" type="number" min="20" max="300" step="1" value="120"></label>
-        <button id="btn-click-default" class="forget" title="BPM трека">↺</button>
-        <label class="click-label">Такт
-          <select id="click-beats" class="inline-input click-beats">
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4" selected>4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-          </select>
-        </label>
-      </div>
-      <div class="preview-row">
-        <label class="click-label">Сдвиг мс <input id="click-offset" class="inline-input click-num" type="number" min="-2000" max="2000" step="5" value="0"></label>
-        <input id="click-gain" class="master" type="range" min="0" max="125" step="1" value="100">
-      </div>
-    </section>
+    <a class="monitor-link" href="/monitor">МОНИТОРИНГ →</a>
 
     <section class="queue">
       <h2>ОЧЕРЕДЬ <button id="btn-queue-clear" class="forget">ОЧИСТИТЬ</button> <button id="btn-forget" class="forget">забыть пару</button></h2>
@@ -121,7 +96,7 @@
 
     <section class="playlists">
       <h2>ПРОЕКТЫ</h2>
-      <div id="playlists"></div>
+      <div id="projects"></div>
     </section>
 
     <section class="script" id="script-section">

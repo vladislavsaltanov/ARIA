@@ -22,6 +22,57 @@ public sealed class StaticFilesTests : IAsyncLifetime
         _bus.Dispose();
     }
 
+    private async Task<string> FetchAsync(string path)
+    {
+        using var http = new HttpClient();
+        return await http.GetStringAsync(new Uri(_host.HttpEndpoint, path));
+    }
+
+    [Fact]
+    public async Task ControlPage_LinksToMonitor()
+    {
+        Assert.Contains("href=\"/monitor\"", await FetchAsync("/"));
+    }
+
+    [Fact]
+    public async Task ControlPage_NoSessionCode()
+    {
+        var html = await FetchAsync("/");
+        var js = await FetchAsync("/app.js");
+
+        Assert.DoesNotContain("set_click_settings", js);
+        Assert.DoesNotContain("/preview/open", js);
+        Assert.DoesNotContain("startPcmPlayer", js);
+        Assert.DoesNotContain("preview-audio", html);
+        Assert.DoesNotContain("МЕТРОНОМ", html);
+    }
+
+    [Fact]
+    public async Task ControlPage_EveryElementIdExists()
+    {
+        var html = await FetchAsync("/");
+        var js = await FetchAsync("/app.js");
+
+        var missing = System.Text.RegularExpressions.Regex.Matches(js, "getElementById\\(\"([^\"]+)\"\\)")
+            .Select(m => m.Groups[1].Value)
+            .Distinct()
+            .Where(id => !html.Contains($"id=\"{id}\"", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Empty(missing);
+    }
+
+    [Fact]
+    public async Task ControlPage_BpmFieldSendsGrid()
+    {
+        var html = await FetchAsync("/");
+        var js = await FetchAsync("/app.js");
+
+        Assert.Contains("id=\"now-bpm\"", html);
+        Assert.Contains("set_track_grid", js);
+        Assert.Contains("ПРЕДПРОСЛУШКА", html);
+    }
+
     [Fact]
     public async Task Root_ServesEmbeddedIndex()
     {
