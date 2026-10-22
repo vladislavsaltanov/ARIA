@@ -183,121 +183,6 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
     }
 
     [Fact]
-    public void SetClickSettings_Parses()
-    {
-        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_click_settings\",\"session\":3,\"bpm\":120,\"beats_per_bar\":4,\"gain_db\":-6,\"offset_ms\":25}}";
-
-        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
-        Assert.Equal(new SetClickSettings(new PreviewSessionHandle(3), new ClickSettings(120, 4, -6, 25)), command);
-    }
-
-    [Fact]
-    public void SetClickMuted_Parses()
-    {
-        Assert.True(CommandCodec.TryParse("{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_click_muted\",\"session\":3,\"muted\":true}}", out _, out _, out var command));
-        Assert.Equal(new SetClickMuted(new PreviewSessionHandle(3), true), command);
-    }
-
-    [Fact]
-    public void SetClickSettings_BadBpm_Throws()
-    {
-        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_click_settings\",\"session\":3,\"bpm\":0,\"beats_per_bar\":4,\"gain_db\":0,\"offset_ms\":0}}";
-
-        Assert.Throws<FormatException>(() => CommandCodec.TryParse(json, out _, out _, out _));
-    }
-
-    [Fact]
-    public void SetClickSettings_BadBeats_Throws()
-    {
-        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_click_settings\",\"session\":3,\"bpm\":120,\"beats_per_bar\":0,\"gain_db\":0,\"offset_ms\":0}}";
-
-        Assert.Throws<FormatException>(() => CommandCodec.TryParse(json, out _, out _, out _));
-    }
-
-    [Fact]
-    public async Task SetClickSettings_Roundtrip_Ack()
-    {
-        var engine = new CapturingEngine();
-        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
-        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()));
-        await host.StartAsync();
-        try
-        {
-            var client = new TestClient();
-            await client.ConnectAsync(host.WebsocketEndpoint, "secret");
-            using (client)
-            {
-                await client.SendAsync("{\"client\":\"pult-1\",\"seq\":7,\"command\":{\"type\":\"set_click_settings\",\"session\":3,\"bpm\":120,\"beats_per_bar\":4,\"gain_db\":-6,\"offset_ms\":25}}");
-
-                var ack = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "ack", TimeSpan.FromSeconds(5));
-                Assert.Equal(7, ack.GetProperty("seq").GetInt64());
-            }
-            Assert.Equal(new PreviewSessionHandle(3), engine.ClickSession);
-            Assert.Equal(new ClickSettings(120, 4, -6, 25), engine.Click);
-        }
-        finally
-        {
-            await host.DisposeAsync();
-            bus.Dispose();
-        }
-    }
-
-    [Fact]
-    public async Task SetClickSettings_BadGain_Rejected()
-    {
-        var engine = new CapturingEngine();
-        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
-        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()));
-        await host.StartAsync();
-        try
-        {
-            var client = new TestClient();
-            await client.ConnectAsync(host.WebsocketEndpoint, "secret");
-            using (client)
-            {
-                await client.SendAsync("{\"client\":\"pult-1\",\"seq\":7,\"command\":{\"type\":\"set_click_settings\",\"session\":3,\"bpm\":120,\"beats_per_bar\":4,\"gain_db\":99,\"offset_ms\":0}}");
-
-                var rejected = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "rejected", TimeSpan.FromSeconds(5));
-                Assert.Equal("gain-out-of-range", rejected.GetProperty("reason").GetString());
-            }
-            Assert.Null(engine.Click);
-        }
-        finally
-        {
-            await host.DisposeAsync();
-            bus.Dispose();
-        }
-    }
-
-    [Fact]
-    public async Task SetClickMuted_Roundtrip_Ack()
-    {
-        var engine = new CapturingEngine();
-        var bus = new CommandBus(new ShowController(engine), BusMode.Pumped);
-        var host = new RemoteHost(bus, new RemoteOptions("secret", TestPorts.Next()));
-        await host.StartAsync();
-        try
-        {
-            var client = new TestClient();
-            await client.ConnectAsync(host.WebsocketEndpoint, "secret");
-            using (client)
-            {
-                await client.SendAsync("{\"client\":\"pult-1\",\"seq\":7,\"command\":{\"type\":\"set_click_muted\",\"session\":3,\"muted\":false}}");
-
-                var ack = await client.WaitForAsync(e => e.GetProperty("event").GetString() == "ack", TimeSpan.FromSeconds(5));
-                Assert.Equal(7, ack.GetProperty("seq").GetInt64());
-            }
-            Assert.Equal(new PreviewSessionHandle(3), engine.ClickMutedSession);
-            Assert.False(engine.ClickMutedFlag);
-        }
-        finally
-        {
-            await host.DisposeAsync();
-            bus.Dispose();
-        }
-    }
-
-    [Fact]
     public void SetTrackGrid_Parses()
     {
         var id = Guid.NewGuid();
@@ -327,27 +212,9 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
         Assert.Null(command);
     }
 
-    [Fact]
-    public void StartSessionTrack_Parses()
-    {
-        var id = Guid.NewGuid();
-        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"start_session_track\",\"session\":7,\"track\":\"" + id + "\"}}";
-
-        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
-        Assert.Equal(new StartSessionTrack(new PreviewSessionHandle(7), new TrackId(id)), command);
-    }
-
     private sealed class CapturingEngine : IAudioEngine
     {
         public bool PreviewMuted { get; private set; }
-
-        public PreviewSessionHandle ClickSession { get; private set; }
-
-        public ClickSettings? Click { get; private set; }
-
-        public PreviewSessionHandle ClickMutedSession { get; private set; }
-
-        public bool ClickMutedFlag { get; private set; }
 
         public event Action<StreamEvent>? Events { add { } remove { } }
 
@@ -382,18 +249,6 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
         }
 
         public void SetPreviewMuted(bool muted) => PreviewMuted = muted;
-
-        public void SetClick(PreviewSessionHandle session, ClickSettings settings)
-        {
-            ClickSession = session;
-            Click = settings;
-        }
-
-        public void SetClickMuted(PreviewSessionHandle session, bool muted)
-        {
-            ClickMutedSession = session;
-            ClickMutedFlag = muted;
-        }
     }
 
     [Fact]
@@ -460,5 +315,4 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
             bus.Dispose();
         }
     }
-
 }

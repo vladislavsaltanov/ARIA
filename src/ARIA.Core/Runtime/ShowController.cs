@@ -13,11 +13,8 @@ public sealed class ShowController : IShowHandler
     private const double SilenceDb = -80.0;
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
-    private const double ClickBpmMin = 20.0;
     private const int UndoDepth = 64;
 
-    private const int SessionNameMaxLength = 64;
-    private const double ClickBpmMax = 300.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
@@ -220,27 +217,6 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetPreviewMuted setPreviewMuted:
                 OnSetPreviewMuted(setPreviewMuted);
-                break;
-            case SetClickSettings setClickSettings:
-                OnSetClickSettings(client, seq, setClickSettings);
-                break;
-            case SetClickMuted setClickMuted:
-                OnSetClickMuted(setClickMuted);
-                break;
-            case StartSessionTrack startSessionTrack:
-                OnStartSessionTrack(client, seq, startSessionTrack);
-                break;
-            case RenameSession renameSession:
-                OnRenameSession(client, seq, renameSession);
-                break;
-            case SetSessionBackingGain setSessionBackingGain:
-                OnSetSessionBackingGain(client, seq, setSessionBackingGain);
-                break;
-            case SetSessionClickGain setSessionClickGain:
-                OnSetSessionClickGain(client, seq, setSessionClickGain);
-                break;
-            case CloseSession closeSession:
-                OnCloseSession(closeSession);
                 break;
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
@@ -1241,77 +1217,6 @@ public sealed class ShowController : IShowHandler
     }
 
     private void OnSetPreviewMuted(SetPreviewMuted command) => _engine.SetPreviewMuted(command.Muted);
-
-    private void OnSetClickSettings(ClientId client, long seq, SetClickSettings command)
-    {
-        if (command.Settings.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
-        {
-            Reject(client, seq, "gain-out-of-range");
-            return;
-        }
-        if (command.Settings.Bpm is < ClickBpmMin or > ClickBpmMax)
-        {
-            Reject(client, seq, "bpm-out-of-range");
-            return;
-        }
-        _engine.SetClick(command.Session, command.Settings);
-    }
-
-    private void OnSetClickMuted(SetClickMuted command) => _engine.SetClickMuted(command.Session, command.Muted);
-
-    private void OnStartSessionTrack(ClientId client, long seq, StartSessionTrack command)
-    {
-        if (_panicked)
-        {
-            Reject(client, seq, "panicked");
-            return;
-        }
-        if (!_trackMap.TryGetValue(command.Track, out var track))
-        {
-            Reject(client, seq, "unknown-track");
-            return;
-        }
-        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
-        _engine.StartSessionTrack(command.Session, new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio));
-    }
-
-    private void OnRenameSession(ClientId client, long seq, RenameSession command)
-    {
-        var name = command.Name.Trim();
-        if (name.Length is 0)
-        {
-            Reject(client, seq, "name-empty");
-            return;
-        }
-        if (name.Length > SessionNameMaxLength)
-        {
-            Reject(client, seq, "name-too-long");
-            return;
-        }
-        _engine.RenameSession(command.Session, name);
-    }
-
-    private void OnSetSessionBackingGain(ClientId client, long seq, SetSessionBackingGain command)
-    {
-        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
-        {
-            Reject(client, seq, "gain-out-of-range");
-            return;
-        }
-        _engine.SetSessionBackingGain(command.Session, command.GainDb);
-    }
-
-    private void OnCloseSession(CloseSession command) => _engine.ClosePreviewSession(command.Session);
-
-    private void OnSetSessionClickGain(ClientId client, long seq, SetSessionClickGain command)
-    {
-        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
-        {
-            Reject(client, seq, "gain-out-of-range");
-            return;
-        }
-        _engine.SetSessionClickGain(command.Session, command.GainDb);
-    }
 
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {
@@ -2585,7 +2490,6 @@ public sealed class ShowController : IShowHandler
     private void SetStatus(TransportStatus status)
     {
         _status = status;
-        _engine.SetSessionFollow(status == TransportStatus.Playing);
     }
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));

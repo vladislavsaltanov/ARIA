@@ -101,7 +101,6 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapPost("/auth", AuthenticateAsync);
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
         app.MapGet("/preview", PreviewAsync);
-        app.MapPost("/preview/open", OpenPreviewSessionAsync);
         app.MapGet("/monitor/ws", (HttpContext context) => HandleMonitorSocket(context));
         app.MapGet("/monitor/pcm", (HttpContext context) => HandlePcm(context));
         app.MapGet("/monitor", () => RemoteStaticFiles.Serve("monitor.html"));
@@ -247,42 +246,7 @@ public sealed class RemoteHost : IAsyncDisposable
             context.Response.StatusCode = access;
             return;
         }
-        if (context.Request.Query.TryGetValue("session", out var sessionValue)
-            && int.TryParse(sessionValue, out var sessionId)
-            && _engine is not null)
-        {
-            var handle = new PreviewSessionHandle(sessionId);
-            var tap = _engine.PreviewSessionTap(handle);
-            if (tap is null)
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
-            try
-            {
-                await new PreviewStream(tap, () => _engine.PreviewSessionTap(handle) is not null).ExecuteAsync(context);
-            }
-            finally
-            {
-                _engine.ClosePreviewSession(handle);
-            }
-            return;
-        }
         await new PreviewStream(_previewTap).ExecuteAsync(context);
-    }
-
-    private IResult OpenPreviewSessionAsync(HttpContext context)
-    {
-        if (ControlAccessStatus(context.Request.Query["token"]) is var access && access != StatusCodes.Status200OK)
-        {
-            return Results.StatusCode(access);
-        }
-        if (_engine is null)
-        {
-            return Results.NotFound();
-        }
-        var name = context.Request.Query.TryGetValue("name", out var nameValue) ? nameValue.ToString() : null;
-        return Results.Json(new { Session = _engine.OpenPreviewSession(name).Value });
     }
 
     private async Task HandleWebSocket(HttpContext context)

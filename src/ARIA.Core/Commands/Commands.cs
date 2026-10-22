@@ -83,20 +83,6 @@ public sealed record SetPreviewGain(double GainDb) : Command;
 
 public sealed record SetPreviewMuted(bool Muted) : Command;
 
-public sealed record SetClickSettings(PreviewSessionHandle Session, ClickSettings Settings) : Command;
-
-public sealed record SetClickMuted(PreviewSessionHandle Session, bool Muted) : Command;
-
-public sealed record StartSessionTrack(PreviewSessionHandle Session, TrackId Track) : Command;
-
-public sealed record RenameSession(PreviewSessionHandle Session, string Name) : Command;
-
-public sealed record SetSessionBackingGain(PreviewSessionHandle Session, double GainDb) : Command;
-
-public sealed record SetSessionClickGain(PreviewSessionHandle Session, double GainDb) : Command;
-
-public sealed record CloseSession(PreviewSessionHandle Session) : Command;
-
 public sealed record NormalizeTrack(TrackId Track) : Command;
 
 public sealed record NormalizeProject(ProjectId Project) : Command;

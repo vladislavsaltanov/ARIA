@@ -226,7 +226,7 @@ public sealed class CommandBus : ICommandBus, IDisposable
     }
 
     private static bool StartsSound(Command command) =>
-        command is Play or Next or Replay or SeekTo or JumpTo or PlayTrack or StartPreviewTrack or StartSessionTrack;
+        command is Play or Next or Replay or SeekTo or JumpTo or PlayTrack or StartPreviewTrack;
 
     private void Unsubscribe(Action<StateEvent> observer)
     {
