@@ -7,10 +7,10 @@ using Aria.Core.Runtime;
 using Aria.Core.State;
 using Microsoft.Data.Sqlite;
 
-public sealed class TrackBpmPersistenceTests : IDisposable
+public sealed class TrackGridPersistenceTests : IDisposable
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"aria-lib-bpm-{Guid.NewGuid():N}.db");
-    private readonly string _snapPath = Path.Combine(Path.GetTempPath(), $"aria-snap-bpm-{Guid.NewGuid():N}.json");
+    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"aria-lib-grid-{Guid.NewGuid():N}.db");
+    private readonly string _snapPath = Path.Combine(Path.GetTempPath(), $"aria-snap-grid-{Guid.NewGuid():N}.json");
 
     public void Dispose()
     {
@@ -24,10 +24,10 @@ public sealed class TrackBpmPersistenceTests : IDisposable
     }
 
     [Fact]
-    public void Library_TrackBpm_RoundTrips()
+    public void Library_TrackGrid_RoundTrips()
     {
         var plain = TestFactory.Track("bpm");
-        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(128.5, 4, TimeSpan.Zero) } };
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(128.5, 3, TimeSpan.FromMilliseconds(250)) } };
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             store.Upsert([track], []);
@@ -36,12 +36,12 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             var reloaded = Assert.Single(store.Load().Tracks);
-            Assert.Equal(new BeatGrid(128.5, 4, TimeSpan.Zero), reloaded.Defaults.Grid);
+            Assert.Equal(new BeatGrid(128.5, 3, TimeSpan.FromMilliseconds(250)), reloaded.Defaults.Grid);
         }
     }
 
     [Fact]
-    public void Library_TrackBpm_MissingByDefault()
+    public void Library_TrackGrid_MissingByDefault()
     {
         var track = TestFactory.Track("plain");
         using (var store = new SqliteLibraryStore(_dbPath))
@@ -77,10 +77,10 @@ public sealed class TrackBpmPersistenceTests : IDisposable
     }
 
     [Fact]
-    public void Snapshot_TrackBpm_RoundTrips()
+    public void Snapshot_TrackGrid_RoundTrips()
     {
         var plain = TestFactory.Track("bpm");
-        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(100, 4, TimeSpan.Zero) } };
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(100, 7, TimeSpan.FromSeconds(1.5)) } };
         var project = TestFactory.Project("Main", TestFactory.Entry(track));
         var document = new ShowDocument([track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
         using (var store = new JsonSnapshotStore(_snapPath))
@@ -92,15 +92,15 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         {
             var loaded = store.LoadLatest();
             Assert.NotNull(loaded);
-            Assert.Equal(new BeatGrid(100, 4, TimeSpan.Zero), Assert.Single(loaded.Tracks).Defaults.Grid);
+            Assert.Equal(new BeatGrid(100, 7, TimeSpan.FromSeconds(1.5)), Assert.Single(loaded.Tracks).Defaults.Grid);
         }
     }
 
     [Fact]
-    public void ShowAutosaver_PersistsTrackBpm_ToSnapshotAndLibrary()
+    public void ShowAutosaver_PersistsTrackGrid_ToSnapshotAndLibrary()
     {
         var plain = TestFactory.Track("bpm");
-        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(133.0, 4, TimeSpan.Zero) } };
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(133.0, 5, TimeSpan.FromSeconds(2)) } };
         var project = TestFactory.Project("Main", TestFactory.Entry(track));
         using var libStore = new SqliteLibraryStore(_dbPath);
         libStore.Upsert([track], [project]);
@@ -114,10 +114,58 @@ public sealed class TrackBpmPersistenceTests : IDisposable
 
         var reloadedSnap = snapStore.LoadLatest();
         Assert.NotNull(reloadedSnap);
-        Assert.Equal(new BeatGrid(133.0, 4, TimeSpan.Zero), Assert.Single(reloadedSnap.Tracks).Defaults.Grid);
+        Assert.Equal(new BeatGrid(133.0, 5, TimeSpan.FromSeconds(2)), Assert.Single(reloadedSnap.Tracks).Defaults.Grid);
 
         var reloadedLib = libStore.Load();
-        Assert.Equal(new BeatGrid(133.0, 4, TimeSpan.Zero), Assert.Single(reloadedLib.Tracks).Defaults.Grid);
+        Assert.Equal(new BeatGrid(133.0, 5, TimeSpan.FromSeconds(2)), Assert.Single(reloadedLib.Tracks).Defaults.Grid);
+    }
+
+    [Fact]
+    public void Migrate_LegacyBpmOnlyColumns_LoadsGridWithDefaults()
+    {
+        var track = TestFactory.Track("legacy-bpm");
+        CreateLegacyDatabase(track);
+        using (var connection = new SqliteConnection($"Data Source={_dbPath};Pooling=false"))
+        {
+            connection.Open();
+            Execute(connection, "ALTER TABLE tracks ADD COLUMN bpm REAL");
+            Execute(connection, $"UPDATE tracks SET bpm = 100 WHERE id = '{track.Id.Value}'");
+        }
+
+        using (var store = new SqliteLibraryStore(_dbPath))
+        {
+            Assert.Equal(new BeatGrid(100, 4, TimeSpan.Zero), Assert.Single(store.Load().Tracks).Defaults.Grid);
+        }
+    }
+
+    [Fact]
+    public void Snapshot_LegacyBpmJson_LoadsGridWithDefaults()
+    {
+        var plain = TestFactory.Track("legacy-json");
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(100, 3, TimeSpan.FromSeconds(1)) } };
+        var project = TestFactory.Project("Main", TestFactory.Entry(track));
+        var document = new ShowDocument([track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
+        using (var store = new JsonSnapshotStore(_snapPath))
+        {
+            store.Save(document);
+        }
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(_snapPath))!.AsObject();
+        foreach (var node in root.First(p => string.Equals(p.Key, "tracks", StringComparison.OrdinalIgnoreCase)).Value!.AsArray())
+        {
+            var dto = node!.AsObject();
+            foreach (var key in dto.Select(p => p.Key).Where(k => k.Contains("beat", StringComparison.OrdinalIgnoreCase)).ToList())
+            {
+                dto.Remove(key);
+            }
+        }
+        File.WriteAllText(_snapPath, root.ToJsonString());
+
+        using (var store = new JsonSnapshotStore(_snapPath))
+        {
+            var loaded = store.LoadLatest();
+            Assert.NotNull(loaded);
+            Assert.Equal(new BeatGrid(100, 4, TimeSpan.Zero), Assert.Single(loaded.Tracks).Defaults.Grid);
+        }
     }
 
     private void CreateLegacyDatabase(Track track)

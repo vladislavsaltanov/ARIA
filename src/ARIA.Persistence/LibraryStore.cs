@@ -21,8 +21,10 @@ public sealed class SqliteLibraryStore : ILibraryStore
         using var connection = Open();
         MigrateLegacySchema(connection);
         EnsureSchema(connection);
-        EnsureAudioColumn(connection);
-        EnsureBpmColumn(connection);
+        EnsureColumn(connection, "audio_json", "TEXT");
+        EnsureColumn(connection, "bpm", "REAL");
+        EnsureColumn(connection, "beats_per_bar", "INTEGER");
+        EnsureColumn(connection, "first_beat_ticks", "INTEGER");
     }
 
     public void Upsert(ImmutableArray<Track> tracks, ImmutableArray<Project> projects)
@@ -40,9 +42,11 @@ public sealed class SqliteLibraryStore : ILibraryStore
             command.Transaction = transaction;
             command.CommandText = """
                 INSERT INTO tracks(id, file_path, default_name, duration_ticks, gain_db, end_action,
-                    fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json, audio_json, bpm)
+                    fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json, audio_json, bpm,
+                    beats_per_bar, first_beat_ticks)
                 VALUES($id, $file_path, $default_name, $duration_ticks, $gain_db, $end_action,
-                    $fade_in_ticks, $fade_in_curve, $fade_out_ticks, $fade_out_curve, $markers_json, $audio_json, $bpm)
+                    $fade_in_ticks, $fade_in_curve, $fade_out_ticks, $fade_out_curve, $markers_json, $audio_json, $bpm,
+                    $beats_per_bar, $first_beat_ticks)
                 """;
             command.Parameters.AddWithValue("$id", dto.Id);
             command.Parameters.AddWithValue("$file_path", dto.FilePath);
@@ -57,6 +61,8 @@ public sealed class SqliteLibraryStore : ILibraryStore
             command.Parameters.AddWithValue("$markers_json", dto.Markers is null ? DBNull.Value : DtoJson.Serialize(dto.Markers));
             command.Parameters.AddWithValue("$audio_json", dto.Audio is null ? DBNull.Value : DtoJson.Serialize(dto.Audio));
             command.Parameters.AddWithValue("$bpm", (object?)dto.Bpm ?? DBNull.Value);
+            command.Parameters.AddWithValue("$beats_per_bar", (object?)dto.BeatsPerBar ?? DBNull.Value);
+            command.Parameters.AddWithValue("$first_beat_ticks", (object?)dto.FirstBeatTicks ?? DBNull.Value);
             command.ExecuteNonQuery();
         }
 
@@ -97,7 +103,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
 
         var tracks = new List<Track>();
         var trackCommand = connection.CreateCommand();
-        trackCommand.CommandText = "SELECT id, file_path, default_name, duration_ticks, gain_db, end_action, fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json, audio_json, bpm FROM tracks";
+        trackCommand.CommandText = "SELECT id, file_path, default_name, duration_ticks, gain_db, end_action, fade_in_ticks, fade_in_curve, fade_out_ticks, fade_out_curve, markers_json, audio_json, bpm, beats_per_bar, first_beat_ticks FROM tracks";
         using (var reader = trackCommand.ExecuteReader())
         {
             while (reader.Read())
@@ -117,6 +123,8 @@ public sealed class SqliteLibraryStore : ILibraryStore
                     Markers = reader.IsDBNull(10) ? null : DtoJson.Deserialize<List<MarkerDto>>(reader.GetString(10)),
                     Audio = reader.IsDBNull(11) ? null : DtoJson.Deserialize<TrackAudioDto>(reader.GetString(11)),
                     Bpm = reader.IsDBNull(12) ? null : reader.GetDouble(12),
+                    BeatsPerBar = reader.IsDBNull(13) ? null : reader.GetInt32(13),
+                    FirstBeatTicks = reader.IsDBNull(14) ? null : reader.GetInt64(14),
                 };
                 tracks.Add(TrackMapper.ToDomain(dto));
             }
@@ -237,34 +245,21 @@ public sealed class SqliteLibraryStore : ILibraryStore
         return reader.Read();
     }
 
-    private static void EnsureAudioColumn(SqliteConnection connection)
+    private static void EnsureColumn(SqliteConnection connection, string name, string type)
     {
-        using var pragma = connection.CreateCommand();
-        pragma.CommandText = "PRAGMA table_info(tracks)";
-        using var reader = pragma.ExecuteReader();
-        while (reader.Read())
+        using (var pragma = connection.CreateCommand())
         {
-            if (reader.GetString(1) == "audio_json")
+            pragma.CommandText = "PRAGMA table_info(tracks)";
+            using var reader = pragma.ExecuteReader();
+            while (reader.Read())
             {
-                return;
+                if (reader.GetString(1) == name)
+                {
+                    return;
+                }
             }
         }
-        Execute(connection, null, "ALTER TABLE tracks ADD COLUMN audio_json TEXT");
-    }
-
-    private static void EnsureBpmColumn(SqliteConnection connection)
-    {
-        using var pragma = connection.CreateCommand();
-        pragma.CommandText = "PRAGMA table_info(tracks)";
-        using var reader = pragma.ExecuteReader();
-        while (reader.Read())
-        {
-            if (reader.GetString(1) == "bpm")
-            {
-                return;
-            }
-        }
-        Execute(connection, null, "ALTER TABLE tracks ADD COLUMN bpm REAL");
+        Execute(connection, null, $"ALTER TABLE tracks ADD COLUMN {name} {type}");
     }
 
     private static void Execute(SqliteConnection connection, SqliteTransaction? transaction, string sql)

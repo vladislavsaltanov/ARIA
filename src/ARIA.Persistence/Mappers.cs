@@ -141,6 +141,8 @@ internal sealed class TrackDto
     public List<MarkerDto>? Markers { get; set; }
     public TrackAudioDto? Audio { get; set; }
     public double? Bpm { get; set; }
+    public int? BeatsPerBar { get; set; }
+    public long? FirstBeatTicks { get; set; }
 }
 
 internal sealed class OverridesDto
@@ -196,6 +198,8 @@ internal static class TrackMapper
                 : [.. d.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
             Audio = AudioMapper.ToDto(d.Audio),
             Bpm = d.Grid?.Bpm,
+            BeatsPerBar = d.Grid?.BeatsPerBar,
+            FirstBeatTicks = d.Grid?.FirstBeat.Ticks,
         };
     }
 
@@ -216,7 +220,7 @@ internal static class TrackMapper
                 Out: dto.FadeOutTicks is null ? null : new Fade(new TimeSpan(dto.FadeOutTicks.Value), (FadeCurve)dto.FadeOutCurve!.Value),
                 Markers: markers,
                 Audio: AudioMapper.ToDomain(dto.Audio),
-                Grid: dto.Bpm is { } bpm ? new BeatGrid(bpm, 4, TimeSpan.Zero) : null));
+                Grid: dto.Bpm is { } bpm ? new BeatGrid(bpm, dto.BeatsPerBar ?? 4, new TimeSpan(dto.FirstBeatTicks ?? 0)) : null));
     }
 }
 
