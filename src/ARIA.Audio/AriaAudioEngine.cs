@@ -7,7 +7,7 @@ using System.Diagnostics;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 
-public sealed class AriaAudioEngine : IAudioEngine, IDisposable
+public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposable
 {
     private readonly MixerBus _mixer;
     private IAudioSink _sink;
@@ -44,6 +44,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly int _sampleRate;
     private readonly int _channels;
     private readonly SessionMixer _sessionMixer;
+    private ClockSlot _clockSlot;
+    private int _sinkGeneration;
+    private long _sinkWrittenFrames;
 
     private int _handleCounter;
     private int _currentHandle;
@@ -74,6 +77,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _meters = meters;
         _lufs = new LufsMeter(channels, sampleRate, TimeSpan.FromMilliseconds(400));
         _sink = sink ?? new NullSink(sampleRate, channels);
+        _clockSlot = ClockSlot.For(_sink, 0);
         _mixer = new MixerBus(channels, sampleRate, blockSizeFrames);
         _block = new float[blockSizeFrames * channels];
         _mixer.Events += ForwardEvent;
@@ -327,6 +331,28 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _cts.Dispose();
     }
 
+    public int DeviceBufferFrames => Volatile.Read(ref _clockSlot).Source?.DeviceBufferFrames ?? 0;
+
+    public bool TryReadOutputStamp(out OutputStamp stamp)
+    {
+        var slot = Volatile.Read(ref _clockSlot);
+        if (slot.Source is not { } source || slot.Mapping is not { } mapping || !source.TryReadStamp(out var frame, out var nativeNs, out var flushGeneration))
+        {
+            stamp = default;
+            return false;
+        }
+        stamp = new OutputStamp(frame, mapping.ToHostTicks(nativeNs), flushGeneration, slot.Generation);
+        return true;
+    }
+
+    private sealed record ClockSlot(IOutputClockSource? Source, NativeClockMapping? Mapping, int Generation)
+    {
+        public static ClockSlot For(IAudioSink sink, int generation) =>
+            sink is IOutputClockSource source
+                ? new ClockSlot(source, new NativeClockMapping(source.NativeNowNs), generation)
+                : new ClockSlot(null, null, generation);
+    }
+
     private sealed record BirthFault(int Handle, SourceOpenFault Cause);
 
     private void ForwardEvent(StreamEvent e) => Events?.Invoke(e);
@@ -375,6 +401,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             _mainPending = _block.Length;
         }
         var accepted = Math.Clamp(_sink.Write(_block.AsSpan(_mainOffset, _mainPending)), 0, _mainPending);
+        _sinkWrittenFrames += accepted / _channels;
         _mainOffset += accepted;
         _mainPending -= accepted;
         if (_mainPending == 0)
@@ -553,6 +580,9 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             else
             {
                 var old = Interlocked.Exchange(ref _sink, pending.Sink);
+                _sinkGeneration++;
+                _sinkWrittenFrames = 0;
+                Volatile.Write(ref _clockSlot, ClockSlot.For(pending.Sink, _sinkGeneration));
                 SessionMixer.RetireDisposable(old);
                 _stallSince = 0;
             }
