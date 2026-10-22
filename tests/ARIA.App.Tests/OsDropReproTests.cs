@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 
 [Collection("headless")]
 public sealed class OsDropReproTests : IDisposable
@@ -83,6 +84,11 @@ public sealed class OsDropReproTests : IDisposable
         var count = 0;
         while (DateTime.UtcNow < deadline && count == 0)
         {
+            await _session.Dispatch(() =>
+            {
+                Dispatcher.UIThread.RunJobs();
+                return 0;
+            }, CancellationToken.None);
             count = host.Bus.Snapshot().Show.Projects[0].Entries.Length;
             await Task.Delay(50);
         }
