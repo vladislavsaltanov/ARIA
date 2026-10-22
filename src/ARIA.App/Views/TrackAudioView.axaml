@@ -4,78 +4,101 @@
              xmlns:vms="using:Aria.App.ViewModels.Settings"
              x:Class="Aria.App.Views.TrackAudioView"
              x:DataType="vm:TrackAudioVm">
-  <StackPanel Spacing="8" Margin="16">
-    <TextBlock Text="Звук вхождения" FontSize="15" FontWeight="SemiBold"/>
-    <CheckBox Content="Наследовать настройки трека" IsChecked="{Binding InheritTrackSettings}" FontSize="12"
-              IsVisible="{Binding IsEntry}"/>
-    <Grid ColumnDefinitions="Auto,*,Auto">
-      <TextBlock Text="громкость" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <Slider Grid.Column="1" Minimum="-60" Maximum="12" Value="{Binding GainDb, Mode=TwoWay}"
-              VerticalAlignment="Center" Margin="14,0"/>
-      <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
-                 VerticalAlignment="Center" Width="72"/>
-    </Grid>
-    <Grid ColumnDefinitions="Auto,*,Auto">
-      <TextBlock Text="баланс" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Pan, Mode=TwoWay}"
-              VerticalAlignment="Center" Margin="14,0"/>
-      <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
-                 VerticalAlignment="Center" Width="72"/>
-    </Grid>
-    <TextBlock Text="Метроном (трек — во всех плейлистах)" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,4,0,0"/>
-    <CheckBox Content="Метроном для трека" IsChecked="{Binding HasGrid}" FontSize="12"/>
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="14" IsVisible="{Binding HasGrid}">
-      <TextBlock Text="темп, BPM" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <NumericUpDown x:Name="GridBpm" Grid.Column="1" Value="{Binding Bpm}" Minimum="20" Maximum="300" Increment="1" FormatString="0.00"
-                     FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Left" Width="150"/>
-      <TextBlock Grid.Row="1" Text="долей в такте" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <NumericUpDown x:Name="GridBeats" Grid.Row="1" Grid.Column="1" Value="{Binding BeatsPerBar}" Minimum="1" Maximum="16" Increment="1" FormatString="0"
-                     FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Left" Width="150"/>
-      <TextBlock Grid.Row="2" Text="первая доля, мс" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-        <NumericUpDown x:Name="GridFirstBeat" Value="{Binding FirstBeatMs}" Minimum="0" Increment="1" FormatString="0"
-                       FontFamily="{StaticResource MonoFont}" Width="150"/>
-        <Button Content="← текущая позиция" Command="{Binding TakeCurrentPositionCommand}" FontSize="12"/>
-      </StackPanel>
-    </Grid>
-    <StackPanel Spacing="6" IsVisible="{Binding IsEntry}" Margin="0,4,0,0">
-      <TextBlock Text="Прослушка (это вхождение)" FontSize="12" Foreground="{StaticResource BrushDim}"/>
-      <TextBlock Text="{Binding BackingName, StringFormat={}Подложка: {0}}" FontSize="12" TextWrapping="Wrap"/>
-      <AutoCompleteBox x:Name="BackingSearch" ItemsSource="{Binding BackingOptions}" SelectedItem="{Binding SelectedBacking}"
-                       FilterMode="Contains" MinimumPrefixLength="1" PlaceholderText="Найти трек библиотеки…" FontSize="12"/>
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="Добавить файл…" Click="OnAddBackingFile" FontSize="12"/>
-        <Button Content="Убрать" Command="{Binding ClearBackingCommand}" FontSize="12"/>
-      </StackPanel>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="16,16,16,12">
+    <StackPanel Spacing="8" Margin="0,0,0,8">
+      <TextBlock Text="Звук вхождения" FontSize="15" FontWeight="SemiBold"/>
+      <CheckBox Content="Наследовать настройки трека" IsChecked="{Binding InheritTrackSettings}" FontSize="12"
+                IsVisible="{Binding IsEntry}"/>
     </StackPanel>
-    <TextBlock Text="Эквалайзер" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,4,0,0"/>
-    <ItemsControl ItemsSource="{Binding EqBands}">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="vms:AudioSectionVm+EqBandVm">
-          <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
-            <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="52"/>
-            <Slider Grid.Column="1" Minimum="-15" Maximum="15" Value="{Binding GainDb, Mode=TwoWay}"
-                    VerticalAlignment="Center" Margin="14,0"/>
-            <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
-                       VerticalAlignment="Center" Width="72"/>
-          </Grid>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
-    <CheckBox Content="Нормализация" IsChecked="{Binding NormalizeEnabled}" FontSize="12" Margin="0,4,0,0"/>
-    <TextBlock Text="{Binding NormalizeStatus}" FontSize="12" Foreground="{StaticResource BrushDim}"/>
-    <CheckBox Content="Своя цель" IsChecked="{Binding OwnTargetLufs}" FontSize="12"/>
-    <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding OwnTargetLufs}">
-      <TextBlock Text="цель" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <Slider Grid.Column="1" Minimum="-36" Maximum="-6" Value="{Binding TargetLufs, Mode=TwoWay}"
-              VerticalAlignment="Center" Margin="14,0"/>
-      <TextBlock Grid.Column="2" Text="{Binding TargetLufs, StringFormat={}{0:0.0} LUFS}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
-                 VerticalAlignment="Center" Width="72"/>
-    </Grid>
-    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+    <TabControl x:Name="Sections" Grid.Row="1" Padding="0">
+      <TabItem Header="Уровень">
+        <ScrollViewer>
+          <StackPanel Spacing="8" Margin="0,12,12,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <TextBlock Text="громкость" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="76"/>
+              <Slider Grid.Column="1" Minimum="-60" Maximum="12" Value="{Binding GainDb, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0"/>
+              <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
+                         VerticalAlignment="Center" Width="72"/>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <TextBlock Text="баланс" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="76"/>
+              <Slider Grid.Column="1" Minimum="-1" Maximum="1" Value="{Binding Pan, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0"/>
+              <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
+                         VerticalAlignment="Center" Width="72"/>
+            </Grid>
+            <CheckBox Content="Нормализация" IsChecked="{Binding NormalizeEnabled}" FontSize="12" Margin="0,8,0,0"/>
+            <TextBlock Text="{Binding NormalizeStatus}" FontSize="12" Foreground="{StaticResource BrushDim}"/>
+            <CheckBox Content="Своя цель" IsChecked="{Binding OwnTargetLufs}" FontSize="12"/>
+            <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding OwnTargetLufs}">
+              <TextBlock Text="цель" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="76"/>
+              <Slider Grid.Column="1" Minimum="-36" Maximum="-6" Value="{Binding TargetLufs, Mode=TwoWay}"
+                      VerticalAlignment="Center" Margin="14,0"/>
+              <TextBlock Grid.Column="2" Text="{Binding TargetLufs, StringFormat={}{0:0.0} LUFS}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
+                         VerticalAlignment="Center" Width="72"/>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Метроном">
+        <ScrollViewer>
+          <StackPanel Spacing="8" Margin="0,12,12,0">
+            <TextBlock Text="Метроном (трек — во всех плейлистах)" FontSize="12" Foreground="{StaticResource BrushDim}"/>
+            <CheckBox Content="Метроном для трека" IsChecked="{Binding HasGrid}" FontSize="12"/>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="14" IsVisible="{Binding HasGrid}">
+              <TextBlock Text="темп, BPM" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+              <NumericUpDown x:Name="GridBpm" Grid.Column="1" Value="{Binding Bpm}" Minimum="20" Maximum="300" Increment="1" FormatString="0.00"
+                             FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Left" Width="150"/>
+              <TextBlock Grid.Row="1" Text="долей в такте" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+              <NumericUpDown x:Name="GridBeats" Grid.Row="1" Grid.Column="1" Value="{Binding BeatsPerBar}" Minimum="1" Maximum="16" Increment="1" FormatString="0"
+                             FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Left" Width="150"/>
+              <TextBlock Grid.Row="2" Text="первая доля, мс" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+              <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <NumericUpDown x:Name="GridFirstBeat" Value="{Binding FirstBeatMs}" Minimum="0" Increment="1" FormatString="0"
+                               FontFamily="{StaticResource MonoFont}" Width="150"/>
+                <Button Content="← текущая позиция" Command="{Binding TakeCurrentPositionCommand}" FontSize="12"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Прослушка" IsVisible="{Binding IsEntry}">
+        <ScrollViewer>
+          <StackPanel Spacing="6" Margin="0,12,12,0">
+            <TextBlock Text="Прослушка (это вхождение)" FontSize="12" Foreground="{StaticResource BrushDim}"/>
+            <TextBlock Text="{Binding BackingName, StringFormat={}Подложка: {0}}" FontSize="12" TextWrapping="Wrap"/>
+            <AutoCompleteBox x:Name="BackingSearch" ItemsSource="{Binding BackingOptions}" SelectedItem="{Binding SelectedBacking}"
+                             FilterMode="Contains" MinimumPrefixLength="1" PlaceholderText="Найти трек библиотеки…" FontSize="12"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Добавить файл…" Click="OnAddBackingFile" FontSize="12"/>
+              <Button Content="Убрать" Command="{Binding ClearBackingCommand}" FontSize="12"/>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Эквалайзер">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding EqBands}" Margin="0,6,12,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vms:AudioSectionVm+EqBandVm">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+                  <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" Width="52"/>
+                  <Slider Grid.Column="1" Minimum="-15" Maximum="15" Value="{Binding GainDb, Mode=TwoWay}"
+                          VerticalAlignment="Center" Margin="14,0"/>
+                  <TextBlock Grid.Column="2" Text="{Binding GainDb, StringFormat={}{0:0.0} дБ}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
+                             VerticalAlignment="Center" Width="72"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
       <Button Content="Прослушать" Command="{Binding PreviewCommand}"/>
       <Button Content="Стоп" Command="{Binding StopPreviewCommand}"/>
       <Button Content="Измерить" Command="{Binding NormalizeCommand}"/>
     </StackPanel>
-  </StackPanel>
+  </Grid>
 </UserControl>

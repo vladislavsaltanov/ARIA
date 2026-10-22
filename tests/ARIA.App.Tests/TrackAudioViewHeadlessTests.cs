@@ -7,6 +7,7 @@ using Aria.Core.Model;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 [Collection("headless")]
 public sealed class TrackAudioViewHeadlessTests
@@ -28,6 +29,9 @@ public sealed class TrackAudioViewHeadlessTests
             var view = new TrackAudioView { DataContext = editor };
             var window = new Window { Content = view, Width = 480, Height = 900 };
             window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            view.FindControl<TabControl>("Sections")!.SelectedIndex = 1;
             Dispatcher.UIThread.RunJobs();
 
             var bpm = view.FindControl<NumericUpDown>("GridBpm")!;
@@ -60,6 +64,9 @@ public sealed class TrackAudioViewHeadlessTests
             window.Show();
             Dispatcher.UIThread.RunJobs();
 
+            view.FindControl<TabControl>("Sections")!.SelectedIndex = 2;
+            Dispatcher.UIThread.RunJobs();
+
             var search = view.FindControl<AutoCompleteBox>("BackingSearch")!;
             Assert.True(search.IsEffectivelyVisible);
             search.SelectedItem = guide;
@@ -67,6 +74,48 @@ public sealed class TrackAudioViewHeadlessTests
 
             Assert.Equal([guide.Id], calls);
             Assert.Equal("Гайд", editor.BackingName);
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Sections_AreTabs_AndEqualizerTabScrollsInShortWindow()
+    {
+        await _session.Dispatch(() =>
+        {
+            var editor = new TrackAudioVm(_ => { }, TrackId.New(), entryId: EntryId.New(), backingOptions: () => []);
+            var view = new TrackAudioView { DataContext = editor };
+            var window = new Window { Content = view, Width = 480, Height = 420 };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var tabs = view.FindControl<TabControl>("Sections")!;
+            Assert.Equal(["Уровень", "Метроном", "Прослушка", "Эквалайзер"], tabs.Items.OfType<TabItem>().Select(tab => tab.Header).ToArray());
+
+            tabs.SelectedIndex = 3;
+            Dispatcher.UIThread.RunJobs();
+            var scroll = view.GetVisualDescendants().OfType<ScrollViewer>().First(candidate => candidate.IsEffectivelyVisible && candidate.Extent.Height > 0);
+            Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
+            Assert.True(scroll.Bounds.Bottom <= view.Bounds.Height);
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task TrackEditor_HidesListeningTab()
+    {
+        await _session.Dispatch(() =>
+        {
+            var editor = new TrackAudioVm(_ => { }, TrackId.New());
+            var view = new TrackAudioView { DataContext = editor };
+            var window = new Window { Content = view, Width = 480, Height = 600 };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var tabs = view.FindControl<TabControl>("Sections")!;
+            Assert.Equal(["Уровень", "Метроном", "Эквалайзер"], tabs.Items.OfType<TabItem>().Where(tab => tab.IsVisible).Select(tab => tab.Header).ToArray());
             window.Close();
             return 0;
         }, CancellationToken.None);
