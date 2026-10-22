@@ -118,7 +118,7 @@ public partial class App : Application
         var rowSettings = settingsStore.Load();
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Tracks, rowSettings);
         ScriptPanelViewModel? scripts = null;
-        var projects = new ProjectsViewModel(host.Bus, () => host.Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio, scriptExporter: pid => scripts!.ExportProjectScripts(pid));
+        var projects = new ProjectsViewModel(host.Bus, () => host.Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio, scriptExporter: pid => scripts!.ExportProjectScripts(pid), playingPosition: id => host.Monitor.Latest is { } position && position.Deck.TrackId == id ? position.FilePosition : null);
         projects.TrackRelink = (id, path) => host.RelinkTrackAsync(id, path);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);

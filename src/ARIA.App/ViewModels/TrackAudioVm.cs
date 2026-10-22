@@ -18,10 +18,13 @@ public sealed partial class TrackAudioVm : ObservableObject
     private readonly EntryId? _entryId;
     private double _gainDb;
     private double _pan;
-    private bool _hasBpm;
-    private double _bpmValue = DefaultBpm;
-    private readonly int _beatsPerBar;
-    private readonly TimeSpan _firstBeat;
+    private bool _hasGrid;
+    private double _bpm = DefaultBpm;
+    private int _beatsPerBar;
+    private double _firstBeatMs;
+    private bool _canTakeCurrentPosition;
+    private readonly TimeSpan _trackDuration;
+    private readonly Func<TimeSpan?>? _currentPosition;
     private bool _inheritTrackSettings;
     private double _normalizeTargetLufs;
     private bool _normalizeEnabled;
@@ -31,7 +34,7 @@ public sealed partial class TrackAudioVm : ObservableObject
     private readonly bool _globalNormalizeEnabled;
     private readonly Func<double?>? _measureReader;
 
-    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, BeatGrid? initialGrid = null)
+    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, BeatGrid? initialGrid = null, TimeSpan trackDuration = default, Func<TimeSpan?>? currentPosition = null)
     {
         _submit = submit;
         _trackId = trackId;
@@ -46,10 +49,13 @@ public sealed partial class TrackAudioVm : ObservableObject
         _targetLufs = audio.NormalizeTargetLufs ?? NormalizeDefaultLufs;
         _gainDb = audio.GainDb;
         _pan = audio.Pan;
-        _hasBpm = initialGrid is not null;
-        _bpmValue = Math.Clamp(initialGrid?.Bpm ?? DefaultBpm, 20.0, 300.0);
-        _beatsPerBar = initialGrid?.BeatsPerBar ?? 4;
-        _firstBeat = initialGrid?.FirstBeat ?? TimeSpan.Zero;
+        _trackDuration = trackDuration;
+        _currentPosition = currentPosition;
+        _hasGrid = initialGrid is not null;
+        _bpm = ClampBpm(initialGrid?.Bpm ?? DefaultBpm);
+        _beatsPerBar = ClampBeats(initialGrid?.BeatsPerBar ?? 4);
+        _firstBeatMs = ClampFirstBeat(initialGrid?.FirstBeat.TotalMilliseconds ?? 0);
+        _canTakeCurrentPosition = currentPosition?.Invoke() is not null;
         EqBands = [.. audio.Eq.Bands.Select((b, i) => new AudioSectionVm.EqBandVm(AudioSectionVm.BandLabel(i, b.FrequencyHz), b.FrequencyHz, b.GainDb, SubmitCurrent))];
         NormalizeRequest = id => _submit(new NormalizeTrack(id));
     }
@@ -103,6 +109,7 @@ public sealed partial class TrackAudioVm : ObservableObject
 
     public void RefreshMeasurement()
     {
+        CanTakeCurrentPosition = _currentPosition?.Invoke() is not null;
         if (_measureReader?.Invoke() is { } measured && measured != _measuredLufs)
         {
             _measuredLufs = measured;
@@ -157,31 +164,96 @@ public sealed partial class TrackAudioVm : ObservableObject
         }
     }
 
-    public bool HasBpm
+    public bool HasGrid
     {
-        get => _hasBpm;
+        get => _hasGrid;
         set
         {
-            if (SetProperty(ref _hasBpm, value))
+            if (SetProperty(ref _hasGrid, value))
             {
-                SubmitBpm();
+                _submit(new SetTrackGrid(_trackId, _hasGrid ? CurrentGrid() : null));
             }
         }
     }
 
-    public double BpmValue
+    public double Bpm
     {
-        get => _bpmValue;
+        get => _bpm;
         set
         {
-            if (SetProperty(ref _bpmValue, Math.Clamp(value, 20.0, 300.0)))
+            if (SetProperty(ref _bpm, ClampBpm(value)))
             {
-                SubmitBpm();
+                SubmitGrid();
             }
         }
     }
 
-    private void SubmitBpm() => _submit(new SetTrackGrid(_trackId, _hasBpm ? new BeatGrid(_bpmValue, _beatsPerBar, _firstBeat) : null));
+    public int BeatsPerBar
+    {
+        get => _beatsPerBar;
+        set
+        {
+            if (SetProperty(ref _beatsPerBar, ClampBeats(value)))
+            {
+                SubmitGrid();
+            }
+        }
+    }
+
+    public double FirstBeatMs
+    {
+        get => _firstBeatMs;
+        set
+        {
+            if (SetProperty(ref _firstBeatMs, ClampFirstBeat(value)))
+            {
+                SubmitGrid();
+            }
+        }
+    }
+
+    public bool CanTakeCurrentPosition
+    {
+        get => _canTakeCurrentPosition;
+        private set
+        {
+            if (SetProperty(ref _canTakeCurrentPosition, value))
+            {
+                TakeCurrentPositionCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanTakeCurrentPosition))]
+    private void TakeCurrentPosition()
+    {
+        if (_currentPosition?.Invoke() is { } position)
+        {
+            FirstBeatMs = Math.Round(position.TotalMilliseconds);
+        }
+    }
+
+    private BeatGrid CurrentGrid() => new(_bpm, _beatsPerBar, TimeSpan.FromMilliseconds(_firstBeatMs));
+
+    private void SubmitGrid()
+    {
+        if (_hasGrid)
+        {
+            _submit(new SetTrackGrid(_trackId, CurrentGrid()));
+        }
+    }
+
+    private static double ClampBpm(double value) =>
+        Math.Round(Math.Clamp(value, BeatGridValidation.BpmMin, BeatGridValidation.BpmMax), 2);
+
+    private static int ClampBeats(int value) =>
+        Math.Clamp(value, BeatGridValidation.BeatsMin, BeatGridValidation.BeatsMax);
+
+    private double ClampFirstBeat(double value)
+    {
+        var max = _trackDuration > TimeSpan.Zero ? _trackDuration.TotalMilliseconds - 1 : double.MaxValue;
+        return Math.Clamp(Math.Round(value), 0, max);
+    }
 
     public bool InheritTrackSettings
     {

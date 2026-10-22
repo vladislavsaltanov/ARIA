@@ -22,13 +22,21 @@
       <TextBlock Grid.Column="2" Text="{Binding Pan, StringFormat={}{0:0.00}}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
                  VerticalAlignment="Center" Width="72"/>
     </Grid>
-    <CheckBox Content="Метроном для трека" IsChecked="{Binding HasBpm}" FontSize="12" Margin="0,4,0,0"/>
-    <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasBpm}">
-      <TextBlock Text="темп" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
-      <Slider Grid.Column="1" Minimum="20" Maximum="300" Value="{Binding BpmValue, Mode=TwoWay}"
-              VerticalAlignment="Center" Margin="14,0"/>
-      <TextBlock Grid.Column="2" Text="{Binding BpmValue, StringFormat={}{0:0} BPM}" FontSize="11" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource BrushDim}"
-                 VerticalAlignment="Center" Width="72"/>
+    <TextBlock Text="Метроном (трек — во всех плейлистах)" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,4,0,0"/>
+    <CheckBox Content="Метроном для трека" IsChecked="{Binding HasGrid}" FontSize="12"/>
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="14" IsVisible="{Binding HasGrid}">
+      <TextBlock Text="темп, BPM" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+      <NumericUpDown x:Name="GridBpm" Grid.Column="1" Value="{Binding Bpm}" Minimum="20" Maximum="300" Increment="1" FormatString="0.00"
+                     FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Left" Width="150"/>
+      <TextBlock Grid.Row="1" Text="долей в такте" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+      <NumericUpDown x:Name="GridBeats" Grid.Row="1" Grid.Column="1" Value="{Binding BeatsPerBar}" Minimum="1" Maximum="16" Increment="1" FormatString="0"
+                     FontFamily="{StaticResource MonoFont}" HorizontalAlignment="Left" Width="150"/>
+      <TextBlock Grid.Row="2" Text="первая доля, мс" FontSize="12" Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"/>
+      <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <NumericUpDown x:Name="GridFirstBeat" Value="{Binding FirstBeatMs}" Minimum="0" Increment="1" FormatString="0"
+                       FontFamily="{StaticResource MonoFont}" Width="150"/>
+        <Button Content="← текущая позиция" Command="{Binding TakeCurrentPositionCommand}" FontSize="12"/>
+      </StackPanel>
     </Grid>
     <TextBlock Text="Эквалайзер" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,4,0,0"/>
     <ItemsControl ItemsSource="{Binding EqBands}">

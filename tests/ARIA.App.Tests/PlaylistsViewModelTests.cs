@@ -30,6 +30,25 @@ public sealed class ProjectsViewModelTests
     }
 
     [Fact]
+    public void CreateEntryAudioEditor_PassesGridDurationAndPlayingPosition()
+    {
+        var grid = new BeatGrid(96, 3, TimeSpan.FromMilliseconds(120));
+        var track = new Track(TestTrack.Id, TestTrack.FilePath, TestTrack.DefaultName, TestTrack.Duration, new TrackDefaults(Grid: grid));
+        var (bus, _, _) = Setup();
+        using var vm = new ProjectsViewModel(bus, () => [track], playingPosition: id => id == track.Id ? TimeSpan.FromSeconds(4.5) : null);
+
+        var editor = vm.CreateEntryAudioEditor(vm.Projects[0].Entries[0]);
+
+        Assert.True(editor.HasGrid);
+        Assert.Equal(96, editor.Bpm);
+        Assert.Equal(3, editor.BeatsPerBar);
+        Assert.Equal(120, editor.FirstBeatMs);
+        Assert.True(editor.CanTakeCurrentPosition);
+        editor.FirstBeatMs = 999999;
+        Assert.Equal(179999, editor.FirstBeatMs);
+    }
+
+    [Fact]
     public void CreateEntryAudioEditor_UsesEntryOverride()
     {
         var entryAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);

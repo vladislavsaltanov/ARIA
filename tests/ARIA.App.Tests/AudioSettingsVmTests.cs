@@ -464,60 +464,130 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
-    public void TrackBpm_Set_SubmitsDefaultGrid()
+    public void TrackGrid_Enable_SubmitsDefaultGrid()
     {
         var submitted = new List<Command>();
         var trackId = TrackId.New();
         var editor = new TrackAudioVm(submitted.Add, trackId);
 
-        Assert.False(editor.HasBpm);
-        editor.HasBpm = true;
+        Assert.False(editor.HasGrid);
+        editor.HasGrid = true;
 
         var set = Assert.IsType<SetTrackGrid>(Assert.Single(submitted));
         Assert.Equal(trackId, set.Track);
         Assert.Equal(new BeatGrid(120, 4, TimeSpan.Zero), set.Grid);
     }
 
-    [Fact]
-    public void TrackBpm_Value_ClampsAndSubmits()
+    [Theory]
+    [InlineData(127.344, 127.34)]
+    [InlineData(500, 300)]
+    [InlineData(10, 20)]
+    public void TrackGrid_Bpm_RoundsToHundredths_AndClamps(double typed, double expected)
     {
         var submitted = new List<Command>();
-        var trackId = TrackId.New();
-        var editor = new TrackAudioVm(submitted.Add, trackId);
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initialGrid: new BeatGrid(120, 4, TimeSpan.Zero));
 
-        editor.HasBpm = true;
-        submitted.Clear();
-        editor.BpmValue = 500;
+        editor.Bpm = typed;
 
-        Assert.Equal(300, editor.BpmValue);
-        Assert.Equal(300, Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid!.Bpm);
+        Assert.Equal(expected, editor.Bpm);
+        Assert.Equal(new BeatGrid(expected, 4, TimeSpan.Zero), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(20, 16)]
+    [InlineData(7, 7)]
+    public void TrackGrid_Beats_Clamps(int typed, int expected)
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initialGrid: new BeatGrid(120, 4, TimeSpan.Zero));
+
+        editor.BeatsPerBar = typed;
+
+        Assert.Equal(expected, editor.BeatsPerBar);
+        Assert.Equal(new BeatGrid(120, expected, TimeSpan.Zero), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
     }
 
     [Fact]
-    public void TrackBpm_Change_KeepsBeatsAndFirstBeat()
+    public void TrackGrid_FirstBeat_ClampsToDuration()
     {
         var submitted = new List<Command>();
-        var trackId = TrackId.New();
-        var editor = new TrackAudioVm(submitted.Add, trackId, initialGrid: new BeatGrid(100, 3, TimeSpan.FromMilliseconds(500)));
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initialGrid: new BeatGrid(120, 4, TimeSpan.Zero), trackDuration: TimeSpan.FromMinutes(3));
 
-        editor.BpmValue = 110;
+        editor.FirstBeatMs = 999999;
+
+        Assert.Equal(179999, editor.FirstBeatMs);
+        Assert.Equal(new BeatGrid(120, 4, TimeSpan.FromMilliseconds(179999)), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
+        submitted.Clear();
+        editor.FirstBeatMs = -5;
+        Assert.Equal(0, editor.FirstBeatMs);
+    }
+
+    [Fact]
+    public void TrackGrid_Disable_SubmitsNull()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initialGrid: new BeatGrid(100, 4, TimeSpan.Zero));
+
+        Assert.True(editor.HasGrid);
+        Assert.Equal(100, editor.Bpm);
+        Assert.Empty(submitted);
+        editor.HasGrid = false;
+
+        Assert.Null(Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
+    }
+
+    [Fact]
+    public void TrackGrid_EditsWhileDisabled_SubmitNothing()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New());
+
+        editor.Bpm = 90;
+        editor.BeatsPerBar = 3;
+        editor.FirstBeatMs = 500;
+
+        Assert.Empty(submitted);
+        editor.HasGrid = true;
+        Assert.Equal(new BeatGrid(90, 3, TimeSpan.FromMilliseconds(500)), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
+    }
+
+    [Fact]
+    public void TrackGrid_KeepsBeatsAndFirstBeat_OnBpmChange()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initialGrid: new BeatGrid(100, 3, TimeSpan.FromMilliseconds(500)));
+
+        editor.Bpm = 110;
 
         Assert.Equal(new BeatGrid(110, 3, TimeSpan.FromMilliseconds(500)), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
     }
 
     [Fact]
-    public void TrackBpm_Unset_SubmitsNull()
+    public void TrackGrid_TakeCurrentPosition_UsesPlayingPosition()
     {
         var submitted = new List<Command>();
-        var trackId = TrackId.New();
-        var editor = new TrackAudioVm(submitted.Add, trackId, initialGrid: new BeatGrid(100, 4, TimeSpan.Zero));
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), initialGrid: new BeatGrid(120, 4, TimeSpan.Zero), trackDuration: TimeSpan.FromMinutes(3), currentPosition: () => TimeSpan.FromSeconds(1.234));
 
-        Assert.True(editor.HasBpm);
-        Assert.Equal(100, editor.BpmValue);
-        Assert.Empty(submitted);
-        editor.HasBpm = false;
+        Assert.True(editor.CanTakeCurrentPosition);
+        editor.TakeCurrentPositionCommand.Execute(null);
 
-        Assert.Null(Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
+        Assert.Equal(1234, editor.FirstBeatMs);
+        Assert.Equal(new BeatGrid(120, 4, TimeSpan.FromMilliseconds(1234)), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
+    }
+
+    [Fact]
+    public void TrackGrid_TakeCurrentPosition_DisabledWhenNotPlaying()
+    {
+        TimeSpan? position = null;
+        var editor = new TrackAudioVm(_ => { }, TrackId.New(), initialGrid: new BeatGrid(120, 4, TimeSpan.Zero), currentPosition: () => position);
+
+        Assert.False(editor.CanTakeCurrentPosition);
+        Assert.False(editor.TakeCurrentPositionCommand.CanExecute(null));
+        position = TimeSpan.FromSeconds(2);
+        editor.RefreshMeasurement();
+        Assert.True(editor.CanTakeCurrentPosition);
+        Assert.True(editor.TakeCurrentPositionCommand.CanExecute(null));
     }
 
     private sealed class OutputStubLister(Func<IReadOnlyList<OutputDevice>> list) : IAudioOutputLister

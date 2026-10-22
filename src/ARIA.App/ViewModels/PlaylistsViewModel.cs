@@ -27,6 +27,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? _scriptExporter;
     private Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? _audioImport;
     private readonly Func<TrackId, TrackAudioSettings?>? _trackAudio;
+    private readonly Func<TrackId, TimeSpan?>? _playingPosition;
     private readonly SynchronizationContext? _sync;
     private readonly HashSet<TrackId> _faulted = [];
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
@@ -158,7 +159,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryVm> VisibleEntries { get; } = [];
 
-    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null, Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? scriptExporter = null)
+    public ProjectsViewModel(ICommandBus bus, Func<ImmutableArray<Track>>? trackSource = null, WaveformThumbs? thumbs = null, AppSettings? rowSettings = null, SynchronizationContext? sync = null, Func<TopLevel?>? topLevel = null, Func<IReadOnlyList<string>, IProgress<string>?, Task<ImportReport>>? audioImport = null, TimeSpan? transientStatusTtl = null, Func<TrackId, TrackAudioSettings?>? trackAudio = null, Func<Task<IReadOnlyList<string>>>? folderPicker = null, Func<ProjectId, IReadOnlyList<(string Name, string Json)>>? scriptExporter = null, Func<TrackId, TimeSpan?>? playingPosition = null)
     {
         _bus = bus;
         _trackSource = trackSource;
@@ -171,6 +172,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         _scriptExporter = scriptExporter;
         _audioImport = audioImport;
         _trackAudio = trackAudio;
+        _playingPosition = playingPosition;
         _subscription = bus.Subscribe(Apply);
         var snapshot = bus.Snapshot();
         foreach (var id in snapshot.Transport.Faulted)
@@ -961,9 +963,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     public TrackAudioVm CreateEntryAudioEditor(EntryVm entry)
     {
         var global = _bus.Snapshot().Mixer.EffectiveGlobal;
+        var track = _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId);
         var initial = entry.Overrides?.Audio
             ?? _trackAudio?.Invoke(entry.TrackId)
-            ?? _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Audio;
+            ?? track?.Defaults.Audio;
         var editor = new TrackAudioVm(
             Submit,
             entry.TrackId,
@@ -972,7 +975,9 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             global.NormalizeTargetLufs,
             global.NormalizeEnabled,
             () => _trackAudio?.Invoke(entry.TrackId)?.MeasuredLufs,
-            initialGrid: _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Grid)
+            initialGrid: track?.Defaults.Grid,
+            trackDuration: track?.Duration ?? TimeSpan.Zero,
+            currentPosition: _playingPosition is { } playing ? () => playing(entry.TrackId) : null)
         {
             InheritTrackSettings = entry.Overrides?.Audio is null,
         };
