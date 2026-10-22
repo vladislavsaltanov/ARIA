@@ -69,7 +69,8 @@ public sealed class MixReportRingTests
         writer.Start();
         var target = new MixBlockReport();
         var good = 0;
-        for (var attempt = 0; attempt < 100_000; attempt++)
+        var deadline = Environment.TickCount64 + 10_000;
+        while (good < 1000 && Environment.TickCount64 < deadline)
         {
             var sequence = ring.LatestSequence;
             if (sequence == 0 || !ring.TryRead(sequence, target))
@@ -89,7 +90,7 @@ public sealed class MixReportRingTests
         }
         stop.Cancel();
         writer.Join();
-        Assert.True(good > 0);
+        Assert.Equal(1000, good);
     }
 
     [Fact]

@@ -7,25 +7,25 @@ supersedes: "реализация e03s01/e03s02 (SessionMixer, ClickVoice, /prev
 stories:
   - id: e04s01
     title: "Домен: BeatGrid на Track, Backing на вхождении, DeckContent, хранение, кодек, глоссарий"
-    status: planned
+    status: done
   - id: e04s02
     title: "Редакторы: сетка и подложка в desktop, BPM и round-trip backing на веб-пульте"
-    status: planned
+    status: done
   - id: e04s03
     title: "Аудио-время: шим (int64, метки коллбэка, поколение flush), OutputClock, MixReportRing"
-    status: planned
+    status: done
   - id: e04s04
     title: "Remote: роль слушателя, /monitor/ws (NTP, таймлайн, реестр), /monitor/pcm"
-    status: planned
+    status: done
   - id: e04s05
     title: "Браузер: страница /monitor, планировщик подложки и клика, JS-тесты в CI"
-    status: planned
+    status: done
   - id: e04s06
     title: "Desktop: QR слушателя, «Мониторы», задержка выхода зала, тест-клик"
-    status: planned
+    status: done
   - id: e04s07
     title: "Удаление сессионной схемы, уборка веб-пульта, ADR 0014, документы, PR"
-    status: planned
+    status: done
 decisions:
   - "Эталон синхронизации — момент звучания основного выхода ARIA (зал)."
   - "Устойчивость важнее точной копии зального микса: телефон подкачивает PCM, декодированный хостом, и играет сам по общему таймлайну; мастер-обработка зала в мониторинг не входит."
