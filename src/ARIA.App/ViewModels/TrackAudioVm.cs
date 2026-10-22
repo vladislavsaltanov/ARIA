@@ -7,6 +7,11 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+public sealed record BackingOption(TrackId Id, string Name)
+{
+    public override string ToString() => Name;
+}
+
 public sealed partial class TrackAudioVm : ObservableObject
 {
     public const double NormalizeDefaultLufs = -16.0;
@@ -25,6 +30,11 @@ public sealed partial class TrackAudioVm : ObservableObject
     private bool _canTakeCurrentPosition;
     private readonly TimeSpan _trackDuration;
     private readonly Func<TimeSpan?>? _currentPosition;
+    private readonly Func<IReadOnlyList<BackingOption>>? _backingOptions;
+    private readonly Action<TrackId?>? _setBacking;
+    private readonly Func<string, Task<TrackId?>>? _importBacking;
+    private IReadOnlyList<BackingOption> _backingList;
+    private BackingOption? _selectedBacking;
     private bool _inheritTrackSettings;
     private double _normalizeTargetLufs;
     private bool _normalizeEnabled;
@@ -34,7 +44,7 @@ public sealed partial class TrackAudioVm : ObservableObject
     private readonly bool _globalNormalizeEnabled;
     private readonly Func<double?>? _measureReader;
 
-    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, BeatGrid? initialGrid = null, TimeSpan trackDuration = default, Func<TimeSpan?>? currentPosition = null)
+    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, BeatGrid? initialGrid = null, TimeSpan trackDuration = default, Func<TimeSpan?>? currentPosition = null, TrackId? initialBacking = null, Func<IReadOnlyList<BackingOption>>? backingOptions = null, Action<TrackId?>? setBacking = null, Func<string, Task<TrackId?>>? importBacking = null)
     {
         _submit = submit;
         _trackId = trackId;
@@ -56,6 +66,11 @@ public sealed partial class TrackAudioVm : ObservableObject
         _beatsPerBar = ClampBeats(initialGrid?.BeatsPerBar ?? 4);
         _firstBeatMs = ClampFirstBeat(initialGrid?.FirstBeat.TotalMilliseconds ?? 0);
         _canTakeCurrentPosition = currentPosition?.Invoke() is not null;
+        _backingOptions = backingOptions;
+        _setBacking = setBacking;
+        _importBacking = importBacking;
+        _backingList = LoadBackingOptions();
+        _selectedBacking = initialBacking is { } backing ? _backingList.FirstOrDefault(o => o.Id == backing) : null;
         EqBands = [.. audio.Eq.Bands.Select((b, i) => new AudioSectionVm.EqBandVm(AudioSectionVm.BandLabel(i, b.FrequencyHz), b.FrequencyHz, b.GainDb, SubmitCurrent))];
         NormalizeRequest = id => _submit(new NormalizeTrack(id));
     }
@@ -232,6 +247,45 @@ public sealed partial class TrackAudioVm : ObservableObject
             FirstBeatMs = Math.Round(position.TotalMilliseconds);
         }
     }
+
+    public IReadOnlyList<BackingOption> BackingOptions
+    {
+        get => _backingList;
+        private set => SetProperty(ref _backingList, value);
+    }
+
+    public BackingOption? SelectedBacking
+    {
+        get => _selectedBacking;
+        set
+        {
+            if (SetProperty(ref _selectedBacking, value))
+            {
+                OnPropertyChanged(nameof(BackingName));
+                _setBacking?.Invoke(value?.Id);
+            }
+        }
+    }
+
+    public string BackingName => _selectedBacking?.Name ?? "нет — звучит само вхождение";
+
+    [RelayCommand]
+    private void ClearBacking() => SelectedBacking = null;
+
+    public async Task AddBackingFileAsync(string path)
+    {
+        if (_importBacking is null || await _importBacking(path) is not { } imported)
+        {
+            return;
+        }
+        BackingOptions = LoadBackingOptions();
+        SelectedBacking = BackingOptions.FirstOrDefault(o => o.Id == imported);
+    }
+
+    private IReadOnlyList<BackingOption> LoadBackingOptions() =>
+        IsEntry && _backingOptions is { } source
+            ? [.. source().OrderBy(o => o.Name, StringComparer.CurrentCultureIgnoreCase)]
+            : [];
 
     private BeatGrid CurrentGrid() => new(_bpm, _beatsPerBar, TimeSpan.FromMilliseconds(_firstBeatMs));
 

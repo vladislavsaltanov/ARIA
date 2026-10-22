@@ -38,6 +38,16 @@
         <Button Content="← текущая позиция" Command="{Binding TakeCurrentPositionCommand}" FontSize="12"/>
       </StackPanel>
     </Grid>
+    <StackPanel Spacing="6" IsVisible="{Binding IsEntry}" Margin="0,4,0,0">
+      <TextBlock Text="Прослушка (это вхождение)" FontSize="12" Foreground="{StaticResource BrushDim}"/>
+      <TextBlock Text="{Binding BackingName, StringFormat={}Подложка: {0}}" FontSize="12" TextWrapping="Wrap"/>
+      <AutoCompleteBox x:Name="BackingSearch" ItemsSource="{Binding BackingOptions}" SelectedItem="{Binding SelectedBacking}"
+                       FilterMode="Contains" MinimumPrefixLength="1" PlaceholderText="Найти трек библиотеки…" FontSize="12"/>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Добавить файл…" Click="OnAddBackingFile" FontSize="12"/>
+        <Button Content="Убрать" Command="{Binding ClearBackingCommand}" FontSize="12"/>
+      </StackPanel>
+    </StackPanel>
     <TextBlock Text="Эквалайзер" FontSize="12" Foreground="{StaticResource BrushDim}" Margin="0,4,0,0"/>
     <ItemsControl ItemsSource="{Binding EqBands}">
       <ItemsControl.ItemTemplate>

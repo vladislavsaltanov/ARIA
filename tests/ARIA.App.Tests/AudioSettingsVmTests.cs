@@ -590,6 +590,91 @@ public sealed class AudioSettingsVmTests : IDisposable
         Assert.True(editor.TakeCurrentPositionCommand.CanExecute(null));
     }
 
+    private static readonly BackingOption AlphaOption = new(TrackId.New(), "Alpha");
+    private static readonly BackingOption BetaOption = new(TrackId.New(), "beta");
+
+    private static TrackAudioVm BackingEditor(List<TrackId?> calls, TrackId? initial = null, Func<string, Task<TrackId?>>? import = null, Func<IReadOnlyList<BackingOption>>? options = null) =>
+        new(_ => { }, TrackId.New(), entryId: EntryId.New(), initialBacking: initial,
+            backingOptions: options ?? (() => [BetaOption, AlphaOption]),
+            setBacking: calls.Add,
+            importBacking: import);
+
+    [Fact]
+    public void Backing_Select_CallsSetBacking()
+    {
+        var calls = new List<TrackId?>();
+        var editor = BackingEditor(calls);
+
+        editor.SelectedBacking = BetaOption;
+
+        Assert.Equal([BetaOption.Id], calls);
+        Assert.Equal("beta", editor.BackingName);
+    }
+
+    [Fact]
+    public void Backing_Initial_SelectsWithoutSubmitting()
+    {
+        var calls = new List<TrackId?>();
+        var editor = BackingEditor(calls, initial: AlphaOption.Id);
+
+        Assert.Equal(AlphaOption, editor.SelectedBacking);
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public void Backing_Clear_CallsSetBackingNull()
+    {
+        var calls = new List<TrackId?>();
+        var editor = BackingEditor(calls, initial: AlphaOption.Id);
+
+        editor.ClearBackingCommand.Execute(null);
+
+        Assert.Null(editor.SelectedBacking);
+        Assert.Equal([(TrackId?)null], calls);
+        Assert.Equal("нет — звучит само вхождение", editor.BackingName);
+    }
+
+    [Fact]
+    public async Task Backing_AddFile_ImportsAndSelects()
+    {
+        var calls = new List<TrackId?>();
+        var guide = new BackingOption(TrackId.New(), "Guide");
+        var imported = false;
+        var editor = BackingEditor(
+            calls,
+            import: path =>
+            {
+                Assert.Equal("/audio/guide.wav", path);
+                imported = true;
+                return Task.FromResult<TrackId?>(guide.Id);
+            },
+            options: () => imported ? [AlphaOption, guide] : [AlphaOption]);
+
+        await editor.AddBackingFileAsync("/audio/guide.wav");
+
+        Assert.Equal([guide.Id], calls);
+        Assert.Equal(guide, editor.SelectedBacking);
+        Assert.Contains(guide, editor.BackingOptions);
+    }
+
+    [Fact]
+    public void Backing_Options_SortedByName_CaseInsensitive()
+    {
+        var alto = new BackingOption(TrackId.New(), "alto");
+        var editor = BackingEditor([], options: () => [BetaOption, alto, AlphaOption]);
+
+        Assert.Equal(["Alpha", "alto", "beta"], editor.BackingOptions.Select(o => o.Name));
+    }
+
+    [Fact]
+    public void Backing_TrackEditor_NoOptions()
+    {
+        var editor = new TrackAudioVm(_ => { }, TrackId.New(), backingOptions: () => [AlphaOption]);
+
+        Assert.False(editor.IsEntry);
+        Assert.Empty(editor.BackingOptions);
+    }
+
     private sealed class OutputStubLister(Func<IReadOnlyList<OutputDevice>> list) : IAudioOutputLister
     {
         public IReadOnlyList<OutputDevice> ListPlaybackDevices() => list();

@@ -46,4 +46,29 @@ public sealed class TrackAudioViewHeadlessTests
             return 0;
         }, CancellationToken.None);
     }
+
+    [Fact]
+    public async Task BackingSearch_SelectionReachesViewModel()
+    {
+        await _session.Dispatch(() =>
+        {
+            var calls = new List<TrackId?>();
+            var guide = new BackingOption(TrackId.New(), "Гайд");
+            var editor = new TrackAudioVm(_ => { }, TrackId.New(), entryId: EntryId.New(), backingOptions: () => [guide], setBacking: calls.Add);
+            var view = new TrackAudioView { DataContext = editor };
+            var window = new Window { Content = view, Width = 480, Height = 900 };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var search = view.FindControl<AutoCompleteBox>("BackingSearch")!;
+            Assert.True(search.IsEffectivelyVisible);
+            search.SelectedItem = guide;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal([guide.Id], calls);
+            Assert.Equal("Гайд", editor.BackingName);
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
 }
