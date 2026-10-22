@@ -52,4 +52,21 @@ public sealed class RemoteAnnouncerTests
 
         Assert.False(announcer.Start());
     }
+
+    [Fact]
+    public void BuildListenUrl_PointsToMonitorWithListenKey()
+    {
+        var url = RemoteAnnouncer.BuildListenUrl(new Uri("http://127.0.0.1:5432/"), "ARIA-X1", "L ISTEN", IPAddress.Parse("192.168.1.5"));
+
+        Assert.Equal("http://192.168.1.5:5432/monitor?id=ARIA-X1&key=L%20ISTEN", url);
+    }
+
+    [Fact]
+    public void BuildListenInfo_EncodesMonitorUrlAndPngQr()
+    {
+        var info = RemoteAnnouncer.BuildListenInfo(new Uri("http://127.0.0.1:5432/"), "ARIA-X1", "listen", IPAddress.Parse("192.168.1.5"));
+
+        Assert.Equal("/monitor", info.Url.AbsolutePath);
+        Assert.True(info.QrPng.Length > 0);
+    }
 }

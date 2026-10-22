@@ -73,4 +73,37 @@ public sealed class RemotePanelViewModelTests
 
         Assert.False(viewModel.HasInfo);
     }
+
+    [Fact]
+    public void ConfigureListen_ShowsListenPair()
+    {
+        var viewModel = new RemotePanelViewModel();
+        var info = new RemoteInfo(new Uri("http://192.168.1.5:5432/monitor?id=ARIA-STAGE&key=lp"), []);
+
+        viewModel.ConfigureListen(info, null, "lp", () => (info, null, "lp"));
+
+        Assert.True(viewModel.HasListenInfo);
+        Assert.Equal("lp", viewModel.ListenPasswordText);
+        Assert.Equal(info.Url.ToString(), viewModel.ListenUrlText);
+    }
+
+    [Fact]
+    public void ResetListenPassword_UpdatesTextAndUrl()
+    {
+        var viewModel = new RemotePanelViewModel();
+        var info = new RemoteInfo(new Uri("http://192.168.1.5:5432/monitor?id=ARIA-STAGE&key=lp"), []);
+        var fresh = new RemoteInfo(new Uri("http://192.168.1.5:5432/monitor?id=ARIA-STAGE&key=new"), []);
+        var resets = 0;
+        viewModel.ConfigureListen(info, null, "lp", () =>
+        {
+            resets++;
+            return (fresh, null, "new");
+        });
+
+        viewModel.ResetListenPasswordCommand.Execute(null);
+
+        Assert.Equal(1, resets);
+        Assert.Equal("new", viewModel.ListenPasswordText);
+        Assert.Equal(fresh.Url.ToString(), viewModel.ListenUrlText);
+    }
 }

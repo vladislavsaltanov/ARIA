@@ -188,6 +188,18 @@ public partial class App : Application
                     return (fresh, RemoteQr.ToBitmap(fresh), store.Load());
                 });
             remote.SetMdns(announcer.Start());
+            var listen = announcer.AnnounceListen();
+            remote.ConfigureListen(
+                listen,
+                RemoteQr.ToBitmap(listen),
+                store.Load().ListenPassword,
+                () =>
+                {
+                    var password = store.ResetListenPassword();
+                    remoteHost.RevokeListenTokens();
+                    var fresh = announcer.AnnounceListen();
+                    return (fresh, RemoteQr.ToBitmap(fresh), password);
+                });
         }
     }
 

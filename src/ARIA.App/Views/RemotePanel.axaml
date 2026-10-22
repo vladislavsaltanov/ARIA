@@ -92,6 +92,24 @@
                      FontFamily="{StaticResource MonoFont}"/>
         </StackPanel>
       </Border>
+      <Border Classes="card" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="12">
+          <TextBlock Text="МОНИТОРИНГ ДЛЯ МУЗЫКАНТОВ" Classes="cardTitle"/>
+          <Border Background="#FFFFFF" Padding="12" HorizontalAlignment="Center" CornerRadius="4" IsVisible="{Binding HasListenInfo}">
+            <Image x:Name="ListenQr" Source="{Binding ListenQrImage}" Width="200" Height="200" />
+          </Border>
+          <SelectableTextBlock Text="{Binding ListenUrlText}" Foreground="{StaticResource BrushFg}" FontSize="13"
+                               FontFamily="{StaticResource MonoFont}" TextWrapping="Wrap" TextAlignment="Center"/>
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="ПАРОЛЬ" Classes="key"/>
+            <SelectableTextBlock Grid.Column="1" Text="{Binding ListenPasswordText}" Foreground="{StaticResource BrushFg}"
+                                 FontSize="16" FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center"/>
+          </Grid>
+          <Button Command="{Binding ResetListenPasswordCommand}" Classes="action" Content="новый пароль слушателей" HorizontalAlignment="Left"/>
+          <TextBlock Text="этот QR открывает только прослушку и клик — пульт и PANIC музыкантам недоступны; сброс отключает всех слушателей"
+                     Foreground="{StaticResource BrushDim}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>
