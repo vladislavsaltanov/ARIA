@@ -20,3 +20,9 @@ epics:
     wsjf: 3
     status: active
     remaining: "e03s03 — захват входа карты, отложен до спайка"
+  - id: e04
+    capsule: specs/epics/e04-monitor-sync
+    title: "Мониторинг музыкантов: подложка и клик синхронно с залом"
+    wsjf: 4
+    status: active
+    replaces: "реализацию e03s01/e03s02 (сессионный поток и ClickVoice)"
