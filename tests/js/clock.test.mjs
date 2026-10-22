@@ -50,7 +50,7 @@ test("locked after 8 good samples", () => {
 
 test("not locked when min delay too high", () => {
   const clock = new ClockSync();
-  for (let i = 0; i < 12; i++) exchange(clock, 1000 + i * 250, (local) => local, 10, 10);
+  for (let i = 0; i < 12; i++) exchange(clock, 1000 + i * 250, (local) => local, 25, 25);
   assert.equal(clock.locked, false);
 });
 
@@ -60,4 +60,37 @@ test("perfMsAt inverts hostUsAt", () => {
   for (let i = 0; i <= 20; i++) exchange(clock, 1000 + i * 500, hostOf, 2, 2);
   const perf = 8000.25;
   assert.ok(Math.abs(clock.perfMsAt(clock.hostUsAt(perf)) - perf) < 0.001);
+});
+
+function wifi(clock, count, intervalMs) {
+  let seed = 7;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  const hostOf = (local) => local + 5000;
+  let last = 0;
+  for (let i = 0; i < count; i++) {
+    last = exchange(clock, 1000 + i * intervalMs, hostOf, 3 + random() * 12, 3 + random() * 12);
+  }
+  return last;
+}
+
+test("locked on a jittery wifi link at fast ping rate", () => {
+  const clock = new ClockSync();
+  wifi(clock, 20, 250);
+  assert.equal(clock.locked, true);
+});
+
+test("stays locked on a jittery wifi link at slow ping rate", () => {
+  const clock = new ClockSync();
+  wifi(clock, 40, 1000);
+  assert.equal(clock.locked, true);
+});
+
+test("jittery wifi offset stays within the reported uncertainty", () => {
+  const clock = new ClockSync();
+  const last = wifi(clock, 40, 1000);
+  const error = Math.abs(clock.hostUsAt(last) - (last + 5000) * 1000);
+  assert.ok(error <= clock.uncertaintyUs + 500, `error ${error} us, uncertainty ${clock.uncertaintyUs} us`);
 });

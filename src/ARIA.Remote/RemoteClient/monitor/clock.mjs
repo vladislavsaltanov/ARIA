@@ -3,7 +3,7 @@ const WINDOW_MS = 30000;
 const REGRESSION_SPAN_MS = 5000;
 const GOOD_MARGIN_MS = 1;
 const LOCK_SAMPLES = 8;
-const LOCK_MAX_DELAY_MS = 15;
+const LOCK_MAX_DELAY_MS = 40;
 
 export class ClockSync {
   constructor() {
@@ -13,6 +13,7 @@ export class ClockSync {
     this.slope = 0;
     this.minDelay = Infinity;
     this.goodCount = 0;
+    this.recentCount = 0;
   }
 
   onPong(t0, t1Us, t2Us, t3) {
@@ -46,6 +47,7 @@ export class ClockSync {
     }
     this.minDelay = minDelay;
     this.goodCount = count;
+    this.recentCount = recent.length;
     this.meanLocal = meanLocal;
     this.meanOffset = meanOffset;
     this.slope = slope;
@@ -60,7 +62,7 @@ export class ClockSync {
   }
 
   get locked() {
-    return this.goodCount >= LOCK_SAMPLES && this.minDelay < LOCK_MAX_DELAY_MS;
+    return this.recentCount >= LOCK_SAMPLES && this.minDelay < LOCK_MAX_DELAY_MS;
   }
 
   get uncertaintyUs() {
