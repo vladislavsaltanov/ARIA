@@ -257,6 +257,53 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void SaveRowSettings_KeepsHallTrimAndLogging()
+    {
+        using var bus = NewBus();
+        var path = Path.Combine(Path.GetTempPath(), $"aria-row-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new AppSettingsStore(path);
+            store.Save(AppSettings.Default with { HallLatencyTrimMs = 42, LogEnabled = true, LogLevel = LogLevel.Debug });
+            using var viewModel = new SettingsViewModel(
+                bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"), store);
+            viewModel.RowFormat.UseFileName = true;
+
+            viewModel.RowFormat.SaveRowSettingsCommand.Execute(null);
+
+            var loaded = store.Load();
+            Assert.Equal(42, loaded.HallLatencyTrimMs);
+            Assert.True(loaded.LogEnabled);
+            Assert.Equal(LogLevel.Debug, loaded.LogLevel);
+            Assert.True(loaded.UseFileName);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void SnapshotSettings_CarriesHallTrim()
+    {
+        using var bus = NewBus();
+        var path = Path.Combine(Path.GetTempPath(), $"aria-row-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new AppSettingsStore(path);
+            store.Save(AppSettings.Default with { HallLatencyTrimMs = 42 });
+            using var viewModel = new SettingsViewModel(
+                bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"), store);
+
+            Assert.Equal(42, viewModel.SnapshotSettings().HallLatencyTrimMs);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void Smoothing_Settings_SubmitAndPersist()
     {
         using var bus = NewBus();

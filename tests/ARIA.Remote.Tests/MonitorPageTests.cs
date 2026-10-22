@@ -44,4 +44,18 @@ public sealed class MonitorPageTests : IAsyncLifetime
         Assert.Equal("text/javascript", response.Content.Headers.ContentType!.MediaType);
         Assert.Contains("export class ClockSync", await response.Content.ReadAsStringAsync());
     }
+
+    [Fact]
+    public async Task EveryModuleImportedByMain_IsServed()
+    {
+        var main = await _http.GetStringAsync(new Uri(_host.HttpEndpoint, "monitor/main.mjs"));
+        var modules = System.Text.RegularExpressions.Regex.Matches(main, "from \"\\./([a-z]+\\.mjs)\"").Select(match => match.Groups[1].Value).ToArray();
+
+        Assert.Contains("link.mjs", modules);
+        foreach (var module in modules)
+        {
+            var response = await _http.GetAsync(new Uri(_host.HttpEndpoint, $"monitor/{module}"));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+    }
 }

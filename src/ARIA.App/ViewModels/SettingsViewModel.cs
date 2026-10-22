@@ -85,7 +85,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     public AppSettings SnapshotSettings()
     {
         var stored = _settingsStore.Load();
-        return new(RowFormat.UseFileName, RowFormat.RowFormat, Engine.CurrentSmoothing(), Playback.CurrentEndAction, stored.OutputDeviceId, stored.OutputDeviceName, stored.PreviewOutputDeviceId, stored.PreviewOutputDeviceName, stored.MeterSmoothing, stored.LogLevel, stored.LogEnabled);
+        return stored with
+        {
+            UseFileName = RowFormat.UseFileName,
+            RowFormat = RowFormat.RowFormat,
+            Smoothing = Engine.CurrentSmoothing(),
+            DefaultEndAction = Playback.CurrentEndAction,
+        };
     }
 
     public void SaveSettings(AppSettings settings) => _settingsStore.Save(settings);

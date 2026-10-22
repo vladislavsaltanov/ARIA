@@ -5,6 +5,7 @@ import { ClickScheduler } from "./click.mjs";
 import { PcmStore, windowsFor } from "./store.mjs";
 import { dbToGain, frameAt, SAMPLE_RATE } from "./timeline.mjs";
 import { startKeepAwake, unlockAudioSession } from "./keepawake.mjs";
+import { attemptSignIn, isStale, nextDelay, RECONNECT_MIN_MS } from "./link.mjs";
 
 const PAIRING_KEY = "aria-monitor-pairing";
 const CONTROL_PAIRING_KEY = "aria-remote-pairing";
@@ -14,6 +15,7 @@ const FAST_PING_MS = 250;
 const SLOW_PING_MS = 1000;
 const FAST_PING_WINDOW_MS = 5000;
 const STATS_MS = 2000;
+const STALE_CHECK_MS = 500;
 
 const element = (id) => document.getElementById(id);
 const ui = {
@@ -73,7 +75,7 @@ let token = null;
 let socket = null;
 let connected = false;
 let kicked = false;
-let reconnectDelay = 500;
+let reconnectDelay = RECONNECT_MIN_MS;
 let connectedAt = 0;
 let pingTimer = null;
 let timeline = null;
@@ -123,10 +125,12 @@ async function authenticate(identifier, password) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, password }),
     });
-    if (!response.ok) return null;
-    return (await response.json()).token || null;
+    if (response.status === 401 || response.status === 403) return { denied: true };
+    if (!response.ok) return { offline: true };
+    const token = (await response.json()).token;
+    return token ? { token } : { denied: true };
   } catch {
-    return null;
+    return { offline: true };
   }
 }
 
@@ -136,17 +140,42 @@ function showLogin(error) {
 }
 
 async function signIn() {
-  const pairing = storedPairing();
-  if (!pairing) {
-    showLogin(false);
-    return false;
+  const outcome = await attemptSignIn(storedPairing(), authenticate);
+  if (outcome.state === "ok") {
+    token = outcome.token;
+  } else if (outcome.state === "login") {
+    token = null;
+    showLogin(outcome.error);
   }
-  token = await authenticate(pairing.identifier, pairing.password);
-  if (!token) {
-    showLogin(true);
-    return false;
-  }
-  return true;
+  return outcome.state;
+}
+
+function scheduleReconnect() {
+  setTimeout(async () => {
+    if (kicked) return;
+    const state = await signIn();
+    if (state === "ok") connect();
+    else if (state === "retry") scheduleReconnect();
+  }, reconnectDelay);
+  reconnectDelay = nextDelay(reconnectDelay);
+}
+
+function connectionLost() {
+  connected = false;
+  clearTimeout(pingTimer);
+  if (kicked) return;
+  scheduleReconnect();
+}
+
+function dropStaleSocket() {
+  const dead = socket;
+  if (!dead) return;
+  dead.onclose = null;
+  dead.onmessage = null;
+  try {
+    dead.close();
+  } catch {}
+  connectionLost();
 }
 
 function send(message) {
@@ -163,8 +192,9 @@ function schedulePing() {
 function connect() {
   if (!token || kicked) return;
   const scheme = location.protocol === "https:" ? "wss://" : "ws://";
-  socket = new WebSocket(`${scheme}${location.host}/monitor/ws?token=${encodeURIComponent(token)}`);
-  socket.onopen = () => {
+  const opened = new WebSocket(`${scheme}${location.host}/monitor/ws?token=${encodeURIComponent(token)}`);
+  socket = opened;
+  opened.onopen = () => {
     connected = true;
     reconnectDelay = 500;
     connectedAt = performance.now();
@@ -173,7 +203,7 @@ function connect() {
     send({ type: "hello", name: settings.name, levels: levels() });
     schedulePing();
   };
-  socket.onmessage = (event) => {
+  opened.onmessage = (event) => {
     lastMessageAt = performance.now();
     let message;
     try {
@@ -183,14 +213,8 @@ function connect() {
     }
     handle(message);
   };
-  socket.onclose = () => {
-    connected = false;
-    clearTimeout(pingTimer);
-    if (kicked) return;
-    setTimeout(async () => {
-      if (await signIn()) connect();
-    }, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+  opened.onclose = () => {
+    if (socket === opened) connectionLost();
   };
 }
 
@@ -439,11 +463,13 @@ function bind() {
   ui.loginGo.addEventListener("click", async () => {
     const identifier = ui.loginId.value.trim();
     const password = ui.loginPassword.value;
-    token = await authenticate(identifier, password);
-    if (!token) {
+    const result = await authenticate(identifier, password);
+    if (!result.token) {
+      token = null;
       showLogin(true);
       return;
     }
+    token = result.token;
     savePairing(identifier, password);
     kicked = false;
     ui.login.classList.add("hidden");
@@ -452,7 +478,9 @@ function bind() {
   ui.kickedRetry.addEventListener("click", async () => {
     kicked = false;
     ui.kicked.classList.add("hidden");
-    if (await signIn()) connect();
+    const state = await signIn();
+    if (state === "ok") connect();
+    else if (state === "retry") scheduleReconnect();
   });
   document.addEventListener("pointerdown", () => {
     if (audio && audio.ctx.state !== "running") startAudio();
@@ -469,6 +497,9 @@ function bind() {
     }
   });
   setInterval(sendStats, STATS_MS);
+  setInterval(() => {
+    if (isStale(connected, performance.now(), lastMessageAt)) dropStaleSocket();
+  }, STALE_CHECK_MS);
 }
 
 async function boot() {
@@ -480,11 +511,17 @@ async function boot() {
   const password = params.get("key");
   if (identifier && password) {
     history.replaceState(null, "", location.pathname);
-    token = await authenticate(identifier, password);
-    if (token) savePairing(identifier, password);
-    else showLogin(true);
+    const result = await authenticate(identifier, password);
+    if (result.denied) {
+      showLogin(true);
+    } else {
+      savePairing(identifier, password);
+      token = result.token || null;
+      if (!token) scheduleReconnect();
+    }
   } else {
-    await signIn();
+    const state = await signIn();
+    if (state === "retry") scheduleReconnect();
   }
   if (token) connect();
 }

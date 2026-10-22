@@ -214,4 +214,65 @@ public sealed class PcmServerTests : IAsyncLifetime
         await cache.ReadAsync(track.Id, 5, 10, CancellationToken.None);
         Assert.Equal(4, cache.DecodedChunks);
     }
+
+    private sealed class ManualTime : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UnixEpoch;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Fact]
+    public async Task Cache_MissingFileRelinked_DecodesNewFile()
+    {
+        var track = AddTrack("song.wav");
+        var relinked = PcmTestFiles.WriteWav(_directory, "relinked.wav", FileFrames / 2);
+        var missing = Path.Combine(_directory, "gone.wav");
+        _tracks[0] = track with { FilePath = missing };
+        using var cache = new PcmCache(new MiniaudioSourceFactory(48000, 2), new TrackListSources(() => [.. _tracks]));
+
+        await Assert.ThrowsAnyAsync<Exception>(() => cache.ReadAsync(track.Id, 0, 100, CancellationToken.None));
+        Assert.True(cache.IsUndecodable(track.Id));
+
+        _tracks[0] = track with { FilePath = relinked };
+
+        Assert.False(cache.IsUndecodable(track.Id));
+        var slice = await cache.ReadAsync(track.Id, 1000, 100, CancellationToken.None);
+        Assert.Equal(PcmTestFiles.Reference(relinked, 1000, 100), slice.Samples);
+    }
+
+    [Fact]
+    public async Task Cache_DecodedTrackRelinked_ServesNewContent()
+    {
+        var track = AddTrack("song.wav");
+        using var cache = new PcmCache(new MiniaudioSourceFactory(48000, 2), new TrackListSources(() => [.. _tracks]));
+        await cache.ReadAsync(track.Id, 0, 100, CancellationToken.None);
+        var other = PcmTestFiles.WriteWav(_directory, "other.wav", FileFrames / 3);
+        _tracks[0] = track with { FilePath = other };
+
+        var slice = await cache.ReadAsync(track.Id, 0, 100, CancellationToken.None);
+
+        Assert.Equal(PcmTestFiles.Reference(other, 0, 100), slice.Samples);
+        Assert.Equal(FileFrames / 3, (await cache.ReadAsync(track.Id, FileFrames / 3 - 10, 100, CancellationToken.None)).Frames + FileFrames / 3 - 10);
+    }
+
+    [Fact]
+    public async Task Cache_UndecodableMarkExpires_WhenFileAppearsAtSamePath()
+    {
+        var track = AddTrack("late.wav");
+        var path = track.FilePath;
+        var hidden = path + ".hidden";
+        File.Move(path, hidden);
+        var time = new ManualTime();
+        using var cache = new PcmCache(new MiniaudioSourceFactory(48000, 2), new TrackListSources(() => [.. _tracks]), time: time);
+        await Assert.ThrowsAnyAsync<Exception>(() => cache.ReadAsync(track.Id, 0, 100, CancellationToken.None));
+        Assert.True(cache.IsUndecodable(track.Id));
+
+        File.Move(hidden, path);
+        time.Now += TimeSpan.FromSeconds(6);
+
+        Assert.False(cache.IsUndecodable(track.Id));
+        var slice = await cache.ReadAsync(track.Id, 0, 100, CancellationToken.None);
+        Assert.Equal(PcmTestFiles.Reference(path, 0, 100), slice.Samples);
+    }
 }
