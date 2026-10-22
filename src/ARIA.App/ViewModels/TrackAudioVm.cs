@@ -20,6 +20,8 @@ public sealed partial class TrackAudioVm : ObservableObject
     private double _pan;
     private bool _hasBpm;
     private double _bpmValue = DefaultBpm;
+    private readonly int _beatsPerBar;
+    private readonly TimeSpan _firstBeat;
     private bool _inheritTrackSettings;
     private double _normalizeTargetLufs;
     private bool _normalizeEnabled;
@@ -29,7 +31,7 @@ public sealed partial class TrackAudioVm : ObservableObject
     private readonly bool _globalNormalizeEnabled;
     private readonly Func<double?>? _measureReader;
 
-    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, double? initialBpm = null)
+    public TrackAudioVm(Action<Command> submit, TrackId trackId, TrackAudioSettings? initial = null, EntryId? entryId = null, double normalizeTargetLufs = NormalizeDefaultLufs, bool globalNormalizeEnabled = true, Func<double?>? measureReader = null, BeatGrid? initialGrid = null)
     {
         _submit = submit;
         _trackId = trackId;
@@ -44,8 +46,10 @@ public sealed partial class TrackAudioVm : ObservableObject
         _targetLufs = audio.NormalizeTargetLufs ?? NormalizeDefaultLufs;
         _gainDb = audio.GainDb;
         _pan = audio.Pan;
-        _hasBpm = initialBpm is not null;
-        _bpmValue = Math.Clamp(initialBpm ?? DefaultBpm, 20.0, 300.0);
+        _hasBpm = initialGrid is not null;
+        _bpmValue = Math.Clamp(initialGrid?.Bpm ?? DefaultBpm, 20.0, 300.0);
+        _beatsPerBar = initialGrid?.BeatsPerBar ?? 4;
+        _firstBeat = initialGrid?.FirstBeat ?? TimeSpan.Zero;
         EqBands = [.. audio.Eq.Bands.Select((b, i) => new AudioSectionVm.EqBandVm(AudioSectionVm.BandLabel(i, b.FrequencyHz), b.FrequencyHz, b.GainDb, SubmitCurrent))];
         NormalizeRequest = id => _submit(new NormalizeTrack(id));
     }
@@ -177,7 +181,7 @@ public sealed partial class TrackAudioVm : ObservableObject
         }
     }
 
-    private void SubmitBpm() => _submit(new SetTrackBpm(_trackId, _hasBpm ? _bpmValue : null));
+    private void SubmitBpm() => _submit(new SetTrackGrid(_trackId, _hasBpm ? new BeatGrid(_bpmValue, _beatsPerBar, _firstBeat) : null));
 
     public bool InheritTrackSettings
     {

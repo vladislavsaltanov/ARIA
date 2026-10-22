@@ -6,7 +6,7 @@ using Aria.Core.Runtime;
 using Aria.Core.State;
 using System.Linq;
 
-public sealed class TrackBpmTests : IDisposable
+public sealed class TrackGridTests : IDisposable
 {
     private static readonly ClientId TestClient = new("bpm");
 
@@ -18,7 +18,7 @@ public sealed class TrackBpmTests : IDisposable
     private readonly IDisposable _subscription;
     private long _seq;
 
-    public TrackBpmTests()
+    public TrackGridTests()
     {
         _controller = new ShowController(_engine);
         _bus = new CommandBus(_controller, BusMode.Pumped);
@@ -65,51 +65,57 @@ public sealed class TrackBpmTests : IDisposable
     }
 
     [Fact]
-    public async Task SetTrackBpm_StoresAndClears()
+    public async Task SetTrackGrid_StoresAndClears()
     {
-        Submit(new SetTrackBpm(_track.Id, 128.5));
-        await Poll(() => _controller.TrackBpm(_track.Id) == 128.5, "bpm not stored");
-        Submit(new SetTrackBpm(_track.Id, null));
-        await Poll(() => _controller.TrackBpm(_track.Id) is null, "bpm not cleared");
+        var grid = new BeatGrid(128.5, 3, TimeSpan.FromMilliseconds(250));
+        Submit(new SetTrackGrid(_track.Id, grid));
+        await Poll(() => _controller.TrackGrid(_track.Id) == grid, "grid not stored");
+        Submit(new SetTrackGrid(_track.Id, null));
+        await Poll(() => _controller.TrackGrid(_track.Id) is null, "grid not cleared");
+    }
+
+    [Theory]
+    [InlineData(10.0, 4, 0L, "bpm-out-of-range")]
+    [InlineData(120.0, 0, 0L, "beats-out-of-range")]
+    [InlineData(120.0, 4, 180000L, "first-beat-out-of-range")]
+    public async Task SetTrackGrid_OutOfRange_Rejected(double bpm, int beats, long firstBeatMs, string reason)
+    {
+        var seq = Interlocked.Increment(ref _seq);
+        _bus.Submit(TestClient, seq, new SetTrackGrid(_track.Id, new BeatGrid(bpm, beats, TimeSpan.FromMilliseconds(firstBeatMs))));
+        await WaitRejected(seq, reason);
+        Assert.True(_controller.TrackGrid(_track.Id) is null, "bad grid stored");
     }
 
     [Fact]
-    public async Task SetTrackBpm_OutOfRange_Rejected()
+    public async Task SetTrackGrid_UnknownTrack_Rejected()
     {
         var seq = Interlocked.Increment(ref _seq);
-        _bus.Submit(TestClient, seq, new SetTrackBpm(_track.Id, 10));
-        await WaitRejected(seq, "bpm-out-of-range");
-        Assert.True(_controller.TrackBpm(_track.Id) is null, "bad bpm stored");
-    }
-
-    [Fact]
-    public async Task SetTrackBpm_UnknownTrack_Rejected()
-    {
-        var seq = Interlocked.Increment(ref _seq);
-        _bus.Submit(TestClient, seq, new SetTrackBpm(new TrackId(Guid.NewGuid()), 120));
+        _bus.Submit(TestClient, seq, new SetTrackGrid(new TrackId(Guid.NewGuid()), new BeatGrid(120, 4, TimeSpan.Zero)));
         await WaitRejected(seq, "unknown-track");
     }
 
     [Fact]
-    public async Task SetTrackBpm_UpdatesDigest()
+    public async Task SetTrackGrid_UpdatesDigest()
     {
-        Submit(new SetTrackBpm(_track.Id, 140));
-        await Poll(() => DigestBpm() == 140, "digest missing bpm");
-        Submit(new SetTrackBpm(_track.Id, null));
-        await Poll(() => DigestBpm() is null, "digest bpm not cleared");
+        var grid = new BeatGrid(140, 4, TimeSpan.Zero);
+        Submit(new SetTrackGrid(_track.Id, grid));
+        await Poll(() => DigestGrid() == grid, "digest missing grid");
+        Submit(new SetTrackGrid(_track.Id, null));
+        await Poll(() => DigestGrid() is null, "digest grid not cleared");
     }
 
     [Fact]
-    public async Task SetTrackBpm_UpdatesTransportCurrentBpm()
+    public async Task SetTrackGrid_CurrentTrack_EmitsTransportGrid()
     {
         Submit(new Play());
         await Poll(() => _bus.Snapshot().Transport.Status == TransportStatus.Playing, "not playing");
 
-        Submit(new SetTrackBpm(_track.Id, 130));
-        await Poll(() => _bus.Snapshot().Transport.Current?.Bpm == 130, "current deck missing bpm");
-        Assert.Equal(130, _controller.Tracks.First(t => t.Id == _track.Id).Defaults.Bpm);
+        var grid = new BeatGrid(130, 7, TimeSpan.FromSeconds(1.5));
+        Submit(new SetTrackGrid(_track.Id, grid));
+        await Poll(() => _bus.Snapshot().Transport.Current?.Grid == grid, "current deck missing grid");
+        Assert.Equal(grid, _controller.Tracks.First(t => t.Id == _track.Id).Defaults.Grid);
     }
 
-    private double? DigestBpm() => _bus.Snapshot().Show.TrackDigest.Entries
-        .FirstOrDefault(e => e.Track == _track.Id)?.Bpm;
+    private BeatGrid? DigestGrid() => _bus.Snapshot().Show.TrackDigest.Entries
+        .FirstOrDefault(e => e.Track == _track.Id)?.Grid;
 }

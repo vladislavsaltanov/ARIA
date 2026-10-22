@@ -27,7 +27,7 @@ public sealed class TrackBpmPersistenceTests : IDisposable
     public void Library_TrackBpm_RoundTrips()
     {
         var plain = TestFactory.Track("bpm");
-        var track = plain with { Defaults = plain.Defaults with { Bpm = 128.5 } };
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(128.5, 4, TimeSpan.Zero) } };
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             store.Upsert([track], []);
@@ -36,7 +36,7 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             var reloaded = Assert.Single(store.Load().Tracks);
-            Assert.Equal(128.5, reloaded.Defaults.Bpm);
+            Assert.Equal(new BeatGrid(128.5, 4, TimeSpan.Zero), reloaded.Defaults.Grid);
         }
     }
 
@@ -52,7 +52,7 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         using (var store = new SqliteLibraryStore(_dbPath))
         {
             var reloaded = Assert.Single(store.Load().Tracks);
-            Assert.Null(reloaded.Defaults.Bpm);
+            Assert.Null(reloaded.Defaults.Grid);
         }
     }
 
@@ -67,12 +67,12 @@ public sealed class TrackBpmPersistenceTests : IDisposable
             var loaded = store.Load();
             var reloaded = Assert.Single(loaded.Tracks);
             Assert.Equal(track.Id, reloaded.Id);
-            Assert.Null(reloaded.Defaults.Bpm);
+            Assert.Null(reloaded.Defaults.Grid);
         }
 
         using (var store = new SqliteLibraryStore(_dbPath))
         {
-            Assert.Null(Assert.Single(store.Load().Tracks).Defaults.Bpm);
+            Assert.Null(Assert.Single(store.Load().Tracks).Defaults.Grid);
         }
     }
 
@@ -80,7 +80,7 @@ public sealed class TrackBpmPersistenceTests : IDisposable
     public void Snapshot_TrackBpm_RoundTrips()
     {
         var plain = TestFactory.Track("bpm");
-        var track = plain with { Defaults = plain.Defaults with { Bpm = 100 } };
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(100, 4, TimeSpan.Zero) } };
         var project = TestFactory.Project("Main", TestFactory.Entry(track));
         var document = new ShowDocument([track], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
         using (var store = new JsonSnapshotStore(_snapPath))
@@ -92,7 +92,7 @@ public sealed class TrackBpmPersistenceTests : IDisposable
         {
             var loaded = store.LoadLatest();
             Assert.NotNull(loaded);
-            Assert.Equal(100, Assert.Single(loaded.Tracks).Defaults.Bpm);
+            Assert.Equal(new BeatGrid(100, 4, TimeSpan.Zero), Assert.Single(loaded.Tracks).Defaults.Grid);
         }
     }
 
@@ -100,7 +100,7 @@ public sealed class TrackBpmPersistenceTests : IDisposable
     public void ShowAutosaver_PersistsTrackBpm_ToSnapshotAndLibrary()
     {
         var plain = TestFactory.Track("bpm");
-        var track = plain with { Defaults = plain.Defaults with { Bpm = 133.0 } };
+        var track = plain with { Defaults = plain.Defaults with { Grid = new BeatGrid(133.0, 4, TimeSpan.Zero) } };
         var project = TestFactory.Project("Main", TestFactory.Entry(track));
         using var libStore = new SqliteLibraryStore(_dbPath);
         libStore.Upsert([track], [project]);
@@ -114,10 +114,10 @@ public sealed class TrackBpmPersistenceTests : IDisposable
 
         var reloadedSnap = snapStore.LoadLatest();
         Assert.NotNull(reloadedSnap);
-        Assert.Equal(133.0, Assert.Single(reloadedSnap.Tracks).Defaults.Bpm);
+        Assert.Equal(new BeatGrid(133.0, 4, TimeSpan.Zero), Assert.Single(reloadedSnap.Tracks).Defaults.Grid);
 
         var reloadedLib = libStore.Load();
-        Assert.Equal(133.0, Assert.Single(reloadedLib.Tracks).Defaults.Bpm);
+        Assert.Equal(new BeatGrid(133.0, 4, TimeSpan.Zero), Assert.Single(reloadedLib.Tracks).Defaults.Grid);
     }
 
     private void CreateLegacyDatabase(Track track)

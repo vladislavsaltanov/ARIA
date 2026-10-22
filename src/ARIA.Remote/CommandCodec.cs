@@ -73,7 +73,7 @@ internal static class CommandCodec
                 "set_muted" => new SetMuted(BoolOf(commandElement, "muted")),
                 "set_global_audio" => ParseSetGlobalAudio(commandElement),
                 "set_track_audio" => ParseSetTrackAudio(commandElement),
-                "set_track_bpm" => new SetTrackBpm(new TrackId(GuidOf(commandElement, "track")), DoubleOrNullOf(commandElement, "bpm")),
+                "set_track_grid" => ParseSetTrackGrid(commandElement),
                 "set_entry_audio" => ParseSetEntryAudio(commandElement),
                 "start_preview_track" => new StartPreviewTrack(new TrackId(GuidOf(commandElement, "track"))),
                 "stop_preview" => new StopPreview(),
@@ -130,6 +130,16 @@ internal static class CommandCodec
             throw new FormatException(reason);
         }
         return new SetGlobalAudio(value);
+    }
+
+    private static SetTrackGrid ParseSetTrackGrid(JsonElement element)
+    {
+        var track = new TrackId(GuidOf(element, "track"));
+        if (DoubleOrNullOf(element, "bpm") is not { } bpm)
+        {
+            return new SetTrackGrid(track, null);
+        }
+        return new SetTrackGrid(track, new BeatGrid(bpm, IntOf(element, "beats_per_bar"), TimeSpan.FromMilliseconds(DoubleOf(element, "first_beat_ms"))));
     }
 
     private static SetTrackAudio ParseSetTrackAudio(JsonElement element) =>

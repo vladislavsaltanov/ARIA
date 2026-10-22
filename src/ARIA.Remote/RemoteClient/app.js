@@ -1526,20 +1526,35 @@
     return null;
   }
 
-  function digestBpm(trackId) {
+  function digestGrid(trackId) {
     var entries = (state.show && state.show.trackDigest && state.show.trackDigest.entries) || [];
     for (var i = 0; i < entries.length; i++) {
-      if (entries[i].track === trackId && entries[i].bpm != null) return entries[i].bpm;
+      if (entries[i].track === trackId && entries[i].grid) return entries[i].grid;
     }
-    return 0;
+    return null;
+  }
+
+  function trackGrid(trackId) {
+    if (!trackId) return null;
+    var t = state.transport;
+    if (t && t.current && t.current.trackId === trackId && t.current.grid) return t.current.grid;
+    if (t && t.next && t.next.trackId === trackId && t.next.grid) return t.next.grid;
+    return digestGrid(trackId);
   }
 
   function trackBpm(trackId) {
-    if (!trackId) return 0;
-    var t = state.transport;
-    if (t && t.current && t.current.trackId === trackId && t.current.bpm != null) return t.current.bpm;
-    if (t && t.next && t.next.trackId === trackId && t.next.bpm != null) return t.next.bpm;
-    return digestBpm(trackId);
+    var grid = trackGrid(trackId);
+    return grid ? grid.bpm : 0;
+  }
+
+  function sendTrackBpm(trackId, bpm) {
+    var grid = trackGrid(trackId);
+    send("set_track_grid", {
+      track: trackId,
+      bpm: bpm,
+      beats_per_bar: grid ? grid.beatsPerBar : 4,
+      first_beat_ms: grid ? parseIsoTicks(grid.firstBeat) / 10000 : 0,
+    });
   }
 
   function effectiveBpm() {
@@ -1853,7 +1868,7 @@
     click.bpm = val;
     var trackId = activeTrackId();
     if (trackId) {
-      send("set_track_bpm", { track: trackId, bpm: val });
+      sendTrackBpm(trackId, val);
     }
     saveClick();
     pushClickSettings();

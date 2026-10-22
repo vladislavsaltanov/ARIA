@@ -30,8 +30,9 @@ public sealed record DeckContent(
     TimeSpan Duration,
     TimeSpan CueIn,
     TimeSpan? CueOut = null,
-    double? Bpm = null,
-    ImmutableArray<Marker> Markers = default);
+    BeatGrid? Grid = null,
+    ImmutableArray<Marker> Markers = default,
+    TrackId? Backing = null);
 
 public sealed record TransportState(
     TransportStatus Status,

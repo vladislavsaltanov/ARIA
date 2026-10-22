@@ -197,8 +197,8 @@ public sealed class ShowController : IShowHandler
             case SetTrackAudio setTrackAudio:
                 OnSetTrackAudio(client, seq, setTrackAudio);
                 break;
-            case SetTrackBpm setTrackBpm:
-                OnSetTrackBpm(client, seq, setTrackBpm);
+            case SetTrackGrid setTrackGrid:
+                OnSetTrackGrid(client, seq, setTrackGrid);
                 break;
             case SetTrackMarkers setTrackMarkers:
                 OnSetTrackMarkers(client, seq, setTrackMarkers);
@@ -298,7 +298,7 @@ public sealed class ShowController : IShowHandler
 
     public TrackAudioSettings? TrackAudio(TrackId id) => FindPublishedTrack(id)?.Defaults.Audio;
 
-    public double? TrackBpm(TrackId id) => FindPublishedTrack(id)?.Defaults.Bpm;
+    public BeatGrid? TrackGrid(TrackId id) => FindPublishedTrack(id)?.Defaults.Grid;
 
     private Track? FindPublishedTrack(TrackId id)
     {
@@ -1330,19 +1330,19 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
-    private void OnSetTrackBpm(ClientId client, long seq, SetTrackBpm command)
+    private void OnSetTrackGrid(ClientId client, long seq, SetTrackGrid command)
     {
-        if (command.Bpm is < ClickBpmMin or > ClickBpmMax)
-        {
-            Reject(client, seq, "bpm-out-of-range");
-            return;
-        }
         if (!_trackMap.TryGetValue(command.Track, out var existing))
         {
             Reject(client, seq, "unknown-track");
             return;
         }
-        var updated = existing with { Defaults = existing.Defaults with { Bpm = command.Bpm } };
+        if (command.Grid is { } grid && BeatGridValidation.Validate(grid, existing.Duration) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        var updated = existing with { Defaults = existing.Defaults with { Grid = command.Grid } };
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
         if (_current?.Track.Id == command.Track)
@@ -2457,7 +2457,7 @@ public sealed class ShowController : IShowHandler
         deck.Track.Duration,
         deck.StartAt,
         deck.Settings.CueOut,
-        deck.Track.Defaults.Bpm,
+        deck.Track.Defaults.Grid,
         deck.Settings.Markers);
 
     private DeckContent? PeekNext()
@@ -2469,7 +2469,7 @@ public sealed class ShowController : IShowHandler
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
-            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm, settings.Markers);
+            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers);
         }
 
         if (_activeProjectId is { } projectId)
@@ -2480,7 +2480,7 @@ public sealed class ShowController : IShowHandler
                 var entry = project.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
                 var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
-                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm, settings.Markers);
+                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers);
             }
         }
         return null;
@@ -2527,7 +2527,7 @@ public sealed class ShowController : IShowHandler
         }
         return new TrackDigest([.. names
             .OrderBy(pair => pair.Key.Value)
-            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value, _trackMap.TryGetValue(pair.Key, out var track) ? track.Defaults.Bpm : null))]);
+            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value, _trackMap.TryGetValue(pair.Key, out var track) ? track.Defaults.Grid : null))]);
     }
 
     private static bool DigestEquals(TrackDigest left, TrackDigest right)

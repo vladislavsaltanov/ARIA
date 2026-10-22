@@ -298,23 +298,33 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
     }
 
     [Fact]
-    public void SetTrackBpm_Parses()
+    public void SetTrackGrid_Parses()
     {
         var id = Guid.NewGuid();
-        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_bpm\",\"track\":\"" + id + "\",\"bpm\":128.5}}";
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_grid\",\"track\":\"" + id + "\",\"bpm\":128.5,\"beats_per_bar\":3,\"first_beat_ms\":250}}";
 
         Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
-        Assert.Equal(new SetTrackBpm(new TrackId(id), 128.5), command);
+        Assert.Equal(new SetTrackGrid(new TrackId(id), new BeatGrid(128.5, 3, TimeSpan.FromMilliseconds(250))), command);
     }
 
     [Fact]
-    public void SetTrackBpm_Null_Clears()
+    public void SetTrackGrid_NullBpm_Clears()
     {
         var id = Guid.NewGuid();
-        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_bpm\",\"track\":\"" + id + "\",\"bpm\":null}}";
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_grid\",\"track\":\"" + id + "\",\"bpm\":null}}";
 
         Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
-        Assert.Equal(new SetTrackBpm(new TrackId(id), null), command);
+        Assert.Equal(new SetTrackGrid(new TrackId(id), null), command);
+    }
+
+    [Fact]
+    public void SetTrackBpm_NoLongerRecognized()
+    {
+        var id = Guid.NewGuid();
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"set_track_bpm\",\"track\":\"" + id + "\",\"bpm\":120}}";
+
+        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
+        Assert.Null(command);
     }
 
     [Fact]

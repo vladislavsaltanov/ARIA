@@ -195,7 +195,7 @@ internal static class TrackMapper
                 ? null
                 : [.. d.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
             Audio = AudioMapper.ToDto(d.Audio),
-            Bpm = d.Bpm,
+            Bpm = d.Grid?.Bpm,
         };
     }
 
@@ -216,7 +216,7 @@ internal static class TrackMapper
                 Out: dto.FadeOutTicks is null ? null : new Fade(new TimeSpan(dto.FadeOutTicks.Value), (FadeCurve)dto.FadeOutCurve!.Value),
                 Markers: markers,
                 Audio: AudioMapper.ToDomain(dto.Audio),
-                Bpm: dto.Bpm));
+                Grid: dto.Bpm is { } bpm ? new BeatGrid(bpm, 4, TimeSpan.Zero) : null));
     }
 }
 

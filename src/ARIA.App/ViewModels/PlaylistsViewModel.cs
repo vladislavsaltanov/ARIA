@@ -972,7 +972,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             global.NormalizeTargetLufs,
             global.NormalizeEnabled,
             () => _trackAudio?.Invoke(entry.TrackId)?.MeasuredLufs,
-            initialBpm: _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Bpm)
+            initialGrid: _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId)?.Defaults.Grid)
         {
             InheritTrackSettings = entry.Overrides?.Audio is null,
         };

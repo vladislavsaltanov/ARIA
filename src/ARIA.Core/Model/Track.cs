@@ -9,7 +9,7 @@ public sealed record TrackDefaults(
     Fade? Out = null,
     ImmutableArray<Marker>? Markers = null,
     TrackAudioSettings? Audio = null,
-    double? Bpm = null);
+    BeatGrid? Grid = null);
 
 public sealed record Track(
     TrackId Id,

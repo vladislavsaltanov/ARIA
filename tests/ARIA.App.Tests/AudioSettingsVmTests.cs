@@ -464,7 +464,7 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
-    public void TrackBpm_Set_SubmitsSetTrackBpm()
+    public void TrackBpm_Set_SubmitsDefaultGrid()
     {
         var submitted = new List<Command>();
         var trackId = TrackId.New();
@@ -473,9 +473,9 @@ public sealed class AudioSettingsVmTests : IDisposable
         Assert.False(editor.HasBpm);
         editor.HasBpm = true;
 
-        var set = Assert.IsType<SetTrackBpm>(Assert.Single(submitted));
+        var set = Assert.IsType<SetTrackGrid>(Assert.Single(submitted));
         Assert.Equal(trackId, set.Track);
-        Assert.Equal(120, set.Bpm);
+        Assert.Equal(new BeatGrid(120, 4, TimeSpan.Zero), set.Grid);
     }
 
     [Fact]
@@ -490,7 +490,19 @@ public sealed class AudioSettingsVmTests : IDisposable
         editor.BpmValue = 500;
 
         Assert.Equal(300, editor.BpmValue);
-        Assert.Equal(300, Assert.IsType<SetTrackBpm>(Assert.Single(submitted)).Bpm);
+        Assert.Equal(300, Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid!.Bpm);
+    }
+
+    [Fact]
+    public void TrackBpm_Change_KeepsBeatsAndFirstBeat()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId, initialGrid: new BeatGrid(100, 3, TimeSpan.FromMilliseconds(500)));
+
+        editor.BpmValue = 110;
+
+        Assert.Equal(new BeatGrid(110, 3, TimeSpan.FromMilliseconds(500)), Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
     }
 
     [Fact]
@@ -498,14 +510,14 @@ public sealed class AudioSettingsVmTests : IDisposable
     {
         var submitted = new List<Command>();
         var trackId = TrackId.New();
-        var editor = new TrackAudioVm(submitted.Add, trackId, initialBpm: 100);
+        var editor = new TrackAudioVm(submitted.Add, trackId, initialGrid: new BeatGrid(100, 4, TimeSpan.Zero));
 
         Assert.True(editor.HasBpm);
         Assert.Equal(100, editor.BpmValue);
         Assert.Empty(submitted);
         editor.HasBpm = false;
 
-        Assert.Null(Assert.IsType<SetTrackBpm>(Assert.Single(submitted)).Bpm);
+        Assert.Null(Assert.IsType<SetTrackGrid>(Assert.Single(submitted)).Grid);
     }
 
     private sealed class OutputStubLister(Func<IReadOnlyList<OutputDevice>> list) : IAudioOutputLister
