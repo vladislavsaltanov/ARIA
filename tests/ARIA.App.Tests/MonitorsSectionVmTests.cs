@@ -1,80 +1,150 @@
 namespace Aria.App.Tests;
 
+using Aria.App.Services;
 using Aria.App.ViewModels.Settings;
-using Aria.Core.Commands;
-using Aria.Core.Playback;
+using Aria.Remote;
+using Aria.Remote.Monitor;
 
 public sealed class MonitorsSectionVmTests
 {
-    private static SessionProfile Profile(int id, string name) =>
-        new(new PreviewSessionHandle(id), name, -3.0, false, -6.0);
-
-    [Fact]
-    public void Refresh_ListsSessions()
+    private sealed class FakeControl : IMonitorControl
     {
-        var submitted = new List<Command>();
-        using var section = new MonitorsSectionVm(submitted.Add, () => [Profile(1, "Drums"), Profile(2, "Keys")]);
+        public List<ListenerProfile> Profiles { get; } = [];
 
-        Assert.Equal(2, section.Sessions.Count);
-        Assert.Equal("Drums", section.Sessions[0].Name);
-        Assert.Equal(-3.0, section.Sessions[0].BackingGainDb);
-        Assert.Equal(-6.0, section.Sessions[0].ClickGainDb);
-        Assert.Empty(submitted);
+        public List<(string Id, ListenerLevels Levels)> LevelCalls { get; } = [];
+
+        public List<string> Kicked { get; } = [];
+
+        public IReadOnlyList<ListenerProfile> Listeners => Profiles.ToArray();
+
+        public double HallTrimMs { get; set; }
+
+        public double DeviceBufferMs { get; set; } = 10.7;
+
+        public bool TestClickEnabled { get; set; }
+
+        public void SetLevels(string id, ListenerLevels levels) => LevelCalls.Add((id, levels));
+
+        public void Kick(string id) => Kicked.Add(id);
     }
 
-    [Fact]
-    public void BackingGain_Set_SubmitsAndClamps()
-    {
-        var submitted = new List<Command>();
-        using var section = new MonitorsSectionVm(submitted.Add, () => [Profile(1, "Drums")]);
+    private static ListenerProfile Profile(string id, string name, ListenerStats? stats = null, ListenerLevels? levels = null) =>
+        new(id, name, RemoteRole.Listen, levels ?? ListenerLevels.Default, stats, DateTimeOffset.UnixEpoch);
 
-        section.Sessions[0].BackingGainDb = 20;
-
-        Assert.Equal(12.0, section.Sessions[0].BackingGainDb);
-        var command = Assert.IsType<SetSessionBackingGain>(Assert.Single(submitted));
-        Assert.Equal(new PreviewSessionHandle(1), command.Session);
-        Assert.Equal(12.0, command.GainDb);
-    }
+    private static ListenerStats Stats(long uncertaintyUs, string state) => new(0, uncertaintyUs, 2000, 20, 0, state);
 
     [Fact]
-    public void ClickGain_Set_SubmitsCommand()
+    public void Refresh_AddsAndRemovesListeners()
     {
-        var submitted = new List<Command>();
-        using var section = new MonitorsSectionVm(submitted.Add, () => [Profile(1, "Drums")]);
+        var control = new FakeControl();
+        control.Profiles.AddRange([Profile("a", "Drums"), Profile("b", "Keys")]);
+        using var section = new MonitorsSectionVm(control);
+        var drums = section.Listeners[0];
 
-        section.Sessions[0].ClickGainDb = -12;
-
-        var command = Assert.IsType<SetSessionClickGain>(Assert.Single(submitted));
-        Assert.Equal(new PreviewSessionHandle(1), command.Session);
-        Assert.Equal(-12.0, command.GainDb);
-    }
-
-    [Fact]
-    public void Kick_SubmitsCloseSession()
-    {
-        var submitted = new List<Command>();
-        using var section = new MonitorsSectionVm(submitted.Add, () => [Profile(1, "Drums")]);
-
-        section.Sessions[0].KickCommand.Execute(null);
-
-        var command = Assert.IsType<CloseSession>(Assert.Single(submitted));
-        Assert.Equal(new PreviewSessionHandle(1), command.Session);
-    }
-
-    [Fact]
-    public void Refresh_RemovesGoneSessions_AndUpdatesNames()
-    {
-        var submitted = new List<Command>();
-        var source = new List<SessionProfile> { Profile(1, "Drums"), Profile(2, "Keys") };
-        using var section = new MonitorsSectionVm(submitted.Add, () => source);
-        var drums = section.Sessions[0];
-
-        source.RemoveAt(1);
-        source[0] = source[0] with { Name = "Drums2" };
+        control.Profiles.RemoveAt(1);
+        control.Profiles[0] = control.Profiles[0] with { Name = "Drums2" };
+        control.Profiles.Add(Profile("c", "Bass"));
         section.Refresh();
 
-        Assert.Single(section.Sessions);
-        Assert.Same(drums, section.Sessions[0]);
-        Assert.Equal("Drums2", section.Sessions[0].Name);
+        Assert.Equal(["a", "c"], section.Listeners.Select(l => l.Id));
+        Assert.Same(drums, section.Listeners[0]);
+        Assert.Equal("Drums2", section.Listeners[0].Name);
+    }
+
+    [Fact]
+    public void Levels_Change_CallsSetLevels()
+    {
+        var control = new FakeControl();
+        control.Profiles.Add(Profile("a", "Drums", levels: new ListenerLevels(-3, false, -6, true)));
+        using var section = new MonitorsSectionVm(control);
+        var row = section.Listeners[0];
+
+        row.BackingDb = -10;
+        row.ClickDb = 40;
+
+        Assert.Equal(
+            [("a", new ListenerLevels(-10, false, -6, true)), ("a", new ListenerLevels(-10, false, 12, true))],
+            control.LevelCalls);
+    }
+
+    [Fact]
+    public void Refresh_TakesLevelsFromListener_WithoutEcho()
+    {
+        var control = new FakeControl();
+        control.Profiles.Add(Profile("a", "Drums"));
+        using var section = new MonitorsSectionVm(control);
+
+        control.Profiles[0] = control.Profiles[0] with { Levels = new ListenerLevels(-12, true, -4, true) };
+        section.Refresh();
+
+        Assert.Equal(-12, section.Listeners[0].BackingDb);
+        Assert.Equal(-4, section.Listeners[0].ClickDb);
+        Assert.Empty(control.LevelCalls);
+    }
+
+    [Fact]
+    public void Kick_CallsKick()
+    {
+        var control = new FakeControl();
+        control.Profiles.Add(Profile("a", "Drums"));
+        using var section = new MonitorsSectionVm(control);
+
+        section.Listeners[0].KickCommand.Execute(null);
+
+        Assert.Equal(["a"], control.Kicked);
+    }
+
+    [Fact]
+    public void SyncText_FormatsUncertainty()
+    {
+        var control = new FakeControl();
+        control.Profiles.AddRange([
+            Profile("a", "Drums", Stats(900, "locked")),
+            Profile("b", "Keys", Stats(900, "syncing")),
+            Profile("c", "Bass"),
+        ]);
+        using var section = new MonitorsSectionVm(control);
+
+        Assert.Equal(["±0,9 мс", "нет синхр.", "нет синхр."], section.Listeners.Select(l => l.SyncText));
+    }
+
+    [Fact]
+    public void HallTrim_Clamps_AndApplies()
+    {
+        var control = new FakeControl { HallTrimMs = 15 };
+        using var section = new MonitorsSectionVm(control);
+        Assert.Equal(15, section.HallTrimMs);
+
+        section.HallTrimMs = -80;
+        Assert.Equal(-50, section.HallTrimMs);
+        Assert.Equal(-50, control.HallTrimMs);
+
+        section.HallTrimMs = 300;
+        Assert.Equal(200, section.HallTrimMs);
+        Assert.Equal(200, control.HallTrimMs);
+    }
+
+    [Fact]
+    public void DeviceBufferText_ShowsEstimate()
+    {
+        var control = new FakeControl { DeviceBufferMs = 10.7 };
+        using var section = new MonitorsSectionVm(control);
+
+        Assert.Equal("буфер устройства: 11 мс", section.DeviceBufferText);
+    }
+
+    [Fact]
+    public void TestClick_TogglesAndReflectsAutoOff()
+    {
+        var control = new FakeControl();
+        using var section = new MonitorsSectionVm(control);
+
+        section.TestClickEnabled = true;
+        Assert.True(control.TestClickEnabled);
+
+        control.TestClickEnabled = false;
+        section.Refresh();
+
+        Assert.False(section.TestClickEnabled);
     }
 }

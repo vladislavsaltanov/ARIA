@@ -19,6 +19,24 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void AppSettings_HallTrim_RoundTrips()
+    {
+        var store = new AppSettingsStore(_path);
+        store.Save(AppSettings.Default with { HallLatencyTrimMs = 42.5 });
+
+        Assert.Equal(42.5, store.Load().HallLatencyTrimMs);
+    }
+
+    [Fact]
+    public void AppSettings_HallTrim_ClampsOnLoad()
+    {
+        var store = new AppSettingsStore(_path);
+        store.Save(AppSettings.Default with { HallLatencyTrimMs = 900 });
+
+        Assert.Equal(200, store.Load().HallLatencyTrimMs);
+    }
+
+    [Fact]
     public void Roundtrip_PreservesLogLevel()
     {
         var store = new AppSettingsStore(_path);

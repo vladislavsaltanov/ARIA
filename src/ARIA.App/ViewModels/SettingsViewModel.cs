@@ -46,7 +46,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         AudioOutputService? outputs = null,
         string? logPath = null,
         Action<AppSettings>? loggingApplied = null,
-        Func<IReadOnlyList<SessionProfile>>? monitorSessions = null)
+        IMonitorControl? monitorControl = null)
     {
         _bus = bus;
         _settingsStore = settingsStore;
@@ -55,7 +55,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         Engine = new EngineSectionVm(Submit, SnapshotSettings, SaveSettings);
         Clock = new ClockSectionVm(Submit);
         Audio = new AudioSectionVm(Submit, () => _bus.Snapshot().Show.ActiveId, outputs, sync);
-        Monitors = new MonitorsSectionVm(Submit, monitorSessions ?? (() => []), sync);
+        Monitors = new MonitorsSectionVm(monitorControl ?? NullMonitorControl.Instance, sync);
         _subscription = bus.Subscribe(Apply);
         var settings = settingsStore.Load();
         Logging = new LogSectionVm(SnapshotSettings, SaveSettings, settings.LogLevel, settings.LogEnabled, logPath ?? string.Empty, loggingApplied);
