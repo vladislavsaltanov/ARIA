@@ -30,6 +30,13 @@ internal static class AriaShim
 
     internal static long EnginePlayedFrames(IntPtr engine) => aria_engine_played_frames(engine);
 
+    internal static int EngineClock(IntPtr engine, out long frame, out long ns, out long generation)
+        => aria_engine_clock(engine, out frame, out ns, out generation);
+
+    internal static long ClockNowNs() => aria_clock_now_ns();
+
+    internal static int EngineDeviceBufferFrames(IntPtr engine) => aria_engine_device_buffer_frames(engine);
+
     internal static bool DecoderOpenUsesWide => OperatingSystem.IsWindows();
 
     internal static int DecoderOpen(string path, int sampleRate, int channels, out IntPtr decoder)
@@ -115,6 +122,15 @@ internal static class AriaShim
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern long aria_engine_played_frames(IntPtr engine);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_engine_clock(IntPtr engine, out long frame, out long ns, out long generation);
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long aria_clock_now_ns();
+
+    [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int aria_engine_device_buffer_frames(IntPtr engine);
 
     [DllImport("aria_shim", CallingConvention = CallingConvention.Cdecl)]
     private static extern int aria_decoder_open([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int sampleRate, int channels, out IntPtr decoder);

@@ -18,10 +18,13 @@ ARIA_EXPORT int aria_engine_write(aria_engine* engine, const float* data, int fr
 ARIA_EXPORT int aria_engine_space(aria_engine* engine);
 ARIA_EXPORT void aria_engine_set_master_gain(aria_engine* engine, float gain);
 ARIA_EXPORT void aria_engine_flush(aria_engine* engine);
-ARIA_EXPORT long aria_engine_played_frames(aria_engine* engine);
+ARIA_EXPORT int64_t aria_engine_played_frames(aria_engine* engine);
+ARIA_EXPORT int aria_engine_clock(aria_engine* engine, int64_t* out_frame, int64_t* out_ns, int64_t* out_generation);
+ARIA_EXPORT int64_t aria_clock_now_ns(void);
+ARIA_EXPORT int aria_engine_device_buffer_frames(aria_engine* engine);
 typedef struct aria_decoder aria_decoder;
 ARIA_EXPORT int aria_decoder_open(const char* path, int sample_rate, int channels, aria_decoder** out_decoder);
 ARIA_EXPORT int aria_decoder_open_w(const wchar_t* path, int sample_rate, int channels, aria_decoder** out_decoder);
 ARIA_EXPORT int aria_decoder_read(aria_decoder* decoder, float* out, int frame_count);
-ARIA_EXPORT int aria_decoder_seek(aria_decoder* decoder, long frame_index);
+ARIA_EXPORT int aria_decoder_seek(aria_decoder* decoder, int64_t frame_index);
 ARIA_EXPORT void aria_decoder_close(aria_decoder* decoder);

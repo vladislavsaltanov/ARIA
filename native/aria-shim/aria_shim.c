@@ -6,6 +6,7 @@
 #include <stdatomic.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 struct aria_engine {
     ma_device device;
@@ -14,10 +15,45 @@ struct aria_engine {
     float* ring;
     int capacity_frames;
     int channels;
-    _Atomic long head;
-    _Atomic long tail;
+    _Atomic int64_t head;
+    _Atomic int64_t tail;
     _Atomic float master_gain;
+    _Atomic uint32_t stamp_seq;
+    _Atomic int64_t stamp_frame;
+    _Atomic int64_t stamp_ns;
+    _Atomic int64_t stamp_generation;
+    _Atomic int64_t flush_generation;
 };
+
+static int64_t aria_now_ns(void)
+{
+#if defined(_WIN32)
+    LARGE_INTEGER counter;
+    LARGE_INTEGER frequency;
+    QueryPerformanceCounter(&counter);
+    QueryPerformanceFrequency(&frequency);
+    int64_t seconds = counter.QuadPart / frequency.QuadPart;
+    int64_t remainder = counter.QuadPart % frequency.QuadPart;
+    return seconds * 1000000000LL + remainder * 1000000000LL / frequency.QuadPart;
+#elif defined(__APPLE__)
+    return (int64_t)clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+#else
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (int64_t)now.tv_sec * 1000000000LL + (int64_t)now.tv_nsec;
+#endif
+}
+
+static void write_stamp(aria_engine* engine, int64_t frame, int64_t ns)
+{
+    uint32_t seq = atomic_load_explicit(&engine->stamp_seq, memory_order_relaxed);
+    atomic_store_explicit(&engine->stamp_seq, seq + 1, memory_order_relaxed);
+    atomic_thread_fence(memory_order_release);
+    atomic_store_explicit(&engine->stamp_frame, frame, memory_order_relaxed);
+    atomic_store_explicit(&engine->stamp_ns, ns, memory_order_relaxed);
+    atomic_store_explicit(&engine->stamp_generation, atomic_load_explicit(&engine->flush_generation, memory_order_acquire), memory_order_relaxed);
+    atomic_store_explicit(&engine->stamp_seq, seq + 2, memory_order_release);
+}
 
 static void data_callback(ma_device* device, void* output, const void* input, ma_uint32 frame_count)
 {
@@ -28,19 +64,21 @@ static void data_callback(ma_device* device, void* output, const void* input, ma
         memset(output, 0, (size_t)frame_count * (size_t)device->playback.channels * sizeof(float));
         return;
     }
+    int64_t now = aria_now_ns();
     float* out = (float*)output;
-    long head = atomic_load_explicit(&engine->head, memory_order_acquire);
-    long tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
-    long available = head - tail;
+    int64_t head = atomic_load_explicit(&engine->head, memory_order_acquire);
+    int64_t tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
+    write_stamp(engine, tail, now);
+    int64_t available = head - tail;
     if (available < 0)
     {
         available = 0;
     }
-    long total = (long)frame_count;
-    long playable = available < total ? available : total;
-    long ring_index = tail & (engine->capacity_frames - 1);
-    long offset = ring_index * engine->channels;
-    long first = engine->capacity_frames - ring_index;
+    int64_t total = (int64_t)frame_count;
+    int64_t playable = available < total ? available : total;
+    int64_t ring_index = tail & (engine->capacity_frames - 1);
+    int64_t offset = ring_index * engine->channels;
+    int64_t first = engine->capacity_frames - ring_index;
     if (first > playable)
     {
         first = playable;
@@ -49,19 +87,19 @@ static void data_callback(ma_device* device, void* output, const void* input, ma
     {
         memcpy(out, engine->ring + offset, (size_t)first * (size_t)engine->channels * sizeof(float));
     }
-    long second = playable - first;
+    int64_t second = playable - first;
     if (second > 0)
     {
         memcpy(out + first * engine->channels, engine->ring, (size_t)second * (size_t)engine->channels * sizeof(float));
     }
-    long written_samples = playable * engine->channels;
-    long full_samples = total * engine->channels;
-    for (long i = written_samples; i < full_samples; i++)
+    int64_t written_samples = playable * engine->channels;
+    int64_t full_samples = total * engine->channels;
+    for (int64_t i = written_samples; i < full_samples; i++)
     {
         out[i] = 0.0f;
     }
     float gain = atomic_load_explicit(&engine->master_gain, memory_order_relaxed);
-    for (long i = 0; i < written_samples; i++)
+    for (int64_t i = 0; i < written_samples; i++)
     {
         out[i] *= gain;
     }
@@ -76,7 +114,7 @@ static int engine_create_impl(int sample_rate, int channels, int block_size_fram
     {
         return MA_OUT_OF_MEMORY;
     }
-    long target = (long)block_size_frames * 8;
+    int64_t target = (int64_t)block_size_frames * 8;
     if (target < block_size_frames)
     {
         target = block_size_frames;
@@ -98,6 +136,11 @@ static int engine_create_impl(int sample_rate, int channels, int block_size_fram
     atomic_init(&engine->head, 0);
     atomic_init(&engine->tail, 0);
     atomic_init(&engine->master_gain, 1.0f);
+    atomic_init(&engine->stamp_seq, 0);
+    atomic_init(&engine->stamp_frame, 0);
+    atomic_init(&engine->stamp_ns, 0);
+    atomic_init(&engine->stamp_generation, 0);
+    atomic_init(&engine->flush_generation, 0);
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.pDeviceID = device_id;
@@ -265,10 +308,10 @@ ARIA_EXPORT int aria_engine_write(aria_engine* engine, const float* data, int fr
     {
         return 0;
     }
-    long head = atomic_load_explicit(&engine->head, memory_order_relaxed);
-    long tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
-    long free_frames = engine->capacity_frames - (head - tail);
-    long frames = frame_count;
+    int64_t head = atomic_load_explicit(&engine->head, memory_order_relaxed);
+    int64_t tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
+    int64_t free_frames = engine->capacity_frames - (head - tail);
+    int64_t frames = frame_count;
     if (frames > free_frames)
     {
         frames = free_frames;
@@ -277,15 +320,15 @@ ARIA_EXPORT int aria_engine_write(aria_engine* engine, const float* data, int fr
     {
         return 0;
     }
-    long ring_index = head & (engine->capacity_frames - 1);
-    long offset = ring_index * engine->channels;
-    long first = engine->capacity_frames - ring_index;
+    int64_t ring_index = head & (engine->capacity_frames - 1);
+    int64_t offset = ring_index * engine->channels;
+    int64_t first = engine->capacity_frames - ring_index;
     if (first > frames)
     {
         first = frames;
     }
     memcpy(engine->ring + offset, data, (size_t)first * (size_t)engine->channels * sizeof(float));
-    long second = frames - first;
+    int64_t second = frames - first;
     if (second > 0)
     {
         memcpy(engine->ring, data + first * engine->channels, (size_t)second * (size_t)engine->channels * sizeof(float));
@@ -300,9 +343,9 @@ ARIA_EXPORT int aria_engine_space(aria_engine* engine)
     {
         return 0;
     }
-    long head = atomic_load_explicit(&engine->head, memory_order_relaxed);
-    long tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
-    long free_frames = engine->capacity_frames - (head - tail);
+    int64_t head = atomic_load_explicit(&engine->head, memory_order_relaxed);
+    int64_t tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
+    int64_t free_frames = engine->capacity_frames - (head - tail);
     if (free_frames < 0)
     {
         free_frames = 0;
@@ -325,22 +368,71 @@ ARIA_EXPORT void aria_engine_flush(aria_engine* engine)
     {
         return;
     }
+    atomic_fetch_add_explicit(&engine->flush_generation, 1, memory_order_acq_rel);
     atomic_store_explicit(&engine->tail, atomic_load_explicit(&engine->head, memory_order_acquire), memory_order_release);
 }
 
-ARIA_EXPORT long aria_engine_played_frames(aria_engine* engine)
+ARIA_EXPORT int64_t aria_engine_played_frames(aria_engine* engine)
 {
     if (engine == NULL)
     {
         return 0;
     }
-    long tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
-    long head = atomic_load_explicit(&engine->head, memory_order_relaxed);
+    int64_t tail = atomic_load_explicit(&engine->tail, memory_order_acquire);
+    int64_t head = atomic_load_explicit(&engine->head, memory_order_relaxed);
     if (tail > head)
     {
         return head;
     }
     return tail;
+}
+
+ARIA_EXPORT int aria_engine_clock(aria_engine* engine, int64_t* out_frame, int64_t* out_ns, int64_t* out_generation)
+{
+    if (engine == NULL || out_frame == NULL || out_ns == NULL || out_generation == NULL)
+    {
+        return -1;
+    }
+    for (int attempt = 0; attempt < 8; attempt++)
+    {
+        uint32_t before = atomic_load_explicit(&engine->stamp_seq, memory_order_acquire);
+        if ((before & 1u) != 0)
+        {
+            continue;
+        }
+        int64_t frame = atomic_load_explicit(&engine->stamp_frame, memory_order_relaxed);
+        int64_t ns = atomic_load_explicit(&engine->stamp_ns, memory_order_relaxed);
+        int64_t generation = atomic_load_explicit(&engine->stamp_generation, memory_order_relaxed);
+        atomic_thread_fence(memory_order_acquire);
+        uint32_t after = atomic_load_explicit(&engine->stamp_seq, memory_order_relaxed);
+        if (before != after)
+        {
+            continue;
+        }
+        if (before == 0)
+        {
+            return 1;
+        }
+        *out_frame = frame;
+        *out_ns = ns;
+        *out_generation = generation;
+        return 0;
+    }
+    return -1;
+}
+
+ARIA_EXPORT int64_t aria_clock_now_ns(void)
+{
+    return aria_now_ns();
+}
+
+ARIA_EXPORT int aria_engine_device_buffer_frames(aria_engine* engine)
+{
+    if (engine == NULL)
+    {
+        return 0;
+    }
+    return (int)(engine->device.playback.internalPeriodSizeInFrames * engine->device.playback.internalPeriods);
 }
 
 #define ARIA_VORBIS_MAX_BLOCK_FRAMES 8192
@@ -739,7 +831,7 @@ ARIA_EXPORT int aria_decoder_read(aria_decoder* decoder, float* out, int frame_c
     return (int)frames_read;
 }
 
-ARIA_EXPORT int aria_decoder_seek(aria_decoder* decoder, long frame_index)
+ARIA_EXPORT int aria_decoder_seek(aria_decoder* decoder, int64_t frame_index)
 {
     if (decoder == NULL || frame_index < 0)
     {
