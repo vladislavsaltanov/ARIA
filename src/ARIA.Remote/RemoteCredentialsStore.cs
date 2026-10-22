@@ -3,7 +3,7 @@ namespace Aria.Remote;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-public sealed record RemoteCredentials(string Identifier, string Password);
+public sealed record RemoteCredentials(string Identifier, string Password, string ListenPassword = "");
 
 public sealed class RemoteCredentialsStore : IRemoteCredentials
 {
@@ -24,16 +24,21 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
     {
         if (File.Exists(_filePath) && ReadStored() is { } stored)
         {
-            return new RemoteCredentials(stored.Identifier, stored.Password);
+            if (string.IsNullOrEmpty(stored.ListenPassword))
+            {
+                stored = stored with { ListenPassword = GeneratePassword() };
+                Persist(stored);
+            }
+            return new RemoteCredentials(stored.Identifier, stored.Password, stored.ListenPassword!);
         }
         return Regenerate();
     }
 
-    public bool Verify(string identifier, string password)
+    public RemoteRole? Verify(string identifier, string password)
     {
         if (string.IsNullOrWhiteSpace(identifier) || string.IsNullOrEmpty(password))
         {
-            return false;
+            return null;
         }
         RemoteCredentials stored;
         try
@@ -42,22 +47,44 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
         {
-            return false;
+            return null;
         }
         if (!string.Equals(identifier, stored.Identifier, StringComparison.Ordinal))
         {
-            return false;
+            return null;
         }
-        var expected = System.Text.Encoding.UTF8.GetBytes(stored.Password);
-        var actual = System.Text.Encoding.UTF8.GetBytes(password);
-        return expected.Length == actual.Length && CryptographicOperations.FixedTimeEquals(expected, actual);
+        if (SecretEquals(stored.Password, password))
+        {
+            return RemoteRole.Control;
+        }
+        return SecretEquals(stored.ListenPassword, password) ? RemoteRole.Listen : null;
     }
 
     public void Set(string identifier, string password)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
         ArgumentException.ThrowIfNullOrEmpty(password);
-        Persist(new StoredCredentials(identifier.Trim(), password));
+        var listen = File.Exists(_filePath) && ReadStored() is { ListenPassword: { Length: > 0 } existing } ? existing : GeneratePassword();
+        Persist(new StoredCredentials(identifier.Trim(), password, listen));
+    }
+
+    public string ResetListenPassword()
+    {
+        var current = Load();
+        var password = GeneratePassword();
+        Persist(new StoredCredentials(current.Identifier, current.Password, password));
+        return password;
+    }
+
+    private static bool SecretEquals(string? expectedText, string actualText)
+    {
+        if (string.IsNullOrEmpty(expectedText))
+        {
+            return false;
+        }
+        var expected = System.Text.Encoding.UTF8.GetBytes(expectedText);
+        var actual = System.Text.Encoding.UTF8.GetBytes(actualText);
+        return expected.Length == actual.Length && CryptographicOperations.FixedTimeEquals(expected, actual);
     }
 
     public string ResetPassword()
@@ -103,12 +130,12 @@ public sealed class RemoteCredentialsStore : IRemoteCredentials
 
     private RemoteCredentials Regenerate()
     {
-        var regenerated = new StoredCredentials(GenerateIdentifier(), GeneratePassword());
+        var regenerated = new StoredCredentials(GenerateIdentifier(), GeneratePassword(), GeneratePassword());
         Persist(regenerated);
-        return new RemoteCredentials(regenerated.Identifier, regenerated.Password);
+        return new RemoteCredentials(regenerated.Identifier, regenerated.Password, regenerated.ListenPassword!);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
-    private sealed record StoredCredentials(string Identifier, string Password);
+    private sealed record StoredCredentials(string Identifier, string Password, string? ListenPassword = null);
 }

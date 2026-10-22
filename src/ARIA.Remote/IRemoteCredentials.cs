@@ -4,5 +4,5 @@ public interface IRemoteCredentials
 {
     string Identifier { get; }
 
-    bool Verify(string identifier, string password);
+    RemoteRole? Verify(string identifier, string password);
 }

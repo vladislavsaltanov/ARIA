@@ -37,7 +37,7 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly PreviewTap? _previewTap;
     private readonly IAudioEngine? _engine;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
-    private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
+    private readonly ConcurrentDictionary<string, RemoteRole> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
     private IDisposable? _subscription;
     private Task? _positionTask;
@@ -135,27 +135,55 @@ public sealed class RemoteHost : IAsyncDisposable
         {
             body = null;
         }
-        if (body is null || !credentials.Verify(body.Identifier ?? string.Empty, body.Password ?? string.Empty))
+        if (body is null || credentials.Verify(body.Identifier ?? string.Empty, body.Password ?? string.Empty) is not { } role)
         {
             await Task.Delay(FailedAuthDelayMs);
             return Results.Json(new { error = "invalid-credentials" }, statusCode: StatusCodes.Status401Unauthorized);
         }
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
-        _sessionTokens[token] = 0;
-        return Results.Ok(new { token });
+        _sessionTokens[token] = role;
+        return Results.Ok(new { token, role = role == RemoteRole.Listen ? "listen" : "control" });
     }
 
-    private bool IsTokenValid(string? token) =>
-        !string.IsNullOrEmpty(token)
-        && (_options.Credentials is null
-            ? token == _options.AuthToken
-            : _sessionTokens.ContainsKey(token));
+    internal bool TryGetRole(string? token, out RemoteRole role)
+    {
+        role = RemoteRole.Control;
+        if (string.IsNullOrEmpty(token))
+        {
+            return false;
+        }
+        if (_options.Credentials is null)
+        {
+            return token == _options.AuthToken;
+        }
+        return _sessionTokens.TryGetValue(token, out role);
+    }
+
+    public void RevokeListenTokens()
+    {
+        foreach (var (token, role) in _sessionTokens)
+        {
+            if (role == RemoteRole.Listen)
+            {
+                _sessionTokens.TryRemove(token, out _);
+            }
+        }
+    }
+
+    private int ControlAccessStatus(string? token)
+    {
+        if (!TryGetRole(token, out var role))
+        {
+            return StatusCodes.Status401Unauthorized;
+        }
+        return role == RemoteRole.Control ? StatusCodes.Status200OK : StatusCodes.Status403Forbidden;
+    }
 
     private async Task PreviewAsync(HttpContext context)
     {
-        if (!IsTokenValid(context.Request.Query["token"]))
+        if (ControlAccessStatus(context.Request.Query["token"]) is var access && access != StatusCodes.Status200OK)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.StatusCode = access;
             return;
         }
         if (context.Request.Query.TryGetValue("session", out var sessionValue)
@@ -184,9 +212,9 @@ public sealed class RemoteHost : IAsyncDisposable
 
     private IResult OpenPreviewSessionAsync(HttpContext context)
     {
-        if (!IsTokenValid(context.Request.Query["token"]))
+        if (ControlAccessStatus(context.Request.Query["token"]) is var access && access != StatusCodes.Status200OK)
         {
-            return Results.Unauthorized();
+            return Results.StatusCode(access);
         }
         if (_engine is null)
         {
@@ -198,9 +226,9 @@ public sealed class RemoteHost : IAsyncDisposable
 
     private async Task HandleWebSocket(HttpContext context)
     {
-        if (!IsTokenValid(context.Request.Query["token"]))
+        if (ControlAccessStatus(context.Request.Query["token"]) is var access && access != StatusCodes.Status200OK)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.StatusCode = access;
             return;
         }
         if (!context.WebSockets.IsWebSocketRequest)
