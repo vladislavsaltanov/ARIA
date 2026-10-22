@@ -1,6 +1,7 @@
 namespace Aria.Remote;
 
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
@@ -10,6 +11,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Aria.Audio;
 using Aria.Core.Commands;
+using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
@@ -40,6 +42,7 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly MonitorFeed? _monitorFeed;
     private MonitorHub? _monitorHub;
     private MonitorPublisher? _monitorPublisher;
+    private PcmCache? _pcmCache;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
     private readonly ConcurrentDictionary<string, RemoteRole> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -77,6 +80,8 @@ public sealed class RemoteHost : IAsyncDisposable
 
     public MonitorHub? Monitor => _monitorHub;
 
+    internal ImmutableHashSet<TrackId> AllowedMonitorTracks => _monitorPublisher?.Builder.AllowedTracks ?? [];
+
     public Uri WebsocketEndpoint { get; private set; } = new("ws://127.0.0.1:0/ws");
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -98,6 +103,7 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapGet("/preview", PreviewAsync);
         app.MapPost("/preview/open", OpenPreviewSessionAsync);
         app.MapGet("/monitor/ws", (HttpContext context) => HandleMonitorSocket(context));
+        app.MapGet("/monitor/pcm", (HttpContext context) => HandlePcm(context));
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
@@ -112,7 +118,9 @@ public sealed class RemoteHost : IAsyncDisposable
         if (_monitorFeed is { } feed)
         {
             _monitorHub = new MonitorHub(JsonOptions);
-            _monitorPublisher = new MonitorPublisher(feed, _monitorHub, _ => true);
+            var cache = new PcmCache(feed.Decoders, feed.Sources);
+            _pcmCache = cache;
+            _monitorPublisher = new MonitorPublisher(feed, _monitorHub, track => feed.Sources.Find(track) is { } source && File.Exists(source.FilePath) && !cache.IsUndecodable(track));
             _monitorPublisher.SetTransport(_bus.Snapshot().Transport);
             _monitorPublisher.Start();
         }
@@ -184,6 +192,21 @@ public sealed class RemoteHost : IAsyncDisposable
             }
         }
         _monitorHub?.Revoke(RemoteRole.Listen);
+    }
+
+    private async Task HandlePcm(HttpContext context)
+    {
+        if (!TryGetRole(context.Request.Query["token"], out var role))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (_pcmCache is not { } cache || _monitorFeed is not { } feed)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        await PcmEndpoint.HandleAsync(context, role, cache, feed.Sources, () => AllowedMonitorTracks, _shutdown.Token);
     }
 
     private async Task HandleMonitorSocket(HttpContext context)
@@ -515,6 +538,7 @@ public sealed class RemoteHost : IAsyncDisposable
         _subscription?.Dispose();
         _monitorPublisher?.Dispose();
         _monitorHub?.CloseAll();
+        _pcmCache?.Dispose();
         if (_positionTask is { } position)
         {
             try
