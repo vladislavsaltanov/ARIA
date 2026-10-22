@@ -104,6 +104,7 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapPost("/preview/open", OpenPreviewSessionAsync);
         app.MapGet("/monitor/ws", (HttpContext context) => HandleMonitorSocket(context));
         app.MapGet("/monitor/pcm", (HttpContext context) => HandlePcm(context));
+        app.MapGet("/monitor", () => RemoteStaticFiles.Serve("monitor.html"));
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
