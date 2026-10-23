@@ -175,14 +175,14 @@ public sealed class AppHostTests : IDisposable
         Assert.Equal(1, report.Added);
         var stored = Assert.Single(host.Library!.Load().Tracks);
         var audio = new TrackAudioSettings(3.0, 0.5, AudioEq.Flat, false, null, null);
-        var customized = stored with { Defaults = stored.Defaults with { Bpm = 128.0, Audio = audio } };
+        var customized = stored with { Defaults = stored.Defaults with { Grid = new BeatGrid(128.0, 3, TimeSpan.FromMilliseconds(40)), Audio = audio } };
         var (_, projects) = host.Library.Load();
         host.Library.Upsert([customized], projects);
 
         Assert.True(await host.RelinkTrackAsync(stored.Id, wav));
 
         var relinked = Assert.Single(host.Library.Load().Tracks);
-        Assert.Equal(128.0, relinked.Defaults.Bpm);
+        Assert.Equal(new BeatGrid(128.0, 3, TimeSpan.FromMilliseconds(40)), relinked.Defaults.Grid);
         Assert.NotNull(relinked.Defaults.Audio);
         var relinkedAudio = relinked.Defaults.Audio!;
         Assert.Equal(3.0, relinkedAudio.GainDb, 3);

@@ -30,6 +30,25 @@ public sealed class ProjectsViewModelTests
     }
 
     [Fact]
+    public void CreateEntryAudioEditor_PassesGridDurationAndPlayingPosition()
+    {
+        var grid = new BeatGrid(96, 3, TimeSpan.FromMilliseconds(120));
+        var track = new Track(TestTrack.Id, TestTrack.FilePath, TestTrack.DefaultName, TestTrack.Duration, new TrackDefaults(Grid: grid));
+        var (bus, _, _) = Setup();
+        using var vm = new ProjectsViewModel(bus, () => [track], playingPosition: id => id == track.Id ? TimeSpan.FromSeconds(4.5) : null);
+
+        var editor = vm.CreateEntryAudioEditor(vm.Projects[0].Entries[0]);
+
+        Assert.True(editor.HasGrid);
+        Assert.Equal(96, editor.Bpm);
+        Assert.Equal(3, editor.BeatsPerBar);
+        Assert.Equal(120, editor.FirstBeatMs);
+        Assert.True(editor.CanTakeCurrentPosition);
+        editor.FirstBeatMs = 999999;
+        Assert.Equal(179999, editor.FirstBeatMs);
+    }
+
+    [Fact]
     public void CreateEntryAudioEditor_UsesEntryOverride()
     {
         var entryAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);
@@ -492,6 +511,63 @@ public sealed class ProjectsViewModelTests
         var updated = vm.Projects[0].Entries[1];
         Assert.Equal(EndAction.Pause, updated.Overrides?.EndAction);
         Assert.Equal("заметка", updated.Note);
+    }
+
+    private static readonly Track GuideTrack = new(
+        TrackId.New(), "/audio/guide.flac", "guide", TimeSpan.FromMinutes(3), new TrackDefaults());
+
+    private static (CommandBus Bus, ProjectsViewModel Vm) SetupWithGuide()
+    {
+        var entry1 = new ProjectEntry(EntryId.New(), TestTrack.Id, new ProjectOverrides(Note: "заметка"));
+        var project = new Project(ProjectId.New(), "Main", [entry1]);
+        var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack, GuideTrack], [project], project.Id));
+        return (bus, new ProjectsViewModel(bus, () => [TestTrack, GuideTrack]));
+    }
+
+    [Fact]
+    public void SetEntryBacking_MergesIntoOverrides()
+    {
+        var (bus, vm) = SetupWithGuide();
+        using (bus)
+        using (vm)
+        {
+            vm.SetEntryBacking(vm.Projects[0].Entries[0], GuideTrack.Id);
+
+            var overrides = bus.Snapshot().Show.Projects[0].Entries[0].Overrides;
+            Assert.Equal(GuideTrack.Id, overrides!.Backing);
+            Assert.Equal("заметка", overrides.Note);
+        }
+    }
+
+    [Fact]
+    public void SetEntryBacking_Null_DropsEmptyOverrides()
+    {
+        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id, new ProjectOverrides(Backing: GuideTrack.Id));
+        var project = new Project(ProjectId.New(), "Main", [entry]);
+        using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
+        bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack, GuideTrack], [project], project.Id));
+        using var vm = new ProjectsViewModel(bus, () => [TestTrack, GuideTrack]);
+
+        vm.SetEntryBacking(vm.Projects[0].Entries[0], null);
+
+        Assert.Null(bus.Snapshot().Show.Projects[0].Entries[0].Overrides);
+    }
+
+    [Fact]
+    public void CreateEntryAudioEditor_BackingOptions_ExcludeOwnTrack_AndSubmit()
+    {
+        var (bus, vm) = SetupWithGuide();
+        using (bus)
+        using (vm)
+        {
+            var editor = vm.CreateEntryAudioEditor(vm.Projects[0].Entries[0]);
+
+            var option = Assert.Single(editor.BackingOptions);
+            Assert.Equal(GuideTrack.Id, option.Id);
+            editor.SelectedBacking = option;
+            Assert.Equal(GuideTrack.Id, bus.Snapshot().Show.Projects[0].Entries[0].Overrides!.Backing);
+        }
     }
 
     [Fact]

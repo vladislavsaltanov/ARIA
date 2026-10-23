@@ -13,11 +13,8 @@ public sealed class ShowController : IShowHandler
     private const double SilenceDb = -80.0;
     private const double PreviewGainMinDb = -80.0;
     private const double PreviewGainMaxDb = 12.0;
-    private const double ClickBpmMin = 20.0;
     private const int UndoDepth = 64;
 
-    private const int SessionNameMaxLength = 64;
-    private const double ClickBpmMax = 300.0;
     private static readonly TimeSpan PanicFadeMax = TimeSpan.FromMilliseconds(2000);
     private static readonly TimeSpan SmoothingMax = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
@@ -197,8 +194,8 @@ public sealed class ShowController : IShowHandler
             case SetTrackAudio setTrackAudio:
                 OnSetTrackAudio(client, seq, setTrackAudio);
                 break;
-            case SetTrackBpm setTrackBpm:
-                OnSetTrackBpm(client, seq, setTrackBpm);
+            case SetTrackGrid setTrackGrid:
+                OnSetTrackGrid(client, seq, setTrackGrid);
                 break;
             case SetTrackMarkers setTrackMarkers:
                 OnSetTrackMarkers(client, seq, setTrackMarkers);
@@ -220,27 +217,6 @@ public sealed class ShowController : IShowHandler
                 break;
             case SetPreviewMuted setPreviewMuted:
                 OnSetPreviewMuted(setPreviewMuted);
-                break;
-            case SetClickSettings setClickSettings:
-                OnSetClickSettings(client, seq, setClickSettings);
-                break;
-            case SetClickMuted setClickMuted:
-                OnSetClickMuted(setClickMuted);
-                break;
-            case StartSessionTrack startSessionTrack:
-                OnStartSessionTrack(client, seq, startSessionTrack);
-                break;
-            case RenameSession renameSession:
-                OnRenameSession(client, seq, renameSession);
-                break;
-            case SetSessionBackingGain setSessionBackingGain:
-                OnSetSessionBackingGain(client, seq, setSessionBackingGain);
-                break;
-            case SetSessionClickGain setSessionClickGain:
-                OnSetSessionClickGain(client, seq, setSessionClickGain);
-                break;
-            case CloseSession closeSession:
-                OnCloseSession(closeSession);
                 break;
             case NormalizeTrack normalize:
                 OnNormalizeTrack(client, seq, normalize);
@@ -298,7 +274,7 @@ public sealed class ShowController : IShowHandler
 
     public TrackAudioSettings? TrackAudio(TrackId id) => FindPublishedTrack(id)?.Defaults.Audio;
 
-    public double? TrackBpm(TrackId id) => FindPublishedTrack(id)?.Defaults.Bpm;
+    public BeatGrid? TrackGrid(TrackId id) => FindPublishedTrack(id)?.Defaults.Grid;
 
     private Track? FindPublishedTrack(TrackId id)
     {
@@ -1131,6 +1107,11 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
+        if (command.Overrides?.Backing is { } backing && !_trackMap.ContainsKey(backing))
+        {
+            Reject(client, seq, "unknown-backing");
+            return;
+        }
         var project = location.Project;
         var entry = project.Entries[location.Index];
         var entries = project.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
@@ -1237,77 +1218,6 @@ public sealed class ShowController : IShowHandler
 
     private void OnSetPreviewMuted(SetPreviewMuted command) => _engine.SetPreviewMuted(command.Muted);
 
-    private void OnSetClickSettings(ClientId client, long seq, SetClickSettings command)
-    {
-        if (command.Settings.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
-        {
-            Reject(client, seq, "gain-out-of-range");
-            return;
-        }
-        if (command.Settings.Bpm is < ClickBpmMin or > ClickBpmMax)
-        {
-            Reject(client, seq, "bpm-out-of-range");
-            return;
-        }
-        _engine.SetClick(command.Session, command.Settings);
-    }
-
-    private void OnSetClickMuted(SetClickMuted command) => _engine.SetClickMuted(command.Session, command.Muted);
-
-    private void OnStartSessionTrack(ClientId client, long seq, StartSessionTrack command)
-    {
-        if (_panicked)
-        {
-            Reject(client, seq, "panicked");
-            return;
-        }
-        if (!_trackMap.TryGetValue(command.Track, out var track))
-        {
-            Reject(client, seq, "unknown-track");
-            return;
-        }
-        var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
-        _engine.StartSessionTrack(command.Session, new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio));
-    }
-
-    private void OnRenameSession(ClientId client, long seq, RenameSession command)
-    {
-        var name = command.Name.Trim();
-        if (name.Length is 0)
-        {
-            Reject(client, seq, "name-empty");
-            return;
-        }
-        if (name.Length > SessionNameMaxLength)
-        {
-            Reject(client, seq, "name-too-long");
-            return;
-        }
-        _engine.RenameSession(command.Session, name);
-    }
-
-    private void OnSetSessionBackingGain(ClientId client, long seq, SetSessionBackingGain command)
-    {
-        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
-        {
-            Reject(client, seq, "gain-out-of-range");
-            return;
-        }
-        _engine.SetSessionBackingGain(command.Session, command.GainDb);
-    }
-
-    private void OnCloseSession(CloseSession command) => _engine.ClosePreviewSession(command.Session);
-
-    private void OnSetSessionClickGain(ClientId client, long seq, SetSessionClickGain command)
-    {
-        if (command.GainDb is < PreviewGainMinDb or > PreviewGainMaxDb)
-        {
-            Reject(client, seq, "gain-out-of-range");
-            return;
-        }
-        _engine.SetSessionClickGain(command.Session, command.GainDb);
-    }
-
     private void OnSetTrackAudio(ClientId client, long seq, SetTrackAudio command)
     {
         if (AudioValidation.ValidateTrack(command.Audio) is { } reason)
@@ -1330,19 +1240,19 @@ public sealed class ShowController : IShowHandler
         EmitShow();
     }
 
-    private void OnSetTrackBpm(ClientId client, long seq, SetTrackBpm command)
+    private void OnSetTrackGrid(ClientId client, long seq, SetTrackGrid command)
     {
-        if (command.Bpm is < ClickBpmMin or > ClickBpmMax)
-        {
-            Reject(client, seq, "bpm-out-of-range");
-            return;
-        }
         if (!_trackMap.TryGetValue(command.Track, out var existing))
         {
             Reject(client, seq, "unknown-track");
             return;
         }
-        var updated = existing with { Defaults = existing.Defaults with { Bpm = command.Bpm } };
+        if (command.Grid is { } grid && BeatGridValidation.Validate(grid, existing.Duration) is { } reason)
+        {
+            Reject(client, seq, reason);
+            return;
+        }
+        var updated = existing with { Defaults = existing.Defaults with { Grid = command.Grid } };
         _tracks = _tracks.Replace(existing, updated);
         _trackMap[command.Track] = updated;
         if (_current?.Track.Id == command.Track)
@@ -1353,7 +1263,14 @@ public sealed class ShowController : IShowHandler
                 Track = updated,
                 Settings = _current.Settings,
                 Handle = _current.Handle,
+                StartAt = _current.StartAt,
+                MarkerFloor = _current.MarkerFloor,
+                ResumeAt = _current.ResumeAt,
             };
+            if (_current.Handle is { } handle)
+            {
+                _monitor?.Bind(handle, Content(_current));
+            }
             EmitTransport();
         }
         EmitShow();
@@ -1645,11 +1562,15 @@ public sealed class ShowController : IShowHandler
         var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
             ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
             : EffectiveSettings.ForTrack(track, _defaultEndAction);
-        if (settings.EndAction == deck.Settings.EndAction)
+        if (settings.EndAction == deck.Settings.EndAction && settings.Backing == deck.Settings.Backing)
         {
             return;
         }
-        deck.Settings = deck.Settings with { EndAction = settings.EndAction };
+        deck.Settings = deck.Settings with { EndAction = settings.EndAction, Backing = settings.Backing };
+        if (deck.Handle is { } handle)
+        {
+            _monitor?.Bind(handle, Content(deck));
+        }
         EmitTransport();
     }
 
@@ -2457,8 +2378,9 @@ public sealed class ShowController : IShowHandler
         deck.Track.Duration,
         deck.StartAt,
         deck.Settings.CueOut,
-        deck.Track.Defaults.Bpm,
-        deck.Settings.Markers);
+        deck.Track.Defaults.Grid,
+        deck.Settings.Markers,
+        deck.Settings.Backing);
 
     private DeckContent? PeekNext()
     {
@@ -2469,7 +2391,7 @@ public sealed class ShowController : IShowHandler
             var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
                 ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
-            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm, settings.Markers);
+            return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers, settings.Backing);
         }
 
         if (_activeProjectId is { } projectId)
@@ -2480,7 +2402,7 @@ public sealed class ShowController : IShowHandler
                 var entry = project.Entries[_cursor];
                 var track = _trackMap[entry.TrackId];
                 var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
-                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Bpm, settings.Markers);
+                return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers, settings.Backing);
             }
         }
         return null;
@@ -2505,6 +2427,10 @@ public sealed class ShowController : IShowHandler
             foreach (var entry in project.Entries)
             {
                 Add(entry.TrackId);
+                if (entry.Overrides?.Backing is { } backing)
+                {
+                    Add(backing);
+                }
             }
         }
         foreach (var item in _queue)
@@ -2527,7 +2453,7 @@ public sealed class ShowController : IShowHandler
         }
         return new TrackDigest([.. names
             .OrderBy(pair => pair.Key.Value)
-            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value, _trackMap.TryGetValue(pair.Key, out var track) ? track.Defaults.Bpm : null))]);
+            .Select(pair => new TrackDigestEntry(pair.Key, pair.Value, _trackMap.TryGetValue(pair.Key, out var track) ? track.Defaults.Grid : null))]);
     }
 
     private static bool DigestEquals(TrackDigest left, TrackDigest right)
@@ -2564,7 +2490,6 @@ public sealed class ShowController : IShowHandler
     private void SetStatus(TransportStatus status)
     {
         _status = status;
-        _engine.SetSessionFollow(status == TransportStatus.Playing);
     }
 
     private void EmitTransport() => Emit(new TransportDelta(++_transportVersion, BuildTransport()));

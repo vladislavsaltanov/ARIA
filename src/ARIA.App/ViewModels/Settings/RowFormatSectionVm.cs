@@ -37,16 +37,11 @@ public sealed partial class RowFormatSectionVm : ObservableObject
     private void SaveRowSettings()
     {
         var current = _snapshot();
-        var settings = new AppSettings(
-            UseFileName,
-            string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat,
-            current.Smoothing,
-            current.DefaultEndAction,
-            current.OutputDeviceId,
-            current.OutputDeviceName,
-            current.PreviewOutputDeviceId,
-            current.PreviewOutputDeviceName,
-            current.MeterSmoothing);
+        var settings = current with
+        {
+            UseFileName = UseFileName,
+            RowFormat = string.IsNullOrWhiteSpace(RowFormat) ? AppSettings.Default.RowFormat : RowFormat,
+        };
         RowFormat = settings.RowFormat;
         _save(settings);
         _applied?.Invoke(settings);

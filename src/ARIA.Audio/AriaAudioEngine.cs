@@ -7,7 +7,7 @@ using System.Diagnostics;
 using Aria.Core.Model;
 using Aria.Core.Playback;
 
-public sealed class AriaAudioEngine : IAudioEngine, IDisposable
+public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposable
 {
     private readonly MixerBus _mixer;
     private IAudioSink _sink;
@@ -37,13 +37,14 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     private readonly SimpleLimiter _masterLimiter;
     private readonly MonoSumNode _masterMono;
     private readonly PreviewTap? _previewTap;
-    private readonly PreviewTap _mainTap;
-    private bool _mainPlaying;
-    private int _sessionFollow;
     private readonly int _blockFrames;
     private readonly int _sampleRate;
     private readonly int _channels;
-    private readonly SessionMixer _sessionMixer;
+    private readonly TestClickGenerator _testClickGenerator;
+    private int _testClick;
+    private ClockSlot _clockSlot;
+    private int _sinkGeneration;
+    private long _sinkWrittenFrames;
 
     private int _handleCounter;
     private int _currentHandle;
@@ -74,21 +75,20 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _meters = meters;
         _lufs = new LufsMeter(channels, sampleRate, TimeSpan.FromMilliseconds(400));
         _sink = sink ?? new NullSink(sampleRate, channels);
+        _clockSlot = ClockSlot.For(_sink, 0);
         _mixer = new MixerBus(channels, sampleRate, blockSizeFrames);
         _block = new float[blockSizeFrames * channels];
         _mixer.Events += ForwardEvent;
-        _mixer.Events += OnMixerEnded;
         _masterHpf = new HighPassNode(0, channels, sampleRate);
         _masterEq = new SevenBandEq(AudioChain.SafeFrequencies(GlobalAudioSettings.Default.Eq.Bands, sampleRate), channels, sampleRate);
         _masterPan = new PanNode(0);
         _masterLimiter = new SimpleLimiter(channels, sampleRate);
         _masterMono = new MonoSumNode();
         _previewTap = previewTap;
-        _mainTap = new PreviewTap(sampleRate * 2, channels);
         _blockFrames = blockSizeFrames;
         _sampleRate = sampleRate;
         _channels = channels;
-        _sessionMixer = new SessionMixer(sourceFactory, sampleRate, channels, blockSizeFrames);
+        _testClickGenerator = new TestClickGenerator(sampleRate, channels);
         _previewSink = previewSink ?? new NullSink(sampleRate, channels);
         _preview = new MixerBus(channels, sampleRate, blockSizeFrames);
         _previewBlock = new float[blockSizeFrames * channels];
@@ -99,6 +99,12 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     }
 
     public event Action<StreamEvent>? Events;
+
+    public MixReportRing Reports { get; } = new();
+
+    public bool TestClickEnabled => Volatile.Read(ref _testClick) == 1;
+
+    public void SetTestClick(bool enabled) => Volatile.Write(ref _testClick, enabled ? 1 : 0);
 
     public event Action<bool>? MainOutputStalled;
 
@@ -112,7 +118,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             _faultedAtBirth.Enqueue(new BirthFault(handle.Value, fault));
             return handle;
         }
-        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio), StartInactive: true));
+        var mixerHandle = _mixer.AddVoice(new VoiceConfig(sample, 0.0, null, null, options.Markers, source.CueIn, source.CueOut, ResolveAudio(source.Audio), StartInactive: true, Tag: handle.Value));
         _mixerHandles[handle.Value] = mixerHandle;
         Volatile.Write(ref _currentHandle, handle.Value);
         return handle;
@@ -122,25 +128,6 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
     {
         if (_mixerHandles.TryGetValue(handle.Value, out var mixerHandle))
         {
-            if (command == TransportCommand.Play)
-            {
-                Volatile.Write(ref _mainPlaying, true);
-                if (MixerPositionFrames(mixerHandle) <= _blockFrames)
-                {
-                    ResetSessionVoices();
-                }
-                else
-                {
-                    SyncSessionVoices(MixerPositionFrames(mixerHandle));
-                }
-            }
-            else if (command == TransportCommand.Pause || command == TransportCommand.Stop)
-            {
-                if (handle.Value == Volatile.Read(ref _currentHandle))
-                {
-                    Volatile.Write(ref _mainPlaying, false);
-                }
-            }
             _mixer.Transport(mixerHandle, command);
         }
     }
@@ -174,7 +161,6 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             var frames = (long)Math.Round(position.TotalSeconds * _mixer.SampleRate);
             _mixer.Seek(mixerHandle, Math.Max(0, frames));
             Volatile.Read(ref _sink).Flush();
-            SyncSessionVoices(Math.Max(0, frames));
         }
     }
 
@@ -189,7 +175,6 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
 
     public void Panic(PanicSpec spec)
     {
-        Volatile.Write(ref _mainPlaying, false);
         _mixer.StopAll(spec.FadeDuration);
         _preview.StopAll(spec.FadeDuration);
         _previewHandles.Clear();
@@ -319,7 +304,6 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             _cts.Dispose();
             return;
         }
-        _sessionMixer.Dispose();
         _mixer.Dispose();
         _preview.Dispose();
         (_sink as IDisposable)?.Dispose();
@@ -327,23 +311,31 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         _cts.Dispose();
     }
 
+    public int DeviceBufferFrames => Volatile.Read(ref _clockSlot).Source?.DeviceBufferFrames ?? 0;
+
+    public bool TryReadOutputStamp(out OutputStamp stamp)
+    {
+        var slot = Volatile.Read(ref _clockSlot);
+        if (slot.Source is not { } source || slot.Mapping is not { } mapping || !source.TryReadStamp(out var frame, out var nativeNs, out var flushGeneration))
+        {
+            stamp = default;
+            return false;
+        }
+        stamp = new OutputStamp(frame, mapping.ToHostTicks(nativeNs), flushGeneration, slot.Generation);
+        return true;
+    }
+
+    private sealed record ClockSlot(IOutputClockSource? Source, NativeClockMapping? Mapping, int Generation)
+    {
+        public static ClockSlot For(IAudioSink sink, int generation) =>
+            sink is IOutputClockSource source
+                ? new ClockSlot(source, new NativeClockMapping(source.NativeNowNs), generation)
+                : new ClockSlot(null, null, generation);
+    }
+
     private sealed record BirthFault(int Handle, SourceOpenFault Cause);
 
     private void ForwardEvent(StreamEvent e) => Events?.Invoke(e);
-
-    private void OnMixerEnded(StreamEvent e)
-    {
-        if (e.Kind == StreamEventKind.Ended
-            && e.Handle.Value == Volatile.Read(ref _currentHandle))
-        {
-            Volatile.Write(ref _mainPlaying, false);
-        }
-    }
-
-    private long MixerPositionFrames(StreamHandle mixerHandle) =>
-        _mixer.TryGetPosition(mixerHandle, out var position)
-            ? (long)(position.TotalSeconds * _mixer.SampleRate)
-            : long.MaxValue;
 
     private void RenderLoop()
     {
@@ -368,13 +360,14 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         if (_mainPending == 0)
         {
             _mixer.Render(_block);
-            _mainTap.Publish(_block);
+            PublishReport();
             ApplyMasterChain();
             PublishMeter();
             _mainOffset = 0;
             _mainPending = _block.Length;
         }
         var accepted = Math.Clamp(_sink.Write(_block.AsSpan(_mainOffset, _mainPending)), 0, _mainPending);
+        _sinkWrittenFrames += accepted / _channels;
         _mainOffset += accepted;
         _mainPending -= accepted;
         if (_mainPending == 0)
@@ -391,6 +384,28 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         PublishPosition();
         Thread.Sleep(1);
+    }
+
+    private void PublishReport()
+    {
+        var report = _mixer.LastReport;
+        if (Volatile.Read(ref _testClick) == 1)
+        {
+            foreach (var voice in report)
+            {
+                if (voice.Active && !voice.Ended)
+                {
+                    Volatile.Write(ref _testClick, 0);
+                    break;
+                }
+            }
+        }
+        var testClick = Volatile.Read(ref _testClick) == 1;
+        if (testClick)
+        {
+            _testClickGenerator.Mix(_block, _sinkWrittenFrames);
+        }
+        Reports.Publish(_sinkWrittenFrames, _sinkGeneration, report, _mixer.LastReportOverflow, testClick);
     }
 
     private bool TrackStall(long now)
@@ -489,57 +504,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
         }
         _previewSink.Write(_previewBlock);
         _previewTap?.Publish(_previewBlock);
-        _sessionMixer.Pump(new SessionPumpContext(
-            _mainTap.Head,
-            Volatile.Read(ref _mainPlaying),
-            Volatile.Read(ref _sessionFollow) == 1,
-            Volatile.Read(ref _previewGainBits),
-            Volatile.Read(ref _previewMuted)));
     }
-
-    public PreviewSessionHandle OpenPreviewSession() => OpenPreviewSession(null);
-
-    public PreviewSessionHandle OpenPreviewSession(string? name)
-    {
-        var seekFrames = -1L;
-        if (Volatile.Read(ref _mainPlaying)
-            && _mixerHandles.TryGetValue(Volatile.Read(ref _currentHandle), out var mainMixer)
-            && MixerPositionFrames(mainMixer) is var mainFrames && mainFrames != long.MaxValue)
-        {
-            seekFrames = mainFrames;
-        }
-        return _sessionMixer.Open(name, _mainTap.Subscribe(), seekFrames);
-    }
-
-    public void ClosePreviewSession(PreviewSessionHandle session) => _sessionMixer.Close(session);
-
-    public void StartSessionTrack(PreviewSessionHandle session, TrackSource source)
-    {
-        if (_sessionMixer.StartTrack(session, source) is { } fault)
-        {
-            _faultedAtBirth.Enqueue(new BirthFault(session.Value, fault));
-        }
-    }
-
-    public void SetClick(PreviewSessionHandle session, ClickSettings settings) => _sessionMixer.SetClick(session, settings);
-
-    public void SetClickMuted(PreviewSessionHandle session, bool muted) => _sessionMixer.SetClickMuted(session, muted);
-
-    public void SetSessionFollow(bool follow) => Volatile.Write(ref _sessionFollow, follow ? 1 : 0);
-
-    public PreviewTap? PreviewSessionTap(PreviewSessionHandle session) => _sessionMixer.Tap(session);
-
-    private void ResetSessionVoices() => _sessionMixer.ResetVoices();
-
-    private void SyncSessionVoices(long frames) => _sessionMixer.SyncVoices(frames);
-
-    public void RenameSession(PreviewSessionHandle session, string name) => _sessionMixer.Rename(session, name);
-
-    public void SetSessionClickGain(PreviewSessionHandle session, double gainDb) => _sessionMixer.SetClickGain(session, gainDb);
-
-    public void SetSessionBackingGain(PreviewSessionHandle session, double gainDb) => _sessionMixer.SetBackingGain(session, gainDb);
-
-    public IReadOnlyList<SessionProfile> ListSessions() => _sessionMixer.List();
 
     private void DrainPendingSinks()
     {
@@ -548,14 +513,25 @@ public sealed class AriaAudioEngine : IAudioEngine, IDisposable
             if (pending.Preview)
             {
                 var old = Interlocked.Exchange(ref _previewSink, pending.Sink);
-                SessionMixer.RetireDisposable(old);
+                RetireDisposable(old);
             }
             else
             {
                 var old = Interlocked.Exchange(ref _sink, pending.Sink);
-                SessionMixer.RetireDisposable(old);
+                _sinkGeneration++;
+                _sinkWrittenFrames = 0;
+                Volatile.Write(ref _clockSlot, ClockSlot.For(pending.Sink, _sinkGeneration));
+                RetireDisposable(old);
                 _stallSince = 0;
             }
+        }
+    }
+
+    private static void RetireDisposable(object? disposable)
+    {
+        if (disposable is IDisposable target)
+        {
+            ThreadPool.QueueUserWorkItem(static state => ((IDisposable)state!).Dispose(), target);
         }
     }
 

@@ -118,7 +118,7 @@ public partial class App : Application
         var rowSettings = settingsStore.Load();
         var transport = new TransportViewModel(host.Bus, host.Monitor, sync, host.Meters, () => host.Tracks, rowSettings);
         ScriptPanelViewModel? scripts = null;
-        var projects = new ProjectsViewModel(host.Bus, () => host.Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio, scriptExporter: pid => scripts!.ExportProjectScripts(pid));
+        var projects = new ProjectsViewModel(host.Bus, () => host.Tracks, thumbs, rowSettings, sync, topLevel: () => desktop.MainWindow, audioImport: host.ImportTracksAsync, trackAudio: host.GetTrackAudio, scriptExporter: pid => scripts!.ExportProjectScripts(pid), playingPosition: id => host.Monitor.Latest is { } position && position.Deck.TrackId == id ? position.FilePosition : null);
         projects.TrackRelink = (id, path) => host.RelinkTrackAsync(id, path);
         var queue = new QueueViewModel(host.Bus, sync);
         var remote = new RemotePanelViewModel(sync);
@@ -151,7 +151,7 @@ public partial class App : Application
                 host.SetLogEnabled(updated.LogEnabled);
                 host.SetLogLevel(updated.LogLevel);
             },
-            monitorSessions: () => host.MonitorSessions);
+            monitorControl: host);
         window = new MainWindow(hotkeys, projects, queue, () => new SettingsDialog(settings, remote), scripts) { DataContext = transport };
         desktop.MainWindow = window;
         host.LibrarySaveFailed += error =>
@@ -188,6 +188,18 @@ public partial class App : Application
                     return (fresh, RemoteQr.ToBitmap(fresh), store.Load());
                 });
             remote.SetMdns(announcer.Start());
+            var listen = announcer.AnnounceListen();
+            remote.ConfigureListen(
+                listen,
+                RemoteQr.ToBitmap(listen),
+                store.Load().ListenPassword,
+                () =>
+                {
+                    var password = store.ResetListenPassword();
+                    remoteHost.RevokeListenTokens();
+                    var fresh = announcer.AnnounceListen();
+                    return (fresh, RemoteQr.ToBitmap(fresh), password);
+                });
         }
     }
 

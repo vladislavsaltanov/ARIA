@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>ARIA мониторинг</title>
+  <link rel="stylesheet" href="/monitor.css">
+</head>
+<body>
+  <div id="login" class="overlay hidden">
+    <div class="dialog">
+      <p class="caps">ARIA · МОНИТОРИНГ</p>
+      <input id="login-id" class="field" type="text" autocomplete="username" placeholder="идентификатор">
+      <input id="login-password" class="field" type="password" autocomplete="current-password" placeholder="пароль слушателя">
+      <p id="login-error" class="error hidden">неверный идентификатор или пароль</p>
+      <button id="login-go" class="big">ПОДКЛЮЧИТЬСЯ</button>
+    </div>
+  </div>
+
+  <div id="kicked" class="overlay hidden">
+    <div class="dialog">
+      <p>Звукорежиссёр отключил это устройство.</p>
+      <button id="kicked-retry" class="big">ПОДКЛЮЧИТЬСЯ СНОВА</button>
+    </div>
+  </div>
+
+  <main id="app">
+    <header class="bar">
+      <span id="status" class="chip">НЕТ СВЯЗИ</span>
+      <span id="badge-output" class="chip alarm hidden">НЕТ ВЫВОДА НА ХОСТЕ</span>
+      <span id="badge-backing" class="chip hidden">ПОДЛОЖКА НЕДОСТУПНА</span>
+    </header>
+
+    <section class="beat" id="beat-panel">
+      <div class="counter mono" id="bar-beat">—</div>
+      <div class="dots" id="beat-dots"></div>
+      <div class="meta mono"><span id="bpm">— BPM</span> · <span id="meter">—/—</span></div>
+    </section>
+
+    <section class="now">
+      <div class="title" id="title">Нет трека в эфире</div>
+      <div class="row mono dim"><span id="position">--:--</span><span id="next">Далее: —</span></div>
+    </section>
+
+    <button id="sound" class="big">ВКЛЮЧИТЬ ЗВУК</button>
+    <p id="resume-hint" class="hint hidden">Коснитесь, чтобы продолжить звук</p>
+
+    <section class="mix">
+      <label class="line">
+        <span class="label">ПОДЛОЖКА</span>
+        <input id="backing-level" type="range" min="-40" max="6" step="1" value="0">
+        <span class="value mono" id="backing-value">0 дБ</span>
+        <button id="backing-toggle" class="toggle on">ВКЛ</button>
+      </label>
+      <label class="line">
+        <span class="label">КЛИК</span>
+        <input id="click-level" type="range" min="-40" max="6" step="1" value="0">
+        <span class="value mono" id="click-value">0 дБ</span>
+        <button id="click-toggle" class="toggle on">ВКЛ</button>
+      </label>
+    </section>
+
+    <section class="trim">
+      <span class="label">ПОДСТРОЙКА</span>
+      <div class="stepper">
+        <button data-trim="-10">−10</button>
+        <button data-trim="-1">−1</button>
+        <span class="value mono" id="trim-value">0 мс</span>
+        <button data-trim="1">+1</button>
+        <button data-trim="10">+10</button>
+      </div>
+      <button id="test-toggle" class="toggle">ТЕСТ-КЛИК</button>
+      <p class="hint">Bluetooth-наушники добавляют 150–300 мс — подстройте по тест-клику зала.</p>
+    </section>
+
+    <section class="device">
+      <label class="line"><span class="label">УСТРОЙСТВО</span><input id="device-name" class="field" type="text" maxlength="64" placeholder="Барабаны"></label>
+      <p class="hint">Отключите автоблокировку экрана на время шоу.</p>
+    </section>
+  </main>
+
+  <script type="module" src="/monitor/main.mjs"></script>
+</body>
+</html>

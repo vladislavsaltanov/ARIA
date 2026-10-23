@@ -501,9 +501,10 @@ public partial class ProjectCenter : UserControl
         {
             Title = $"Звук — {entry.DisplayName}",
             Width = 480,
+            Height = 560,
             MinWidth = 400,
+            MinHeight = 360,
             MaxWidth = 640,
-            SizeToContent = SizeToContent.Height,
             CanResize = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Content = new TrackAudioView { DataContext = editor },

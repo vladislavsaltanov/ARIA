@@ -39,6 +39,18 @@ public sealed class RemoteAnnouncer : IDisposable
         return address is null ? null : BuildInfo(_httpEndpoint, pair.Identifier, pair.Password, address);
     }
 
+    public RemoteInfo? AnnounceListen()
+    {
+        IPAddress? address;
+        lock (_gate)
+        {
+            address = _lanAddress;
+        }
+        address ??= FindLanAddress();
+        var pair = _pair();
+        return address is null ? null : BuildListenInfo(_httpEndpoint, pair.Identifier, pair.ListenPassword, address);
+    }
+
     public bool Start()
     {
         lock (_gate)
@@ -117,9 +129,20 @@ public sealed class RemoteAnnouncer : IDisposable
         return $"http://{host}:{endpoint.Port}/?id={Uri.EscapeDataString(identifier)}&key={Uri.EscapeDataString(password)}";
     }
 
-    public static RemoteInfo BuildInfo(Uri endpoint, string identifier, string password, IPAddress lanIp)
+    public static string BuildListenUrl(Uri endpoint, string identifier, string listenPassword, IPAddress lanIp)
     {
-        var url = BuildUrl(endpoint, identifier, password, lanIp);
+        var host = lanIp.AddressFamily == AddressFamily.InterNetworkV6 ? $"[{lanIp}]" : lanIp.ToString();
+        return $"http://{host}:{endpoint.Port}/monitor?id={Uri.EscapeDataString(identifier)}&key={Uri.EscapeDataString(listenPassword)}";
+    }
+
+    public static RemoteInfo BuildListenInfo(Uri endpoint, string identifier, string listenPassword, IPAddress lanIp) =>
+        Encode(BuildListenUrl(endpoint, identifier, listenPassword, lanIp));
+
+    public static RemoteInfo BuildInfo(Uri endpoint, string identifier, string password, IPAddress lanIp) =>
+        Encode(BuildUrl(endpoint, identifier, password, lanIp));
+
+    private static RemoteInfo Encode(string url)
+    {
         var generator = new QRCodeGenerator();
         var data = generator.CreateQrCode(url, QRCodeGenerator.ECCLevel.M);
         var png = new PngByteQRCode(data).GetGraphic(16);

@@ -6,6 +6,12 @@ internal sealed class MixerVoice
 {
     public required StreamHandle Handle { get; init; }
 
+    public int Tag { get; init; }
+
+    public int Epoch;
+
+    public int ReportIndex = -1;
+
     public required ISampleSource Source { get; init; }
 
     public required float[] Scratch { get; init; }

@@ -11,6 +11,19 @@ public sealed partial class RemotePanelViewModel : ObservableObject
 {
     private readonly SynchronizationContext? _sync;
     private Func<(RemoteInfo? Info, Bitmap? Qr, RemoteCredentials Credentials)>? _resetPair;
+    private Func<(RemoteInfo? Info, Bitmap? Qr, string Password)>? _resetListen;
+
+    [ObservableProperty]
+    private string listenUrlText = "—";
+
+    [ObservableProperty]
+    private Bitmap? listenQrImage;
+
+    [ObservableProperty]
+    private string listenPasswordText = "";
+
+    [ObservableProperty]
+    private bool hasListenInfo;
 
     [ObservableProperty]
     private string urlText = "—";
@@ -32,10 +45,13 @@ public sealed partial class RemotePanelViewModel : ObservableObject
 
     public ICommand ResetPasswordCommand { get; }
 
+    public ICommand ResetListenPasswordCommand { get; }
+
     public RemotePanelViewModel(SynchronizationContext? sync = null)
     {
         _sync = sync;
         ResetPasswordCommand = new RelayCommand(ResetPassword);
+        ResetListenPasswordCommand = new RelayCommand(ResetListenPassword);
     }
 
     public void Configure(RemoteInfo? info, Bitmap? qr, RemoteCredentials credentials, Func<(RemoteInfo? Info, Bitmap? Qr, RemoteCredentials Credentials)> resetPair) => Post(() =>
@@ -57,6 +73,30 @@ public sealed partial class RemotePanelViewModel : ObservableObject
         PasswordText = credentials.Password;
         ApplyInfo(info, qr);
     });
+
+    public void ConfigureListen(RemoteInfo? info, Bitmap? qr, string password, Func<(RemoteInfo? Info, Bitmap? Qr, string Password)> reset) => Post(() =>
+    {
+        _resetListen = reset;
+        ApplyListen(info, qr, password);
+    });
+
+    public void ResetListenPassword() => Post(() =>
+    {
+        if (_resetListen is not { } reset)
+        {
+            return;
+        }
+        var (info, qr, password) = reset();
+        ApplyListen(info, qr, password);
+    });
+
+    private void ApplyListen(RemoteInfo? info, Bitmap? qr, string password)
+    {
+        ListenPasswordText = password;
+        ListenQrImage = qr;
+        HasListenInfo = info is not null;
+        ListenUrlText = info?.Url.ToString() ?? "LAN-адрес не найден";
+    }
 
     public void SetMdns(bool enabled) => Post(() =>
         MdnsStatus = enabled ? "анонс в локальной сети: вкл" : "анонс в локальной сети: выкл");

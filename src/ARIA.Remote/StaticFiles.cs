@@ -56,7 +56,7 @@ public static class RemoteStaticFiles
         return extension switch
         {
             ".html" => "text/html; charset=utf-8",
-            ".js" => "text/javascript; charset=utf-8",
+            ".js" or ".mjs" => "text/javascript; charset=utf-8",
             ".css" => "text/css",
             ".svg" => "image/svg+xml",
             ".png" => "image/png",

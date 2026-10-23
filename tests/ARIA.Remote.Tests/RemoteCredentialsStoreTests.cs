@@ -27,8 +27,8 @@ public sealed class RemoteCredentialsStoreTests : IDisposable
         var regenerated = store.Load();
 
         Assert.StartsWith("ARIA-", regenerated.Identifier);
-        Assert.False(store.Verify("ARIA-XXXX", "whatever"));
-        Assert.True(store.Verify(regenerated.Identifier, regenerated.Password));
+        Assert.Null(store.Verify("ARIA-XXXX", "whatever"));
+        Assert.Equal(RemoteRole.Control, store.Verify(regenerated.Identifier, regenerated.Password));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class RemoteCredentialsStoreTests : IDisposable
         var store = new RemoteCredentialsStore(FilePath);
         var credentials = store.Load();
 
-        Assert.True(store.Verify(credentials.Identifier, credentials.Password));
+        Assert.Equal(RemoteRole.Control, store.Verify(credentials.Identifier, credentials.Password));
     }
 
     [Fact]
@@ -85,10 +85,10 @@ public sealed class RemoteCredentialsStoreTests : IDisposable
         var store = new RemoteCredentialsStore(FilePath);
         var credentials = store.Load();
 
-        Assert.False(store.Verify(credentials.Identifier, "nope"));
-        Assert.False(store.Verify("ARIA-WRONG", credentials.Password));
-        Assert.False(store.Verify("", credentials.Password));
-        Assert.False(store.Verify(credentials.Identifier, ""));
+        Assert.Null(store.Verify(credentials.Identifier, "nope"));
+        Assert.Null(store.Verify("ARIA-WRONG", credentials.Password));
+        Assert.Null(store.Verify("", credentials.Password));
+        Assert.Null(store.Verify(credentials.Identifier, ""));
     }
 
     [Fact]
@@ -118,8 +118,8 @@ public sealed class RemoteCredentialsStoreTests : IDisposable
         Assert.Equal(original.Identifier, now.Identifier);
         Assert.Equal(fresh, now.Password);
         Assert.NotEqual(original.Password, fresh);
-        Assert.True(store.Verify(now.Identifier, fresh));
-        Assert.False(store.Verify(now.Identifier, original.Password));
+        Assert.Equal(RemoteRole.Control, store.Verify(now.Identifier, fresh));
+        Assert.Null(store.Verify(now.Identifier, original.Password));
     }
 
     [Fact]
@@ -130,5 +130,61 @@ public sealed class RemoteCredentialsStoreTests : IDisposable
         Assert.Throws<ArgumentException>(() => store.Set("", "x"));
         Assert.Throws<ArgumentException>(() => store.Set("  ", "x"));
         Assert.Throws<ArgumentException>(() => store.Set("ARIA-X", ""));
+    }
+
+    [Fact]
+    public void Verify_ListenPassword_ReturnsListen()
+    {
+        var store = new RemoteCredentialsStore(FilePath);
+        var credentials = store.Load();
+
+        Assert.False(string.IsNullOrEmpty(credentials.ListenPassword));
+        Assert.NotEqual(credentials.Password, credentials.ListenPassword);
+        Assert.Equal(RemoteRole.Listen, store.Verify(credentials.Identifier, credentials.ListenPassword));
+        Assert.Equal(RemoteRole.Control, store.Verify(credentials.Identifier, credentials.Password));
+        Assert.Null(store.Verify("ARIA-WRONG", credentials.ListenPassword));
+    }
+
+    [Fact]
+    public void LegacyFile_WithoutListenPassword_GeneratesAndPersists()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        File.WriteAllText(FilePath, "{\"Identifier\":\"ARIA-OLD1\",\"Password\":\"old-secret\"}");
+        var store = new RemoteCredentialsStore(FilePath);
+
+        var loaded = store.Load();
+
+        Assert.Equal("ARIA-OLD1", loaded.Identifier);
+        Assert.Equal("old-secret", loaded.Password);
+        Assert.Equal(RemoteCredentialsStore.GeneratedPasswordLength, loaded.ListenPassword.Length);
+        Assert.Equal(loaded.ListenPassword, new RemoteCredentialsStore(FilePath).Load().ListenPassword);
+    }
+
+    [Fact]
+    public void ResetListenPassword_KeepsControlPair()
+    {
+        var store = new RemoteCredentialsStore(FilePath);
+        var original = store.Load();
+
+        var fresh = store.ResetListenPassword();
+
+        var now = store.Load();
+        Assert.Equal(original.Identifier, now.Identifier);
+        Assert.Equal(original.Password, now.Password);
+        Assert.Equal(fresh, now.ListenPassword);
+        Assert.NotEqual(original.ListenPassword, fresh);
+        Assert.Null(store.Verify(now.Identifier, original.ListenPassword));
+        Assert.Equal(RemoteRole.Listen, store.Verify(now.Identifier, fresh));
+    }
+
+    [Fact]
+    public void Set_KeepsListenPassword()
+    {
+        var store = new RemoteCredentialsStore(FilePath);
+        var original = store.Load();
+
+        store.Set("ARIA-STAGE", "operator-secret");
+
+        Assert.Equal(original.ListenPassword, store.Load().ListenPassword);
     }
 }

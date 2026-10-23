@@ -141,6 +141,8 @@ internal sealed class TrackDto
     public List<MarkerDto>? Markers { get; set; }
     public TrackAudioDto? Audio { get; set; }
     public double? Bpm { get; set; }
+    public int? BeatsPerBar { get; set; }
+    public long? FirstBeatTicks { get; set; }
 }
 
 internal sealed class OverridesDto
@@ -158,6 +160,7 @@ internal sealed class OverridesDto
     public long? CueOutTicks { get; set; }
     public List<MarkerDto>? Markers { get; set; }
     public TrackAudioDto? Audio { get; set; }
+    public Guid? Backing { get; set; }
 }
 
 internal sealed class EntryDto
@@ -195,7 +198,9 @@ internal static class TrackMapper
                 ? null
                 : [.. d.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
             Audio = AudioMapper.ToDto(d.Audio),
-            Bpm = d.Bpm,
+            Bpm = d.Grid?.Bpm,
+            BeatsPerBar = d.Grid?.BeatsPerBar,
+            FirstBeatTicks = d.Grid?.FirstBeat.Ticks,
         };
     }
 
@@ -216,7 +221,7 @@ internal static class TrackMapper
                 Out: dto.FadeOutTicks is null ? null : new Fade(new TimeSpan(dto.FadeOutTicks.Value), (FadeCurve)dto.FadeOutCurve!.Value),
                 Markers: markers,
                 Audio: AudioMapper.ToDomain(dto.Audio),
-                Bpm: dto.Bpm));
+                Grid: dto.Bpm is { } bpm ? new BeatGrid(bpm, dto.BeatsPerBar ?? 4, new TimeSpan(dto.FirstBeatTicks ?? 0)) : null));
     }
 }
 
@@ -242,6 +247,7 @@ internal static class ProjectMapper
                     ? null
                     : [.. overrides.Markers.Value.Select(m => new MarkerDto { Name = m.Name, PositionTicks = m.Position.Ticks, Action = (int)m.Action })],
                 Audio = AudioMapper.ToDto(overrides.Audio),
+                Backing = overrides.Backing?.Value,
             };
 
     public static ProjectOverrides? ToDomain(OverridesDto? dto) =>
@@ -260,7 +266,8 @@ internal static class ProjectMapper
                 Markers: dto.Markers is null
                     ? null
                     : [.. dto.Markers.Select(m => new Marker(m.Name, new TimeSpan(m.PositionTicks), (MarkerAction)m.Action))],
-                Audio: AudioMapper.ToDomain(dto.Audio));
+                Audio: AudioMapper.ToDomain(dto.Audio),
+                Backing: dto.Backing is { } backing ? new TrackId(backing) : null);
 
     public static EntryDto ToDto(ProjectEntry entry) => new()
     {

@@ -1,0 +1,289 @@
+:root {
+  --bg: #0f0f0f;
+  --surface: #161616;
+  --surface-alt: #1f1f1f;
+  --surface-hi: #2a2a2a;
+  --line: #2c2c2c;
+  --fg: #ececec;
+  --dim: #8a8a8a;
+  --signal: #e5a63b;
+  --signal-soft: #2a2113;
+  --ok: #6fcf7b;
+  --faulted: #e5484d;
+  --faulted-soft: #281314;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  min-height: 100vh;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.mono {
+  font-family: Menlo, Consolas, "SF Mono", monospace;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.hidden {
+  display: none !important;
+}
+
+main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--surface-hi);
+  color: var(--dim);
+}
+
+.chip.ok {
+  color: var(--ok);
+}
+
+.chip.warn {
+  color: var(--signal);
+}
+
+.chip.alarm {
+  background: var(--faulted-soft);
+  color: var(--faulted);
+}
+
+.beat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  transition: background 120ms ease-out;
+}
+
+.beat.flash {
+  background: var(--signal-soft);
+}
+
+.beat.flash.accent {
+  border-color: var(--signal);
+}
+
+.counter {
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface-hi);
+}
+
+.dot.accent {
+  width: 18px;
+  height: 18px;
+}
+
+.dot.lit {
+  background: var(--signal);
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.now .title {
+  font-size: 18px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+button {
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.big {
+  width: 100%;
+  min-height: 52px;
+  font-family: Menlo, Consolas, monospace;
+  letter-spacing: 1.5px;
+}
+
+.big.live {
+  background: var(--signal-soft);
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.toggle {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  min-width: 64px;
+}
+
+.toggle.on {
+  background: var(--signal-soft);
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.mix,
+.trim,
+.device {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 88px 1fr 56px auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.device .line {
+  grid-template-columns: 88px 1fr;
+}
+
+.label {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+}
+
+.value {
+  font-size: 12px;
+  text-align: right;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--signal);
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.stepper .value {
+  text-align: center;
+  font-size: 14px;
+}
+
+.field {
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 40px;
+  padding: 0 10px;
+  width: 100%;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 15, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 16px;
+}
+
+.dialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.caps {
+  font-family: Menlo, Consolas, monospace;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+}
+
+.error {
+  color: var(--faulted);
+  font-size: 12px;
+}

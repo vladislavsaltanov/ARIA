@@ -99,7 +99,7 @@ public sealed class OsDropReproTests : IDisposable
             trackCount = host.Library!.Load().Tracks.Length;
             return 0;
         }, CancellationToken.None);
-        Assert.True(count == 1, $"entries={count} tracks={trackCount} status='{status}' probe='{probe}'");
+        Assert.True(count == 1, $"entries={count} tracks={trackCount} status='{status}' probe='{probe}' pool='threads={ThreadPool.ThreadCount} pending={ThreadPool.PendingWorkItemCount} done={ThreadPool.CompletedWorkItemCount} cpus={Environment.ProcessorCount}'");
         await _session.Dispatch(() =>
         {
             window!.Close();

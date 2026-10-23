@@ -11,10 +11,11 @@ using Aria.Core.Runtime;
 using Aria.Core.State;
 using Aria.Persistence;
 using Aria.Remote;
+using Aria.Remote.Monitor;
 
 public sealed record ImportReport(int Added, int Skipped, ImmutableArray<string> Failed);
 
-public sealed class AppHost : IAsyncDisposable
+public sealed class AppHost : IAsyncDisposable, IMonitorControl
 {
     public const int SampleRate = 48000;
     public const int Channels = 2;
@@ -40,6 +41,7 @@ public sealed class AppHost : IAsyncDisposable
     private ShowController? _controller;
     private System.Threading.Timer? _clockTimer;
     private long _seq;
+    private double _hallTrimMs;
     private bool _started;
     private bool _disposed;
 
@@ -55,7 +57,30 @@ public sealed class AppHost : IAsyncDisposable
 
     public ILibraryStore? Library => _library;
 
-    public IReadOnlyList<SessionProfile> MonitorSessions => _engine?.ListSessions() ?? [];
+    public IReadOnlyList<ListenerProfile> Listeners => Remote?.Monitor?.Listeners ?? [];
+
+    public double HallTrimMs
+    {
+        get => Volatile.Read(ref _hallTrimMs);
+        set
+        {
+            var clamped = Math.Clamp(value, -50.0, 200.0);
+            Volatile.Write(ref _hallTrimMs, clamped);
+            SettingsStore.Save(SettingsStore.Load() with { HallLatencyTrimMs = clamped });
+        }
+    }
+
+    public double DeviceBufferMs => (_engine?.DeviceBufferFrames ?? 0) * 1000.0 / SampleRate;
+
+    public bool TestClickEnabled
+    {
+        get => _engine?.TestClickEnabled ?? false;
+        set => _engine?.SetTestClick(value);
+    }
+
+    public void SetLevels(string id, ListenerLevels levels) => Remote?.Monitor?.SetLevels(id, levels);
+
+    public void Kick(string id) => Remote?.Monitor?.Kick(id);
 
     public IWaveformStore? Waveforms => _waveforms;
 
@@ -97,6 +122,7 @@ public sealed class AppHost : IAsyncDisposable
         _started = true;
         Directory.CreateDirectory(DataDirectory);
         var stored = SettingsStore.Load();
+        _hallTrimMs = stored.HallLatencyTrimMs;
         var env = Environment.GetEnvironmentVariable("ARIA_LOG_LEVEL");
         if (env is not null || stored.LogEnabled)
         {
@@ -151,7 +177,8 @@ public sealed class AppHost : IAsyncDisposable
 
         if (_remoteOptions is { } options)
         {
-            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap, _engine);
+            var feed = new MonitorFeed(_engine.Reports, _engine, _decoderFactory, new TrackListSources(() => controller.Tracks), Monitor, () => HallTrimMs);
+            Remote = new RemoteHost(Bus, options, Monitor, Meters, PreviewTap, _engine, feed);
             try
             {
                 await Remote.StartAsync(cancellationToken);
@@ -159,7 +186,7 @@ public sealed class AppHost : IAsyncDisposable
             catch (Exception e) when (options.Port != 0 && IsPortBusy(e))
             {
                 _log.Warn("remote.port_fallback", new Dictionary<string, string> { ["port"] = options.Port.ToString() });
-                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap, _engine);
+                Remote = new RemoteHost(Bus, options with { Port = 0 }, Monitor, Meters, PreviewTap, _engine, feed);
                 await Remote.StartAsync(cancellationToken);
             }
             if (Remote is { } remote)

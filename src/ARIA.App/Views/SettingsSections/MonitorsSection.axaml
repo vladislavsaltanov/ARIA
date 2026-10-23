@@ -7,34 +7,51 @@
   <Border Classes="section" x:DataType="vms:MonitorsSectionVm" DataContext="{Binding Monitors}">
     <StackPanel>
       <TextBlock Text="Мониторы" Classes="sectionTitle"/>
-      <TextBlock Text="Активные веб-пульты: уровни подложки и метронома на клиента, отключение" Classes="hint" Margin="0,0,0,12"/>
-      <ItemsControl ItemsSource="{Binding Sessions}">
+      <TextBlock Text="Музыканты на странице мониторинга: синхронизация, уровни подложки и клика, отключение" Classes="hint" Margin="0,0,0,12"/>
+      <TextBlock Text="нет подключённых слушателей" Classes="hint" IsVisible="{Binding !Listeners.Count}" Margin="0,0,0,8"/>
+      <ItemsControl ItemsSource="{Binding Listeners}">
         <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vms:MonitorSessionVm">
+          <DataTemplate x:DataType="vms:ListenerRowVm">
             <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"
                     BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
               <StackPanel>
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                   <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                  <Button Grid.Column="1" Content="Отключить" Command="{Binding KickCommand}" Classes="action"/>
+                  <TextBlock Grid.Column="1" Text="{Binding SyncText}" Classes="value" Margin="12,0"/>
+                  <Button Grid.Column="2" Content="Отключить" Command="{Binding KickCommand}" Classes="action"/>
                 </Grid>
                 <Grid ColumnDefinitions="120,*,Auto" Margin="0,10,0,0">
                   <TextBlock Text="подложка" Classes="fieldLabel"/>
-                  <Slider Grid.Column="1" Minimum="-80" Maximum="12" Value="{Binding BackingGainDb, Mode=TwoWay}"
+                  <Slider Grid.Column="1" Minimum="-80" Maximum="12" Value="{Binding BackingDb, Mode=TwoWay}"
                           VerticalAlignment="Center" Margin="14,0"/>
-                  <TextBlock Grid.Column="2" Text="{Binding BackingGainDb, StringFormat={}{0:0.0} дБ}" Classes="value" Width="64"/>
+                  <TextBlock Grid.Column="2" Text="{Binding BackingDb, StringFormat={}{0:0.0} дБ}" Classes="value" Width="64"/>
                 </Grid>
                 <Grid ColumnDefinitions="120,*,Auto" Margin="0,8,0,0">
-                  <TextBlock Text="метроном" Classes="fieldLabel"/>
-                  <Slider Grid.Column="1" Minimum="-80" Maximum="12" Value="{Binding ClickGainDb, Mode=TwoWay}"
+                  <TextBlock Text="клик" Classes="fieldLabel"/>
+                  <Slider Grid.Column="1" Minimum="-80" Maximum="12" Value="{Binding ClickDb, Mode=TwoWay}"
                           VerticalAlignment="Center" Margin="14,0"/>
-                  <TextBlock Grid.Column="2" Text="{Binding ClickGainDb, StringFormat={}{0:0.0} дБ}" Classes="value" Width="64"/>
+                  <TextBlock Grid.Column="2" Text="{Binding ClickDb, StringFormat={}{0:0.0} дБ}" Classes="value" Width="64"/>
                 </Grid>
               </StackPanel>
             </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
+      <Grid ColumnDefinitions="120,*,Auto" Margin="0,12,0,0">
+        <TextBlock Text="задержка зала" Classes="fieldLabel"/>
+        <Slider Grid.Column="1" Minimum="-50" Maximum="200" Value="{Binding HallTrimMs, Mode=TwoWay}"
+                TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="14,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding HallTrimMs, StringFormat={}{0:0} мс}" Classes="value" Width="64"/>
+      </Grid>
+      <TextBlock Text="{Binding DeviceBufferText}" Classes="hint" Margin="0,4,0,0"/>
+      <TextBlock Text="задержка выхода зала поверх буфера устройства: колонки, процессор, расстояние до сцены"
+                 Classes="hint" TextWrapping="Wrap" Margin="0,2,0,0"/>
+      <CheckBox x:Name="TestClickCheck" Content="тест-клик в зал" IsChecked="{Binding TestClickEnabled, Mode=TwoWay}" Margin="0,12,0,2"/>
+      <Border Background="{StaticResource BrushFaulted}" CornerRadius="4" Padding="10,6" Margin="0,6,0,0"
+              IsVisible="{Binding TestClickEnabled}" HorizontalAlignment="Left">
+        <TextBlock Text="ТЕСТ-КЛИК В ЗАЛЕ — выключится на первом Play/GO" Foreground="{StaticResource BrushFg}"
+                   FontFamily="{StaticResource MonoFont}" FontSize="11" LetterSpacing="1"/>
+      </Border>
     </StackPanel>
   </Border>
 </UserControl>

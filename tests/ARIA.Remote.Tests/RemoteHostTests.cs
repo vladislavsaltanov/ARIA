@@ -431,9 +431,11 @@ public sealed class StubCredentials : IRemoteCredentials
 
     public string Password { get; private set; }
 
-    public bool Verify(string identifier, string password)
+    public RemoteRole? Verify(string identifier, string password)
     {
         return string.Equals(identifier, Identifier, StringComparison.Ordinal)
-            && string.Equals(password, Password, StringComparison.Ordinal);
+            && string.Equals(password, Password, StringComparison.Ordinal)
+            ? RemoteRole.Control
+            : null;
     }
 }

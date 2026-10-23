@@ -3,7 +3,7 @@ namespace Aria.Audio;
 using System.Runtime.InteropServices;
 using Aria.Audio.Native;
 
-public sealed class MiniaudioSink : IAudioSink, IDisposable
+public sealed class MiniaudioSink : IAudioSink, IOutputClockSource, IDisposable
 {
     private readonly float[] _scratch;
     private readonly GCHandle _scratchHandle;
@@ -11,6 +11,7 @@ public sealed class MiniaudioSink : IAudioSink, IDisposable
     private readonly TimeSpan _writeTimeout;
     private readonly Func<int> _space;
     private readonly FrameWriter _writer;
+    private readonly object _clockGate = new();
     private IntPtr _engine;
 
     public static readonly TimeSpan DefaultWriteTimeout = TimeSpan.FromMilliseconds(20);
@@ -62,15 +63,46 @@ public sealed class MiniaudioSink : IAudioSink, IDisposable
 
     public void Flush() => AriaShim.EngineFlush(_engine);
 
+    public int DeviceBufferFrames
+    {
+        get
+        {
+            lock (_clockGate)
+            {
+                return _engine == IntPtr.Zero ? 0 : AriaShim.EngineDeviceBufferFrames(_engine);
+            }
+        }
+    }
+
+    public bool TryReadStamp(out long frame, out long nativeNs, out long flushGeneration)
+    {
+        lock (_clockGate)
+        {
+            if (_engine == IntPtr.Zero)
+            {
+                frame = 0;
+                nativeNs = 0;
+                flushGeneration = 0;
+                return false;
+            }
+            return AriaShim.EngineClock(_engine, out frame, out nativeNs, out flushGeneration) == 0;
+        }
+    }
+
+    public long NativeNowNs() => AriaShim.ClockNowNs();
+
     public void Dispose()
     {
-        if (_engine == IntPtr.Zero)
+        lock (_clockGate)
         {
-            return;
+            if (_engine == IntPtr.Zero)
+            {
+                return;
+            }
+            AriaShim.EngineStop(_engine);
+            AriaShim.EngineDestroy(_engine);
+            _engine = IntPtr.Zero;
+            _scratchHandle.Free();
         }
-        AriaShim.EngineStop(_engine);
-        AriaShim.EngineDestroy(_engine);
-        _engine = IntPtr.Zero;
-        _scratchHandle.Free();
     }
 }

@@ -1,6 +1,7 @@
 namespace Aria.Remote;
 
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
@@ -10,9 +11,11 @@ using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Aria.Audio;
 using Aria.Core.Commands;
+using Aria.Core.Model;
 using Aria.Core.Playback;
 using Aria.Core.Runtime;
 using Aria.Core.State;
+using Aria.Remote.Monitor;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -36,8 +39,12 @@ public sealed class RemoteHost : IAsyncDisposable
     private readonly MeterMonitor? _meters;
     private readonly PreviewTap? _previewTap;
     private readonly IAudioEngine? _engine;
+    private readonly MonitorFeed? _monitorFeed;
+    private MonitorHub? _monitorHub;
+    private MonitorPublisher? _monitorPublisher;
+    private PcmCache? _pcmCache;
     private readonly ConcurrentDictionary<Guid, Connection> _connections = [];
-    private readonly ConcurrentDictionary<string, byte> _sessionTokens = [];
+    private readonly ConcurrentDictionary<string, RemoteRole> _sessionTokens = [];
     private readonly CancellationTokenSource _shutdown = new();
     private IDisposable? _subscription;
     private Task? _positionTask;
@@ -58,8 +65,9 @@ public sealed class RemoteHost : IAsyncDisposable
         },
     };
 
-    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null, IAudioEngine? engine = null)
+    public RemoteHost(ICommandBus bus, RemoteOptions options, PlaybackMonitor? monitor = null, MeterMonitor? meters = null, PreviewTap? previewTap = null, IAudioEngine? engine = null, MonitorFeed? monitorFeed = null)
     {
+        _monitorFeed = monitorFeed;
         _bus = bus;
         _options = options;
         _monitor = monitor;
@@ -69,6 +77,10 @@ public sealed class RemoteHost : IAsyncDisposable
     }
 
     public Uri HttpEndpoint { get; private set; } = new("http://127.0.0.1:0/");
+
+    public MonitorHub? Monitor => _monitorHub;
+
+    internal ImmutableHashSet<TrackId> AllowedMonitorTracks => _monitorPublisher?.Builder.AllowedTracks ?? [];
 
     public Uri WebsocketEndpoint { get; private set; } = new("ws://127.0.0.1:0/ws");
 
@@ -89,7 +101,9 @@ public sealed class RemoteHost : IAsyncDisposable
         app.MapPost("/auth", AuthenticateAsync);
         app.MapGet("/ws", (HttpContext context) => HandleWebSocket(context));
         app.MapGet("/preview", PreviewAsync);
-        app.MapPost("/preview/open", OpenPreviewSessionAsync);
+        app.MapGet("/monitor/ws", (HttpContext context) => HandleMonitorSocket(context));
+        app.MapGet("/monitor/pcm", (HttpContext context) => HandlePcm(context));
+        app.MapGet("/monitor", () => RemoteStaticFiles.Serve("monitor.html"));
         app.MapGet("/", RemoteStaticFiles.ServeIndex);
         app.MapGet("/{**path}", RemoteStaticFiles.ServeAsset);
 
@@ -101,6 +115,15 @@ public sealed class RemoteHost : IAsyncDisposable
         HttpEndpoint = new Uri($"http://127.0.0.1:{port}/");
         WebsocketEndpoint = new Uri($"ws://127.0.0.1:{port}/ws");
 
+        if (_monitorFeed is { } feed)
+        {
+            _monitorHub = new MonitorHub(JsonOptions);
+            var cache = new PcmCache(feed.Decoders, feed.Sources);
+            _pcmCache = cache;
+            _monitorPublisher = new MonitorPublisher(feed, _monitorHub, track => feed.Sources.Find(track) is { } source && File.Exists(source.FilePath) && !cache.IsUndecodable(track));
+            _monitorPublisher.SetTransport(_bus.Snapshot().Transport);
+            _monitorPublisher.Start();
+        }
         _subscription = _bus.Subscribe(OnStateEvent);
         if (_monitor is not null || _meters is not null)
         {
@@ -135,72 +158,102 @@ public sealed class RemoteHost : IAsyncDisposable
         {
             body = null;
         }
-        if (body is null || !credentials.Verify(body.Identifier ?? string.Empty, body.Password ?? string.Empty))
+        if (body is null || credentials.Verify(body.Identifier ?? string.Empty, body.Password ?? string.Empty) is not { } role)
         {
             await Task.Delay(FailedAuthDelayMs);
             return Results.Json(new { error = "invalid-credentials" }, statusCode: StatusCodes.Status401Unauthorized);
         }
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
-        _sessionTokens[token] = 0;
-        return Results.Ok(new { token });
+        _sessionTokens[token] = role;
+        return Results.Ok(new { token, role = role == RemoteRole.Listen ? "listen" : "control" });
     }
 
-    private bool IsTokenValid(string? token) =>
-        !string.IsNullOrEmpty(token)
-        && (_options.Credentials is null
-            ? token == _options.AuthToken
-            : _sessionTokens.ContainsKey(token));
-
-    private async Task PreviewAsync(HttpContext context)
+    internal bool TryGetRole(string? token, out RemoteRole role)
     {
-        if (!IsTokenValid(context.Request.Query["token"]))
+        role = RemoteRole.Control;
+        if (string.IsNullOrEmpty(token))
+        {
+            return false;
+        }
+        if (_options.Credentials is null)
+        {
+            return token == _options.AuthToken;
+        }
+        return _sessionTokens.TryGetValue(token, out role);
+    }
+
+    public void RevokeListenTokens()
+    {
+        foreach (var (token, role) in _sessionTokens)
+        {
+            if (role == RemoteRole.Listen)
+            {
+                _sessionTokens.TryRemove(token, out _);
+            }
+        }
+        _monitorHub?.Revoke(RemoteRole.Listen);
+    }
+
+    private async Task HandlePcm(HttpContext context)
+    {
+        if (!TryGetRole(context.Request.Query["token"], out var role))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
-        if (context.Request.Query.TryGetValue("session", out var sessionValue)
-            && int.TryParse(sessionValue, out var sessionId)
-            && _engine is not null)
+        if (_pcmCache is not { } cache || _monitorFeed is not { } feed)
         {
-            var handle = new PreviewSessionHandle(sessionId);
-            var tap = _engine.PreviewSessionTap(handle);
-            if (tap is null)
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
-            try
-            {
-                await new PreviewStream(tap, () => _engine.PreviewSessionTap(handle) is not null).ExecuteAsync(context);
-            }
-            finally
-            {
-                _engine.ClosePreviewSession(handle);
-            }
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        await PcmEndpoint.HandleAsync(context, role, cache, feed.Sources, () => AllowedMonitorTracks, _shutdown.Token);
+    }
+
+    private async Task HandleMonitorSocket(HttpContext context)
+    {
+        if (!TryGetRole(context.Request.Query["token"], out var role))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (_monitorHub is not { } hub)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        if (!context.WebSockets.IsWebSocketRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        await hub.HandleAsync(socket, role, _shutdown.Token);
+    }
+
+    private int ControlAccessStatus(string? token)
+    {
+        if (!TryGetRole(token, out var role))
+        {
+            return StatusCodes.Status401Unauthorized;
+        }
+        return role == RemoteRole.Control ? StatusCodes.Status200OK : StatusCodes.Status403Forbidden;
+    }
+
+    private async Task PreviewAsync(HttpContext context)
+    {
+        if (ControlAccessStatus(context.Request.Query["token"]) is var access && access != StatusCodes.Status200OK)
+        {
+            context.Response.StatusCode = access;
             return;
         }
         await new PreviewStream(_previewTap).ExecuteAsync(context);
     }
 
-    private IResult OpenPreviewSessionAsync(HttpContext context)
-    {
-        if (!IsTokenValid(context.Request.Query["token"]))
-        {
-            return Results.Unauthorized();
-        }
-        if (_engine is null)
-        {
-            return Results.NotFound();
-        }
-        var name = context.Request.Query.TryGetValue("name", out var nameValue) ? nameValue.ToString() : null;
-        return Results.Json(new { Session = _engine.OpenPreviewSession(name).Value });
-    }
-
     private async Task HandleWebSocket(HttpContext context)
     {
-        if (!IsTokenValid(context.Request.Query["token"]))
+        if (ControlAccessStatus(context.Request.Query["token"]) is var access && access != StatusCodes.Status200OK)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.StatusCode = access;
             return;
         }
         if (!context.WebSockets.IsWebSocketRequest)
@@ -315,6 +368,10 @@ public sealed class RemoteHost : IAsyncDisposable
 
     private void OnStateEvent(StateEvent e)
     {
+        if (e is TransportDelta transport)
+        {
+            _monitorPublisher?.SetTransport(transport.State);
+        }
         if (_connections.IsEmpty)
         {
             return;
@@ -444,6 +501,9 @@ public sealed class RemoteHost : IAsyncDisposable
         }
         _shutdown.Cancel();
         _subscription?.Dispose();
+        _monitorPublisher?.Dispose();
+        _monitorHub?.CloseAll();
+        _pcmCache?.Dispose();
         if (_positionTask is { } position)
         {
             try
