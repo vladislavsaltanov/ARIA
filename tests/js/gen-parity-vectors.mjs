@@ -1,6 +1,7 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { frameAt, hostUsOf, curve, fadeLevel, beatsBetween, dbToGain } from "../../src/ARIA.Remote/RemoteClient/monitor/timeline.mjs";
+import { ClockSync } from "../../src/ARIA.Remote/RemoteClient/monitor/clock.mjs";
 
 const parityDir = new URL("../fixtures/parity/", import.meta.url);
 
@@ -187,6 +188,144 @@ const beatsVectors = () => {
 const dbToGainVectors = () =>
   [-96, -60, -40, -20, -6, -3, -0.5, 0, 0.5, 3, 6, 12, 20].map((db) => vector("dbToGain", dbToGain, db));
 
+const mulberry32 = (seed) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let mixed = state;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const HOST_BASE_MS = 5_400_000.375;
+const DRIFT_PPM = 20;
+const OUTLIER_EXTRA_MS = 50;
+
+const round3 = (value) => Math.round(value * 1000) / 1000;
+const hostMsAt = (localMs) => HOST_BASE_MS + localMs * (1 + DRIFT_PPM * 1e-6);
+const linkNoiseMs = (rand) => (rand() < 0.65 ? rand() * 0.6 : 0.9 + rand() * 3);
+
+const simulatePongs = (rand, { count, startMs, gapMs, oneWayMs, noiseMs = linkNoiseMs, extraBackMs = {} }) => {
+  const pongs = [];
+  let t0 = startMs;
+  for (let index = 0; index < count; index += 1) {
+    const noise = noiseMs(rand);
+    const share = 0.3 + rand() * 0.4;
+    const processUs = 80 + Math.floor(rand() * 220);
+    const outMs = oneWayMs(index) + noise * share;
+    const backMs = oneWayMs(index) + noise * (1 - share) + (extraBackMs[index] ?? 0);
+    const t1Us = Math.round(hostMsAt(t0 + outMs) * 1000);
+    const t2Us = t1Us + processUs;
+    const t3 = round3(t0 + outMs + processUs / 1000 + backMs);
+    pongs.push({ t0, t1Us, t2Us, t3 });
+    t0 = round3(t3 + gapMs(index + 1, rand));
+  }
+  return pongs;
+};
+
+const exactPong = (t0, delayMs, offsetMs) => {
+  const t3 = t0 + delayMs;
+  const hostUs = Math.round(((t0 + t3) / 2 + offsetMs) * 1000);
+  return { t0, t1Us: hostUs, t2Us: hostUs, t3 };
+};
+
+const clockSequence = (name, pongs) => {
+  const clock = new ClockSync();
+  const steps = pongs.map(({ t0, t1Us, t2Us, t3 }) => {
+    clock.onPong(t0, t1Us, t2Us, t3);
+    const localMs = round3(t3 + 10);
+    const hostUs = clock.hostUsAt(localMs);
+    return normalise({
+      pong: { t0, t1Us, t2Us, t3 },
+      query: { localMs, hostUs },
+      after: {
+        offsetAt: clock.offsetAt(localMs),
+        ready: clock.ready,
+        locked: clock.locked,
+        uncertaintyUs: clock.uncertaintyUs,
+        hostUsAt: hostUs,
+        localMsAt: clock.perfMsAt(hostUs),
+      },
+    });
+  });
+  return { name, steps };
+};
+
+const driftSequence = () => {
+  const rand = mulberry32(0x41524941);
+  const pongs = simulatePongs(rand, {
+    count: 120,
+    startMs: 61_234.5,
+    gapMs: (index, next) => (index < 60 ? 230 + next() * 20 : 660 + next() * 80),
+    oneWayMs: () => 1.5,
+    extraBackMs: { 12: OUTLIER_EXTRA_MS, 45: OUTLIER_EXTRA_MS, 100: OUTLIER_EXTRA_MS },
+  });
+  return clockSequence("drift120", pongs);
+};
+
+const sevenPongsSequence = () => {
+  const rand = mulberry32(0x0000a7b1);
+  const pongs = simulatePongs(rand, {
+    count: 7,
+    startMs: 9_000.25,
+    gapMs: (_, next) => 480 + next() * 40,
+    oneWayMs: () => 2,
+  });
+  return clockSequence("sevenPongs", pongs);
+};
+
+const slowLinkSequence = () => {
+  const rand = mulberry32(0x00510177);
+  const pongs = simulatePongs(rand, {
+    count: 18,
+    startMs: 120_000.125,
+    gapMs: (_, next) => 900 + next() * 200,
+    oneWayMs: (index) => (index < 12 ? 24 + (index % 3) : 18),
+  });
+  return clockSequence("slowLink", pongs);
+};
+
+const stalePongSequence = () => {
+  const rand = mulberry32(0x0057a1e0);
+  const pongs = simulatePongs(rand, {
+    count: 24,
+    startMs: 30_000.5,
+    gapMs: (_, next) => 280 + next() * 40,
+    oneWayMs: () => 3,
+    extraBackMs: { 20: 70_000 },
+  });
+  return clockSequence("stalePong", pongs);
+};
+
+const marginTieSequence = () => {
+  const offset = 5_000_000;
+  const cases = [
+    [4, 0],
+    [5, 0.2],
+    [5.001, 1],
+    [4, 0.1],
+    [4.5, 0.3],
+    [5, 0.4],
+    [3, 0.05],
+    [4, 0.15],
+    [4.0001, 2],
+  ];
+  return clockSequence(
+    "marginTie",
+    cases.map(([delayMs, shiftMs], index) => exactPong(1000 + 400 * index, delayMs, offset + shiftMs)),
+  );
+};
+
+const clockVectors = () => [
+  driftSequence(),
+  sevenPongsSequence(),
+  slowLinkSequence(),
+  stalePongSequence(),
+  marginTieSequence(),
+];
+
 export const buildAll = () => ({
   timeline: [
     ...frameAtVectors(),
@@ -196,6 +335,7 @@ export const buildAll = () => ({
     ...beatsVectors(),
     ...dbToGainVectors(),
   ],
+  clock: clockVectors(),
 });
 
 const writeAll = (all) => {
