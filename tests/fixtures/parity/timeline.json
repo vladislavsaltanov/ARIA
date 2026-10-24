@@ -1,0 +1,3505 @@
+[
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      1500000,
+      48000
+    ],
+    "expected": 120000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      1000000,
+      48000
+    ],
+    "expected": 96000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      500000,
+      48000
+    ],
+    "expected": 72000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      48000
+    ],
+    "expected": 48000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      2000000,
+      44100
+    ],
+    "expected": 140100
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      2000000,
+      48000.25
+    ],
+    "expected": 144000.25
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      1333333.5,
+      48000
+    ],
+    "expected": 112000.008
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": false,
+        "endFrame": null,
+        "fade": null
+      },
+      9000000,
+      48000
+    ],
+    "expected": 96000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 3000000000,
+        "playing": false,
+        "endFrame": null,
+        "fade": null
+      },
+      9000000,
+      48000
+    ],
+    "expected": 3000000000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 2,
+        "epoch": 3,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "backing",
+        "fallback": false,
+        "gainDb": -3,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": 480000,
+        "fade": {
+          "from": 1,
+          "to": 0,
+          "progress": 0.25,
+          "frames": 38400,
+          "curve": "Logarithmic",
+          "stopAtEnd": true
+        }
+      },
+      3000000,
+      48000
+    ],
+    "expected": 192000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000000000000,
+      48000
+    ],
+    "expected": 3000000000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000002500000,
+      48000
+    ],
+    "expected": 3000120000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      12999997500000,
+      48000
+    ],
+    "expected": 2999880000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000000123456.75,
+      48000
+    ],
+    "expected": 3000005925.924
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13003600000000,
+      48000
+    ],
+    "expected": 3172800000
+  },
+  {
+    "fn": "frameAt",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 2147483000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000020000000,
+      48000
+    ],
+    "expected": 2148443000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      120000,
+      48000
+    ],
+    "expected": 1500000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      96000,
+      48000
+    ],
+    "expected": 1000000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      48000
+    ],
+    "expected": -1000000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      123456.789,
+      48000
+    ],
+    "expected": 1572016.4375
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      120000,
+      44100
+    ],
+    "expected": 1544217.6870748298
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      120000,
+      48000.25
+    ],
+    "expected": 1499997.3958468966
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 96000,
+        "playing": false,
+        "endFrame": null,
+        "fade": null
+      },
+      120000,
+      48000
+    ],
+    "expected": 1500000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      3000000000,
+      48000
+    ],
+    "expected": 13000000000000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      3000480000,
+      48000
+    ],
+    "expected": 13000010000000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      2999520000,
+      48000
+    ],
+    "expected": 12999990000000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      3000012345.678,
+      48000
+    ],
+    "expected": 13000000257201.625
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      4728000000,
+      48000
+    ],
+    "expected": 13036000000000
+  },
+  {
+    "fn": "hostUsOf",
+    "args": [
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 2147483000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      2147483648,
+      48000
+    ],
+    "expected": 13000000013500
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Linear",
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Linear",
+      0.25
+    ],
+    "expected": 0.25
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Linear",
+      0.5
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Linear",
+      1
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Logarithmic",
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Logarithmic",
+      0.25
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Logarithmic",
+      0.5
+    ],
+    "expected": 0.7071067811865476
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Logarithmic",
+      1
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Exponential",
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Exponential",
+      0.25
+    ],
+    "expected": 0.0625
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Exponential",
+      0.5
+    ],
+    "expected": 0.25
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Exponential",
+      1
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "SCurve",
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "SCurve",
+      0.25
+    ],
+    "expected": 0.15625
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "SCurve",
+      0.5
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "SCurve",
+      1
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Linear",
+      0.75
+    ],
+    "expected": 0.75
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Logarithmic",
+      0.75
+    ],
+    "expected": 0.8660254037844386
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Exponential",
+      0.75
+    ],
+    "expected": 0.5625
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "SCurve",
+      0.75
+    ],
+    "expected": 0.84375
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Bogus",
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Bogus",
+      0.25
+    ],
+    "expected": 0.25
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Bogus",
+      0.5
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "Bogus",
+      1
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "linear",
+      0.25
+    ],
+    "expected": 0.25
+  },
+  {
+    "fn": "curve",
+    "args": [
+      "",
+      0.5
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      null,
+      10
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      null,
+      0
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.25
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.75
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0.7071067811865476
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.8660254037844386
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.0625
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0.25
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.5625
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.15625
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.84375
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 1,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 1,
+        "to": 0,
+        "progress": 0.5,
+        "frames": 100,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      1000
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 1,
+        "to": 0,
+        "progress": 0,
+        "frames": 38400,
+        "curve": "Logarithmic",
+        "stopAtEnd": true
+      },
+      9600
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 1,
+        "to": 0,
+        "progress": 0.25,
+        "frames": 38400,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      19200
+    ],
+    "expected": 0.15625
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0.3,
+        "to": 0.8,
+        "progress": 0.2,
+        "frames": 24000,
+        "curve": "Exponential",
+        "stopAtEnd": false
+      },
+      1234.5
+    ],
+    "expected": 0.331610408203125
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 0,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      0.25
+    ],
+    "expected": 0.75
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 0,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0.5
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.1,
+        "frames": 48000,
+        "curve": "Linear",
+        "stopAtEnd": false
+      },
+      -48000
+    ],
+    "expected": 0
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.9,
+        "frames": 48000,
+        "curve": "SCurve",
+        "stopAtEnd": false
+      },
+      48000
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 0,
+        "to": 1,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Bogus",
+        "stopAtEnd": false
+      },
+      12000
+    ],
+    "expected": 0.75
+  },
+  {
+    "fn": "fadeLevel",
+    "args": [
+      {
+        "from": 1,
+        "to": 0,
+        "progress": 0.5,
+        "frames": 48000,
+        "curve": "Logarithmic",
+        "stopAtEnd": false
+      },
+      0
+    ],
+    "expected": 0.2928932188134524
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2100000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 2000000,
+        "index": 4,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      500000,
+      2000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      10000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 2000000,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 2500000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 3000000,
+        "index": 6,
+        "accent": false
+      },
+      {
+        "hostUs": 3500000,
+        "index": 7,
+        "accent": false
+      },
+      {
+        "hostUs": 4000000,
+        "index": 8,
+        "accent": true
+      },
+      {
+        "hostUs": 4500000,
+        "index": 9,
+        "accent": false
+      },
+      {
+        "hostUs": 5000000,
+        "index": 10,
+        "accent": false
+      },
+      {
+        "hostUs": 5500000,
+        "index": 11,
+        "accent": false
+      },
+      {
+        "hostUs": 6000000,
+        "index": 12,
+        "accent": true
+      },
+      {
+        "hostUs": 6500000,
+        "index": 13,
+        "accent": false
+      },
+      {
+        "hostUs": 7000000,
+        "index": 14,
+        "accent": false
+      },
+      {
+        "hostUs": 7500000,
+        "index": 15,
+        "accent": false
+      },
+      {
+        "hostUs": 8000000,
+        "index": 16,
+        "accent": true
+      },
+      {
+        "hostUs": 8500000,
+        "index": 17,
+        "accent": false
+      },
+      {
+        "hostUs": 9000000,
+        "index": 18,
+        "accent": false
+      },
+      {
+        "hostUs": 9500000,
+        "index": 19,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      100000,
+      200000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      1600000,
+      44100
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 544217.6870748299,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1088435.3741496599,
+        "index": 2,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      1600000,
+      96000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 250000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 500000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 750000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 1250000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 6,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      8000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 662983.4254143647,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1325966.8508287293,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1988950.276243094,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 2651933.7016574587,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 3314917.127071823,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 3977900.552486188,
+        "index": 6,
+        "accent": false
+      },
+      {
+        "hostUs": 4640883.977900553,
+        "index": 7,
+        "accent": false
+      },
+      {
+        "hostUs": 5303867.403314917,
+        "index": 8,
+        "accent": true
+      },
+      {
+        "hostUs": 5966850.828729281,
+        "index": 9,
+        "accent": false
+      },
+      {
+        "hostUs": 6629834.254143646,
+        "index": 10,
+        "accent": false
+      },
+      {
+        "hostUs": 7292817.679558012,
+        "index": 11,
+        "accent": false
+      },
+      {
+        "hostUs": 7955801.104972376,
+        "index": 12,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      1234567.5,
+      4000000.25,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 1325966.8508287293,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1988950.276243094,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 2651933.7016574587,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 3314917.127071823,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 3977900.552486188,
+        "index": 6,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 300,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      1000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 200000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 400000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 600000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 800000,
+        "index": 4,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 3,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      3200000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": true
+      },
+      {
+        "hostUs": 2000000,
+        "index": 4,
+        "accent": false
+      },
+      {
+        "hostUs": 2500000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 3000000,
+        "index": 6,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 7,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      4200000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 2000000,
+        "index": 4,
+        "accent": false
+      },
+      {
+        "hostUs": 2500000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 3000000,
+        "index": 6,
+        "accent": false
+      },
+      {
+        "hostUs": 3500000,
+        "index": 7,
+        "accent": true
+      },
+      {
+        "hostUs": 4000000,
+        "index": 8,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 1,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2100000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": true
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": true
+      },
+      {
+        "hostUs": 1500000,
+        "index": 3,
+        "accent": true
+      },
+      {
+        "hostUs": 2000000,
+        "index": 4,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 72000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      1600000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": -3,
+        "accent": false
+      },
+      {
+        "hostUs": 500000,
+        "index": -2,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": -1,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 0,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 96000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      1600000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": -4,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": -3,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": -2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": -1,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 3,
+        "firstBeatFrame": 96000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": -4,
+        "accent": false
+      },
+      {
+        "hostUs": 500000,
+        "index": -3,
+        "accent": true
+      },
+      {
+        "hostUs": 1000000,
+        "index": -2,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": -1,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": -24000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      3000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 500000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 2000000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 2500000,
+        "index": 6,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": -72000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      3000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 500000,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 1000000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 1500000,
+        "index": 6,
+        "accent": false
+      },
+      {
+        "hostUs": 2000000,
+        "index": 7,
+        "accent": false
+      },
+      {
+        "hostUs": 2500000,
+        "index": 8,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 7,
+        "firstBeatFrame": -24000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      6000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 162983.4254143646,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 825966.8508287293,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 1488950.276243094,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 2151933.7016574587,
+        "index": 4,
+        "accent": false
+      },
+      {
+        "hostUs": 2814917.127071823,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 3477900.552486188,
+        "index": 6,
+        "accent": false
+      },
+      {
+        "hostUs": 4140883.9779005526,
+        "index": 7,
+        "accent": true
+      },
+      {
+        "hostUs": 4803867.403314917,
+        "index": 8,
+        "accent": false
+      },
+      {
+        "hostUs": 5466850.828729281,
+        "index": 9,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 1000000,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      1800000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 1000000,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 1500000,
+        "index": 1,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": 48000,
+        "fade": null
+      },
+      0,
+      3000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": 24000,
+        "fade": null
+      },
+      0,
+      3000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": 100000,
+        "fade": null
+      },
+      0,
+      1000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 20000,
+        "playing": true,
+        "endFrame": 10000,
+        "fade": null
+      },
+      0,
+      1000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": 0,
+        "fade": null
+      },
+      0,
+      1000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": {
+          "from": 1,
+          "to": 0,
+          "progress": 0.5,
+          "frames": 48000,
+          "curve": "SCurve",
+          "stopAtEnd": true
+        }
+      },
+      0,
+      1100000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 0,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 500000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 1000000,
+        "index": 2,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": false,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 0,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": -120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 0,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": -4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      null,
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      null,
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      null,
+      null,
+      0,
+      2000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      1000000,
+      1000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 0,
+        "anchorFrame": 0,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      2000000,
+      1000000,
+      48000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000000000000,
+      13000002100000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 13000000000000,
+        "index": 125000,
+        "accent": true
+      },
+      {
+        "hostUs": 13000000500000,
+        "index": 125001,
+        "accent": false
+      },
+      {
+        "hostUs": 13000001000000,
+        "index": 125002,
+        "accent": false
+      },
+      {
+        "hostUs": 13000001500000,
+        "index": 125003,
+        "accent": false
+      },
+      {
+        "hostUs": 13000002000000,
+        "index": 125004,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 2999988000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      12999999500000,
+      13000003000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 12999999750000,
+        "index": 0,
+        "accent": true
+      },
+      {
+        "hostUs": 13000000250000,
+        "index": 1,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000750000,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 13000001250000,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 13000001750000,
+        "index": 4,
+        "accent": true
+      },
+      {
+        "hostUs": 13000002250000,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 13000002750000,
+        "index": 6,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 7,
+        "firstBeatFrame": 2999952000
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000000000000,
+      13000006000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 13000000325966.852,
+        "index": 2,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000988950.275,
+        "index": 3,
+        "accent": false
+      },
+      {
+        "hostUs": 13000001651933.701,
+        "index": 4,
+        "accent": false
+      },
+      {
+        "hostUs": 13000002314917.127,
+        "index": 5,
+        "accent": false
+      },
+      {
+        "hostUs": 13000002977900.553,
+        "index": 6,
+        "accent": false
+      },
+      {
+        "hostUs": 13000003640883.979,
+        "index": 7,
+        "accent": true
+      },
+      {
+        "hostUs": 13000004303867.402,
+        "index": 8,
+        "accent": false
+      },
+      {
+        "hostUs": 13000004966850.828,
+        "index": 9,
+        "accent": false
+      },
+      {
+        "hostUs": 13000005629834.254,
+        "index": 10,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 3000000000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13001800000000,
+      13001805000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 13001800110497.238,
+        "index": 96986,
+        "accent": false
+      },
+      {
+        "hostUs": 13001800773480.662,
+        "index": 96987,
+        "accent": false
+      },
+      {
+        "hostUs": 13001801436464.088,
+        "index": 96988,
+        "accent": true
+      },
+      {
+        "hostUs": 13001802099447.514,
+        "index": 96989,
+        "accent": false
+      },
+      {
+        "hostUs": 13001802762430.94,
+        "index": 96990,
+        "accent": false
+      },
+      {
+        "hostUs": 13001803425414.365,
+        "index": 96991,
+        "accent": false
+      },
+      {
+        "hostUs": 13001804088397.791,
+        "index": 96992,
+        "accent": true
+      },
+      {
+        "hostUs": 13001804751381.215,
+        "index": 96993,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 120,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 2147483000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      12999999000000,
+      13000001000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 12999999270833.334,
+        "index": 89477,
+        "accent": false
+      },
+      {
+        "hostUs": 12999999770833.334,
+        "index": 89478,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000270833.334,
+        "index": 89479,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000770833.334,
+        "index": 89480,
+        "accent": true
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 2147483000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      12999999000000,
+      13000001000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 12999999555363.72,
+        "index": 67481,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000218347.145,
+        "index": 67482,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000881330.57,
+        "index": 67483,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "beatsBetween",
+    "args": [
+      {
+        "voice": 1,
+        "bpm": 90.5,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 0
+      },
+      {
+        "id": 1,
+        "epoch": 0,
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "kind": "entry",
+        "fallback": false,
+        "gainDb": 0,
+        "anchorUs": 13000000000000,
+        "anchorFrame": 2147483000,
+        "playing": true,
+        "endFrame": null,
+        "fade": null
+      },
+      13000000000000,
+      13000004000000,
+      48000
+    ],
+    "expected": [
+      {
+        "hostUs": 13000000218347.145,
+        "index": 67482,
+        "accent": false
+      },
+      {
+        "hostUs": 13000000881330.57,
+        "index": 67483,
+        "accent": false
+      },
+      {
+        "hostUs": 13000001544313.996,
+        "index": 67484,
+        "accent": true
+      },
+      {
+        "hostUs": 13000002207297.422,
+        "index": 67485,
+        "accent": false
+      },
+      {
+        "hostUs": 13000002870280.848,
+        "index": 67486,
+        "accent": false
+      },
+      {
+        "hostUs": 13000003533264.273,
+        "index": 67487,
+        "accent": false
+      }
+    ]
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -96
+    ],
+    "expected": 0.00001584893192461114
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -60
+    ],
+    "expected": 0.001
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -40
+    ],
+    "expected": 0.01
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -20
+    ],
+    "expected": 0.1
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -6
+    ],
+    "expected": 0.5011872336272722
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -3
+    ],
+    "expected": 0.7079457843841379
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      -0.5
+    ],
+    "expected": 0.9440608762859234
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      0
+    ],
+    "expected": 1
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      0.5
+    ],
+    "expected": 1.0592537251772889
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      3
+    ],
+    "expected": 1.4125375446227544
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      6
+    ],
+    "expected": 1.9952623149688795
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      12
+    ],
+    "expected": 3.9810717055349722
+  },
+  {
+    "fn": "dbToGain",
+    "args": [
+      20
+    ],
+    "expected": 10
+  }
+]
