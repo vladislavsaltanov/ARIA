@@ -4,6 +4,7 @@ import kotlin.math.floor
 import kotlin.math.max
 
 const val CHUNK_FRAMES = 96000
+const val POOL_SLOTS = 30
 
 private const val AHEAD_FRAMES = 20L * SAMPLE_RATE
 private const val BEHIND_FRAMES = 0.5 * SAMPLE_RATE

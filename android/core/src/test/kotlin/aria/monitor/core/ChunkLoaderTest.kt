@@ -3,6 +3,7 @@
 package aria.monitor.core
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,6 +30,7 @@ import kotlin.test.assertTrue
 private const val TOKEN = "tok"
 private const val TRACK_A = "track-a"
 private const val TRACK_B = "track-b"
+private const val TRACK_C = "track-c"
 private const val TRACK_NEXT = "track-next"
 
 private val FULL_CHUNK = PcmResult.Ok(ByteArray(CHUNK_FRAMES * 4), CHUNK_FRAMES)
@@ -79,11 +81,15 @@ private class FakeSink(private val clockMs: () -> Long) : ChunkSink {
     var accepts: (ChunkKey) -> Boolean = { true }
 
     @Volatile
+    var beforeWrite: (ChunkKey) -> Unit = {}
+
+    @Volatile
     private var lastRetained: Set<ChunkKey>? = null
 
     override fun write(key: ChunkKey, bytes: ByteArray, frames: Int): Boolean {
         attempts += key to clockMs()
         if (lastRetained?.contains(key) == false) violations += "write for $key outside the retained set"
+        beforeWrite(key)
         if (!accepts(key)) return false
         writes += Write(key, frames, bytes.size)
         return true
@@ -100,11 +106,23 @@ private class FakeSink(private val clockMs: () -> Long) : ChunkSink {
     }
 }
 
-private class Harness(scope: CoroutineScope, scheduler: TestCoroutineScheduler, token: String? = TOKEN) {
+private class Harness(
+    scope: CoroutineScope,
+    scheduler: TestCoroutineScheduler,
+    token: String? = TOKEN,
+    capacity: Int = POOL_SLOTS,
+) {
     val source = FakeSource { scheduler.currentTime }
     val sink = FakeSink { scheduler.currentTime }
     val unauthorized = AtomicInteger()
-    val loader = ChunkLoader(scope, source, sink, { scheduler.currentTime }, onUnauthorized = { unauthorized.incrementAndGet() })
+    val loader = ChunkLoader(
+        scope,
+        source,
+        sink,
+        { scheduler.currentTime },
+        onUnauthorized = { unauthorized.incrementAndGet() },
+        capacity = capacity,
+    )
 
     init {
         loader.setToken(token)
@@ -195,9 +213,12 @@ class ChunkLoaderTest {
         runCurrent()
         assertEquals(listOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2)), h.source.calls.map { it.key })
         assertEquals(listOf(key(TRACK_A, 2)), h.sink.writes.map { it.key })
-        advance(1000)
-        assertEquals(setOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2)), h.sink.writes.map { it.key }.toSet())
+        advance(999)
+        assertEquals(3, h.source.calls.size)
+        advance(1)
         assertEquals(5, h.source.calls.size)
+        assertEquals(listOf(1000L, 1000L), h.source.calls.drop(3).map { it.atMs })
+        assertEquals(setOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2)), h.sink.writes.map { it.key }.toSet())
     }
 
     @Test
@@ -593,6 +614,228 @@ class ChunkLoaderTest {
         assertEquals(2, h.source.calls.size)
         assertEquals(1000L, testScheduler.currentTime)
         assertEquals(1, h.sink.writes.size)
+    }
+
+    @Test
+    fun overCapacityFetchesOnlyTopNInPriorityOrder() = runTest {
+        val h = Harness(backgroundScope, testScheduler)
+        h.source.respond = {
+            delay(10)
+            FULL_CHUNK
+        }
+        val windows = listOf(window(TRACK_A, 0, 10), window(TRACK_B, 0, 10), window(TRACK_C, 0, 10), window(TRACK_NEXT, 0, 2))
+        assertEquals(36, windows.flatMap { chunksFor(it) }.size)
+        val topN = windows.flatMap { chunksFor(it) }.take(POOL_SLOTS)
+        h.loader.want(windows)
+        assertEquals(topN.toSet(), h.sink.retains.last())
+        advance(10_000)
+        assertEquals(POOL_SLOTS, topN.size)
+        assertEquals(topN, h.source.calls.map { it.key })
+        assertEquals(topN.toSet(), h.sink.writes.map { it.key }.toSet())
+        assertEquals(POOL_SLOTS, h.sink.writes.size)
+        advance(60_000)
+        assertEquals(POOL_SLOTS, h.source.calls.size)
+        assertTrue(h.sink.empties.isEmpty())
+    }
+
+    @Test
+    fun keysBeyondCapacityAreNeverRequested() = runTest {
+        val h = Harness(backgroundScope, testScheduler)
+        h.source.respond = {
+            delay(10)
+            FULL_CHUNK
+        }
+        for (step in 0..20) {
+            val windows = listOf(
+                window(TRACK_A, step, step + 10),
+                window(TRACK_B, 0, 10),
+                window(TRACK_C, step / 2, step / 2 + 10),
+                window(TRACK_NEXT, 0, 2),
+            )
+            val allowed = windows.flatMap { chunksFor(it) }.distinct().take(POOL_SLOTS).toSet()
+            val before = h.source.calls.size
+            h.loader.want(windows)
+            advance(25)
+            val requested = h.source.calls.drop(before).map { it.key }
+            assertTrue(allowed.containsAll(requested), "step $step requested outside the top $POOL_SLOTS: ${requested - allowed}")
+            assertEquals(allowed, h.sink.retains.last(), "step $step")
+        }
+        assertTrue(h.sink.violations.isEmpty(), h.sink.violations.toString())
+    }
+
+    @Test
+    fun higherPriorityKeyEvictsLowerPriorityInFlight() = runTest {
+        val h = Harness(backgroundScope, testScheduler, capacity = 2)
+        val gate = CompletableDeferred<Unit>()
+        h.source.respond = {
+            gate.await()
+            FULL_CHUNK
+        }
+        h.loader.want(listOf(window(TRACK_B, 0, 1)))
+        runCurrent()
+        assertEquals(listOf(key(TRACK_B, 0), key(TRACK_B, 1)), h.source.calls.map { it.key })
+        h.loader.want(listOf(window(TRACK_A, 0, 0), window(TRACK_B, 0, 1)))
+        runCurrent()
+        assertEquals(setOf(key(TRACK_A, 0), key(TRACK_B, 0)), h.sink.retains.last())
+        assertEquals(1, h.source.cancelled.get())
+        assertEquals(listOf(key(TRACK_B, 0), key(TRACK_B, 1), key(TRACK_A, 0)), h.source.calls.map { it.key })
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(setOf(key(TRACK_A, 0), key(TRACK_B, 0)), h.sink.writes.map { it.key }.toSet())
+        assertEquals(2, h.sink.writes.size)
+        assertTrue(h.sink.attempts.none { it.first == key(TRACK_B, 1) })
+        advance(60_000)
+        assertEquals(3, h.source.calls.size)
+    }
+
+    @Test
+    fun capacityParameterIsHonoured() = runTest {
+        val h = Harness(backgroundScope, testScheduler, capacity = 3)
+        h.loader.want(listOf(window(TRACK_A, 0, 9)))
+        runCurrent()
+        assertEquals(setOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2)), h.sink.retains.last())
+        advance(5000)
+        assertEquals(listOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2)), h.source.calls.map { it.key })
+        assertEquals(3, h.sink.writes.size)
+        h.loader.want(listOf(window(TRACK_A, 5, 9)))
+        advance(5000)
+        assertEquals(setOf(key(TRACK_A, 5), key(TRACK_A, 6), key(TRACK_A, 7)), h.sink.retains.last())
+        assertEquals(
+            listOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2), key(TRACK_A, 5), key(TRACK_A, 6), key(TRACK_A, 7)),
+            h.source.calls.map { it.key },
+        )
+    }
+
+    @Test
+    fun cancelWithUnconfinedDispatcherAndSwallowingSourceDoesNotThrow() = runTest {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val h = Harness(scope, testScheduler)
+            val gate = CompletableDeferred<Unit>()
+            h.source.respond = {
+                try {
+                    gate.await()
+                } catch (_: CancellationException) {
+                }
+                FULL_CHUNK
+            }
+            h.loader.want(listOf(window(TRACK_A, 0, 3)))
+            assertEquals(2, h.source.calls.size)
+            h.loader.setToken("t2")
+            assertEquals(listOf(TOKEN, TOKEN, "t2", "t2"), h.source.calls.map { it.token })
+            assertTrue(h.sink.writes.isEmpty())
+            h.loader.want(listOf(window(TRACK_B, 0, 1)))
+            assertEquals(listOf(TOKEN, TOKEN, "t2", "t2", "t2", "t2"), h.source.calls.map { it.token })
+            assertTrue(h.sink.writes.isEmpty())
+            gate.complete(Unit)
+            assertEquals(setOf(key(TRACK_B, 0), key(TRACK_B, 1)), h.sink.writes.map { it.key }.toSet())
+            h.loader.want(listOf(window(TRACK_A, 0, 3)))
+            assertEquals(6, h.sink.writes.size)
+            assertEquals(setOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2), key(TRACK_A, 3)), h.sink.retains.last())
+            assertTrue(h.sink.violations.isEmpty(), h.sink.violations.toString())
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun unauthorizedHaltWithUnconfinedDispatcherAndSwallowingSourceDoesNotThrow() = runTest {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        try {
+            val h = Harness(scope, testScheduler)
+            val gate = CompletableDeferred<Unit>()
+            h.source.respond = { call ->
+                if (call.token == TOKEN && call.key.chunk == 0) {
+                    gate.await()
+                    PcmResult.Failed(401)
+                } else {
+                    try {
+                        gate.await()
+                    } catch (_: CancellationException) {
+                    }
+                    FULL_CHUNK
+                }
+            }
+            h.loader.want(listOf(window(TRACK_A, 0, 3)))
+            gate.complete(Unit)
+            assertEquals(1, h.unauthorized.get())
+            assertTrue(h.sink.writes.isEmpty())
+            h.loader.setToken("t2")
+            assertEquals(setOf(key(TRACK_A, 0), key(TRACK_A, 1), key(TRACK_A, 2), key(TRACK_A, 3)), h.sink.writes.map { it.key }.toSet())
+            assertEquals(4, h.sink.writes.size)
+            assertEquals(1, h.unauthorized.get())
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun throwingSinkDoesNotStallOtherKeys() = runTest {
+        val failures = CopyOnWriteArrayList<Throwable>()
+        val scope = CoroutineScope(
+            StandardTestDispatcher(testScheduler) + SupervisorJob() + CoroutineExceptionHandler { _, error -> failures += error },
+        )
+        try {
+            val h = Harness(scope, testScheduler)
+            val gate = CompletableDeferred<Unit>()
+            h.source.respond = { call ->
+                if (call.key.chunk == 1) gate.await()
+                FULL_CHUNK
+            }
+            h.sink.beforeWrite = { if (it == key(TRACK_A, 0)) throw IllegalStateException("engine bug") }
+            h.loader.want(listOf(window(TRACK_A, 0, 2)))
+            runCurrent()
+            assertEquals(1, failures.size)
+            assertEquals(listOf(key(TRACK_A, 2)), h.sink.writes.map { it.key })
+            advance(999)
+            assertEquals(1, h.source.calls.count { it.key == key(TRACK_A, 0) })
+            advance(1)
+            assertEquals(2, h.source.calls.count { it.key == key(TRACK_A, 0) })
+            assertEquals(2, failures.size)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(setOf(key(TRACK_A, 1), key(TRACK_A, 2)), h.sink.writes.map { it.key }.toSet())
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun inconsistentBytesAndFramesIsAFailure() = runTest {
+        val h = Harness(backgroundScope, testScheduler)
+        val bad = listOf(PcmResult.Ok(ByteArray(100), 1000), PcmResult.Ok(ByteArray(0), -5), PcmResult.Ok(ByteArray(4), 0))
+        h.source.respond = { bad.getOrElse(h.source.calls.size - 1) { FULL_CHUNK } }
+        h.loader.want(listOf(window(TRACK_A, 3, 3)))
+        runCurrent()
+        for (attempt in 1..3) {
+            assertEquals(attempt, h.source.calls.size)
+            assertTrue(h.sink.writes.isEmpty())
+            assertTrue(h.sink.empties.isEmpty())
+            advance(999)
+            assertEquals(attempt, h.source.calls.size)
+            advance(1)
+        }
+        assertEquals(listOf(0L, 1000L, 2000L, 3000L), h.source.calls.map { it.atMs })
+        assertEquals(listOf(FakeSink.Write(key(TRACK_A, 3), CHUNK_FRAMES, CHUNK_FRAMES * 4)), h.sink.writes.toList())
+        assertTrue(h.sink.empties.isEmpty())
+    }
+
+    @Test
+    fun framesAboveChunkSizeIsAFailure() = runTest {
+        val h = Harness(backgroundScope, testScheduler)
+        h.source.respond = {
+            if (h.source.calls.size == 1) PcmResult.Ok(ByteArray((CHUNK_FRAMES + 1) * 4), CHUNK_FRAMES + 1) else FULL_CHUNK
+        }
+        h.loader.want(listOf(window(TRACK_A, 0, 0)))
+        runCurrent()
+        assertTrue(h.sink.writes.isEmpty())
+        assertTrue(h.sink.empties.isEmpty())
+        advance(999)
+        assertEquals(1, h.source.calls.size)
+        advance(1)
+        assertEquals(2, h.source.calls.size)
+        assertEquals(1000L, h.source.calls[1].atMs)
+        assertEquals(listOf(FakeSink.Write(key(TRACK_A, 0), CHUNK_FRAMES, CHUNK_FRAMES * 4)), h.sink.writes.toList())
     }
 
     @Test

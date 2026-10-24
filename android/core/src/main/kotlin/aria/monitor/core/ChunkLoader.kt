@@ -35,6 +35,7 @@ private const val STATUS_UNAUTHORIZED = 401
 private const val STATUS_UNDECODABLE = 422
 private const val STATUS_UNAVAILABLE = 503
 private const val STATUS_TRANSPORT_ERROR = -1
+private const val BYTES_PER_FRAME = 4
 
 class ChunkLoader(
     private val scope: CoroutineScope,
@@ -42,6 +43,7 @@ class ChunkLoader(
     private val sink: ChunkSink,
     private val nowMs: () -> Long,
     private val onUnauthorized: () -> Unit = {},
+    private val capacity: Int = POOL_SLOTS,
 ) {
     private class Attempt(val id: Long, val job: Job)
 
@@ -54,15 +56,16 @@ class ChunkLoader(
     private val cooldownUntilMs = HashMap<ChunkKey, Long>()
     private var wake: Job? = null
     private var attempts = 0L
+    private val cancelling = ArrayList<Job>()
 
     fun want(windows: List<Window>) {
-        val ordered = windows.flatMap { chunksFor(it) }.distinct()
+        val ordered = windows.flatMap { chunksFor(it) }.distinct().take(capacity)
         val keys = ordered.toSet()
         transition {
             sink.retain(keys)
             wanted = ordered
             delivered.retainAll(keys)
-            inFlight.keys.filter { it !in keys }.forEach { inFlight.remove(it)?.job?.cancel() }
+            inFlight.keys.filter { it !in keys }.forEach { evicted -> inFlight.remove(evicted)?.let { cancelling += it.job } }
         }
     }
 
@@ -76,20 +79,31 @@ class ChunkLoader(
     }
 
     private inline fun transition(change: () -> Unit) {
-        val toStart = synchronized(lock) {
-            change()
-            pump()
+        var toStart: List<Job> = emptyList()
+        var toCancel: List<Job> = emptyList()
+        try {
+            synchronized(lock) {
+                try {
+                    change()
+                } finally {
+                    toStart = pump()
+                    toCancel = cancelling.toList()
+                    cancelling.clear()
+                }
+            }
+        } finally {
+            toCancel.forEach { it.cancel() }
+            toStart.forEach { it.start() }
         }
-        toStart.forEach { it.start() }
     }
 
     private fun cancelAll() {
-        inFlight.values.forEach { it.job.cancel() }
+        inFlight.values.mapTo(cancelling) { it.job }
         inFlight.clear()
     }
 
     private fun pump(): List<Job> {
-        wake?.cancel()
+        wake?.let { cancelling += it }
         wake = null
         val activeToken = token
         if (activeToken == null || activeToken == rejectedToken) return emptyList()
@@ -142,21 +156,26 @@ class ChunkLoader(
         transition {
             if (inFlight[key]?.id != id) return@transition
             inFlight.remove(key)
-            when (result) {
-                is PcmResult.Ok -> deliver(key, result)
-                is PcmResult.Failed -> when (result.status) {
-                    STATUS_UNAUTHORIZED -> {
-                        rejectedToken = token
-                        cancelAll()
-                        rejected = true
+            try {
+                when (result) {
+                    is PcmResult.Ok -> deliver(key, result)
+                    is PcmResult.Failed -> when (result.status) {
+                        STATUS_UNAUTHORIZED -> {
+                            rejectedToken = token
+                            cancelAll()
+                            rejected = true
+                        }
+                        STATUS_UNDECODABLE -> {
+                            sink.markEmpty(key)
+                            delivered += key
+                        }
+                        STATUS_UNAVAILABLE -> coolDown(key, RETRY_MS)
+                        else -> coolDown(key, FAILURE_COOLDOWN_MS)
                     }
-                    STATUS_UNDECODABLE -> {
-                        sink.markEmpty(key)
-                        delivered += key
-                    }
-                    STATUS_UNAVAILABLE -> coolDown(key, RETRY_MS)
-                    else -> coolDown(key, FAILURE_COOLDOWN_MS)
                 }
+            } catch (failure: Exception) {
+                coolDown(key, FAILURE_COOLDOWN_MS)
+                throw failure
             }
         }
         if (rejected) onUnauthorized()
@@ -164,7 +183,8 @@ class ChunkLoader(
 
     private fun deliver(key: ChunkKey, chunk: PcmResult.Ok) {
         when {
-            chunk.frames <= 0 -> {
+            !chunk.isConsistent() -> coolDown(key, FAILURE_COOLDOWN_MS)
+            chunk.frames == 0 -> {
                 sink.markEmpty(key)
                 delivered += key
             }
@@ -172,6 +192,8 @@ class ChunkLoader(
             else -> coolDown(key, RETRY_MS)
         }
     }
+
+    private fun PcmResult.Ok.isConsistent(): Boolean = frames in 0..CHUNK_FRAMES && bytes.size == frames * BYTES_PER_FRAME
 
     private fun coolDown(key: ChunkKey, ms: Long) {
         cooldownUntilMs[key] = nowMs() + ms
