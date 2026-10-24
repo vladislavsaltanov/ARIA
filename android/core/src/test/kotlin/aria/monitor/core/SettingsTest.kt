@@ -48,6 +48,8 @@ class SettingsTest {
         assertEquals(13, Settings.sanitized(trimMs = 12.5).trimMs)
         assertEquals(12, Settings.sanitized(trimMs = 12.4).trimMs)
         assertEquals(-12, Settings.sanitized(trimMs = -12.4).trimMs)
+        assertEquals(-12, Settings.sanitized(trimMs = -12.5).trimMs)
+        assertEquals(-13, Settings.sanitized(trimMs = -12.6).trimMs)
         assertEquals(500, Settings.sanitized(trimMs = 500.4).trimMs)
         assertEquals(-100, Settings.sanitized(trimMs = -100.4).trimMs)
         assertEquals(0, Settings.sanitized(trimMs = 0.4).trimMs)

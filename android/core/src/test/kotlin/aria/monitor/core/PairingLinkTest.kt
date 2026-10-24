@@ -91,6 +91,14 @@ class PairingLinkTest {
     }
 
     @Test
+    fun parseDecodesLiteralPercentEscapedAs25() {
+        assertEquals(
+            Pairing("192.168.1.10", 5000, "a", "100%"),
+            PairingLink.parse("http://192.168.1.10:5000/monitor?id=a&key=100%25"),
+        )
+    }
+
+    @Test
     fun parseKeepsIpv6BracketsInHost() {
         val pairing = PairingLink.parse("http://[fe80::1]:48713/monitor?id=a&key=b")
         assertEquals(Pairing("[fe80::1]", 48713, "a", "b"), pairing)

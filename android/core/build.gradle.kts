@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
@@ -5,6 +7,17 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+}
+
+tasks.compileJava {
+    options.release.set(8)
+}
+
+tasks.compileKotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_1_8)
+        freeCompilerArgs.add("-Xjdk-release=1.8")
+    }
 }
 
 sourceSets {

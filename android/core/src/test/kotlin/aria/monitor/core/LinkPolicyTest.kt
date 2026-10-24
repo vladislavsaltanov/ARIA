@@ -2,9 +2,12 @@ package aria.monitor.core
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -74,6 +77,13 @@ class LinkPolicyTest {
     fun signInPropagatesCancellation() = runTest {
         assertFailsWith<CancellationException> {
             signIn(PAIRING, authenticator { throw CancellationException("cancelled") })
+        }
+    }
+
+    @Test
+    fun signInTimeoutInsideAuthenticatorPropagates() = runTest {
+        assertFailsWith<TimeoutCancellationException> {
+            signIn(PAIRING, authenticator { withTimeout(10) { awaitCancellation() } })
         }
     }
 

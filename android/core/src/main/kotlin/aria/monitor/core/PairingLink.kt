@@ -7,6 +7,7 @@ data class Pairing(val host: String, val port: Int, val identifier: String, val 
 
 object PairingLink {
     private const val DEFAULT_HTTP_PORT = 80
+    private const val UTF_8 = "UTF-8"
 
     fun parse(url: String): Pairing? {
         val uri = try {
@@ -32,8 +33,8 @@ object PairingLink {
         val parameters = LinkedHashMap<String, String>()
         for (pair in rawQuery.split('&')) {
             val separator = pair.indexOf('=')
-            val name = URLDecoder.decode(if (separator < 0) pair else pair.substring(0, separator), Charsets.UTF_8)
-            val value = if (separator < 0) "" else URLDecoder.decode(pair.substring(separator + 1), Charsets.UTF_8)
+            val name = URLDecoder.decode(if (separator < 0) pair else pair.substring(0, separator), UTF_8)
+            val value = if (separator < 0) "" else URLDecoder.decode(pair.substring(separator + 1), UTF_8)
             parameters.putIfAbsent(name, value)
         }
         return parameters
