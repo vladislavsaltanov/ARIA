@@ -1,0 +1,13 @@
+[versions]
+agp = "9.4.0"
+kotlin = "2.4.10"
+oboe = "1.11.0"
+
+[libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+oboe = { module = "com.google.oboe:oboe", version.ref = "oboe" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

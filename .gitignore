@@ -489,3 +489,12 @@ $RECYCLE.BIN/
 
 # Local convenience copy written by native/aria-shim/build.sh (osx-arm64 only); canonical prebuilt shims live in runtimes/*/native/
 native/aria-shim/libaria_shim.dylib
+
+# Android monitor client build state
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/**/.cxx/
+android/engine/bin/
+android/local.properties
+*.apk
