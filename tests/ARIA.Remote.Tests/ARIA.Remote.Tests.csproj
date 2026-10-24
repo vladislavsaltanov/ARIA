@@ -11,6 +11,9 @@
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\fixtures\monitor\*.json" Link="Fixtures\monitor\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\ARIA.Remote\ARIA.Remote.csproj" />
     <ProjectReference Include="..\..\src\ARIA.Core\ARIA.Core.csproj" />
   </ItemGroup>

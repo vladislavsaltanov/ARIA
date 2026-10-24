@@ -1,9 +1,11 @@
 [versions]
 agp = "9.4.0"
 kotlin = "2.4.10"
+kotlinx-serialization = "1.12.0"
 oboe = "1.11.0"
 
 [libraries]
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 oboe = { module = "com.google.oboe:oboe", version.ref = "oboe" }
 
@@ -11,3 +13,4 @@ oboe = { module = "com.google.oboe:oboe", version.ref = "oboe" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
