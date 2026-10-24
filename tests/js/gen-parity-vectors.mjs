@@ -2,6 +2,7 @@ import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { frameAt, hostUsOf, curve, fadeLevel, beatsBetween, dbToGain } from "../../src/ARIA.Remote/RemoteClient/monitor/timeline.mjs";
 import { ClockSync } from "../../src/ARIA.Remote/RemoteClient/monitor/clock.mjs";
+import { windowsFor, chunksFor } from "../../src/ARIA.Remote/RemoteClient/monitor/store.mjs";
 
 const parityDir = new URL("../fixtures/parity/", import.meta.url);
 
@@ -326,6 +327,134 @@ const clockVectors = () => [
   marginTieSequence(),
 ];
 
+const NEXT_TRACK = "a15f0987-545b-4112-b3e5-7d85b63a0553";
+const BACKING_TRACK = "bf3498a6-e912-4ffb-a63c-4f936e047d44";
+
+const hostTimeline = (over = {}) => ({
+  seq: 42,
+  rate: RATE,
+  voices: [],
+  grid: null,
+  deck: { status: "Playing", title: "Song", next: null },
+  test: null,
+  ...over,
+});
+
+const deckWithNext = (startFrame, track = NEXT_TRACK) => ({
+  status: "Playing",
+  title: "Song",
+  next: { title: "Next song", track, kind: "entry", startFrame },
+});
+
+const windowsForVectors = () => {
+  const at = (timeline, nowUs) => vector("windowsFor", windowsFor, timeline, nowUs);
+  const one = (over) => hostTimeline({ voices: [voice(over)] });
+  return [
+    at(one({}), 1_000_000),
+    at(one({}), 2_500_000),
+    at(one({}), 0),
+    at(one({ anchorFrame: 10000 }), 1_000_000),
+    at(one({ anchorFrame: 24000 }), 1_000_000),
+    at(one({ anchorFrame: 24001 }), 1_000_000),
+    at(one({ anchorFrame: 0 }), 1_000_000),
+    at(one({ anchorFrame: 100000 }), 1_000_018.75),
+    at(one({}), 1_333_333.5),
+    at(one({}), 1_000_007.3),
+    at(one({ anchorFrame: -1_000_000 }), 1_000_000.5),
+    at(one({ anchorFrame: -2_000_000 }), 1_000_000),
+    at(hostTimeline({ rate: 44100, voices: [voice()] }), 3_000_000),
+    at(hostTimeline({ rate: 48000.25, voices: [voice()] }), 3_000_000),
+    at(one({ playing: false }), 9_000_000),
+    at(one({ playing: false, anchorFrame: 0 }), 9_000_000),
+    at(one({ playing: false, anchorFrame: -10000 }), 9_000_000),
+    at(one({ playing: false, anchorFrame: -300000 }), 9_000_000),
+    at(one({ playing: false, anchorFrame: -288000 }), 9_000_000),
+    at(hostTimeline(), 1_000_000),
+    at(hostTimeline({ deck: deckWithNext(24000) }), 1_000_000),
+    at(hostTimeline({ deck: deckWithNext(0) }), 1_000_000),
+    at(hostTimeline({ deck: deckWithNext(-10000) }), 1_000_000),
+    at(hostTimeline({ deck: deckWithNext(-288000) }), 1_000_000),
+    at(hostTimeline({ deck: deckWithNext(-400000) }), 1_000_000),
+    at(hostTimeline({ deck: { status: "Stopped", title: null, next: null } }), 1_000_000),
+    at(one({ anchorUs: BIG_US, anchorFrame: BIG_FRAME }), BIG_US + 2_500_000),
+    at(one({ anchorUs: BIG_US, anchorFrame: BIG_FRAME }), BIG_US - 2_500_000),
+    at(one({ anchorUs: BIG_US, anchorFrame: BIG_FRAME }), BIG_US + 123_456.75),
+    at(one({ anchorUs: BIG_US, anchorFrame: BIG_FRAME, playing: false }), BIG_US + 2_500_000),
+    at(one({ anchorUs: BIG_US, anchorFrame: NEAR_INT32_FRAME }), BIG_US),
+    at(one({ anchorUs: BIG_US, anchorFrame: NEAR_INT32_FRAME }), BIG_US + 20_000_000),
+    at(hostTimeline({ deck: deckWithNext(BIG_FRAME) }), 1_000_000),
+    at(hostTimeline({ deck: deckWithNext(NEAR_INT32_FRAME) }), 1_000_000),
+    at(
+      hostTimeline({
+        voices: [
+          voice({ id: 1, anchorFrame: 96000 }),
+          voice({ id: 2, epoch: 1, track: BACKING_TRACK, kind: "backing", anchorUs: 1_020_000, anchorFrame: 24000, endFrame: 480000 }),
+          voice({ id: 3, epoch: 2, track: "0c0b5e4d-6f4b-4d44-9a64-2e1a6f3c9b10", kind: "click", playing: false, anchorFrame: 48000 }),
+        ],
+        deck: deckWithNext(24000),
+      }),
+      1_500_000,
+    ),
+    at(
+      hostTimeline({
+        voices: [
+          voice({ id: 1, anchorUs: BIG_US, anchorFrame: BIG_FRAME }),
+          voice({ id: 2, epoch: 1, track: BACKING_TRACK, kind: "backing", anchorUs: BIG_US, anchorFrame: BIG_FRAME + 100, playing: false }),
+        ],
+        deck: deckWithNext(BIG_FRAME + 50_000),
+      }),
+      BIG_US + 750_000.5,
+    ),
+    at(hostTimeline({ voices: [voice(), voice({ id: 2, epoch: 1, anchorFrame: 192000 })], deck: deckWithNext(96000, voice().track) }), 1_250_000),
+  ];
+};
+
+const chunksForVectors = () => {
+  const window = (from, to, track = voice().track) => ({ track, from, to });
+  const plain = (...args) => vector("chunksFor", chunksFor, ...args);
+  return [
+    plain(window(10, 1000)),
+    plain(window(0, 96000)),
+    plain(window(0, 96001)),
+    plain(window(0, 1)),
+    plain(window(96000, 192000)),
+    plain(window(96000, 192001)),
+    plain(window(96000, 96001)),
+    plain(window(95999, 96000)),
+    plain(window(95999, 96001)),
+    plain(window(192000, 288000)),
+    plain(window(191999, 288001)),
+    plain(window(72000, 1_056_000)),
+    plain(window(72000, 1_056_001)),
+    plain(window(0, 0)),
+    plain(window(5, 5)),
+    plain(window(10, 5)),
+    plain(window(96000, 96000)),
+    plain(window(0, -40001)),
+    plain(window(-5, 10)),
+    plain(window(-96000, -1)),
+    plain(window(-96001, 1)),
+    plain(window(-96000, 0)),
+    plain(window(3_000_000_000, 3_000_960_000)),
+    plain(window(3_000_000_000, 3_000_960_001)),
+    plain(window(2_999_999_999, 3_000_000_001)),
+    plain(window(2_147_483_000, 2_148_443_000)),
+    plain(window(4_294_967_296, 4_294_967_297)),
+    plain(window(123_456_789_000, 123_457_749_000, NEXT_TRACK)),
+    plain(window(0, 288000, BACKING_TRACK)),
+    plain(window(999, 3001), 1000),
+    plain(window(1000, 3000), 1000),
+    plain(window(0, 96000), 96000),
+    plain(window(0, 96001), 96000),
+    plain(window(5, 6), 1),
+    plain(window(0, 5), 1),
+    plain(window(-1, 1), 1),
+    plain(window(3_000_000_000, 3_000_002_500), 1000),
+  ];
+};
+
+const storeVectors = () => [...windowsForVectors(), ...chunksForVectors()];
+
 export const buildAll = () => ({
   timeline: [
     ...frameAtVectors(),
@@ -336,6 +465,7 @@ export const buildAll = () => ({
     ...dbToGainVectors(),
   ],
   clock: clockVectors(),
+  store: storeVectors(),
 });
 
 const writeAll = (all) => {
