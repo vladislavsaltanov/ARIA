@@ -13,6 +13,7 @@ set(ARIA_WARNING_FLAGS -Wall -Wextra -Werror)
 set(ARIA_ENGINE_SOURCES
     src/pcm_pool.cpp
     src/plan_decoder.cpp
+    src/renderer.cpp
 )
 
 if(ARIA_HOST_TESTS)
@@ -48,6 +49,7 @@ if(ARIA_HOST_TESTS)
     add_executable(aria_engine_tests
         tests/pcm_pool_test.cpp
         tests/plan_decoder_test.cpp
+        tests/renderer_voice_test.cpp
         ${ARIA_ENGINE_SOURCES}
     )
     target_include_directories(aria_engine_tests PRIVATE src)
