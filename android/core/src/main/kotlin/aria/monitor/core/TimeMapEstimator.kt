@@ -11,6 +11,7 @@ class TimeMapEstimator {
 
     @Synchronized
     fun add(stamp: OutputStamp) {
+        if (stamps.isNotEmpty() && stamp.framePosition < stamps.last().framePosition) stamps.clear()
         stamps.addLast(stamp)
         if (stamps.size > WINDOW_STAMPS) stamps.removeFirst()
     }

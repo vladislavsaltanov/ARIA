@@ -118,6 +118,22 @@ class TimeMapEstimatorTest {
     }
 
     @Test
+    fun backwardFrameStartsAFreshHistory() {
+        val old = stampSeries(WINDOW)
+        val clock = clockFor(old)
+        val estimator = estimatorWith(old)
+        val reopened = stampSeries(2, firstFrame = 5L, firstNs = old.last().monotonicNs + 1_000_000_000L, usPerFrame = NOMINAL_US_PER_FRAME)
+
+        estimator.add(reopened[0])
+        assertNull(estimator.timeMap(clock))
+        estimator.add(reopened[1])
+
+        val map = assertNotNull(estimator.timeMap(clock))
+        assertEquals(NOMINAL_US_PER_FRAME, map.usPerFrame, 1e-6)
+        assertEquals(reopened[1].framePosition, map.baseFrame)
+    }
+
+    @Test
     fun mapHostUsFromClockOffset() {
         val stamps = stampSeries(WINDOW)
 
