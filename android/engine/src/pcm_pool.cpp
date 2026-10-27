@@ -63,27 +63,27 @@ void PcmPool::publishEmpty(int slot) { settle(slot, 0, true); }
 void PcmPool::retain(const std::vector<ChunkKey>& keys, int64_t generation) {
     const int64_t stamp = std::clamp(generation, kOldestRetiredStamp, kNewestRetiredStamp);
     for (Slot& slot : slots_) {
-        const int64_t mark = slot.mark.load(std::memory_order_relaxed);
-        if (mark != kReadyMark && !isRetired(mark)) continue;
-        const bool wanted = contains(keys, slot.key);
-        if (wanted && mark != kReadyMark) {
-            slot.mark.store(kReadyMark, std::memory_order_release);
-        } else if (!wanted && mark == kReadyMark) {
-            slot.mark.store(stamp, std::memory_order_release);
-        }
+        if (slot.mark.load(std::memory_order_relaxed) != kReadyMark || contains(keys, slot.key)) continue;
+        slot.mark.store(stamp, std::memory_order_release);
     }
 }
 
 const Chunk* PcmPool::find(const ChunkKey& key) const {
     const int64_t acked = acked_.load(std::memory_order_relaxed);
+    const Chunk* retiredMatch = nullptr;
     for (const Slot& slot : slots_) {
         const int64_t mark = slot.mark.load(std::memory_order_acquire);
-        const bool visible = mark == kReadyMark || (isRetired(mark) && mark > acked);
-        if (visible && slot.key == key) return &slot.chunk;
+        if (mark == kReadyMark) {
+            if (slot.key == key) return &slot.chunk;
+        } else if (retiredMatch == nullptr && isRetired(mark) && mark > acked && slot.key == key) {
+            retiredMatch = &slot.chunk;
+        }
     }
-    return nullptr;
+    return retiredMatch;
 }
 
-void PcmPool::ackGeneration(int64_t seen) { acked_.store(seen, std::memory_order_release); }
+void PcmPool::ackGeneration(int64_t seen) {
+    if (seen > acked_.load(std::memory_order_relaxed)) acked_.store(seen, std::memory_order_release);
+}
 
 }

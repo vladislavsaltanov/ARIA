@@ -48,6 +48,7 @@ public:
     void ackGeneration(int64_t seen);
 
 private:
+    static constexpr int64_t kNothingAcked = std::numeric_limits<int64_t>::min();
     static constexpr int64_t kFreeMark = std::numeric_limits<int64_t>::min();
     static constexpr int64_t kLoadingMark = kFreeMark + 1;
     static constexpr int64_t kReadyMark = std::numeric_limits<int64_t>::max();
@@ -70,7 +71,7 @@ private:
 
     std::unique_ptr<int16_t[]> arena_;
     std::array<Slot, kPoolSlots> slots_;
-    std::atomic<int64_t> acked_{0};
+    std::atomic<int64_t> acked_{kNothingAcked};
 };
 
 }

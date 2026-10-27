@@ -224,7 +224,6 @@ TEST(PcmPoolTest, extremeGenerationsStayRetiredUntilAcked) {
     for (const int64_t extreme : {kLowest, kHighest}) {
         PcmPool pool;
         for (int n = 0; n < kSlots; ++n) ASSERT_GE(publishFilled(pool, keyOf(n), 1, 4), 0);
-        pool.ackGeneration(kLowest);
         pool.retain({}, extreme);
 
         EXPECT_EQ(-1, pool.claim(keyOf(100))) << "generation " << extreme;
@@ -267,36 +266,126 @@ TEST(PcmPoolTest, retainKeepsListedKeysAndRetiresTheRest) {
     EXPECT_EQ(nullptr, pool.find(keyOf(2)));
 }
 
-TEST(PcmPoolTest, retainRevivesRetiredKeyBeforeItIsReclaimed) {
+TEST(PcmPoolTest, claimUsesEveryFreeSlotBeforeReclaimingARetiredOne) {
     PcmPool pool;
-    const int slot = publishFilled(pool, keyOf(1), 1, 4);
-    ASSERT_GE(slot, 0);
-    pool.retain({}, 1);
-    pool.retain({keyOf(1)}, 2);
-    pool.ackGeneration(10);
-
-    EXPECT_NE(nullptr, pool.find(keyOf(1)));
-    for (int n = 1; n < kSlots; ++n) {
-        const int claimed = pool.claim(keyOf(100 + n));
-        ASSERT_GE(claimed, 0);
-        EXPECT_NE(slot, claimed);
-    }
-    EXPECT_EQ(-1, pool.claim(keyOf(200)));
-    EXPECT_NE(nullptr, pool.find(keyOf(1)));
-}
-
-TEST(PcmPoolTest, claimPrefersFreeSlotOverReclaimableOne) {
-    PcmPool pool;
-    const int retiredSlot = publishFilled(pool, keyOf(1), 1, 4);
+    const int retiredSlot = publishFilled(pool, keyOf(0), 1, 4);
     ASSERT_GE(retiredSlot, 0);
     pool.retain({}, 1);
     pool.ackGeneration(1);
 
-    const int claimed = pool.claim(keyOf(2));
-    ASSERT_GE(claimed, 0);
-    EXPECT_NE(retiredSlot, claimed);
+    for (int n = 1; n < kSlots; ++n) {
+        const int claimed = pool.claim(keyOf(n));
+        ASSERT_GE(claimed, 0) << "claim " << n;
+        EXPECT_NE(retiredSlot, claimed) << "claim " << n;
+    }
+    EXPECT_EQ(retiredSlot, pool.claim(keyOf(kSlots)));
+    EXPECT_EQ(-1, pool.claim(keyOf(kSlots + 1)));
+}
+
+TEST(PcmPoolTest, retainNeverTurnsARetiredSlotBackIntoReady) {
+    PcmPool pool;
+    ASSERT_GE(publishFilled(pool, keyOf(1), 1, 4), 0);
+    pool.retain({}, 1);
     pool.retain({keyOf(1)}, 2);
+
     EXPECT_NE(nullptr, pool.find(keyOf(1)));
+    pool.ackGeneration(1);
+    EXPECT_EQ(nullptr, pool.find(keyOf(1)));
+    pool.ackGeneration(2);
+    EXPECT_EQ(nullptr, pool.find(keyOf(1)));
+}
+
+TEST(PcmPoolTest, reWantedKeyIsReloadedIntoANewSlotWhileTheOldCopyIsUnacked) {
+    PcmPool pool;
+    pool.ackGeneration(0);
+    const int oldSlot = publishFilled(pool, keyOf(1), 11, 4);
+    ASSERT_GE(oldSlot, 0);
+    pool.retain({}, 1);
+    pool.retain({keyOf(1)}, 2);
+
+    const int newSlot = publishFilled(pool, keyOf(1), 22, 4);
+    ASSERT_GE(newSlot, 0);
+    EXPECT_NE(oldSlot, newSlot);
+    EXPECT_EQ(11, pool.slotData(oldSlot)[0]);
+    const Chunk* found = pool.find(keyOf(1));
+    ASSERT_NE(nullptr, found);
+    EXPECT_EQ(pool.slotData(newSlot), found->data);
+    EXPECT_EQ(22, found->data[0]);
+}
+
+TEST(PcmPoolTest, findPrefersTheReadyCopyOverAProtectedRetiredCopyInALowerSlot) {
+    PcmPool pool;
+    pool.ackGeneration(0);
+    const int firstSlot = publishFilled(pool, keyOf(1), 11, 4);
+    ASSERT_GE(firstSlot, 0);
+    for (int n = 2; n < kSlots; ++n) ASSERT_GE(publishFilled(pool, keyOf(n), 5, 4), 0);
+    pool.retain({}, 1);
+    pool.retain({keyOf(1)}, 2);
+    const int secondSlot = publishFilled(pool, keyOf(1), 22, 4);
+    ASSERT_GE(secondSlot, 0);
+    ASSERT_LT(firstSlot, secondSlot);
+    EXPECT_EQ(22, pool.find(keyOf(1))->data[0]);
+    EXPECT_EQ(pool.slotData(secondSlot), pool.find(keyOf(1))->data);
+}
+
+TEST(PcmPoolTest, oldCopyBecomesReclaimableCapacityOnceTheAckPassesItsStamp) {
+    PcmPool pool;
+    pool.ackGeneration(0);
+    const int oldSlot = publishFilled(pool, keyOf(0), 1, 4);
+    ASSERT_GE(oldSlot, 0);
+    pool.retain({}, 1);
+    pool.retain({keyOf(0)}, 2);
+    const int newSlot = publishFilled(pool, keyOf(0), 2, 4);
+    ASSERT_GE(newSlot, 0);
+    for (int n = 1; n < kSlots - 1; ++n) ASSERT_GE(publishFilled(pool, keyOf(n), 3, 4), 0);
+    EXPECT_EQ(-1, pool.claim(keyOf(100)));
+
+    pool.ackGeneration(1);
+    EXPECT_EQ(oldSlot, pool.claim(keyOf(100)));
+    EXPECT_EQ(-1, pool.claim(keyOf(101)));
+}
+
+TEST(PcmPoolTest, repeatedDropAndReWantCyclesNeverExhaustAPoolWithOneSpareSlot) {
+    constexpr int kWanted = kSlots - 1;
+    constexpr int kCycles = 2000;
+    PcmPool pool;
+    std::vector<ChunkKey> wanted;
+    std::vector<int16_t> values(kWanted);
+    for (int n = 0; n < kWanted; ++n) {
+        wanted.push_back(keyOf(n));
+        values[n] = static_cast<int16_t>(n);
+        ASSERT_GE(publishFilled(pool, wanted[n], values[n], 4), 0);
+    }
+
+    int64_t generation = 0;
+    for (int cycle = 0; cycle < kCycles; ++cycle) {
+        const int index = cycle % kWanted;
+        std::vector<ChunkKey> without = wanted;
+        without.erase(without.begin() + index);
+        pool.retain(without, ++generation);
+        pool.retain(wanted, ++generation);
+        values[index] = static_cast<int16_t>(1000 + cycle);
+        ASSERT_GE(publishFilled(pool, wanted[index], values[index], 4), 0) << "cycle " << cycle;
+        pool.ackGeneration(generation);
+        for (int n = 0; n < kWanted; ++n) {
+            const Chunk* chunk = pool.find(wanted[n]);
+            ASSERT_NE(nullptr, chunk) << "cycle " << cycle << " key " << n;
+            ASSERT_EQ(values[n], chunk->data[0]) << "cycle " << cycle << " key " << n;
+        }
+    }
+}
+
+TEST(PcmPoolTest, lowerAckDoesNotLowerTheReclaimHorizon) {
+    PcmPool pool;
+    for (int n = 0; n < kSlots; ++n) ASSERT_GE(publishFilled(pool, keyOf(n), 1, 4), 0);
+    pool.retain({}, 5);
+    pool.ackGeneration(5);
+    ASSERT_EQ(nullptr, pool.find(keyOf(0)));
+
+    pool.ackGeneration(2);
+    pool.ackGeneration(std::numeric_limits<int64_t>::min());
+    EXPECT_EQ(nullptr, pool.find(keyOf(0)));
+    for (int n = 0; n < kSlots; ++n) EXPECT_GE(pool.claim(keyOf(100 + n)), 0) << "claim " << n;
 }
 
 class EngineEpoch {
@@ -373,6 +462,7 @@ TEST(PcmPoolConcurrencyTest, readerBlockSpanningRetireNeverSeesItsChunkRewritten
     std::thread writer([&] { produce(shared, std::numeric_limits<int64_t>::max()); });
 
     int held = 0;
+    int heldAcrossRetire = 0;
     int corrupted = 0;
     int timeouts = 0;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
@@ -384,7 +474,7 @@ TEST(PcmPoolConcurrencyTest, readerBlockSpanningRetireNeverSeesItsChunkRewritten
         if (chunk == nullptr) continue;
 
         const auto blockDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-        while (shared.stalledAfter.load(std::memory_order_relaxed) <= n &&
+        while (shared.stalledAfter.load(std::memory_order_relaxed) < n &&
                shared.latest.load(std::memory_order_relaxed) < n + kPublishesPastHeldChunkWithoutProtection) {
             if (std::chrono::steady_clock::now() > blockDeadline) {
                 ++timeouts;
@@ -392,6 +482,7 @@ TEST(PcmPoolConcurrencyTest, readerBlockSpanningRetireNeverSeesItsChunkRewritten
             }
             std::this_thread::yield();
         }
+        if (shared.stalledAfter.load(std::memory_order_relaxed) > n) ++heldAcrossRetire;
         if (!chunkHolds(*chunk, patternOf(n))) ++corrupted;
         ++held;
     }
@@ -399,6 +490,7 @@ TEST(PcmPoolConcurrencyTest, readerBlockSpanningRetireNeverSeesItsChunkRewritten
     writer.join();
 
     EXPECT_EQ(kHoldCycles, held);
+    EXPECT_GT(heldAcrossRetire, 0);
     EXPECT_EQ(0, corrupted);
     EXPECT_EQ(0, timeouts);
 }
