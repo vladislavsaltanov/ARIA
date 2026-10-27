@@ -85,6 +85,8 @@ double targetFrame(const RenderPlan& plan, const VoicePlan& voice, int64_t devic
     return static_cast<double>(voice.anchorFrame) + (sinceAnchorUs * plan.rate) / kMicrosPerSecond;
 }
 
+bool unusableScale(double value) { return !(value > 0.0) || !std::isfinite(value); }
+
 float fadeInGain(int32_t& framesDone) {
     if (framesDone >= Renderer::kFadeInFrames) return 1.0F;
     return static_cast<float>(framesDone++) / static_cast<float>(Renderer::kFadeInFrames);
@@ -112,7 +114,7 @@ std::optional<VoiceProbe> Renderer::probe(int32_t voiceId) const {
 void Renderer::render(const RenderPlan* plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {
     if (frames <= 0 || stereoOut == nullptr) return;
     std::fill(stereoOut, stereoOut + static_cast<size_t>(frames) * kChannels, 0.0F);
-    if (plan == nullptr) return;
+    if (plan == nullptr || unusableScale(plan->rate) || unusableScale(plan->timeMap.usPerFrame)) return;
     for (VoiceState& state : voices_) state.renderedThisBlock = false;
     for (const VoicePlan& voice : plan->voices) {
         VoiceState* state = stateFor(voice);
@@ -147,16 +149,16 @@ void Renderer::renderVoice(const RenderPlan& plan, const VoicePlan& voice, Voice
         state.endOfFile = kNoEnd;
     }
     const double target = targetFrame(plan, voice, deviceFrame);
-    if (!voice.playing || !(plan.rate > 0.0) || !(std::fabs(target) < kLastAddressableFrame)) {
+    if (!voice.playing || !(std::fabs(target) < kLastAddressableFrame)) {
         state.entered = false;
         return;
     }
     const double error = target - state.position;
     if (!state.entered || std::fabs(error) > kReanchorSeconds * plan.rate) {
+        if (!state.entered) state.entryFrame = std::max<int64_t>(voice.anchorFrame, 0);
         state.entered = true;
         state.position = target;
         state.ratio = 1.0;
-        state.entryFrame = std::max<int64_t>(voice.anchorFrame, 0);
         state.fadeInDone = 0;
     } else {
         state.ratio = ratioFor(error, plan.rate);

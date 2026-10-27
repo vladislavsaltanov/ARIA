@@ -117,6 +117,28 @@ protected:
         return out;
     }
 
+    struct Read {
+        double position;
+        float left;
+        float right;
+    };
+
+    std::vector<Read> resampleFrom(int64_t anchor, int64_t blocks) {
+        const RenderPlan synced = plan({voice(1, kHostUs, anchor)});
+        const RenderPlan late = plan({voice(1, kHostUs, anchor)}, kHostUs + 3000);
+        render(&synced, 0, 256);
+        std::vector<Read> reads;
+        double start = renderer.probe(1)->position;
+        for (int64_t block = 1; block < blocks; ++block) {
+            const std::vector<float> out = render(&late, block * 256, 256);
+            const double ratio = renderer.probe(1)->ratio;
+            EXPECT_NE(1.0, ratio);
+            for (int32_t i = 0; block >= 2 && i < 256; ++i) reads.push_back({start + i * ratio, out[2 * i], out[2 * i + 1]});
+            start = renderer.probe(1)->position;
+        }
+        return reads;
+    }
+
     PcmPool pool;
     Renderer renderer{pool};
 };
@@ -248,26 +270,68 @@ TEST(RendererInterpolationTest, cubicErrorBelow1e_4OnSine440At1_0004) {
 TEST_F(RendererVoiceTest, resampledReadAcrossChunkBoundaryStaysOnSine) {
     publish(kRampHi, kRampLo, 1, kChunkFrames, sineSample);
     publish(kRampHi, kRampLo, 2, kChunkFrames, sineSample);
-    constexpr int64_t kAnchor = 2 * kChunkFrames - 4800;
-    const RenderPlan synced = plan({voice(1, kHostUs, kAnchor)});
-    const RenderPlan late = plan({voice(1, kHostUs, kAnchor)}, kHostUs + 3000);
-    render(&synced, 0, 256);
-    double start = renderer.probe(1)->position;
     double worst = 0.0;
     bool crossed = false;
-    for (int64_t block = 1; block < 40; ++block) {
-        const std::vector<float> out = render(&late, block * 256, 256);
-        const double ratio = renderer.probe(1)->ratio;
-        ASSERT_NE(1.0, ratio);
-        for (int32_t i = 0; block >= 2 && i < 256; ++i) {
-            const double frame = start + i * ratio;
-            crossed = crossed || frame >= 2.0 * kChunkFrames;
-            worst = std::max({worst, std::fabs(out[2 * i] - sine(frame)), std::fabs(out[2 * i + 1] + sine(frame))});
-        }
-        start = renderer.probe(1)->position;
+    for (const Read& read : resampleFrom(2 * kChunkFrames - 4800, 40)) {
+        crossed = crossed || read.position >= 2.0 * kChunkFrames;
+        worst = std::max({worst, std::fabs(read.left - sine(read.position)), std::fabs(read.right + sine(read.position))});
     }
     EXPECT_TRUE(crossed);
     EXPECT_LT(worst, 1e-4);
+}
+
+TEST_F(RendererVoiceTest, cubicTapsIntoAbsentChunkStayFiniteAndOnSource) {
+    publish(kRampHi, kRampLo, 1, kChunkFrames, sineSample);
+    constexpr double kBoundary = 2.0 * kChunkFrames;
+    int onSource = 0;
+    int edge = 0;
+    int beyond = 0;
+    for (const Read& read : resampleFrom(2 * kChunkFrames - 4800, 40)) {
+        ASSERT_TRUE(std::isfinite(read.left) && std::isfinite(read.right)) << read.position;
+        const double base = std::floor(read.position);
+        if (base + 2.0 < kBoundary) {
+            ++onSource;
+            EXPECT_NEAR(sine(read.position), read.left, 1e-4) << read.position;
+            EXPECT_NEAR(-sine(read.position), read.right, 1e-4) << read.position;
+        } else if (base < kBoundary) {
+            ++edge;
+            EXPECT_LE(std::fabs(read.left), 1.0F) << read.position;
+        } else {
+            ++beyond;
+            EXPECT_EQ(0.0F, read.left) << read.position;
+            EXPECT_EQ(0.0F, read.right) << read.position;
+        }
+    }
+    EXPECT_GT(onSource, 0);
+    EXPECT_GE(edge, 1);
+    EXPECT_GT(beyond, 0);
+    EXPECT_GT(renderer.underruns(), 0U);
+}
+
+TEST_F(RendererVoiceTest, negativeStartIsGatedAndNeverReadsChunkBelowZero) {
+    publish(kRampHi, kRampLo, -1, kChunkFrames, halfScale);
+    publishRamp(0);
+    constexpr int32_t kLead = 48;
+    const RenderPlan p = plan({voice(1, kHostUs + 1000, 0)});
+    const std::vector<float> out = render(&p, 0, 1024);
+    for (int32_t i = 0; i <= kLead; ++i) expectFrame(out, i, 0.0F);
+    for (int32_t j = 0; kLead + j < 1024; ++j) expectFrame(out, kLead + j, faded(ramp(j), j));
+    EXPECT_NEAR(1024.0 - kLead, renderer.probe(1)->position, kDeadZone);
+    EXPECT_EQ(0U, renderer.underruns());
+}
+
+TEST_F(RendererVoiceTest, driftReanchorOfPlayingVoiceIsNotGatedByFutureAnchor) {
+    publishRamp(1);
+    constexpr int32_t kBlock = 1200;
+    constexpr int64_t kNowUs = kHostUs + 50000;
+    constexpr int64_t kNowFrame = kAnchorFrame + 2 * kBlock;
+    const RenderPlan synced = plan({voice(1)});
+    render(&synced, 0, kBlock);
+    render(&synced, kBlock, kBlock);
+    const RenderPlan jumped = plan({voice(1, kNowUs + 50000, kNowFrame + 2400)}, kHostUs + 6000);
+    const std::vector<float> out = render(&jumped, 2 * kBlock, 1024);
+    for (int32_t i = 0; i < 1024; ++i) expectFrame(out, i, faded(ramp(kNowFrame + 288 + i), i));
+    EXPECT_NE(0.0F, out[2]);
 }
 
 TEST_F(RendererVoiceTest, missingChunkSilentCountsUnderrunThenFadesInOnArrival) {
@@ -397,16 +461,31 @@ TEST_F(RendererVoiceTest, vanishedVoiceFreesItsSlot) {
 TEST_F(RendererVoiceTest, nullOrInvalidPlanRendersSilence) {
     publishRamp(0);
     publishRamp(1);
-    RenderPlan nanMap = plan({voice(1, kHostUs, 0)});
-    nanMap.timeMap.usPerFrame = std::numeric_limits<double>::quiet_NaN();
-    RenderPlan zeroRate = plan({voice(1)});
-    zeroRate.rate = 0.0;
+    constexpr double kNan = std::numeric_limits<double>::quiet_NaN();
+    constexpr double kInf = std::numeric_limits<double>::infinity();
+    std::vector<RenderPlan> badScale;
+    for (const double usPerFrame : {0.0, -kUsPerFrame, kNan, kInf}) {
+        badScale.push_back(plan({voice(1, kHostUs, 0)}));
+        badScale.back().timeMap.usPerFrame = usPerFrame;
+    }
+    for (const double rate : {0.0, kNan, kInf}) {
+        badScale.push_back(plan({voice(1, kHostUs, 0)}));
+        badScale.back().rate = rate;
+    }
     const RenderPlan unaddressable = plan({voice(1, kHostUs, std::numeric_limits<int64_t>::max() / 2)});
-    EXPECT_TRUE(allZero(render(nullptr, 0, 256)));
-    EXPECT_TRUE(allZero(render(&nanMap, 0, 256)));
-    EXPECT_TRUE(allZero(render(&zeroRate, 256, 256)));
-    EXPECT_TRUE(allZero(render(&unaddressable, 512, 256)));
-    EXPECT_EQ(0U, renderer.underruns());
+    const auto silentThroughout = [this](const RenderPlan* p, bool keepsNoVoice) {
+        Renderer fresh{pool};
+        for (int64_t block = 0; block < 4; ++block) {
+            std::vector<float> out(2 * 192, kGarbage);
+            fresh.render(p, block * 192, 192, out.data());
+            EXPECT_TRUE(allZero(out)) << "block " << block;
+        }
+        EXPECT_EQ(0U, fresh.underruns());
+        if (keepsNoVoice) EXPECT_FALSE(fresh.probe(1).has_value());
+    };
+    silentThroughout(nullptr, true);
+    for (const RenderPlan& p : badScale) silentThroughout(&p, true);
+    silentThroughout(&unaddressable, false);
 }
 
 }
