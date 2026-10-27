@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -71,10 +72,122 @@ std::vector<float> stream(Renderer& target, const RenderPlan* p, int64_t from, i
     return out;
 }
 
+bool allFinite(const std::vector<float>& out) {
+    return std::all_of(out.begin(), out.end(), [](float sample) { return std::isfinite(sample); });
+}
+
 class RendererLevelTest : public RendererFixture {
 protected:
     void publishHalf() { publish(kRampHi, kRampLo, 1, kChunkFrames, halfScale); }
+
+    void expectRecovers(const RenderPlan& good, const RenderPlan& bad) {
+        for (const bool goodFirst : {true, false}) {
+            Renderer fresh{pool};
+            int64_t frame = 0;
+            if (goodFirst) {
+                EXPECT_TRUE(allFinite(stream(fresh, &good, frame, 1024, 256)));
+                frame += 1024;
+            }
+            EXPECT_TRUE(allFinite(stream(fresh, &bad, frame, 256, 256))) << "bad block, good first " << goodFirst;
+            frame += 256;
+            const std::vector<float> after = stream(fresh, &good, frame, 2048, 256);
+            EXPECT_TRUE(allFinite(after)) << "recovery, good first " << goodFirst;
+            for (int32_t i = 2048 - 256; i < 2048; ++i) expectFrame(after, i, kHalf);
+        }
+    }
 };
+
+constexpr std::array<double, 2> kNonFinite{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity()};
+
+VoicePlan levelVoice() { return withFade(voice(1), linearFade(1.0, 1.0, 0.0, 4800)); }
+
+TEST_F(RendererLevelTest, nonFiniteGainDbIsSilencedAndRecovers) {
+    publishHalf();
+    for (const double value : kNonFinite) expectRecovers(plan({levelVoice()}), plan({withGainDb(levelVoice(), value)}));
+}
+
+TEST_F(RendererLevelTest, nonFiniteFadeFromIsSilencedAndRecovers) {
+    publishHalf();
+    for (const double value : kNonFinite) {
+        VoicePlan bad = levelVoice();
+        bad.fade->from = value;
+        expectRecovers(plan({levelVoice()}), plan({bad}));
+    }
+}
+
+TEST_F(RendererLevelTest, nonFiniteFadeToIsSilencedAndRecovers) {
+    publishHalf();
+    for (const double value : kNonFinite) {
+        VoicePlan bad = levelVoice();
+        bad.fade->to = value;
+        expectRecovers(plan({levelVoice()}), plan({bad}));
+    }
+}
+
+TEST_F(RendererLevelTest, nonFiniteBackingGainPlanIsSkippedAndRecovers) {
+    publishHalf();
+    for (const double value : kNonFinite) {
+        RenderPlan bad = plan({levelVoice()});
+        bad.backingGain = static_cast<float>(value);
+        expectRecovers(plan({levelVoice()}), bad);
+    }
+}
+
+TEST_F(RendererLevelTest, nonFiniteMasterGainPlanIsSkippedAndRecovers) {
+    publishHalf();
+    for (const double value : kNonFinite) {
+        RenderPlan bad = plan({levelVoice()});
+        bad.masterGain = static_cast<float>(value);
+        expectRecovers(plan({levelVoice()}), bad);
+    }
+}
+
+TEST_F(RendererLevelTest, stopDuringNonFiniteLevelFadesFromLastFiniteLevel) {
+    publishHalf();
+    for (const double value : kNonFinite) {
+        Renderer fresh{pool};
+        const VoicePlan bad = withGainDb(levelVoice(), value);
+        const RenderPlan good = plan({levelVoice()});
+        const RenderPlan poisoned = plan({bad});
+        const RenderPlan stoppedWhilePoisoned = plan({paused(bad)});
+        stream(fresh, &good, 0, 1024, 256);
+        EXPECT_TRUE(allFinite(stream(fresh, &poisoned, 1024, 256, 256)));
+        const std::vector<float> out = stream(fresh, &stoppedWhilePoisoned, 1280, 512, 256);
+        EXPECT_TRUE(allFinite(out));
+        EXPECT_FLOAT_EQ(kHalf, out[0]);
+        EXPECT_FLOAT_EQ(kHalf * (1.0F - 100.0F / 384.0F), out[2 * 100]);
+        EXPECT_EQ(0.0F, out[2 * 384]);
+    }
+}
+
+TEST_F(RendererLevelTest, backingZeroTargetSnapsToExactSilence) {
+    publishHalf();
+    RenderPlan muted = plan({voice(1)});
+    muted.backingGain = 0.0F;
+    const RenderPlan open = plan({voice(1)});
+    render(&open, 0, 1024);
+    const std::vector<float> out = stream(renderer, &muted, 1024, 48000, 480);
+    EXPECT_NE(0.0F, out[2 * 9600]);
+    for (int32_t i = 24000; i < 48000; ++i) ASSERT_EQ(0.0F, out[2 * i]) << "frame " << i;
+}
+
+TEST_F(RendererLevelTest, masterRetargetMidRampContinuesFromCurrentValue) {
+    publishHalf();
+    RenderPlan silent = plan({voice(1)});
+    silent.masterGain = 0.0F;
+    RenderPlan up = plan({voice(1)});
+    up.masterRampSeconds = 1.0F;
+    RenderPlan down = silent;
+    down.masterRampSeconds = 1.0F;
+    render(&silent, 0, 1024);
+    const std::vector<float> rising = stream(renderer, &up, 1024, 24000, 480);
+    const std::vector<float> falling = stream(renderer, &down, 25024, 24000, 480);
+    const float before = rising[2 * 23999];
+    EXPECT_NEAR(0.25, before, 1e-3);
+    EXPECT_NEAR(before, falling[0], 1e-4);
+    EXPECT_LE(falling[0], before);
+    EXPECT_NEAR(0.125, falling[2 * 23999], 1e-3);
+}
 
 TEST(EnvelopeTest, curvesAndFadeMatchParityVectors) {
     std::ifstream file(std::string(ARIA_PARITY_DIR) + "/timeline.json");

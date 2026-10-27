@@ -15,6 +15,7 @@ constexpr double kMicrosPerSecond = 1e6;
 constexpr double kLastAddressableFrame = static_cast<double>(kChunkFrames) * std::numeric_limits<int32_t>::max();
 constexpr int64_t kNoEnd = std::numeric_limits<int64_t>::max();
 const double kBackingCoefficient = 1.0 - std::exp(-1.0 / (Renderer::kBackingTauSeconds * Renderer::kOutputRate));
+constexpr double kBackingSnap = 1e-9;
 
 double targetFrame(const RenderPlan& plan, const VoicePlan& voice, int64_t deviceFrame) {
     const TimeMap& map = plan.timeMap;
@@ -26,6 +27,13 @@ double targetFrame(const RenderPlan& plan, const VoicePlan& voice, int64_t devic
 }
 
 bool unusableScale(double value) { return !(value > 0.0) || !std::isfinite(value); }
+
+bool unusablePlan(const RenderPlan* plan) {
+    return plan == nullptr || unusableScale(plan->rate) || unusableScale(plan->timeMap.usPerFrame) || !std::isfinite(plan->backingGain) ||
+           !std::isfinite(plan->masterGain);
+}
+
+bool usableLevel(double level) { return std::fabs(level) <= std::numeric_limits<float>::max(); }
 
 float fadeInGain(int32_t& framesDone) {
     if (framesDone >= Renderer::kFadeInFrames) return 1.0F;
@@ -106,7 +114,7 @@ std::optional<VoiceProbe> Renderer::probe(int32_t voiceId) const {
 void Renderer::render(const RenderPlan* plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {
     if (frames <= 0 || stereoOut == nullptr) return;
     std::fill(stereoOut, stereoOut + static_cast<size_t>(frames) * kChannels, 0.0F);
-    if (plan == nullptr || unusableScale(plan->rate) || unusableScale(plan->timeMap.usPerFrame)) return;
+    if (unusablePlan(plan)) return;
     if (!primed_) {
         primed_ = true;
         backing_ = plan->backingGain;
@@ -144,7 +152,8 @@ void Renderer::assignVoices(const RenderPlan& plan, int64_t deviceFrame, PlanOfS
         state->epoch = voice.epoch;
         state->trackHi = voice.trackHi;
         state->trackLo = voice.trackLo;
-        state->level = voiceLevel(plan, voice, deviceFrame);
+        const double level = voiceLevel(plan, voice, deviceFrame);
+        state->level = usableLevel(level) ? level : 0.0;
         planOf[static_cast<size_t>(state - voices_.data())] = &voice;
     }
 }
@@ -166,8 +175,11 @@ bool Renderer::isActive(int32_t voiceId) const {
 void Renderer::renderActive(const RenderPlan& plan, const VoicePlan& voice, VoiceState& state, int64_t deviceFrame, int32_t frames,
                             float* stereoOut) {
     state.endFrame = voice.endFrame.value_or(kNoEnd);
-    const double levelStart = state.level;
-    state.level = voiceLevel(plan, voice, deviceFrame + frames);
+    const double levelEnd = voiceLevel(plan, voice, deviceFrame + frames);
+    const bool audible = usableLevel(levelEnd);
+    const double levelStart = audible ? state.level : 0.0;
+    const double levelStep = audible ? (levelEnd - state.level) / static_cast<double>(frames) : 0.0;
+    if (audible) state.level = levelEnd;
     const double target = targetFrame(plan, voice, deviceFrame);
     if (!(std::fabs(target) < kLastAddressableFrame)) {
         state.entered = false;
@@ -184,7 +196,6 @@ void Renderer::renderActive(const RenderPlan& plan, const VoicePlan& voice, Voic
     } else {
         state.ratio = ratioFor(error, plan.rate);
     }
-    const double levelStep = (state.level - levelStart) / static_cast<double>(frames);
     const bool starved = mixVoice(pool_, state, frames, stereoOut, [&state, levelStart, levelStep](int32_t i) {
         return fadeInGain(state.fadeInDone) * static_cast<float>(levelStart + levelStep * static_cast<double>(i));
     });
@@ -213,6 +224,7 @@ void Renderer::applyBusGains(const RenderPlan& plan, int32_t frames, float* ster
     const double backingTarget = plan.backingGain;
     for (int32_t i = 0; i < frames; ++i) {
         backing_ += (backingTarget - backing_) * kBackingCoefficient;
+        if (std::fabs(backingTarget - backing_) < kBackingSnap) backing_ = backingTarget;
         if (masterRampDone_ < masterRampFrames_) {
             ++masterRampDone_;
             master_ = masterRampDone_ == masterRampFrames_

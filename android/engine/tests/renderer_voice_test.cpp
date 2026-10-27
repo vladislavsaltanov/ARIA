@@ -342,11 +342,19 @@ TEST_F(RendererVoiceTest, epochOrTrackChangeCrossfadesOldOutAndNewIn) {
     publishRamp(0);
     publishRamp(1);
     publish(kOtherHi, kOtherLo, 1, kChunkFrames, halfScale);
+    publish(kOtherHi, kRampLo, 1, kChunkFrames, halfScale);
+    publish(kRampHi, kOtherLo, 1, kChunkFrames, halfScale);
     VoicePlan nextEpoch = voice(1, kHostUs + 50000, 10000);
     nextEpoch.epoch = 2;
+    VoicePlan hiChanged = voice(1);
+    hiChanged.trackHi = kOtherHi;
+    VoicePlan loChanged = voice(1);
+    loChanged.trackLo = kOtherLo;
     const RenderPlan first = plan({voice(1)});
     const RenderPlan epochChanged = plan({nextEpoch});
     const RenderPlan trackChanged = plan({onOtherTrack(voice(1))});
+    const RenderPlan trackHiChanged = plan({hiChanged});
+    const RenderPlan trackLoChanged = plan({loChanged});
     const auto crossfade = [&](const RenderPlan& second, float (*incoming)(int32_t)) {
         Renderer fresh{pool};
         std::vector<float> out(2 * 1200);
@@ -362,6 +370,8 @@ TEST_F(RendererVoiceTest, epochOrTrackChangeCrossfadesOldOutAndNewIn) {
     };
     crossfade(epochChanged, [](int32_t i) { return faded(ramp(10000 + i), i); });
     crossfade(trackChanged, [](int32_t i) { return faded(0.5F, i); });
+    crossfade(trackHiChanged, [](int32_t i) { return faded(0.5F, i); });
+    crossfade(trackLoChanged, [](int32_t i) { return faded(0.5F, i); });
 }
 
 TEST_F(RendererVoiceTest, pausedVoiceFadesOutIn8msAndReentersWithFadeIn) {
