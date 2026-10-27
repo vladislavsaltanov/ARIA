@@ -17,6 +17,14 @@ constexpr double kMaxDeviation = 5e-4;
 constexpr int kMaxVoices = 8;
 constexpr double kTwoPi = 6.283185307179586;
 constexpr double kSineHz = 440.0;
+constexpr int32_t kStop = 384;
+
+float stopGain(int32_t framesIntoStop) { return 1.0F - static_cast<float>(framesIntoStop) / static_cast<float>(kStop); }
+
+VoicePlan stopped(VoicePlan v) {
+    v.playing = false;
+    return v;
+}
 
 double sine(double frame) { return 0.5 * std::sin(kTwoPi * kSineHz * frame / kRate + 1.0); }
 
@@ -271,6 +279,20 @@ TEST_F(RendererVoiceTest, duplicateVoiceIdRendersOnce) {
     EXPECT_DOUBLE_EQ(static_cast<double>(kAnchorFrame + 2048), renderer.probe(1)->position);
 }
 
+TEST_F(RendererVoiceTest, duplicateVoiceIdFollowsItsFirstEntry) {
+    publishRamp(1);
+    const RenderPlan playing = plan({voice(1)});
+    const RenderPlan conflicting = plan({stopped(voice(1)), voice(1)});
+    render(&playing, 0, 1024);
+    for (int64_t block = 1; block < 3; ++block) {
+        const std::vector<float> out = render(&conflicting, block * 1024, 1024);
+        for (int32_t i = 0; i < 1024; ++i) {
+            expectFrame(out, i, block == 1 && i < kStop ? ramp(kAnchorFrame + 1024 + i) * stopGain(i) : 0.0F);
+        }
+    }
+    EXPECT_FALSE(renderer.probe(1).has_value());
+}
+
 TEST_F(RendererVoiceTest, emptyChunkSilentNoUnderrun) {
     const int slot = pool.claim(ChunkKey{kRampHi, kRampLo, 1});
     ASSERT_GE(slot, 0);
@@ -316,28 +338,98 @@ TEST_F(RendererVoiceTest, anchorFrameBeyondInt32Plays) {
     EXPECT_DOUBLE_EQ(static_cast<double>(kFar + 1024), renderer.probe(1)->position);
 }
 
-TEST_F(RendererVoiceTest, voiceWithEpochChangeReanchors) {
+TEST_F(RendererVoiceTest, epochOrTrackChangeCrossfadesOldOutAndNewIn) {
+    publishRamp(0);
     publishRamp(1);
-    VoicePlan next = voice(1);
-    next.epoch = 2;
+    publish(kOtherHi, kOtherLo, 1, kChunkFrames, halfScale);
+    VoicePlan nextEpoch = voice(1, kHostUs + 50000, 10000);
+    nextEpoch.epoch = 2;
     const RenderPlan first = plan({voice(1)});
-    const RenderPlan second = plan({next});
-    render(&first, 0, 1024);
-    render(&first, 1024, 1024);
-    const std::vector<float> out = render(&second, 2048, 1024);
+    const RenderPlan epochChanged = plan({nextEpoch});
+    const RenderPlan trackChanged = plan({onOtherTrack(voice(1))});
+    const auto crossfade = [&](const RenderPlan& second, float (*incoming)(int32_t)) {
+        Renderer fresh{pool};
+        std::vector<float> out(2 * 1200);
+        fresh.render(&first, 0, 1200, out.data());
+        fresh.render(&first, 1200, 1200, out.data());
+        fresh.render(&second, 2400, 1024, out.data());
+        for (int32_t i = 0; i < 1024; ++i) {
+            const float outgoing = i < kStop ? ramp(kAnchorFrame + 2400 + i) * stopGain(i) : 0.0F;
+            EXPECT_NEAR(outgoing + incoming(i), out[2 * i], 1e-6) << "frame " << i;
+            EXPECT_NEAR(-outgoing - incoming(i), out[2 * i + 1], 1e-6) << "frame " << i;
+        }
+        EXPECT_FALSE(fresh.probe(1)->stopping);
+    };
+    crossfade(epochChanged, [](int32_t i) { return faded(ramp(10000 + i), i); });
+    crossfade(trackChanged, [](int32_t i) { return faded(0.5F, i); });
+}
+
+TEST_F(RendererVoiceTest, pausedVoiceFadesOutIn8msAndReentersWithFadeIn) {
+    publishRamp(1);
+    const RenderPlan playing = plan({voice(1)});
+    const RenderPlan paused = plan({stopped(voice(1))});
+    render(&playing, 0, 1024);
+    const std::vector<float> stopping = render(&paused, 1024, 1024);
+    for (int32_t i = 0; i < 1024; ++i) expectFrame(stopping, i, i < kStop ? ramp(kAnchorFrame + 1024 + i) * stopGain(i) : 0.0F);
+    EXPECT_FALSE(renderer.probe(1).has_value());
+    const std::vector<float> out = render(&playing, 2048, 1024);
     for (int32_t i = 0; i < 1024; ++i) expectFrame(out, i, faded(ramp(kAnchorFrame + 2048 + i), i));
 }
 
-TEST_F(RendererVoiceTest, stoppedVoiceIsSilentAndReentersWithFadeIn) {
+TEST_F(RendererVoiceTest, returningIdGetsFreshSlotWhileItsStopStillFades) {
     publishRamp(1);
-    VoicePlan stopped = voice(1);
-    stopped.playing = false;
     const RenderPlan playing = plan({voice(1)});
-    const RenderPlan paused = plan({stopped});
+    const RenderPlan paused = plan({stopped(voice(1))});
+    render(&playing, 0, 1024);
+    render(&paused, 1024, 128);
+    ASSERT_TRUE(renderer.probe(1)->stopping);
+    const std::vector<float> out = render(&playing, 1152, 256);
+    for (int32_t i = 0; i < 256; ++i) {
+        const float outgoing = ramp(kAnchorFrame + 1152 + i) * stopGain(128 + i);
+        EXPECT_NEAR(outgoing + faded(ramp(kAnchorFrame + 1152 + i), i), out[2 * i], 1e-6) << "frame " << i;
+    }
+    EXPECT_FALSE(renderer.probe(1)->stopping);
+}
+
+TEST_F(RendererVoiceTest, stoppingVoiceKeepsReadingAtLastRatioAndIsFreedAfter384Frames) {
+    publishRamp(1);
+    const RenderPlan synced = plan({voice(1)});
+    const RenderPlan late = plan({voice(1)}, kHostUs + 3000);
+    const RenderPlan paused = plan({stopped(voice(1))});
+    render(&synced, 0, 256);
+    render(&late, 256, 256);
+    const VoiceProbe drifting = *renderer.probe(1);
+    ASSERT_NE(1.0, drifting.ratio);
+    ASSERT_FALSE(drifting.stopping);
+    EXPECT_FALSE(allZero(render(&paused, 512, 128)));
+    const VoiceProbe fading = *renderer.probe(1);
+    EXPECT_TRUE(fading.stopping);
+    EXPECT_EQ(drifting.ratio, fading.ratio);
+    EXPECT_DOUBLE_EQ(drifting.position + 128 * drifting.ratio, fading.position);
+    render(&paused, 640, kStop - 129);
+    EXPECT_TRUE(renderer.probe(1).has_value());
+    render(&paused, 640 + kStop - 129, 1);
+    EXPECT_FALSE(renderer.probe(1).has_value());
+}
+
+TEST_F(RendererVoiceTest, stoppingVoiceNeverCountsUnderruns) {
+    publishRamp(1);
+    constexpr int64_t kAnchor = 2 * kChunkFrames - 1024;
+    const RenderPlan playing = plan({voice(1, kHostUs, kAnchor)});
+    const RenderPlan paused = plan({stopped(voice(1, kHostUs, kAnchor))});
     render(&playing, 0, 1024);
     EXPECT_TRUE(allZero(render(&paused, 1024, 1024)));
-    const std::vector<float> out = render(&playing, 2048, 1024);
-    for (int32_t i = 0; i < 1024; ++i) expectFrame(out, i, faded(ramp(kAnchorFrame + 2048 + i), i));
+    EXPECT_EQ(0U, renderer.underruns());
+}
+
+TEST_F(RendererVoiceTest, unaddressableVoiceStopsSilently) {
+    publishRamp(1);
+    const RenderPlan playing = plan({voice(1)});
+    const RenderPlan unaddressable = plan({voice(1, kHostUs, std::numeric_limits<int64_t>::max() / 2)});
+    const RenderPlan empty = plan({});
+    render(&playing, 0, 1024);
+    EXPECT_TRUE(allZero(render(&unaddressable, 1024, 256)));
+    EXPECT_TRUE(allZero(render(&empty, 1280, 512)));
 }
 
 TEST_F(RendererVoiceTest, moreThanMaxVoicesIgnoredWithoutCrash) {
@@ -352,7 +444,7 @@ TEST_F(RendererVoiceTest, moreThanMaxVoicesIgnoredWithoutCrash) {
     EXPECT_FALSE(renderer.probe(kMaxVoices + 2).has_value());
 }
 
-TEST_F(RendererVoiceTest, vanishedVoiceFreesItsSlot) {
+TEST_F(RendererVoiceTest, waitingVoiceEvictsStoppingSlotOfVanishedVoice) {
     publishRamp(1);
     publish(kOtherHi, kOtherLo, 1, kChunkFrames, halfScale);
     const RenderPlan full = plan(tooManyVoices());
@@ -360,14 +452,37 @@ TEST_F(RendererVoiceTest, vanishedVoiceFreesItsSlot) {
     rest.erase(rest.begin());
     const RenderPlan withoutFirst = plan(rest);
     render(&full, 0, 1024);
-    render(&withoutFirst, 1024, 1024);
-    const std::vector<float> out = render(&withoutFirst, 2048, 1024);
+    const std::vector<float> out = render(&withoutFirst, 1024, 1024);
     EXPECT_FALSE(renderer.probe(1).has_value());
-    EXPECT_TRUE(renderer.probe(kMaxVoices + 1).has_value());
+    EXPECT_FALSE(renderer.probe(kMaxVoices + 1)->stopping);
+    EXPECT_FALSE(renderer.probe(kMaxVoices + 2).has_value());
     for (int32_t i = 0; i < 1024; ++i) {
         const float joined = faded(0.5F, i);
-        EXPECT_NEAR((kMaxVoices - 1) * ramp(kAnchorFrame + 2048 + i) + joined, out[2 * i], 1e-5);
+        EXPECT_NEAR((kMaxVoices - 1) * ramp(kAnchorFrame + 1024 + i) + joined, out[2 * i], 1e-5) << "frame " << i;
     }
+}
+
+TEST_F(RendererVoiceTest, newVoiceEvictsOldestStoppingSlot) {
+    publishRamp(1);
+    publish(kOtherHi, kOtherLo, 1, kChunkFrames, halfScale);
+    std::vector<VoicePlan> voices = tooManyVoices();
+    voices.resize(kMaxVoices);
+    const RenderPlan all = plan(voices);
+    voices.erase(voices.begin() + 1);
+    const RenderPlan withoutSecond = plan(voices);
+    voices.erase(voices.begin());
+    const RenderPlan withoutBoth = plan(voices);
+    voices.push_back(onOtherTrack(voice(kMaxVoices + 1)));
+    const RenderPlan withNewcomer = plan(voices);
+    render(&all, 0, 64);
+    render(&withoutSecond, 64, 64);
+    render(&withoutBoth, 128, 64);
+    ASSERT_TRUE(renderer.probe(1)->stopping);
+    ASSERT_TRUE(renderer.probe(2)->stopping);
+    render(&withNewcomer, 192, 64);
+    EXPECT_FALSE(renderer.probe(2).has_value());
+    EXPECT_TRUE(renderer.probe(1)->stopping);
+    EXPECT_FALSE(renderer.probe(kMaxVoices + 1)->stopping);
 }
 
 TEST_F(RendererVoiceTest, nullOrInvalidPlanRendersSilence) {

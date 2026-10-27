@@ -14,12 +14,16 @@ namespace aria {
 struct VoiceProbe {
     double position;
     double ratio;
+    bool stopping;
 };
 
 class Renderer {
 public:
     static constexpr int kMaxVoices = 8;
     static constexpr int32_t kFadeInFrames = 480;
+    static constexpr int32_t kStopFrames = 384;
+    static constexpr double kOutputRate = 48000.0;
+    static constexpr double kBackingTauSeconds = 0.02;
     static constexpr double kReanchorSeconds = 0.005;
     static constexpr double kDriftWindowSeconds = 0.1;
     static constexpr double kMaxRatioDeviation = 5e-4;
@@ -34,13 +38,26 @@ public:
     std::optional<VoiceProbe> probe(int32_t voiceId) const;
 
 private:
-    VoiceState* stateFor(const VoicePlan& voice);
-    void renderVoice(const RenderPlan& plan, const VoicePlan& voice, VoiceState& state, int64_t deviceFrame, int32_t frames,
-                     float* stereoOut);
+    using PlanOfSlot = std::array<const VoicePlan*, kMaxVoices>;
+
+    void assignVoices(const RenderPlan& plan, int64_t deviceFrame, PlanOfSlot& planOf);
+    VoiceState* claimSlot();
+    bool isActive(int32_t voiceId) const;
+    void renderActive(const RenderPlan& plan, const VoicePlan& voice, VoiceState& state, int64_t deviceFrame, int32_t frames,
+                      float* stereoOut);
+    void renderStopping(VoiceState& state, int32_t frames, float* stereoOut);
+    void applyBusGains(const RenderPlan& plan, int32_t frames, float* stereoOut);
 
     const PcmPool& pool_;
     std::array<VoiceState, kMaxVoices> voices_{};
     std::atomic<uint64_t> underruns_{0};
+    bool primed_ = false;
+    double backing_ = 0.0;
+    double master_ = 0.0;
+    double masterFrom_ = 0.0;
+    double masterTarget_ = 0.0;
+    int64_t masterRampFrames_ = 0;
+    int64_t masterRampDone_ = 0;
 };
 
 }

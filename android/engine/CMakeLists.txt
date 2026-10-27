@@ -11,6 +11,7 @@ option(ARIA_SANITIZE_THREAD "Build host unit tests with ThreadSanitizer" OFF)
 
 set(ARIA_WARNING_FLAGS -Wall -Wextra -Werror)
 set(ARIA_ENGINE_SOURCES
+    src/envelope.cpp
     src/pcm_pool.cpp
     src/plan_decoder.cpp
     src/renderer.cpp
@@ -45,8 +46,10 @@ if(ARIA_HOST_TESTS)
     include(GoogleTest)
 
     get_filename_component(ARIA_FIXTURES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/fixtures/engine" ABSOLUTE)
+    get_filename_component(ARIA_PARITY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/fixtures/parity" ABSOLUTE)
 
     add_executable(aria_engine_tests
+        tests/envelope_test.cpp
         tests/pcm_pool_test.cpp
         tests/plan_decoder_test.cpp
         tests/renderer_voice_test.cpp
@@ -54,7 +57,7 @@ if(ARIA_HOST_TESTS)
     )
     target_include_directories(aria_engine_tests PRIVATE src)
     target_compile_options(aria_engine_tests PRIVATE ${ARIA_WARNING_FLAGS})
-    target_compile_definitions(aria_engine_tests PRIVATE ARIA_FIXTURES_DIR="${ARIA_FIXTURES_DIR}")
+    target_compile_definitions(aria_engine_tests PRIVATE ARIA_FIXTURES_DIR="${ARIA_FIXTURES_DIR}" ARIA_PARITY_DIR="${ARIA_PARITY_DIR}")
     target_link_libraries(aria_engine_tests PRIVATE GTest::gtest_main nlohmann_json::nlohmann_json Threads::Threads)
     gtest_discover_tests(aria_engine_tests)
 elseif(ANDROID)

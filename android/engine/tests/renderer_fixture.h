@@ -57,6 +57,8 @@ inline RenderPlan plan(std::vector<VoicePlan> voices, int64_t hostUsAtFrame0 = k
     p.rate = kRate;
     p.voices = std::move(voices);
     p.timeMap = TimeMap{0, hostUsAtFrame0, kUsPerFrame};
+    p.backingGain = 1.0F;
+    p.masterGain = 1.0F;
     return p;
 }
 
