@@ -35,4 +35,5 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    System.getProperty("regenerateGolden")?.let { systemProperty("regenerateGolden", it) }
 }

@@ -1,0 +1,57 @@
+{
+    "generation": 4294967298,
+    "rate": 1.0,
+    "voices": [
+        {
+            "id": 1,
+            "epoch": 3,
+            "trackHi": -8126151605329432720,
+            "trackLo": 81985529216486895,
+            "gainDb": -6.0,
+            "anchorUs": 13000000123456,
+            "anchorFrame": 3000000000,
+            "playing": true,
+            "endFrame": 3480000000,
+            "fade": {
+                "from": 1.0,
+                "to": 0.0,
+                "progress": 0.25,
+                "frames": 96000,
+                "curve": "Logarithmic",
+                "stopAtEnd": true
+            }
+        },
+        {
+            "id": 2,
+            "epoch": 1,
+            "trackHi": 81985529216486895,
+            "trackLo": -81985529216486896,
+            "gainDb": 0.0,
+            "anchorUs": 13000000654321,
+            "anchorFrame": 48000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+        }
+    ],
+    "grid": {
+        "voice": 1,
+        "bpm": 128.0,
+        "beatsPerBar": 4,
+        "firstBeatFrame": 3000024000
+    },
+    "test": {
+        "anchorUs": 13000000000000,
+        "intervalUs": 500000.0
+    },
+    "backingGain": 0.5,
+    "clickGain": 0.25,
+    "masterGain": 1.0,
+    "masterRampSeconds": 0.001953125,
+    "trimUs": -12500,
+    "timeMap": {
+        "baseFrame": 3000000000,
+        "hostUsAtBaseFrame": 13062500000000,
+        "usPerFrame": 20.833333333333332
+    }
+}
