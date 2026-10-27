@@ -1,7 +1,5 @@
 #include "interp.h"
-#include "pcm_pool.h"
-#include "plan.h"
-#include "renderer.h"
+#include "renderer_fixture.h"
 
 #include <gtest/gtest.h>
 
@@ -11,71 +9,18 @@
 #include <limits>
 #include <vector>
 
+namespace aria::fixture {
 namespace {
 
-using aria::ChunkKey;
-using aria::cubic4;
-using aria::kChunkFrames;
-using aria::PcmPool;
-using aria::Renderer;
-using aria::RenderPlan;
-using aria::VoicePlan;
-
-constexpr double kRate = 48000.0;
-constexpr double kUsPerFrame = 1e6 / kRate;
-constexpr int64_t kHostUs = 13'000'000'000'000;
-constexpr int64_t kRampHi = 0x0123456789ABCDEF;
-constexpr int64_t kRampLo = 0x0FEDCBA987654321;
-constexpr int64_t kOtherHi = 7;
-constexpr int64_t kOtherLo = 9;
-constexpr int64_t kAnchorFrame = 96000;
-constexpr int32_t kFade = 480;
 constexpr double kDeadZone = 1e-3;
 constexpr double kMaxDeviation = 5e-4;
 constexpr int kMaxVoices = 8;
-constexpr float kGarbage = 7.0F;
 constexpr double kTwoPi = 6.283185307179586;
 constexpr double kSineHz = 440.0;
-
-int16_t rampSample(int64_t frame) { return static_cast<int16_t>(1 + frame % 32767); }
-
-int16_t halfScale(int64_t) { return 16384; }
 
 double sine(double frame) { return 0.5 * std::sin(kTwoPi * kSineHz * frame / kRate + 1.0); }
 
 int16_t sineSample(int64_t frame) { return static_cast<int16_t>(std::lround(sine(static_cast<double>(frame)) * 32768.0)); }
-
-float ramp(int64_t frame) { return static_cast<float>(rampSample(frame)) / 32768.0F; }
-
-float faded(float value, int64_t framesIntoFade) {
-    return framesIntoFade < kFade ? value * (static_cast<float>(framesIntoFade) / static_cast<float>(kFade)) : value;
-}
-
-VoicePlan voice(int32_t id, int64_t anchorUs = kHostUs, int64_t anchorFrame = kAnchorFrame) {
-    VoicePlan v;
-    v.id = id;
-    v.epoch = 1;
-    v.trackHi = kRampHi;
-    v.trackLo = kRampLo;
-    v.anchorUs = anchorUs;
-    v.anchorFrame = anchorFrame;
-    v.playing = true;
-    return v;
-}
-
-VoicePlan onOtherTrack(VoicePlan v) {
-    v.trackHi = kOtherHi;
-    v.trackLo = kOtherLo;
-    return v;
-}
-
-RenderPlan plan(std::vector<VoicePlan> voices, int64_t hostUsAtFrame0 = kHostUs) {
-    RenderPlan p;
-    p.rate = kRate;
-    p.voices = std::move(voices);
-    p.timeMap = aria::TimeMap{0, hostUsAtFrame0, kUsPerFrame};
-    return p;
-}
 
 std::vector<VoicePlan> tooManyVoices() {
     std::vector<VoicePlan> voices;
@@ -85,38 +30,8 @@ std::vector<VoicePlan> tooManyVoices() {
     return voices;
 }
 
-void expectFrame(const std::vector<float>& out, int32_t i, float left) {
-    EXPECT_FLOAT_EQ(left, out[2 * i]) << "frame " << i;
-    EXPECT_FLOAT_EQ(-left, out[2 * i + 1]) << "frame " << i;
-}
-
-bool allZero(const std::vector<float>& out) {
-    return std::all_of(out.begin(), out.end(), [](float sample) { return sample == 0.0F; });
-}
-
-class RendererVoiceTest : public ::testing::Test {
+class RendererVoiceTest : public RendererFixture {
 protected:
-    void publish(int64_t hi, int64_t lo, int32_t chunk, int32_t frames, int16_t (*sampleOf)(int64_t)) {
-        const int slot = pool.claim(ChunkKey{hi, lo, chunk});
-        ASSERT_GE(slot, 0);
-        int16_t* data = pool.slotData(slot);
-        const int64_t first = static_cast<int64_t>(chunk) * kChunkFrames;
-        for (int32_t i = 0; i < frames; ++i) {
-            const int16_t left = sampleOf(first + i);
-            data[2 * i] = left;
-            data[2 * i + 1] = static_cast<int16_t>(-left);
-        }
-        pool.publish(slot, frames);
-    }
-
-    void publishRamp(int32_t chunk, int32_t frames = kChunkFrames) { publish(kRampHi, kRampLo, chunk, frames, rampSample); }
-
-    std::vector<float> render(const RenderPlan* p, int64_t deviceFrame, int32_t frames) {
-        std::vector<float> out(2 * static_cast<size_t>(frames), kGarbage);
-        renderer.render(p, deviceFrame, frames, out.data());
-        return out;
-    }
-
     struct Read {
         double position;
         float left;
@@ -138,9 +53,6 @@ protected:
         }
         return reads;
     }
-
-    PcmPool pool;
-    Renderer renderer{pool};
 };
 
 TEST_F(RendererVoiceTest, rendersSourceFramesAtTimeMap) {
@@ -183,7 +95,7 @@ TEST_F(RendererVoiceTest, driftOf3msConvergesBelow0_1msWithRatioWithin5e_4) {
     double position = renderer.probe(1)->position;
     for (int64_t block = 1; block <= kBlocks; ++block) {
         render(&late, block * kBlock, kBlock);
-        const aria::VoiceProbe probe = *renderer.probe(1);
+        const VoiceProbe probe = *renderer.probe(1);
         ASSERT_LE(std::fabs(probe.ratio - 1.0), kMaxDeviation) << "block " << block;
         ASSERT_NEAR(position + kBlock * probe.ratio, probe.position, 1e-6) << "block " << block;
         if (block == 1) EXPECT_DOUBLE_EQ(1.0 + kMaxDeviation, probe.ratio);
@@ -488,4 +400,5 @@ TEST_F(RendererVoiceTest, nullOrInvalidPlanRendersSilence) {
     silentThroughout(&unaddressable, false);
 }
 
+}
 }
