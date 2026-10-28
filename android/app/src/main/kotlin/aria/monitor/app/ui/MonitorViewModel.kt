@@ -37,10 +37,12 @@ interface MonitorControls {
     fun retryAfterKick()
 
     fun setKeepScreenOn(on: Boolean)
+
+    fun openPairing()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class MonitorViewModel(private val source: SessionSource) : ViewModel(), MonitorControls {
+class MonitorViewModel(private val source: SessionSource, private val pairingRequested: () -> Unit = {}) : ViewModel(), MonitorControls {
     val ui: StateFlow<MonitorUi> = source.session
         .flatMapLatest { session -> session?.state?.map(SessionState::toUi) ?: flowOf(MonitorUi.NoSession) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(UI_STOP_TIMEOUT_MS), MonitorUi.NoSession)
@@ -79,6 +81,8 @@ class MonitorViewModel(private val source: SessionSource) : ViewModel(), Monitor
     override fun retryAfterKick() {
         source.session.value?.retryAfterKick()
     }
+
+    override fun openPairing() = pairingRequested()
 
     override fun setKeepScreenOn(on: Boolean) {
         keepOn.value = on

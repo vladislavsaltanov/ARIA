@@ -1,5 +1,6 @@
 package aria.monitor.app
 
+import aria.monitor.app.ui.OnboardingStore
 import aria.monitor.core.Pairing
 import aria.monitor.core.Settings
 import aria.monitor.core.SettingsStore
@@ -29,6 +30,7 @@ private val PAIRING_HOST = stringPreferencesKey("pairing_host")
 private val PAIRING_PORT = intPreferencesKey("pairing_port")
 private val PAIRING_ID = stringPreferencesKey("pairing_id")
 private val PAIRING_KEY = stringPreferencesKey("pairing_key")
+private val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
 private val PORTS = 1..65535
 
 internal fun monitorDataStore(scope: CoroutineScope, produceFile: () -> File): DataStore<Preferences> =
@@ -38,7 +40,7 @@ internal fun monitorDataStore(scope: CoroutineScope, produceFile: () -> File): D
         produceFile = produceFile,
     )
 
-internal class DataStoreSettings(private val dataStore: DataStore<Preferences>) : SettingsStore {
+internal class DataStoreSettings(private val dataStore: DataStore<Preferences>) : SettingsStore, OnboardingStore {
     override suspend fun load(): Settings {
         val stored = read()
         return Settings.sanitized(
@@ -83,6 +85,10 @@ internal class DataStoreSettings(private val dataStore: DataStore<Preferences>) 
             it[PAIRING_KEY] = pairing.password
         }
     }
+
+    override suspend fun isDone(): Boolean = read()[ONBOARDING_DONE] as? Boolean == true
+
+    override suspend fun markDone() = write { it[ONBOARDING_DONE] = true }
 
     private suspend fun read(): Map<Preferences.Key<*>, Any> =
         try {

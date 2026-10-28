@@ -6,6 +6,7 @@ import aria.monitor.core.formatDb
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -100,6 +102,8 @@ fun MonitorScreen(viewModel: MonitorViewModel) {
 @Composable
 fun MonitorContent(ui: MonitorUi, shown: State<ShownFrame>, keepScreenOn: Boolean, controls: MonitorControls) {
     KeepScreenOn(keepScreenOn)
+    var pairingDismissed by rememberSaveable(ui.needsPairing) { mutableStateOf(false) }
+    var kickedDismissed by rememberSaveable(ui.kicked) { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(StageColors.Background).safeDrawingPadding()) {
         Column(
             modifier = Modifier
@@ -110,7 +114,7 @@ fun MonitorContent(ui: MonitorUi, shown: State<ShownFrame>, keepScreenOn: Boolea
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            StatusRow(ui)
+            StatusRow(ui, showPairingAction = pairingDismissed, showRetryAction = kickedDismissed, controls)
             BeatPanel(shown)
             NowPlaying(shown)
             MixPanel(ui, controls)
@@ -118,7 +122,14 @@ fun MonitorContent(ui: MonitorUi, shown: State<ShownFrame>, keepScreenOn: Boolea
             DevicePanel(ui, keepScreenOn, controls)
         }
     }
-    Overlays(ui, controls)
+    Overlays(
+        ui = ui,
+        pairingDismissed = pairingDismissed,
+        kickedDismissed = kickedDismissed,
+        onDismissPairing = { pairingDismissed = true },
+        onDismissKicked = { kickedDismissed = true },
+        controls = controls,
+    )
 }
 
 @Composable
@@ -149,7 +160,7 @@ private fun KeepScreenOn(enabled: Boolean) {
 }
 
 @Composable
-private fun StatusRow(ui: MonitorUi) {
+private fun StatusRow(ui: MonitorUi, showPairingAction: Boolean, showRetryAction: Boolean, controls: MonitorControls) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -161,6 +172,8 @@ private fun StatusRow(ui: MonitorUi) {
         }
         if (ui.outputMissing) Chip(stringResource(R.string.badge_no_output), Tone.Alarm)
         if (ui.backingFallback) Chip(stringResource(R.string.badge_no_backing), Tone.Neutral)
+        if (ui.needsPairing && showPairingAction) ActionChip(stringResource(R.string.pairing_action), controls::openPairing)
+        if (ui.kicked && showRetryAction) ActionChip(stringResource(R.string.kicked_retry), controls::retryAfterKick)
     }
 }
 
@@ -180,6 +193,21 @@ private fun Chip(text: String, tone: Tone) {
         modifier = Modifier
             .background(background, RoundedCornerShape(4.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun ActionChip(text: String, onClick: () -> Unit) {
+    Text(
+        text = text,
+        style = StageText.Chip,
+        color = StageColors.Signal,
+        modifier = Modifier
+            .defaultMinSize(minHeight = MinTouch)
+            .clip(RoundedCornerShape(4.dp))
+            .border(1.dp, StageColors.Signal, RoundedCornerShape(4.dp))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
     )
 }
 
@@ -450,26 +478,37 @@ private fun NameField(name: String, enabled: Boolean, onCommit: (String) -> Unit
 }
 
 @Composable
-private fun Overlays(ui: MonitorUi, controls: MonitorControls) {
-    val blocking = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+private fun Overlays(
+    ui: MonitorUi,
+    pairingDismissed: Boolean,
+    kickedDismissed: Boolean,
+    onDismissPairing: () -> Unit,
+    onDismissKicked: () -> Unit,
+    controls: MonitorControls,
+) {
     when {
-        ui.needsPairing -> AlertDialog(
-            onDismissRequest = {},
-            properties = blocking,
+        ui.needsPairing && !pairingDismissed -> AlertDialog(
+            onDismissRequest = onDismissPairing,
+            properties = DialogProperties(dismissOnClickOutside = false),
             title = { Text(stringResource(R.string.pairing_title)) },
             text = { Text(stringResource(R.string.pairing_body)) },
-            confirmButton = {},
+            confirmButton = { DialogAction(stringResource(R.string.pairing_action), controls::openPairing) },
+            dismissButton = { DialogAction(stringResource(R.string.dialog_dismiss), onDismissPairing) },
         )
-        ui.kicked -> AlertDialog(
-            onDismissRequest = {},
-            properties = blocking,
+        ui.kicked && !kickedDismissed -> AlertDialog(
+            onDismissRequest = onDismissKicked,
+            properties = DialogProperties(dismissOnClickOutside = false),
             title = { Text(stringResource(R.string.kicked_title)) },
             text = { Text(stringResource(R.string.kicked_body)) },
-            confirmButton = {
-                TextButton(onClick = controls::retryAfterKick, modifier = Modifier.heightIn(min = MinTouch)) {
-                    Text(stringResource(R.string.kicked_retry), style = StageText.Chip, color = StageColors.Signal)
-                }
-            },
+            confirmButton = { DialogAction(stringResource(R.string.kicked_retry), controls::retryAfterKick) },
+            dismissButton = { DialogAction(stringResource(R.string.dialog_dismiss), onDismissKicked) },
         )
+    }
+}
+
+@Composable
+private fun DialogAction(text: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = MinTouch)) {
+        Text(text, style = StageText.Chip, color = StageColors.Signal)
     }
 }

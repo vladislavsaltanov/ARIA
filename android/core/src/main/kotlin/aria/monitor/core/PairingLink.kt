@@ -40,3 +40,10 @@ object PairingLink {
         return parameters
     }
 }
+
+private const val MAX_SCAN_LENGTH = 2048
+
+fun pairingFromScan(raw: String?): Pairing? {
+    val payload = raw?.trim() ?: return null
+    return if (payload.length in 1..MAX_SCAN_LENGTH) PairingLink.parse(payload) else null
+}

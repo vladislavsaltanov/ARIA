@@ -23,6 +23,8 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class DataStoreSettingsTest {
@@ -168,5 +170,33 @@ class DataStoreSettingsTest {
             corrupt()
             assertNull(store.loadPairing(), label)
         }
+    }
+
+    @Test
+    fun onboardingIsNotDoneOnAFreshStore() = realTest {
+        assertFalse(store.isDone())
+    }
+
+    @Test
+    fun markingOnboardingDoneIsRemembered() = realTest {
+        store.markDone()
+
+        assertTrue(store.isDone())
+    }
+
+    @Test
+    fun aWronglyTypedOnboardingFlagCountsAsNotDone() = realTest {
+        dataStore.edit { it[stringPreferencesKey("onboarding_done")] = "yes" }
+
+        assertFalse(store.isDone())
+    }
+
+    @Test
+    fun onboardingFlagDoesNotTouchSettingsOrPairing() = realTest {
+        store.savePairing(Pairing("h", 1, "i", "k"))
+        store.markDone()
+
+        assertEquals(Pairing("h", 1, "i", "k"), store.loadPairing())
+        assertEquals(Settings.sanitized(), store.load())
     }
 }
