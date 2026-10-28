@@ -32,6 +32,8 @@ void ClickSynth::trigger(int64_t frame, bool accent) {
     oldest = Click{frame, accent};
 }
 
+void ClickSynth::cancel() { clicks_.fill(Click{}); }
+
 void ClickSynth::mix(int64_t blockFrame, int32_t from, int32_t to, float gain, float* stereoOut) const {
     for (const Click& click : clicks_) {
         if (click.frame == kSilent) continue;

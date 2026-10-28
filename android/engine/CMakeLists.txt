@@ -61,7 +61,7 @@ if(ARIA_HOST_TESTS)
     target_compile_options(aria_engine_tests PRIVATE ${ARIA_WARNING_FLAGS})
     target_compile_definitions(aria_engine_tests PRIVATE ARIA_FIXTURES_DIR="${ARIA_FIXTURES_DIR}" ARIA_PARITY_DIR="${ARIA_PARITY_DIR}")
     target_link_libraries(aria_engine_tests PRIVATE GTest::gtest_main nlohmann_json::nlohmann_json Threads::Threads)
-    gtest_discover_tests(aria_engine_tests)
+    gtest_discover_tests(aria_engine_tests PROPERTIES TIMEOUT 30)
 elseif(ANDROID)
     find_package(oboe REQUIRED CONFIG)
 

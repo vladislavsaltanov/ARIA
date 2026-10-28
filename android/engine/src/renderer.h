@@ -8,6 +8,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <limits>
 #include <optional>
 
 namespace aria {
@@ -54,6 +55,7 @@ private:
     std::array<VoiceState, kMaxVoices> voices_{};
     ClickSynth clicks_;
     std::atomic<uint64_t> underruns_{0};
+    int64_t blockEnd_ = std::numeric_limits<int64_t>::min();
     bool primed_ = false;
     double backing_ = 0.0;
     double master_ = 0.0;

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -23,6 +24,9 @@ constexpr int32_t kBar = 4;
 constexpr double kClickTolerance = 1e-6;
 constexpr double kNan = std::numeric_limits<double>::quiet_NaN();
 constexpr double kInf = std::numeric_limits<double>::infinity();
+constexpr double kMaxIndex = 9007199254740992.0;
+constexpr int64_t kMaxBeat = 9007199254740992;
+constexpr std::chrono::seconds kBoundedRender{2};
 
 struct Hit {
     int64_t frame;
@@ -325,6 +329,58 @@ TEST_F(ClickTest, silentForBeatIndicesBeyondDoublePrecision) {
     for (const RenderPlan* p : {&beats, &tests}) {
         Renderer fresh{pool};
         EXPECT_TRUE(allZero(stream(fresh, p, 0, 4096, 1024)));
+    }
+}
+
+TEST_F(ClickTest, testClickLoopIsBoundedNearDoublePrecisionLimit) {
+    const RenderPlan p = testPlan(static_cast<int64_t>(static_cast<double>(kHostUs) - (kMaxIndex - 3.5) * kUsPerFrame), kUsPerFrame);
+    const auto started = std::chrono::steady_clock::now();
+    const std::vector<float> out = render(&p, 0, 1024);
+    EXPECT_LT(std::chrono::steady_clock::now() - started, kBoundedRender);
+    EXPECT_TRUE(allFinite(out));
+}
+
+TEST_F(ClickTest, gridClickLoopIsBoundedNearDoublePrecisionLimit) {
+    const RenderPlan p = clickPlan({reading(kBeat, kAt)}, grid(2'880'000.0, -(kMaxBeat - 25000)));
+    const auto started = std::chrono::steady_clock::now();
+    const std::vector<float> out = run(p, 4096);
+    EXPECT_LT(std::chrono::steady_clock::now() - started, kBoundedRender);
+    EXPECT_TRUE(allFinite(out));
+    EXPECT_NE(0.0F, out[2 * 10]);
+}
+
+TEST_F(ClickTest, deviceFrameRewindCancelsActiveClicks) {
+    const RenderPlan clicking = testPlan(kHostUs + 100000, 5000.0);
+    const RenderPlan quiet = clickPlan({}, std::nullopt);
+    for (const int64_t rewindTo : {int64_t{0}, int64_t{4608}}) {
+        Renderer fresh{pool};
+        ASSERT_FALSE(allZero(stream(fresh, &clicking, 4096, 1024, 1024)));
+        EXPECT_TRUE(allZero(stream(fresh, &quiet, rewindTo, 8192 - rewindTo, 512))) << "rewind to " << rewindTo;
+    }
+}
+
+TEST_F(ClickTest, forwardDeviceFrameGapKeepsActiveClicks) {
+    const RenderPlan clicking = testPlan(kHostUs + 100000, 1e9);
+    const RenderPlan quiet = clickPlan({}, std::nullopt);
+    expectClicks(stream(renderer, &clicking, 4096, 1024, 1024), clicks(1024, {{4800 - 4096, true}}));
+    expectClicks(stream(renderer, &quiet, 5600, 1024, 1024), clicks(1024, {{4800 - 5600, true}}));
+}
+
+TEST_F(ClickTest, firstBlockAtAnyDeviceFrameRendersItsClicks) {
+    const RenderPlan clicking = testPlan(kHostUs + 100000, 1e9);
+    expectClicks(stream(renderer, &clicking, 4096, 2048, 1024), clicks(2048, {{4800 - 4096, true}}));
+}
+
+TEST_F(ClickTest, nullOrUnusablePlanBlockStillTracksDeviceFrameRewind) {
+    const RenderPlan clicking = testPlan(kHostUs + 100000, 1e9);
+    const RenderPlan quiet = clickPlan({}, std::nullopt);
+    RenderPlan poisoned = quiet;
+    poisoned.clickGain = static_cast<float>(kNan);
+    for (const RenderPlan* gap : {static_cast<const RenderPlan*>(nullptr), static_cast<const RenderPlan*>(&poisoned)}) {
+        Renderer fresh{pool};
+        ASSERT_FALSE(allZero(stream(fresh, &clicking, 4096, 1024, 1024)));
+        EXPECT_TRUE(allZero(stream(fresh, gap, 0, 6144, 6144)));
+        EXPECT_TRUE(allZero(stream(fresh, &quiet, 6144, 2048, 1024)));
     }
 }
 

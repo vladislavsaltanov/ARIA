@@ -17,6 +17,7 @@ public:
 
     const Burst& burst(bool accent) const;
     void trigger(int64_t frame, bool accent);
+    void cancel();
     void mix(int64_t blockFrame, int32_t from, int32_t to, float gain, float* stereoOut) const;
 
 private:

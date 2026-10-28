@@ -119,9 +119,12 @@ void testClicks(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, Emi
     if (!(test.intervalUs >= map.usPerFrame) || !std::isfinite(test.intervalUs)) return;
     const double since = static_cast<double>(deviceFrame) - static_cast<double>(map.baseFrame);
     const double lead = static_cast<double>(test.anchorUs) - static_cast<double>(map.hostUsAtBaseFrame) - static_cast<double>(plan.trimUs);
-    const auto offsetOf = [&](double k) { return std::ceil((lead + k * test.intervalUs) / map.usPerFrame - kBeatTolerance) - since; };
-    double k = std::floor((since * map.usPerFrame - lead) / test.intervalUs) - 1.0;
-    if (!(std::fabs(k) < kMaxBeatIndex)) return;
+    const auto offsetOf = [&](int64_t k) {
+        return std::ceil((lead + static_cast<double>(k) * test.intervalUs) / map.usPerFrame - kBeatTolerance) - since;
+    };
+    const double estimate = std::floor((since * map.usPerFrame - lead) / test.intervalUs) - 1.0;
+    if (!(std::fabs(estimate) < kMaxBeatIndex)) return;
+    auto k = static_cast<int64_t>(estimate);
     while (offsetOf(k) < 0.0) ++k;
     for (double offset = offsetOf(k); offset < frames; offset = offsetOf(++k)) emit(static_cast<int32_t>(offset), true);
 }
@@ -146,6 +149,8 @@ std::optional<VoiceProbe> Renderer::probe(int32_t voiceId) const {
 void Renderer::render(const RenderPlan* plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {
     if (frames <= 0 || stereoOut == nullptr) return;
     std::fill(stereoOut, stereoOut + static_cast<size_t>(frames) * kChannels, 0.0F);
+    if (deviceFrame < blockEnd_) clicks_.cancel();
+    blockEnd_ = deviceFrame + frames;
     if (unusablePlan(plan)) return;
     if (!primed_) {
         primed_ = true;
