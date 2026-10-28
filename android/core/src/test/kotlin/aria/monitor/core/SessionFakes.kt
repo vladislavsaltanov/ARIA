@@ -2,6 +2,7 @@
 
 package aria.monitor.core
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
@@ -101,10 +102,16 @@ class FakeStore : SettingsStore {
     @Volatile
     var pairing: Pairing? = null
 
+    @Volatile
+    var loadGate: CompletableDeferred<Unit>? = null
+
     val saved = CopyOnWriteArrayList<Settings>()
     val savedPairings = CopyOnWriteArrayList<Pairing?>()
 
-    override suspend fun load(): Settings = settings
+    override suspend fun load(): Settings {
+        loadGate?.await()
+        return settings
+    }
 
     override suspend fun save(settings: Settings) {
         saved += settings

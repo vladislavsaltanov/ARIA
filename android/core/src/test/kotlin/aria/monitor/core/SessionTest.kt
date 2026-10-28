@@ -2,6 +2,7 @@
 
 package aria.monitor.core
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -692,5 +693,135 @@ class SessionTest {
 
         assertTrue(rig.engine.plans.size > beforeRestart)
         assertStrictlyIncreasing(rig.engine.plans.map { it.generation })
+    }
+
+    @Test
+    fun commandsIssuedWhileSettingsLoadWinAndArePersistedOnce() = runTest {
+        val rig = SessionRig(this)
+        val stored = Levels(backingDb = -12.0, backingOn = true, clickDb = -3.0, clickOn = false)
+        rig.store.settings = Settings(name = "Drums", levels = stored, trimMs = 40)
+        val gate = CompletableDeferred<Unit>()
+        rig.store.loadGate = gate
+        rig.transport.autoOpen = true
+
+        rig.session.start(SHOW_PAIRING)
+        runCurrent()
+        val chosen = Levels(backingDb = -6.0, backingOn = false, clickDb = 2.0, clickOn = true)
+        rig.session.setLevels(chosen)
+        rig.session.setTrim(80)
+        rig.session.setTestClick(true)
+        runCurrent()
+        gate.complete(Unit)
+        runCurrent()
+
+        val state = rig.session.state.value
+        assertEquals(chosen, state.levels)
+        assertEquals(80, state.trimMs)
+        assertEquals("Drums", state.name)
+        assertTrue(state.testClick)
+        assertEquals(listOf(Settings("Drums", chosen, 40), Settings("Drums", chosen, 80)), rig.store.saved)
+        assertEquals("Drums", rig.socket.sent("hello").single().json.getValue("name").jsonPrimitive.content)
+    }
+
+    @Test
+    fun hostThatAcceptsThenClosesWithoutAFrameStillSilencesAfter10s() = runTest {
+        val rig = playing()
+        rig.transport.pongRttMs = null
+
+        rig.socket.closeFromServer()
+        runCurrent()
+        step(30_000)
+
+        assertTrue(rig.transport.sockets.size > 3)
+        assertEquals(0f, rig.engine.plans.last().masterGain)
+        assertEquals(1.0f, rig.engine.plans.last().masterRampSeconds)
+    }
+
+    @Test
+    fun laterSuccessfulSignInClearsNeedsPairing() = runTest {
+        val rig = connected()
+        rig.authenticator.respond = { call -> if (call == 2) AuthResult.Denied else AuthResult.Ok("token-$call") }
+        rig.pcm.respond = { PcmResult.Failed(401) }
+        rig.socket.text(timelineJson(showTimeline(1)))
+        step(600)
+        assertTrue(rig.session.state.value.needsPairing)
+
+        rig.socket.closeFromServer()
+        runCurrent()
+        step(1000)
+
+        assertEquals(3, rig.authenticator.calls.size)
+        assertFalse(rig.session.state.value.needsPairing)
+    }
+
+    @Test
+    fun reopenAfterOutageLongerThanTheClockWindowReportsSyncingUntilTheFirstPong() = runTest {
+        val rig = connected()
+        step(2000)
+        assertEquals(LinkState.Locked, rig.session.state.value.link)
+        rig.authenticator.respond = { call -> if (call == 2) AuthResult.Offline else AuthResult.Ok("token-$call") }
+        rig.transport.autoOpen = false
+        rig.transport.pongRttMs = null
+
+        rig.socket.closeFromServer()
+        runCurrent()
+        step(40_000)
+        val links = mutableListOf<LinkState>()
+        rig.socket.open()
+        runCurrent()
+        links += rig.session.state.value.link
+        rig.socket.pongRttMs = 0.0
+        repeat(12) {
+            step(250)
+            links += rig.session.state.value.link
+        }
+
+        assertEquals(LinkState.Syncing, links.first())
+        assertEquals(LinkState.Locked, links.last())
+        assertEquals(links.indexOfLast { it == LinkState.Syncing } + 1, links.indexOfFirst { it == LinkState.Locked })
+    }
+
+    @Test
+    fun setNameSendsHelloAndSavesWithoutPublishingAPlan() = runTest {
+        val rig = playing()
+        val plans = rig.engine.plans.size
+        val levels = rig.session.state.value.levels
+
+        rig.session.setName("  Bass  ")
+        runCurrent()
+
+        assertEquals("Bass", rig.session.state.value.name)
+        val hello = rig.socket.sent("hello").last()
+        assertEquals("Bass", hello.json.getValue("name").jsonPrimitive.content)
+        assertEquals(levels, Json.decodeFromJsonElement(Levels.serializer(), hello.json.getValue("levels")))
+        assertEquals(2, rig.socket.sent("hello").size)
+        assertEquals("Bass", rig.store.saved.single().name)
+        assertEquals(plans, rig.engine.plans.size)
+    }
+
+    @Test
+    fun restartResetsTheRunButKeepsTheSettings() = runTest {
+        val rig = playing()
+        val levels = Levels(backingDb = -9.0, backingOn = true, clickDb = -2.0, clickOn = true)
+        rig.session.setLevels(levels)
+        rig.session.setTrim(30)
+        rig.session.setTestClick(true)
+        rig.socket.text(statusJson(false))
+        rig.socket.text(KICKED_JSON)
+        runCurrent()
+        rig.transport.autoOpen = false
+
+        rig.session.start(SHOW_PAIRING)
+        runCurrent()
+
+        val state = rig.session.state.value
+        assertNull(state.timeline)
+        assertFalse(state.testClick)
+        assertFalse(state.kicked)
+        assertTrue(state.outputOk)
+        assertNull(state.uncertaintyUs)
+        assertEquals(LinkState.Connecting, state.link)
+        assertEquals(levels, state.levels)
+        assertEquals(30, state.trimMs)
     }
 }

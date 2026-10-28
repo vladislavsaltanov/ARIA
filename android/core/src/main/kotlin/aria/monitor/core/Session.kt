@@ -2,9 +2,11 @@ package aria.monitor.core
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +42,10 @@ class Session(
     private val estimator = TimeMapEstimator()
     private val mutableState = MutableStateFlow(idle(Settings.sanitized(), needsPairing = false))
     val state: StateFlow<SessionState> = mutableState.asStateFlow()
+    private val settingsLoaded = control.async(start = CoroutineStart.LAZY) {
+        val settings = store.load()
+        mutableState.update { it.copy(name = settings.name, levels = settings.levels, trimMs = settings.trimMs) }
+    }
 
     @Volatile
     private var clockSync = ClockSync()
@@ -51,6 +57,7 @@ class Session(
     private var connected = false
     private var connectedAtMs = 0.0
     private var lastMessageAtMs = 0.0
+    private var lastHostMessageAtMs = 0.0
     private var reconnectDelayMs = LinkPolicy.RECONNECT_MIN_MS
     private var authJob: Job? = null
     private var connectionJob: Job? = null
@@ -66,6 +73,7 @@ class Session(
     fun start(pairing: Pairing?) {
         onControl {
             halt()
+            mutableState.update { idle(Settings(name = it.name, levels = it.levels, trimMs = it.trimMs), needsPairing = false) }
             val runScope = CoroutineScope(control.coroutineContext + SupervisorJob(control.coroutineContext[Job]))
             run = runScope
             runScope.launch { begin(pairing) }
@@ -76,6 +84,7 @@ class Session(
 
     fun setLevels(levels: Levels) {
         onControl {
+            settingsLoaded.await()
             val settings = adopt(levels = levels)
             send(ClientMessage.LevelsChanged(settings.levels))
             store.save(settings)
@@ -83,7 +92,10 @@ class Session(
     }
 
     fun setTrim(ms: Int) {
-        onControl { store.save(adopt(trimMs = ms)) }
+        onControl {
+            settingsLoaded.await()
+            store.save(adopt(trimMs = ms))
+        }
     }
 
     fun setTestClick(on: Boolean) {
@@ -95,6 +107,7 @@ class Session(
 
     fun setName(name: String) {
         onControl {
+            settingsLoaded.await()
             val settings = adopt(name = name.trim())
             send(ClientMessage.Hello(settings.name, settings.levels))
             store.save(settings)
@@ -125,11 +138,13 @@ class Session(
         lastSeq = null
         silenced = false
         reconnectDelayMs = LinkPolicy.RECONNECT_MIN_MS
-        val settings = store.load()
+        settingsLoaded.await()
         val target = given ?: store.loadPairing()
         pairing = target
-        mutableState.value = idle(settings, needsPairing = target == null)
-        if (target == null) return
+        if (target == null) {
+            mutableState.update { it.copy(needsPairing = true) }
+            return
+        }
         engine.start()
         engineStarted = true
         xruns = engine.xrunCount
@@ -152,15 +167,16 @@ class Session(
         authJob?.cancel()
         authJob = run?.launch {
             if (afterBackoff) backoff()
-            while (!signedIn(onToken)) backoff()
+            while (!attemptFinished(onToken)) backoff()
         }
     }
 
-    private suspend fun signedIn(onToken: (Pairing, String) -> Unit): Boolean {
+    private suspend fun attemptFinished(onToken: (Pairing, String) -> Unit): Boolean {
         val target = pairing
         if (target == null || state.value.kicked) return true
         return when (val outcome = signIn(target, authenticator)) {
             is SignInOutcome.Ok -> {
+                mutableState.update { it.copy(needsPairing = false) }
                 onToken(target, outcome.token)
                 true
             }
@@ -194,7 +210,7 @@ class Session(
         connectedAtMs = clock.nowMs()
         lastMessageAtMs = connectedAtMs
         lastSeq = null
-        mutableState.update { it.copy(link = linkState()) }
+        mutableState.update { it.copy(link = LinkState.Syncing) }
         send(ClientMessage.Hello(state.value.name, state.value.levels))
         connectionJob = run?.launch {
             launch { ping() }
@@ -231,6 +247,7 @@ class Session(
 
     private suspend fun received(text: String, atMs: Double) {
         lastMessageAtMs = atMs
+        lastHostMessageAtMs = atMs
         when (val message = ProtocolCodec.decode(text)) {
             null -> Unit
             is ServerMessage.Welcome -> reconnectDelayMs = LinkPolicy.RECONNECT_MIN_MS
@@ -274,8 +291,9 @@ class Session(
         trimMs: Int = state.value.trimMs,
     ): Settings {
         val settings = Settings.sanitized(name, levels.backingDb, levels.backingOn, levels.clickDb, levels.clickOn, trimMs.toDouble())
+        val before = state.value
         mutableState.update { it.copy(name = settings.name, levels = settings.levels, trimMs = settings.trimMs) }
-        publish()
+        if (settings.levels != before.levels || settings.trimMs != before.trimMs) publish()
         return settings
     }
 
@@ -303,7 +321,7 @@ class Session(
         val sync = clockSync
         if (!sync.ready) return
         val now = clock.nowMs()
-        if (!connected && now - lastMessageAtMs > DISCONNECT_GRACE_MS) {
+        if (!connected && now - lastHostMessageAtMs > DISCONNECT_GRACE_MS) {
             if (!silenced) {
                 silenced = true
                 publish()
