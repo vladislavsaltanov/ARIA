@@ -123,7 +123,8 @@ public sealed class AppSettingsStore(string path)
         long AutoCrossfadeMs,
         long StartFadeMs,
         long StopFadeMs,
-        long? SeekFadeMs)
+        long? SeekFadeMs,
+        long? MarkerFadeMs)
     {
         public static SmoothingDto FromModel(Smoothing smoothing) => new(
             smoothing.Enabled,
@@ -131,18 +132,21 @@ public sealed class AppSettingsStore(string path)
             (long)smoothing.AutoCrossfade.TotalMilliseconds,
             (long)smoothing.StartFade.TotalMilliseconds,
             (long)smoothing.StopFade.TotalMilliseconds,
-            (long)smoothing.SeekFade.TotalMilliseconds);
+            (long)smoothing.SeekFade.TotalMilliseconds,
+            (long)smoothing.MarkerFade.TotalMilliseconds);
 
         public Smoothing ToModel()
         {
             var fallback = Aria.Core.Model.Smoothing.Default;
+            var stopFade = Clamp(StopFadeMs, fallback.StopFade);
             return new Smoothing(
                 Enabled,
                 Clamp(ManualCrossfadeMs, fallback.ManualCrossfade),
                 Clamp(AutoCrossfadeMs, fallback.AutoCrossfade),
                 Clamp(StartFadeMs, fallback.StartFade),
-                Clamp(StopFadeMs, fallback.StopFade),
-                SeekFadeMs is { } seekMs ? Clamp(seekMs, fallback.SeekFade) : fallback.SeekFade);
+                stopFade,
+                SeekFadeMs is { } seekMs ? Clamp(seekMs, fallback.SeekFade) : fallback.SeekFade,
+                MarkerFadeMs is { } markerMs ? Clamp(markerMs, fallback.MarkerFade) : stopFade);
         }
 
         private static TimeSpan Clamp(long ms, TimeSpan fallback) =>

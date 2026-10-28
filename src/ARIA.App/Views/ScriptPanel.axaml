@@ -245,7 +245,7 @@
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <Popup Grid.Row="1" IsOpen="{Binding SuggestionsVisible, Mode=TwoWay}"
-                           IsLightDismissEnabled="True" Placement="Bottom">
+                           IsLightDismissEnabled="True" Placement="Bottom" ShouldUseOverlayLayer="True">
                       <Border Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"
                               BorderThickness="1" CornerRadius="8" Padding="6" MinWidth="200">
                         <ItemsControl ItemsSource="{Binding Suggestions}">

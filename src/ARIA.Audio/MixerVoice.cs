@@ -42,6 +42,8 @@ internal sealed class MixerVoice
 
     public bool PauseWhenFaded { get; set; }
 
+    public bool MarkerFadeArmed { get; set; }
+
     public bool Dead { get; set; }
 
     public bool RemoveRequested { get; set; }

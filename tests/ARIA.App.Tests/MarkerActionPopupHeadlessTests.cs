@@ -60,6 +60,21 @@ public sealed class MarkerActionPopupHeadlessTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task ActionPopup_ShouldUseOverlayLayer_SoCornersAreNotBackedByNativeWindow()
+    {
+        await _session.Dispatch(async () =>
+        {
+            using var lane = new TestLane(TestTrackId, null, [Marker("вход", 45)]);
+            lane.Window.MouseMove(lane.PointAt(45));
+            Dispatcher.UIThread.RunJobs();
+            await Task.Delay(650);
+            Assert.True(lane.Header.IsActionPopupOpen);
+            Assert.True(lane.Header.ActionPopupShouldUseOverlayLayer);
+            return 0;
+        }, CancellationToken.None);
+    }
+
     private static Marker Marker(string name, double seconds) =>
         new(name, TimeSpan.FromSeconds(seconds), MarkerAction.Pause);
 }

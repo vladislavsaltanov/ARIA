@@ -321,7 +321,7 @@ public sealed class SettingsTests : IDisposable
             viewModel.Engine.StopFadeMs = 300;
             viewModel.Engine.SeekFadeMs = 350;
 
-            var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350));
+            var expected = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350), TimeSpan.FromMilliseconds(250));
             Assert.Equal(expected, bus.Snapshot().Mixer.Smoothing);
             Assert.Equal(expected, new AppSettingsStore(path).Load().Smoothing);
         }
@@ -335,10 +335,50 @@ public sealed class SettingsTests : IDisposable
     public void Smoothing_Roundtrip_PreservesValues()
     {
         var store = new AppSettingsStore(_path);
-        var smoothing = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350));
+        var smoothing = new Smoothing(true, TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), TimeSpan.FromMilliseconds(350), TimeSpan.FromMilliseconds(250));
         store.Save(new AppSettings(false, "{name}", smoothing));
 
         Assert.Equal(smoothing, store.Load().Smoothing);
+    }
+
+    [Fact]
+    public void Smoothing_Roundtrip_PreservesMarkerFade()
+    {
+        var store = new AppSettingsStore(_path);
+        store.Save(new AppSettings(false, "{name}", Smoothing.Default with { MarkerFade = TimeSpan.FromMilliseconds(500) }));
+
+        Assert.Equal(TimeSpan.FromMilliseconds(500), store.Load().Smoothing.MarkerFade);
+    }
+
+    [Fact]
+    public void Load_LegacySmoothingWithoutMarkerFade_FollowsStopFade()
+    {
+        File.WriteAllText(_path, "{\"smoothing\":{\"enabled\":true,\"manualCrossfadeMs\":350,\"autoCrossfadeMs\":800,\"startFadeMs\":250,\"stopFadeMs\":400,\"seekFadeMs\":350}}");
+
+        Assert.Equal(TimeSpan.FromMilliseconds(400), new AppSettingsStore(_path).Load().Smoothing.MarkerFade);
+    }
+
+    [Fact]
+    public void MarkerFadeMs_SubmitsAndPersists()
+    {
+        using var bus = NewBus();
+        var path = Path.Combine(Path.GetTempPath(), $"aria-marker-{Guid.NewGuid():N}.json");
+        try
+        {
+            using var viewModel = new SettingsViewModel(
+                bus, new HotkeyService(HotkeyConfig.Default, _ => { }), Path.Combine(Path.GetTempPath(), $"aria-hk-{Guid.NewGuid():N}.json"),
+                new AppSettingsStore(path));
+
+            viewModel.Engine.SmoothingEnabled = true;
+            viewModel.Engine.MarkerFadeMs = 500;
+
+            Assert.Equal(TimeSpan.FromMilliseconds(500), bus.Snapshot().Mixer.Smoothing.MarkerFade);
+            Assert.Equal(TimeSpan.FromMilliseconds(500), new AppSettingsStore(path).Load().Smoothing.MarkerFade);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     private static CommandBus NewBus() => new(new ShowController(new StubEngine()), BusMode.Inline);

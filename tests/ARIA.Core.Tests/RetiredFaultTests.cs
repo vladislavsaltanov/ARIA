@@ -14,7 +14,7 @@ public sealed class RetiredFaultTests
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new Play());
         var handle = h.Engine.Last!.Handle;
-        h.Submit(new SetSmoothing(new Smoothing(true, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.FromMilliseconds(300), TimeSpan.Zero)));
+        h.Submit(new SetSmoothing(new Smoothing(true, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.FromMilliseconds(300), TimeSpan.Zero, TimeSpan.Zero)));
 
         h.Submit(new Stop());
 

@@ -170,7 +170,7 @@ public sealed class AriaAudioEngine : IAudioEngine, IOutputStampSource, IDisposa
     public void SetSmoothing(Smoothing smoothing)
     {
         ArgumentNullException.ThrowIfNull(smoothing);
-        _mixer.SetSmoothing(smoothing.StopFade, smoothing.StartFade, smoothing.Enabled);
+        _mixer.SetSmoothing(smoothing.StopFade, smoothing.StartFade, smoothing.Enabled, smoothing.MarkerFade);
     }
 
     public void Panic(PanicSpec spec)
