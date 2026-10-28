@@ -30,9 +30,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -54,7 +56,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -83,6 +84,7 @@ private const val DB_SLIDER_STEPS = 45
 private const val NAME_MAX_LENGTH = 64
 private const val DISABLED_ALPHA = 0.4f
 private const val MAX_CONTENT_WIDTH_DP = 520
+private val CounterMinSize = 32.sp
 private val TrimSteps = listOf(-10, -1, 1, 10)
 private val MinTouch = 48.dp
 private val PanelShape = RoundedCornerShape(8.dp)
@@ -225,7 +227,13 @@ private fun BeatPanel(shown: State<ShownFrame>) {
             .clearAndSetSemantics { contentDescription = description },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(beat.barBeat, style = StageText.Counter, maxLines = 1, softWrap = false)
+        Text(
+            text = beat.barBeat,
+            style = StageText.Counter,
+            maxLines = 1,
+            softWrap = false,
+            autoSize = TextAutoSize.StepBased(minFontSize = CounterMinSize, maxFontSize = StageText.Counter.fontSize),
+        )
         FlowRow(
             modifier = Modifier.fillMaxWidth().heightIn(min = 18.dp).padding(vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
@@ -417,7 +425,10 @@ private fun RowScope.StepButton(step: Int, enabled: Boolean, controls: MonitorCo
         enabled = enabled,
         shape = ControlShape,
         contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = StageColors.Foreground),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = StageColors.Foreground,
+            disabledContentColor = StageColors.Foreground.copy(alpha = DISABLED_ALPHA),
+        ),
         modifier = Modifier
             .weight(1f)
             .heightIn(min = MinTouch)
@@ -426,7 +437,7 @@ private fun RowScope.StepButton(step: Int, enabled: Boolean, controls: MonitorCo
         Text(
             text = stringResource(if (down) R.string.trim_step_down else R.string.trim_step_up, size),
             style = StageText.Value,
-            color = Color.Unspecified,
+            color = LocalContentColor.current,
             maxLines = 1,
             softWrap = false,
             modifier = Modifier.clearAndSetSemantics {},
@@ -456,13 +467,13 @@ private fun DevicePanel(ui: MonitorUi, keepScreenOn: Boolean, controls: MonitorC
 private fun NameField(name: String, enabled: Boolean, onCommit: (String) -> Unit) {
     var text by remember(name) { mutableStateOf(name) }
     val focus = LocalFocusManager.current
-    val description = stringResource(R.string.device_description)
     OutlinedTextField(
         value = text,
         onValueChange = { text = it.take(NAME_MAX_LENGTH) },
         enabled = enabled,
         singleLine = true,
         textStyle = StageText.Value,
+        label = { Text(stringResource(R.string.device_description)) },
         placeholder = { Text(stringResource(R.string.device_placeholder), style = StageText.Value, color = StageColors.Dim) },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = {
@@ -472,7 +483,6 @@ private fun NameField(name: String, enabled: Boolean, onCommit: (String) -> Unit
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = MinTouch)
-            .semantics { contentDescription = description }
             .onFocusChanged { if (!it.isFocused) onCommit(text) },
     )
 }

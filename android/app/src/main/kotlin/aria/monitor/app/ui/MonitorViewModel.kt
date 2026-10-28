@@ -3,6 +3,7 @@ package aria.monitor.app.ui
 import aria.monitor.app.SessionSource
 import aria.monitor.core.Levels
 import aria.monitor.core.MonitorFrame
+import aria.monitor.core.Session
 import aria.monitor.core.SessionState
 import aria.monitor.core.monitorFrame
 import androidx.lifecycle.ViewModel
@@ -49,6 +50,7 @@ class MonitorViewModel(private val source: SessionSource, private val pairingReq
 
     private val keepOn = MutableStateFlow(true)
     val keepScreenOn: StateFlow<Boolean> = keepOn.asStateFlow()
+    private var requestedName: Pair<Session, String>? = null
 
     fun frame(): MonitorFrame {
         val session = source.session.value
@@ -75,7 +77,11 @@ class MonitorViewModel(private val source: SessionSource, private val pairingReq
 
     override fun setName(name: String) {
         val session = source.session.value ?: return
-        if (name.trim() != session.state.value.name) session.setName(name)
+        val trimmed = name.trim()
+        val current = requestedName?.takeIf { it.first === session }?.second ?: session.state.value.name
+        if (trimmed == current) return
+        requestedName = session to trimmed
+        session.setName(name)
     }
 
     override fun retryAfterKick() {

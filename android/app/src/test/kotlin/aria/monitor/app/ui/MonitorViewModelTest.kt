@@ -209,6 +209,48 @@ class MonitorViewModelTest {
     }
 
     @Test
+    fun nameCommittedTwiceBeforeTheSessionCatchesUpIsSentOnce() = runTest {
+        val rig = ShowRig(this)
+        val viewModel = viewModelOver(HeldSessionSource(rig.session))
+        started(rig)
+        val hellos = rig.socket.sent("hello").size
+        val saves = rig.store.saved.size
+
+        viewModel.setName("Bass")
+        viewModel.setName("Bass ")
+        runCurrent()
+
+        assertEquals(hellos + 1, rig.socket.sent("hello").size)
+        assertEquals(saves + 1, rig.store.saved.size)
+
+        viewModel.setName("Drums")
+        viewModel.setName("Bass")
+        runCurrent()
+
+        assertEquals(hellos + 3, rig.socket.sent("hello").size)
+        assertEquals("Bass", viewModel.ui.value.name)
+    }
+
+    @Test
+    fun nameRequestedOnAnEarlierSessionIsStillSentToTheNextOne() = runTest {
+        val first = ShowRig(this)
+        val second = ShowRig(this)
+        val source = HeldSessionSource(first.session)
+        val viewModel = viewModelOver(source)
+        started(first)
+        viewModel.setName("Bass")
+        runCurrent()
+
+        started(second)
+        source.hold(second.session)
+        runCurrent()
+        viewModel.setName("Bass")
+        runCurrent()
+
+        assertEquals("Bass", second.store.saved.single().name)
+    }
+
+    @Test
     fun actionsWithoutSessionDoNothing() = runTest {
         val viewModel = viewModelOver(HeldSessionSource())
 
