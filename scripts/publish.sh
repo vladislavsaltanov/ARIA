@@ -2,7 +2,7 @@
 set -e
 cd "$(dirname "$0")/.."
 RID="${1:-osx-arm64}"
-VERSION="${2:-0.3.1}"
+VERSION="${2:-0.4.0}"
 
 sh native/aria-shim/build.sh "$RID"
 
