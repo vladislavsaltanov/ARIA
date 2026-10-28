@@ -110,7 +110,9 @@ TEST_F(RendererVoiceTest, driftOf3msConvergesBelow0_1msWithRatioWithin5e_4) {
         const VoiceProbe probe = *renderer.probe(1);
         ASSERT_LE(std::fabs(probe.ratio - 1.0), kMaxDeviation) << "block " << block;
         ASSERT_NEAR(position + kBlock * probe.ratio, probe.position, 1e-6) << "block " << block;
-        if (block == 1) EXPECT_DOUBLE_EQ(1.0 + kMaxDeviation, probe.ratio);
+        if (block == 1) {
+            EXPECT_DOUBLE_EQ(1.0 + kMaxDeviation, probe.ratio);
+        }
         position = probe.position;
     }
     const double target = kAnchorFrame + (3000.0 + static_cast<double>((kBlocks + 1) * kBlock) * kUsPerFrame) * kRate / 1e6;
@@ -620,7 +622,9 @@ TEST_F(RendererVoiceTest, nullOrInvalidPlanRendersSilence) {
             EXPECT_TRUE(allZero(out)) << "block " << block;
         }
         EXPECT_EQ(0U, fresh.underruns());
-        if (keepsNoVoice) EXPECT_FALSE(fresh.probe(1).has_value());
+        if (keepsNoVoice) {
+            EXPECT_FALSE(fresh.probe(1).has_value());
+        }
     };
     silentThroughout(nullptr, true);
     for (const RenderPlan& p : badScale) silentThroughout(&p, true);
