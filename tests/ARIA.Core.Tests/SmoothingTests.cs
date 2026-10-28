@@ -12,13 +12,15 @@ public sealed class SmoothingTests
         int autoMs = 900,
         int startMs = 250,
         int stopMs = 300,
-        int seekMs = 350) => new(
+        int seekMs = 350,
+        int markerMs = 250) => new(
             true,
             TimeSpan.FromMilliseconds(manualMs),
             TimeSpan.FromMilliseconds(autoMs),
             TimeSpan.FromMilliseconds(startMs),
             TimeSpan.FromMilliseconds(stopMs),
-            TimeSpan.FromMilliseconds(seekMs));
+            TimeSpan.FromMilliseconds(seekMs),
+            TimeSpan.FromMilliseconds(markerMs));
 
     [Fact]
     public void FreshBoot_SmoothingIsDefault()
@@ -58,13 +60,41 @@ public sealed class SmoothingTests
             TimeSpan.FromMilliseconds(autoMs),
             TimeSpan.FromMilliseconds(startMs),
             TimeSpan.FromMilliseconds(stopMs),
-            TimeSpan.FromMilliseconds(seekMs));
+            TimeSpan.FromMilliseconds(seekMs),
+            TimeSpan.FromMilliseconds(250));
 
         var seq = h.Submit(new SetSmoothing(smoothing));
 
         Assert.Equal("smoothing-out-of-range", h.RejectionOf(seq)!.Reason);
         Assert.Equal(Smoothing.Default, h.Snapshot.Mixer.Smoothing);
         Assert.Empty(h.Engine.Smoothings);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(6000)]
+    public void SetSmoothing_MarkerFadeOutOfRange_IsRejected(int markerMs)
+    {
+        using var h = new Harness();
+
+        var seq = h.Submit(new SetSmoothing(Enabled(markerMs: markerMs)));
+
+        Assert.Equal("smoothing-out-of-range", h.RejectionOf(seq)!.Reason);
+        Assert.Equal(Smoothing.Default, h.Snapshot.Mixer.Smoothing);
+        Assert.Empty(h.Engine.Smoothings);
+    }
+
+    [Fact]
+    public void SetSmoothing_MarkerFade_IsAcceptedAndPushedToEngine()
+    {
+        using var h = new Harness();
+        var smoothing = Enabled(markerMs: 500);
+
+        h.Submit(new SetSmoothing(smoothing));
+
+        Assert.Empty(h.Events.OfType<Rejected>());
+        Assert.Equal(smoothing, h.Snapshot.Mixer.Smoothing);
+        Assert.Equal(smoothing, Assert.Single(h.Engine.Smoothings));
     }
 
     [Fact]

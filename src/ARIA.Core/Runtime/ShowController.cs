@@ -1839,7 +1839,8 @@ public sealed class ShowController : IShowHandler
             || value.AutoCrossfade < TimeSpan.Zero || value.AutoCrossfade > SmoothingMax
             || value.StartFade < TimeSpan.Zero || value.StartFade > SmoothingMax
             || value.StopFade < TimeSpan.Zero || value.StopFade > SmoothingMax
-            || value.SeekFade < TimeSpan.Zero || value.SeekFade > SmoothingMax)
+            || value.SeekFade < TimeSpan.Zero || value.SeekFade > SmoothingMax
+            || value.MarkerFade < TimeSpan.Zero || value.MarkerFade > SmoothingMax)
         {
             Reject(client, seq, "smoothing-out-of-range");
             return;

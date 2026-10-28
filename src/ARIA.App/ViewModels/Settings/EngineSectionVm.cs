@@ -18,6 +18,7 @@ public sealed partial class EngineSectionVm : ObservableObject
     private double _startFadeMs;
     private double _stopFadeMs;
     private double _seekFadeMs;
+    private double _markerFadeMs;
 
     public IReadOnlyList<FadeSetting> FadeSettings { get; }
 
@@ -33,6 +34,7 @@ public sealed partial class EngineSectionVm : ObservableObject
             new("кроссфейд по очереди", 3000, () => AutoCrossfadeMs, v => AutoCrossfadeMs = v, () => SmoothingEnabled),
             new("скорость запуска", 2000, () => StartFadeMs, v => StartFadeMs = v, () => SmoothingEnabled),
             new("скорость затухания", 2000, () => StopFadeMs, v => StopFadeMs = v, () => SmoothingEnabled),
+            new("затухание на метке", 2000, () => MarkerFadeMs, v => MarkerFadeMs = v, () => SmoothingEnabled),
             new("кроссфейд перемотки", 2000, () => SeekFadeMs, v => SeekFadeMs = v, () => SmoothingEnabled),
         ];
     }
@@ -121,13 +123,26 @@ public sealed partial class EngineSectionVm : ObservableObject
         }
     }
 
+    public double MarkerFadeMs
+    {
+        get => _markerFadeMs;
+        set
+        {
+            if (SetProperty(ref _markerFadeMs, value))
+            {
+                SubmitSmoothing();
+            }
+        }
+    }
+
     public Smoothing CurrentSmoothing() => new(
         _smoothingEnabled,
         TimeSpan.FromMilliseconds(_manualCrossfadeMs),
         TimeSpan.FromMilliseconds(_autoCrossfadeMs),
         TimeSpan.FromMilliseconds(_startFadeMs),
         TimeSpan.FromMilliseconds(_stopFadeMs),
-        TimeSpan.FromMilliseconds(_seekFadeMs));
+        TimeSpan.FromMilliseconds(_seekFadeMs),
+        TimeSpan.FromMilliseconds(_markerFadeMs));
 
     public void ApplySmoothing(Smoothing smoothing)
     {
@@ -137,12 +152,14 @@ public sealed partial class EngineSectionVm : ObservableObject
         _startFadeMs = smoothing.StartFade.TotalMilliseconds;
         _stopFadeMs = smoothing.StopFade.TotalMilliseconds;
         _seekFadeMs = smoothing.SeekFade.TotalMilliseconds;
+        _markerFadeMs = smoothing.MarkerFade.TotalMilliseconds;
         OnPropertyChanged(nameof(SmoothingEnabled));
         OnPropertyChanged(nameof(ManualCrossfadeMs));
         OnPropertyChanged(nameof(AutoCrossfadeMs));
         OnPropertyChanged(nameof(StartFadeMs));
         OnPropertyChanged(nameof(StopFadeMs));
         OnPropertyChanged(nameof(SeekFadeMs));
+        OnPropertyChanged(nameof(MarkerFadeMs));
         RefreshFades();
     }
 

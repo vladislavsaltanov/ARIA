@@ -64,6 +64,7 @@ public sealed class MixerBus : IDisposable
     private long _handleCounter;
     private int _pauseFadeFrames;
     private int _resumeFadeFrames;
+    private int _markerFadeFrames;
     private int _smoothingEnabled;
 
     public MixerBus(int channels, int sampleRate, int blockSizeFrames)
@@ -151,7 +152,7 @@ public sealed class MixerBus : IDisposable
         _commands.Enqueue(new MixerCommand(CommandKind.SetMarkers, null, handle, default, null, default, 0, null, markers));
     }
 
-    public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, bool enabled)
+    public void SetSmoothing(TimeSpan pauseFade, TimeSpan resumeFade, bool enabled, TimeSpan markerFade = default)
     {
         var pauseFrames = enabled && pauseFade > TimeSpan.Zero
             ? Math.Max(1, (int)Math.Round(pauseFade.TotalSeconds * _sampleRate))
@@ -159,8 +160,12 @@ public sealed class MixerBus : IDisposable
         var resumeFrames = enabled && resumeFade > TimeSpan.Zero
             ? Math.Max(1, (int)Math.Round(resumeFade.TotalSeconds * _sampleRate))
             : 0;
+        var markerFrames = enabled && markerFade > TimeSpan.Zero
+            ? Math.Max(1, (int)Math.Round(markerFade.TotalSeconds * _sampleRate))
+            : 0;
         Volatile.Write(ref _pauseFadeFrames, pauseFrames);
         Volatile.Write(ref _resumeFadeFrames, resumeFrames);
+        Volatile.Write(ref _markerFadeFrames, markerFrames);
         Volatile.Write(ref _smoothingEnabled, enabled ? 1 : 0);
     }
 
@@ -298,7 +303,8 @@ public sealed class MixerBus : IDisposable
             if (fadeDuration > TimeSpan.Zero)
             {
                 var rampFrames = Math.Max(1, (int)Math.Round(fadeDuration.TotalSeconds * _sampleRate));
-                voice.Fader = new FaderNode(rampFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: true);
+                voice.MarkerFadeArmed = false;
+                voice.Fader =new FaderNode(rampFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: true);
             }
             else
             {
@@ -320,6 +326,7 @@ public sealed class MixerBus : IDisposable
                 if (!voice.Active || voice.PauseWhenFaded)
                 {
                     voice.PauseWhenFaded = false;
+                    voice.MarkerFadeArmed = false;
                     var resumeFrames = Volatile.Read(ref _resumeFadeFrames);
                     if (Volatile.Read(ref _smoothingEnabled) == 1 && resumeFrames > 0)
                     {
@@ -342,6 +349,7 @@ public sealed class MixerBus : IDisposable
                 var pauseFrames = Volatile.Read(ref _pauseFadeFrames);
                 if (Volatile.Read(ref _smoothingEnabled) == 1 && pauseFrames > 0)
                 {
+                    voice.MarkerFadeArmed = false;
                     voice.Fader = new FaderNode(pauseFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: false);
                     voice.PauseWhenFaded = true;
                 }
@@ -357,23 +365,25 @@ public sealed class MixerBus : IDisposable
         }
     }
 
-    private static void ApplySeek(MixerVoice? voice, long frameIndex)
+    private void ApplySeek(MixerVoice? voice, long frameIndex)
     {
         if (voice is null || voice.RemoveRequested || voice.Dead)
         {
             return;
         }
+        ReleaseMarkerFade(voice);
         voice.Source.Seek(frameIndex);
         voice.StartFrame = frameIndex;
         voice.Epoch++;
     }
 
-    private static void ApplyMarkers(MixerVoice? voice, MarkerSpec[] markers)
+    private void ApplyMarkers(MixerVoice? voice, MarkerSpec[] markers)
     {
         if (voice is null || voice.RemoveRequested)
         {
             return;
         }
+        ReleaseMarkerFade(voice);
         for (var index = 1; index < markers.Length; index++)
         {
             System.Diagnostics.Debug.Assert(markers[index - 1].Position <= markers[index].Position);
@@ -397,6 +407,7 @@ public sealed class MixerBus : IDisposable
             : Math.Max(1, (int)Math.Round(fade.Duration.TotalSeconds * _sampleRate));
         var target = Math.Pow(10.0, fade.TargetDb / 20.0);
         var from = fade.StopWhenDone ? voice.Fader.Level : 0.0;
+        voice.MarkerFadeArmed = false;
         voice.Fader = new FaderNode(rampFrames, fade.Curve, from, target, fade.StopWhenDone);
         if (rampFrames == 0 && fade.StopWhenDone)
         {
@@ -426,6 +437,7 @@ public sealed class MixerBus : IDisposable
                 continue;
             }
             var scratch = voice.Scratch.AsSpan(0, frames * _channels);
+            ArmMarkerFade(voice);
             int read;
             try
             {
@@ -489,6 +501,38 @@ public sealed class MixerBus : IDisposable
         }
     }
 
+    private void ArmMarkerFade(MixerVoice voice)
+    {
+        var markerFadeFrames = Volatile.Read(ref _markerFadeFrames);
+        if (voice.MarkerFadeArmed || markerFadeFrames == 0 || voice.PauseWhenFaded || voice.Fader.StopWhenDone)
+        {
+            return;
+        }
+        var blockStart = voice.CueInSeconds + voice.StartFrame / (double)_sampleRate;
+        var markerIndex = NextMarkerIndex(voice.Markers, blockStart);
+        if (markerIndex < 0 || voice.Markers[markerIndex].Action != MarkerAction.Pause)
+        {
+            return;
+        }
+        var framesToMarker = (long)Math.Ceiling((voice.Markers[markerIndex].Position.TotalSeconds - blockStart) * _sampleRate);
+        if (framesToMarker <= 0 || framesToMarker > markerFadeFrames)
+        {
+            return;
+        }
+        voice.Fader = new FaderNode((int)framesToMarker, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: false);
+        voice.MarkerFadeArmed = true;
+    }
+
+    private void ReleaseMarkerFade(MixerVoice voice)
+    {
+        if (!voice.MarkerFadeArmed)
+        {
+            return;
+        }
+        voice.MarkerFadeArmed = false;
+        voice.Fader = new FaderNode(Volatile.Read(ref _resumeFadeFrames), FadeCurve.Linear, voice.Fader.Level, 1.0, stopWhenDone: false);
+    }
+
     private int ScanCutoff(MixerVoice voice, int frames, out StreamEndReason reason, out TimeSpan markerPosition)
     {
         reason = default;
@@ -497,16 +541,8 @@ public sealed class MixerBus : IDisposable
         var hasCueOut = voice.HasCueOut;
         var cueIn = voice.CueInSeconds;
         var start = voice.StartFrame;
-        var markerIndex = -1;
         var blockStart = cueIn + start / (double)_sampleRate;
-        for (var index = 0; index < markers.Length; index++)
-        {
-            if (markers[index].Position.TotalSeconds > blockStart)
-            {
-                markerIndex = index;
-                break;
-            }
-        }
+        var markerIndex = NextMarkerIndex(markers, blockStart);
         var hasMarker = markerIndex >= 0;
         if (!hasMarker && !hasCueOut)
         {
@@ -527,6 +563,18 @@ public sealed class MixerBus : IDisposable
             {
                 reason = StreamEndReason.CueOutReached;
                 return frame;
+            }
+        }
+        return -1;
+    }
+
+    private static int NextMarkerIndex(MarkerSpec[] markers, double blockStart)
+    {
+        for (var index = 0; index < markers.Length; index++)
+        {
+            if (markers[index].Position.TotalSeconds > blockStart)
+            {
+                return index;
             }
         }
         return -1;

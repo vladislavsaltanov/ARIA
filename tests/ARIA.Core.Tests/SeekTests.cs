@@ -77,7 +77,8 @@ public sealed class SeekTests
             TimeSpan.FromMilliseconds(900),
             TimeSpan.FromMilliseconds(250),
             TimeSpan.FromMilliseconds(300),
-            TimeSpan.FromMilliseconds(350))));
+            TimeSpan.FromMilliseconds(350),
+            TimeSpan.FromMilliseconds(250))));
         h.Submit(new Play());
         h.Monitor!.Publish(h.Engine.Last!.Handle, TimeSpan.FromSeconds(5));
 
