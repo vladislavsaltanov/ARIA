@@ -55,6 +55,9 @@ public partial class PlaybackHeader : UserControl
     internal bool IsActionPopupOpen => _actionPopup?.IsOpen == true;
 
     internal Control? ActionPopupContent => _actionPopup?.Child;
+
+    internal bool ActionPopupShouldUseOverlayLayer => _actionPopup?.ShouldUseOverlayLayer == true;
+
     private static readonly MarkerAction[] MarkerActions = [MarkerAction.None, MarkerAction.Pause, MarkerAction.RepeatFromPrevious, MarkerAction.Restart];
     private Marker? _dragMarker;
     private bool _markerDragging;
@@ -732,6 +735,7 @@ public partial class PlaybackHeader : UserControl
             Placement = PlacementMode.AnchorAndGravity,
             PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.TopLeft,
             PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.BottomRight,
+            ShouldUseOverlayLayer = true,
             Child = new ThemeVariantScope
             {
                 RequestedThemeVariant = ThemeVariant.Dark,
