@@ -370,7 +370,10 @@ TEST_F(RendererLevelTest, hugeClickGainTimesHugeMasterNeverPutsNonFiniteSamplesO
     valid.masterGain = 1.0F;
     const std::vector<float> out = stream(renderer, &valid, kFrames, kFrames, 256);
     EXPECT_TRUE(allFinite(out));
-    EXPECT_FALSE(allZero(out));
+    float peak = 0.0F;
+    for (const float sample : out) peak = std::max(peak, std::fabs(sample));
+    EXPECT_GE(peak, 0.25F);
+    EXPECT_LE(peak, 1.0F);
 }
 
 TEST_F(RendererLevelTest, steadyOutputIsBitIdenticalForBlockSizes64_192_480_1024) {

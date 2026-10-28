@@ -466,7 +466,6 @@ TEST(PlanSlotConcurrencyTest, controlPublishesRetainsAndCollectsWhileCallbackRen
     EXPECT_GT(loudest, 0.0F);
 }
 
-
 TEST(PlanSlotConcurrencyTest, twoControlThreadsNeverDuplicateAnEpochWhileTheCallbackRenders) {
     PcmPool pool;
     PlanSlot slot{pool};

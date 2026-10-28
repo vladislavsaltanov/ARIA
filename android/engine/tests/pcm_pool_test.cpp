@@ -425,6 +425,7 @@ struct Shared {
     std::atomic<bool> stop{false};
 
     void beginBlock() { pool.ackGeneration(epoch.load()); }
+    void releaseEverythingRetiredBefore(int64_t held) { pool.ackGeneration(held); }
 };
 
 void produce(Shared& shared, int64_t limit) {
@@ -487,9 +488,10 @@ TEST(PcmPoolConcurrencyTest, readerBlockSpanningRetireNeverSeesItsChunkRewritten
         if (n == 0) continue;
         const Chunk* chunk = shared.pool.find(keyOf(n));
         if (chunk == nullptr) continue;
+        shared.releaseEverythingRetiredBefore(n);
 
         const auto blockDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-        while (shared.stalledAfter.load(std::memory_order_relaxed) < n &&
+        while (shared.stalledAfter.load(std::memory_order_relaxed) <= n &&
                shared.latest.load(std::memory_order_relaxed) < n + kPublishesPastHeldChunkWithoutProtection) {
             if (std::chrono::steady_clock::now() > blockDeadline) {
                 ++timeouts;
@@ -505,7 +507,7 @@ TEST(PcmPoolConcurrencyTest, readerBlockSpanningRetireNeverSeesItsChunkRewritten
     writer.join();
 
     EXPECT_EQ(kHoldCycles, held);
-    EXPECT_GT(heldAcrossRetire, 0);
+    EXPECT_EQ(kHoldCycles, heldAcrossRetire);
     EXPECT_EQ(0, corrupted);
     EXPECT_EQ(0, timeouts);
 }
