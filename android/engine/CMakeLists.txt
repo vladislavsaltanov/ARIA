@@ -12,6 +12,7 @@ option(ARIA_SANITIZE_THREAD "Build host unit tests with ThreadSanitizer" OFF)
 set(ARIA_WARNING_FLAGS -Wall -Wextra -Werror)
 set(ARIA_ENGINE_SOURCES
     src/click.cpp
+    src/engine_core.cpp
     src/envelope.cpp
     src/pcm_pool.cpp
     src/plan_decoder.cpp
@@ -52,6 +53,7 @@ if(ARIA_HOST_TESTS)
 
     add_executable(aria_engine_tests
         tests/click_test.cpp
+        tests/engine_core_test.cpp
         tests/envelope_test.cpp
         tests/pcm_pool_test.cpp
         tests/plan_decoder_test.cpp
@@ -77,10 +79,10 @@ if(ARIA_HOST_TESTS)
 elseif(ANDROID)
     find_package(oboe REQUIRED CONFIG)
 
-    add_library(aria_engine SHARED ${ARIA_ENGINE_SOURCES})
+    add_library(aria_engine SHARED ${ARIA_ENGINE_SOURCES} src/oboe_output.cpp jni/engine_jni.cpp)
     target_include_directories(aria_engine PRIVATE src)
     target_compile_options(aria_engine PRIVATE ${ARIA_WARNING_FLAGS})
-    target_link_libraries(aria_engine PRIVATE oboe::oboe)
+    target_link_libraries(aria_engine PRIVATE oboe::oboe log)
 else()
     message(FATAL_ERROR "Configure with -DARIA_HOST_TESTS=ON on the host or build through Gradle for Android")
 endif()

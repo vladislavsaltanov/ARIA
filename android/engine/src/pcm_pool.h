@@ -45,6 +45,7 @@ public:
     void retain(const std::vector<ChunkKey>& keys, int64_t generation);
 
     const Chunk* find(const ChunkKey& key) const;
+    bool isReady(const ChunkKey& key) const;
     void ackGeneration(int64_t seen);
     int64_t ackedGeneration() const;
 

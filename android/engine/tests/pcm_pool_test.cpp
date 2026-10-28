@@ -375,6 +375,21 @@ TEST(PcmPoolTest, repeatedDropAndReWantCyclesNeverExhaustAPoolWithOneSpareSlot) 
     }
 }
 
+TEST(PcmPoolTest, isReadyIsTrueOnlyForAPublishedKeyThatIsNotRetired) {
+    PcmPool pool;
+    const ChunkKey key = keyOf(1);
+    EXPECT_FALSE(pool.isReady(key));
+    const int slot = pool.claim(key);
+    ASSERT_GE(slot, 0);
+    EXPECT_FALSE(pool.isReady(key));
+    pool.publish(slot, kStressFrames);
+    EXPECT_TRUE(pool.isReady(key));
+    EXPECT_FALSE(pool.isReady(keyOf(2)));
+    pool.retain({}, 5);
+    EXPECT_FALSE(pool.isReady(key));
+    EXPECT_NE(nullptr, pool.find(key));
+}
+
 TEST(PcmPoolTest, lowerAckDoesNotLowerTheReclaimHorizon) {
     PcmPool pool;
     for (int n = 0; n < kSlots; ++n) ASSERT_GE(publishFilled(pool, keyOf(n), 1, 4), 0);

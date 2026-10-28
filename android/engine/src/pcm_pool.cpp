@@ -82,6 +82,12 @@ const Chunk* PcmPool::find(const ChunkKey& key) const {
     return retiredMatch;
 }
 
+bool PcmPool::isReady(const ChunkKey& key) const {
+    return std::any_of(slots_.begin(), slots_.end(), [&key](const Slot& slot) {
+        return slot.mark.load(std::memory_order_acquire) == kReadyMark && slot.key == key;
+    });
+}
+
 int64_t PcmPool::ackedGeneration() const { return acked_.load(std::memory_order_acquire); }
 
 void PcmPool::ackGeneration(int64_t seen) {
