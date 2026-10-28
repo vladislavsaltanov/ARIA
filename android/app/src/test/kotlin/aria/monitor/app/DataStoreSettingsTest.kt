@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -62,12 +63,14 @@ class DataStoreSettingsTest {
 
     @Test
     fun unreadableAndUnwritableStoreDegradesWithoutThrowing() = realTest {
+        val warnings = CopyOnWriteArrayList<Throwable>()
         val broken = DataStoreSettings(
             object : DataStore<Preferences> {
                 override val data: Flow<Preferences> = flow { throw IOException("disk") }
 
                 override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences = throw IOException("disk")
             },
+            warn = { warnings += it },
         )
 
         assertEquals(Settings.sanitized(), broken.load())
@@ -75,6 +78,19 @@ class DataStoreSettingsTest {
         broken.save(Settings("Ana", Levels(-1.0, true, -2.0, true), 5))
         broken.savePairing(Pairing("host", 80, "id", "key"))
         broken.savePairing(null)
+
+        assertEquals(3, warnings.size)
+    }
+
+    @Test
+    fun successfulWritesWarnAboutNothing() = realTest {
+        val warnings = CopyOnWriteArrayList<Throwable>()
+        val quiet = DataStoreSettings(dataStore, warn = { warnings += it })
+
+        quiet.savePairing(Pairing("host", 80, "id", "key"))
+        quiet.markDone()
+
+        assertTrue(warnings.isEmpty())
     }
 
     @Test

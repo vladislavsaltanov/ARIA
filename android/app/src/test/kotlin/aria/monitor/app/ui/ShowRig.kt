@@ -172,9 +172,15 @@ internal class SilentEngine : AudioEngine {
     override fun retain(keys: Set<ChunkKey>) = Unit
 }
 
-internal class HeldSessionSource(initial: Session? = null) : SessionSource {
+internal class HeldSessionSource(initial: Session? = null, private val journal: MutableList<String>? = null) : SessionSource {
     private val held = MutableStateFlow(initial)
     override val session: StateFlow<Session?> = held
+    val starts = CopyOnWriteArrayList<Pairing?>()
+
+    override fun start(pairing: Pairing?) {
+        journal?.add("start:${pairing?.identifier}")
+        starts += pairing
+    }
 
     fun hold(session: Session?) {
         held.value = session

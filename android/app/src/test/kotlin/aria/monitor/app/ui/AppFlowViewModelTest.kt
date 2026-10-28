@@ -5,7 +5,9 @@ package aria.monitor.app.ui
 import aria.monitor.core.Pairing
 import aria.monitor.core.Settings
 import aria.monitor.core.SettingsStore
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -18,6 +20,7 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 private val NEW_PAIRING = Pairing("192.168.1.30", 5001, "tablet", "k3y")
@@ -47,13 +50,29 @@ private class OrderedStore(private val journal: MutableList<String>, private val
     }
 }
 
+private class ForgetfulStore : SettingsStore {
+    @Volatile
+    var keeps = false
+    private var pairing: Pairing? = null
+
+    override suspend fun load(): Settings = Settings.sanitized()
+
+    override suspend fun save(settings: Settings) = Unit
+
+    override suspend fun loadPairing(): Pairing? = pairing
+
+    override suspend fun savePairing(pairing: Pairing?) {
+        if (keeps) this.pairing = pairing
+    }
+}
+
 private fun TestScope.flowOver(
     store: SettingsStore,
     onboarding: OnboardingStore,
     source: HeldSessionSource = HeldSessionSource(),
 ): AppFlowViewModel {
     Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-    return AppFlowViewModel(store, onboarding, source).also { runCurrent() }
+    return AppFlowViewModel(store, onboarding, source, backgroundScope).also { runCurrent() }
 }
 
 class AppFlowViewModelTest {
@@ -64,9 +83,11 @@ class AppFlowViewModelTest {
 
     @Test
     fun firstRunStartsWithOnboarding() = runTest {
-        val flow = flowOver(RecordingStore(), FakeOnboarding(done = false))
+        val source = HeldSessionSource()
+        val flow = flowOver(RecordingStore(), FakeOnboarding(done = false), source)
 
         assertEquals(Destination.Onboarding, flow.destination.value)
+        assertTrue(source.starts.isEmpty())
     }
 
     @Test
@@ -84,26 +105,32 @@ class AppFlowViewModelTest {
     @Test
     fun finishingOnboardingWithASavedPairingGoesStraightToTheMonitor() = runTest {
         val store = RecordingStore().apply { pairing = SHOW_PAIRING }
-        val flow = flowOver(store, FakeOnboarding())
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(), source)
 
         flow.finishOnboarding()
         runCurrent()
 
         assertEquals(Destination.Monitor, flow.destination.value)
+        assertEquals(listOf<Pairing?>(null), source.starts.toList())
     }
 
     @Test
     fun onboardingIsNotShownAgainAfterTheFirstRun() = runTest {
-        val flow = flowOver(RecordingStore(), FakeOnboarding(done = true))
+        val source = HeldSessionSource()
+        val flow = flowOver(RecordingStore(), FakeOnboarding(done = true), source)
 
         assertEquals(Destination.Pairing(canCancel = false), flow.destination.value)
+        assertTrue(source.starts.isEmpty())
     }
 
     @Test
     fun returningUserWithAPairingOpensTheMonitor() = runTest {
         val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource()
 
-        assertEquals(Destination.Monitor, flowOver(store, FakeOnboarding(done = true)).destination.value)
+        assertEquals(Destination.Monitor, flowOver(store, FakeOnboarding(done = true), source).destination.value)
+        assertEquals(listOf<Pairing?>(null), source.starts.toList())
     }
 
     @Test
@@ -152,8 +179,7 @@ class AppFlowViewModelTest {
     fun pairedPersistsThePairingThenStartsTheSessionWithIt() = runTest {
         val journal = mutableListOf<String>()
         val store = OrderedStore(journal)
-        val rig = ShowRig(this)
-        val source = HeldSessionSource(rig.session)
+        val source = HeldSessionSource(journal = journal)
         val flow = flowOver(store, FakeOnboarding(done = true), source)
 
         flow.paired(NEW_PAIRING)
@@ -161,63 +187,109 @@ class AppFlowViewModelTest {
 
         assertEquals(NEW_PAIRING, store.pairing)
         assertEquals(Destination.Monitor, flow.destination.value)
-        assertEquals(listOf(NEW_PAIRING), rig.authenticator.calls.toList())
-        assertEquals(listOf("save:tablet"), journal)
+        assertEquals(listOf("save:tablet", "start:tablet"), journal)
+        assertFalse(flow.pairingNotSaved.value)
     }
 
     @Test
     fun theSessionIsNotStartedBeforeThePairingIsSafelyPersisted() = runTest {
         val store = OrderedStore(mutableListOf(), saveTakesMs = 100)
-        val rig = ShowRig(this)
-        val flow = flowOver(store, FakeOnboarding(done = true), HeldSessionSource(rig.session))
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
 
         flow.paired(NEW_PAIRING)
         runCurrent()
-        assertTrue(rig.authenticator.calls.isEmpty())
+        assertTrue(source.starts.isEmpty())
         advanceTimeBy(100)
         runCurrent()
 
-        assertEquals(listOf(NEW_PAIRING), rig.authenticator.calls.toList())
+        assertEquals(listOf<Pairing?>(NEW_PAIRING), source.starts.toList())
+    }
+
+    @Test
+    fun closingTheScreenWhileThePairingIsBeingSavedLosesNothing() = runTest {
+        val store = OrderedStore(mutableListOf(), saveTakesMs = 100)
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        flow.paired(NEW_PAIRING)
+        runCurrent()
+        flow.viewModelScope.cancel()
+        advanceTimeBy(100)
+        runCurrent()
+
+        assertEquals(NEW_PAIRING, store.pairing)
+        assertEquals(listOf<Pairing?>(NEW_PAIRING), source.starts.toList())
+    }
+
+    @Test
+    fun aPairingTheStoreFailedToKeepIsReportedAndStillStarted() = runTest {
+        val source = HeldSessionSource()
+        val flow = flowOver(ForgetfulStore(), FakeOnboarding(done = true), source)
+
+        flow.paired(NEW_PAIRING)
+        runCurrent()
+
+        assertTrue(flow.pairingNotSaved.value)
+        assertEquals(Destination.Monitor, flow.destination.value)
+        assertEquals(listOf<Pairing?>(NEW_PAIRING), source.starts.toList())
+    }
+
+    @Test
+    fun aLaterSuccessfulSaveClearsTheReport() = runTest {
+        val store = ForgetfulStore()
+        val flow = flowOver(store, FakeOnboarding(done = true))
+
+        flow.paired(NEW_PAIRING)
+        runCurrent()
+        store.keeps = true
+        flow.openPairing()
+        flow.paired(SHOW_PAIRING)
+        runCurrent()
+
+        assertFalse(flow.pairingNotSaved.value)
     }
 
     @Test
     fun pairedWithoutARunningSessionStillPersistsForTheServiceToPickUp() = runTest {
         val store = RecordingStore()
-        val flow = flowOver(store, FakeOnboarding(done = true))
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
 
         flow.paired(NEW_PAIRING)
         runCurrent()
 
         assertEquals(NEW_PAIRING, store.pairing)
         assertEquals(Destination.Monitor, flow.destination.value)
+        assertEquals(listOf<Pairing?>(NEW_PAIRING), source.starts.toList())
     }
 
     @Test
     fun pairedAgainFromTheMonitorReplacesTheOldPairing() = runTest {
         val store = RecordingStore().apply { pairing = SHOW_PAIRING }
-        val rig = ShowRig(this)
-        val flow = flowOver(store, FakeOnboarding(done = true), HeldSessionSource(rig.session))
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
 
         flow.openPairing()
         flow.paired(NEW_PAIRING)
         runCurrent()
 
         assertEquals(NEW_PAIRING, store.pairing)
-        assertEquals(listOf(NEW_PAIRING), rig.authenticator.calls.toList())
+        assertEquals(listOf(null, NEW_PAIRING), source.starts.toList())
     }
 
     @Test
     fun aSecondPairedCallFromAStaleScannerFrameIsIgnored() = runTest {
         val store = RecordingStore()
-        val rig = ShowRig(this)
-        val flow = flowOver(store, FakeOnboarding(done = true), HeldSessionSource(rig.session))
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
 
         flow.paired(NEW_PAIRING)
         flow.paired(SHOW_PAIRING)
         runCurrent()
 
         assertEquals(NEW_PAIRING, store.pairing)
-        assertEquals(listOf(NEW_PAIRING), rig.authenticator.calls.toList())
+        assertEquals(listOf<Pairing?>(NEW_PAIRING), source.starts.toList())
     }
 
     @Test

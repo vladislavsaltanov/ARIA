@@ -72,9 +72,7 @@ class Session(
         }
     }
 
-    fun stop() {
-        onControl { halt() }
-    }
+    fun stop(): Job = control.launch { halt() }
 
     fun setLevels(levels: Levels) {
         onControl {

@@ -15,6 +15,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import java.io.File
@@ -32,6 +33,7 @@ private val PAIRING_ID = stringPreferencesKey("pairing_id")
 private val PAIRING_KEY = stringPreferencesKey("pairing_key")
 private val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
 private val PORTS = 1..65535
+private const val TAG = "AriaMonitor"
 
 internal fun monitorDataStore(scope: CoroutineScope, produceFile: () -> File): DataStore<Preferences> =
     PreferenceDataStoreFactory.create(
@@ -40,7 +42,10 @@ internal fun monitorDataStore(scope: CoroutineScope, produceFile: () -> File): D
         produceFile = produceFile,
     )
 
-internal class DataStoreSettings(private val dataStore: DataStore<Preferences>) : SettingsStore, OnboardingStore {
+internal class DataStoreSettings(
+    private val dataStore: DataStore<Preferences>,
+    private val warn: (IOException) -> Unit = { Log.w(TAG, "monitor settings not written", it) },
+) : SettingsStore, OnboardingStore {
     override suspend fun load(): Settings {
         val stored = read()
         return Settings.sanitized(
@@ -101,7 +106,7 @@ internal class DataStoreSettings(private val dataStore: DataStore<Preferences>) 
         try {
             dataStore.edit(change)
         } catch (unwritable: IOException) {
-            return
+            warn(unwritable)
         }
     }
 }

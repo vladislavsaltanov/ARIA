@@ -5,6 +5,7 @@ import aria.monitor.core.Pairing
 import aria.monitor.core.SettingsStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,9 +31,12 @@ class AppFlowViewModel(
     private val settings: SettingsStore,
     private val onboarding: OnboardingStore,
     private val sessions: SessionSource,
+    private val appScope: CoroutineScope,
 ) : ViewModel() {
     private val current = MutableStateFlow<Destination>(Destination.Loading)
     val destination: StateFlow<Destination> = current.asStateFlow()
+    private val notSaved = MutableStateFlow(false)
+    val pairingNotSaved: StateFlow<Boolean> = notSaved.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -59,12 +63,16 @@ class AppFlowViewModel(
     fun paired(pairing: Pairing) {
         if (current.value !is Destination.Pairing) return
         current.value = Destination.Monitor
-        viewModelScope.launch {
+        appScope.launch {
             settings.savePairing(pairing)
-            sessions.session.value?.start(pairing)
+            notSaved.value = settings.loadPairing() != pairing
+            sessions.start(pairing)
         }
     }
 
-    private suspend fun afterOnboarding(): Destination =
-        if (settings.loadPairing() == null) Destination.Pairing(canCancel = false) else Destination.Monitor
+    private suspend fun afterOnboarding(): Destination {
+        if (settings.loadPairing() == null) return Destination.Pairing(canCancel = false)
+        sessions.start(null)
+        return Destination.Monitor
+    }
 }

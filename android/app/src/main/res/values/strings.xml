@@ -81,4 +81,8 @@
     <string name="onboarding_app_settings">НАСТРОЙКИ ПРИЛОЖЕНИЯ</string>
     <string name="onboarding_skip">ПРОПУСТИТЬ</string>
     <string name="onboarding_done">ГОТОВО</string>
+
+    <string name="notification_channel">Монитор</string>
+    <string name="notification_stop">Остановить</string>
+    <string name="pairing_not_saved">Не удалось сохранить подключение. После перезапуска понадобится новый QR.</string>
 </resources>
