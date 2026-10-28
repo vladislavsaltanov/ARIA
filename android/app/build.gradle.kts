@@ -6,9 +6,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val signingPropertiesFile: File = System.getenv("ARIA_KEYSTORE_PROPERTIES")?.let { File(it) }
+    ?: rootProject.file("signing/keystore.properties")
 val signingProperties = Properties().apply {
-    val file = System.getenv("ARIA_KEYSTORE_PROPERTIES")?.let { File(it) } ?: rootProject.file("keystore.properties")
-    if (file.isFile) FileInputStream(file).use { load(it) }
+    if (signingPropertiesFile.isFile) FileInputStream(signingPropertiesFile).use { load(it) }
 }
 
 kotlin {
@@ -34,7 +35,7 @@ android {
     signingConfigs {
         if (signingProperties.containsKey("storeFile")) {
             create("release") {
-                storeFile = file(signingProperties.getProperty("storeFile"))
+                storeFile = signingPropertiesFile.parentFile.resolve(signingProperties.getProperty("storeFile"))
                 storePassword = signingProperties.getProperty("storePassword")
                 keyAlias = signingProperties.getProperty("keyAlias")
                 keyPassword = signingProperties.getProperty("keyPassword")

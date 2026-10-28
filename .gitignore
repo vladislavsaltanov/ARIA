@@ -499,6 +499,6 @@ android/engine/bin/
 android/local.properties
 *.apk
 
-android/keystore.properties
+android/signing/
 *.jks
 *.keystore
