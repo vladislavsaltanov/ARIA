@@ -6,19 +6,21 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace aria {
 
 class PlanSlot {
 public:
-    PlanSlot() = default;
+    explicit PlanSlot(const PcmPool& pool);
     PlanSlot(const PlanSlot&) = delete;
     PlanSlot& operator=(const PlanSlot&) = delete;
 
     void publish(std::unique_ptr<RenderPlan> plan);
     void retain(PcmPool& pool, const std::vector<ChunkKey>& keys);
     void collectGarbage();
+    int64_t epoch() const;
 
     const RenderPlan* acquireForCallback(PcmPool& pool);
 
@@ -34,8 +36,9 @@ private:
     template <typename BeforeEpochIsPublished>
     int64_t advanceEpoch(BeforeEpochIsPublished beforeEpochIsPublished);
 
-    std::atomic<int64_t> epoch_{0};
-    std::atomic<int64_t> acked_{0};
+    std::mutex control_;
+    std::atomic<int64_t> epoch_;
+    std::atomic<int64_t> acked_;
     std::atomic<const RenderPlan*> published_{nullptr};
     std::unique_ptr<RenderPlan> current_;
     std::vector<Retired> retired_;

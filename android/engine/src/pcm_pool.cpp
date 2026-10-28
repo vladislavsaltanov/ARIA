@@ -82,6 +82,8 @@ const Chunk* PcmPool::find(const ChunkKey& key) const {
     return retiredMatch;
 }
 
+int64_t PcmPool::ackedGeneration() const { return acked_.load(std::memory_order_acquire); }
+
 void PcmPool::ackGeneration(int64_t seen) {
     if (seen > acked_.load(std::memory_order_relaxed)) acked_.store(seen, std::memory_order_release);
 }

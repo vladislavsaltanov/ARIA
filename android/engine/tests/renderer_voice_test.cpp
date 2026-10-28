@@ -472,6 +472,16 @@ TEST_F(RendererVoiceTest, onlyTheFirst64PlanVoicesCountSoAHugePlanRendersWithinT
     EXPECT_FALSE(renderer.probe(kMaxPlanVoices + 1).has_value());
 }
 
+TEST_F(RendererVoiceTest, theCapIsExactly64PlanVoicesEvenWhenLaterVoicesArePlaying) {
+    publishRamp(1);
+    std::vector<VoicePlan> voices;
+    for (int32_t id = 1; id <= 200; ++id) voices.push_back(id < kMaxPlanVoices ? stopped(voice(id)) : voice(id));
+    const RenderPlan p = plan(std::move(voices));
+    stream(renderer, &p, 0, 1024, 256);
+    EXPECT_TRUE(renderer.probe(kMaxPlanVoices).has_value());
+    EXPECT_FALSE(renderer.probe(kMaxPlanVoices + 1).has_value());
+}
+
 TEST_F(RendererVoiceTest, waitingVoiceEvictsStoppingSlotOfVanishedVoice) {
     publishRamp(1);
     publish(kOtherHi, kOtherLo, 1, kChunkFrames, halfScale);

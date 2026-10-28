@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <new>
 #include <thread>
 #include <vector>
 
@@ -62,9 +63,45 @@ protected:
         return streamFromSlot(fresh, slot, pool, 0, kInvariantFrames, block);
     }
 
-    PlanSlot slot;
+    PlanSlot slot{pool};
     std::vector<float> out = std::vector<float>(2 * kBlock);
 };
+
+void escape(void* pointer) { asm volatile("" : : "g"(pointer) : "memory"); }
+
+TEST(AllocationCounterTest, countsPlainArrayAlignedAndVectorAllocationsOnTheCallingThreadOnly) {
+    const int64_t before = allocationsOnThisThread();
+    int* single = new int(1);
+    escape(single);
+    EXPECT_EQ(before + 1, allocationsOnThisThread());
+    delete single;
+    int* array = new int[16];
+    escape(array);
+    EXPECT_EQ(before + 2, allocationsOnThisThread());
+    delete[] array;
+    auto* aligned = new (std::align_val_t{64}) char[64];
+    escape(aligned);
+    EXPECT_EQ(before + 3, allocationsOnThisThread());
+    ::operator delete[](aligned, std::align_val_t{64});
+    std::vector<int> grown;
+    grown.push_back(1);
+    escape(grown.data());
+    EXPECT_EQ(before + 4, allocationsOnThisThread());
+    const int64_t onThisThread = allocationsOnThisThread();
+    int64_t seenByOtherThread = -1;
+    int64_t freshOnOtherThread = -1;
+    std::thread([&seenByOtherThread, &freshOnOtherThread] {
+        const int64_t fresh = allocationsOnThisThread();
+        freshOnOtherThread = fresh;
+        int* other = new int(2);
+        escape(other);
+        delete other;
+        seenByOtherThread = allocationsOnThisThread() - fresh;
+    }).join();
+    EXPECT_EQ(1, seenByOtherThread);
+    EXPECT_LT(freshOnOtherThread, onThisThread);
+    EXPECT_GT(onThisThread, 4);
+}
 
 TEST_F(RealtimeTest, zeroAllocationsInRender) {
     const RenderPlan p = threeVoicesAndAClick();

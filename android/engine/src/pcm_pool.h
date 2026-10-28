@@ -46,6 +46,7 @@ public:
 
     const Chunk* find(const ChunkKey& key) const;
     void ackGeneration(int64_t seen);
+    int64_t ackedGeneration() const;
 
 private:
     static constexpr int64_t kNothingAcked = std::numeric_limits<int64_t>::min();

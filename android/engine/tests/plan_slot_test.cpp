@@ -20,7 +20,9 @@ using test::freesOf;
 using test::watchFreesOnThisThread;
 
 constexpr int kSlots = 30;
+constexpr int64_t kLiveAck = 1000;
 constexpr int64_t kPublications = 100000;
+constexpr int64_t kCallsPerControlThread = 20000;
 constexpr int32_t kBlock = 192;
 constexpr int32_t kSmallBlock = 64;
 constexpr int32_t kStop = 384;
@@ -91,14 +93,14 @@ bool consistent(const RenderPlan& p) {
 
 TEST(PlanSlotTest, acquireBeforeAnyPublicationReturnsNull) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     EXPECT_EQ(nullptr, slot.acquireForCallback(pool));
     EXPECT_EQ(nullptr, slot.acquireForCallback(pool));
 }
 
 TEST(PlanSlotTest, acquireReturnsTheLatestPublication) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     slot.publish(bare(1));
     slot.publish(bare(2));
     const RenderPlan* seen = slot.acquireForCallback(pool);
@@ -108,7 +110,7 @@ TEST(PlanSlotTest, acquireReturnsTheLatestPublication) {
 
 TEST(PlanSlotTest, oldPlanKeptUntilAcked) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     auto first = bare(1);
     auto second = bare(2);
     const RenderPlan* firstPlan = first.get();
@@ -128,7 +130,7 @@ TEST(PlanSlotTest, oldPlanKeptUntilAcked) {
 
 TEST(PlanSlotTest, collectGarbageFreesNothingWhileTheCallbackLagsThenEachReplacedPlanExactlyOnce) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     auto first = bare(1);
     auto second = bare(2);
     auto third = bare(3);
@@ -161,7 +163,7 @@ TEST(PlanSlotTest, destructorFreesTheCurrentAndEveryUnackedPlanExactlyOnce) {
     watchFreesOnThisThread({firstPlan, secondPlan, thirdPlan});
     {
         PcmPool pool;
-        PlanSlot slot;
+        PlanSlot slot{pool};
         slot.publish(std::move(first));
         slot.acquireForCallback(pool);
         slot.publish(std::move(second));
@@ -179,7 +181,7 @@ TEST(PlanSlotTest, destructorFreesTheCurrentAndEveryUnackedPlanExactlyOnce) {
 
 TEST(PlanSlotTest, retainWithoutPlanChangeIsReclaimableAfterTheNextBlock) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     for (int n = 0; n < kSlots; ++n) ASSERT_GE(publishFilled(pool, keyOf(n), 1, 4), 0);
     slot.publish(bare(1));
     slot.acquireForCallback(pool);
@@ -191,7 +193,7 @@ TEST(PlanSlotTest, retainWithoutPlanChangeIsReclaimableAfterTheNextBlock) {
 
 TEST(PlanSlotTest, chunkRetiredAtAnEpochStaysFindableForTheBlockThatLoadedTheEpochBefore) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     ASSERT_GE(publishFilled(pool, keyOf(1), 7, 4), 0);
     slot.publish(bare(1));
     slot.acquireForCallback(pool);
@@ -203,20 +205,34 @@ TEST(PlanSlotTest, chunkRetiredAtAnEpochStaysFindableForTheBlockThatLoadedTheEpo
     EXPECT_EQ(nullptr, pool.find(keyOf(1)));
 }
 
-TEST(PlanSlotTest, epochRestartOnALivePoolLetsAHeldChunkBeReclaimedAtOnce) {
+TEST(PlanSlotTest, slotBuiltOnAFreshPoolStartsAtEpochZero) {
     PcmPool pool;
-    PlanSlot first;
-    for (int i = 0; i < 5; ++i) first.retain(pool, {});
-    first.acquireForCallback(pool);
+    PlanSlot slot{pool};
+    EXPECT_EQ(0, slot.epoch());
+}
+
+TEST(PlanSlotTest, slotBuiltOnALivePoolSeedsItsEpochFromThePoolAck) {
+    PcmPool pool;
+    pool.ackGeneration(kLiveAck);
+    PlanSlot slot{pool};
+    EXPECT_EQ(kLiveAck, slot.epoch());
+    slot.retain(pool, {});
+    EXPECT_EQ(kLiveAck + 1, slot.epoch());
+}
+
+TEST(PlanSlotTest, retiresOfASlotBuiltOnALivePoolStayProtectedUntilItsOwnBlockAcks) {
+    PcmPool pool;
+    pool.ackGeneration(kLiveAck);
     std::vector<ChunkKey> others;
     for (int n = 0; n < kSlots; ++n) {
         ASSERT_GE(publishFilled(pool, keyOf(n), 7, 4), 0);
         if (n > 0) others.push_back(keyOf(n));
     }
-    PlanSlot restarted;
-    restarted.acquireForCallback(pool);
+    PlanSlot slot{pool};
+    slot.retain(pool, others);
     ASSERT_NE(nullptr, pool.find(keyOf(0)));
-    restarted.retain(pool, others);
+    EXPECT_EQ(-1, pool.claim(keyOf(100)));
+    slot.acquireForCallback(pool);
     EXPECT_EQ(nullptr, pool.find(keyOf(0)));
     EXPECT_GE(pool.claim(keyOf(100)), 0);
 }
@@ -225,7 +241,7 @@ class PlanSlotRenderTest : public RendererFixture {
 protected:
     std::vector<float> blocks(int64_t from, int64_t frames, int32_t block) { return streamFromSlot(renderer, slot, pool, from, frames, block); }
 
-    PlanSlot slot;
+    PlanSlot slot{pool};
 };
 
 TEST_F(PlanSlotRenderTest, nothingPublishedRendersSilence) {
@@ -282,7 +298,7 @@ TEST_F(PlanSlotRenderTest, stopFadeIsCutSilentlyWhenTheSwapRetiresTheStoppingVoi
 
 TEST(PlanSlotConcurrencyTest, callbackNeverSeesPartialPlan) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     std::atomic<bool> controlDone{false};
     int64_t blocks = 0;
     int64_t partial = 0;
@@ -317,7 +333,7 @@ TEST(PlanSlotConcurrencyTest, callbackNeverSeesPartialPlan) {
 
 struct Held {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     std::atomic<int64_t> latest{0};
     std::atomic<int64_t> stalledAt{0};
     std::atomic<bool> retaining{false};
@@ -403,7 +419,7 @@ VoicePlan rotatingVoice(int64_t n, int64_t startFrame) {
 
 TEST(PlanSlotConcurrencyTest, controlPublishesRetainsAndCollectsWhileCallbackRendersRealBlocks) {
     PcmPool pool;
-    PlanSlot slot;
+    PlanSlot slot{pool};
     Renderer renderer{pool};
     std::atomic<bool> done{false};
     std::atomic<int64_t> deviceFrame{0};
@@ -450,5 +466,46 @@ TEST(PlanSlotConcurrencyTest, controlPublishesRetainsAndCollectsWhileCallbackRen
     EXPECT_GT(loudest, 0.0F);
 }
 
+
+TEST(PlanSlotConcurrencyTest, twoControlThreadsNeverDuplicateAnEpochWhileTheCallbackRenders) {
+    PcmPool pool;
+    PlanSlot slot{pool};
+    Renderer renderer{pool};
+    std::atomic<bool> done{false};
+    int64_t partial = 0;
+    int64_t regressions = 0;
+    int64_t blocks = 0;
+    std::thread callback([&] {
+        std::vector<float> out(2 * kBlock);
+        int64_t lastEpoch = 0;
+        for (int64_t frame = 0; !done.load(std::memory_order_acquire); frame += kBlock) {
+            const RenderPlan* p = slot.acquireForCallback(pool);
+            renderer.render(p, frame, kBlock, out.data());
+            ++blocks;
+            if (p != nullptr && !consistent(*p)) ++partial;
+            const int64_t epoch = slot.epoch();
+            if (epoch < lastEpoch) ++regressions;
+            lastEpoch = epoch;
+        }
+    });
+    const auto control = [&](int64_t first) {
+        for (int64_t i = 0; i < kCallsPerControlThread; ++i) {
+            slot.publish(counted(first + 2 * i));
+            slot.retain(pool, {});
+            slot.collectGarbage();
+        }
+    };
+    std::thread a(control, 1);
+    std::thread b(control, 2);
+    a.join();
+    b.join();
+    done.store(true, std::memory_order_release);
+    callback.join();
+
+    EXPECT_EQ(4 * kCallsPerControlThread, slot.epoch());
+    EXPECT_EQ(0, partial);
+    EXPECT_EQ(0, regressions);
+    EXPECT_GT(blocks, 0);
+}
 }
 }

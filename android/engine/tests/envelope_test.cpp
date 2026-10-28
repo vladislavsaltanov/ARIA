@@ -342,6 +342,37 @@ TEST_F(RendererLevelTest, busGainProductBeyondFloatRangeMutesInsteadOfOverflowin
     for (int32_t i = kFade; i < 2048; ++i) EXPECT_NEAR(kHalf, out[2 * i], 1e-6) << "frame " << i;
 }
 
+TEST_F(RendererLevelTest, busGainsWhoseProductIsOneButWhoseSumOverflowsNeverPutNonFiniteSamplesOnTheOutput) {
+    publishHalf();
+    publish(kRampHi, kRampLo, 2, kChunkFrames, halfScale);
+    std::vector<VoicePlan> eight;
+    for (int32_t id = 1; id <= Renderer::kMaxVoices; ++id) eight.push_back(voice(id));
+    RenderPlan overflowing = plan(eight);
+    overflowing.backingGain = 1e38F;
+    overflowing.masterGain = 1e-38F;
+    EXPECT_TRUE(allFinite(stream(renderer, &overflowing, 0, 2048, 256)));
+    const RenderPlan valid = plan(eight);
+    constexpr int64_t kSettleFrames = 153600;
+    const std::vector<float> out = stream(renderer, &valid, 2048, kSettleFrames, 256);
+    EXPECT_TRUE(allFinite(out));
+    for (int64_t i = kSettleFrames - 256; i < kSettleFrames; ++i) EXPECT_NEAR(4.0F, out[2 * i], 1e-4) << "frame " << i;
+}
+
+TEST_F(RendererLevelTest, hugeClickGainTimesHugeMasterNeverPutsNonFiniteSamplesOnTheOutputAndTheNextValidPlanClicks) {
+    RenderPlan overflowing = plan({});
+    overflowing.test = TestPlan{kHostUs, 1e5};
+    overflowing.clickGain = 1e30F;
+    overflowing.masterGain = 1e30F;
+    constexpr int64_t kFrames = 9728;
+    EXPECT_TRUE(allFinite(stream(renderer, &overflowing, 0, kFrames, 256)));
+    RenderPlan valid = overflowing;
+    valid.clickGain = 0.5F;
+    valid.masterGain = 1.0F;
+    const std::vector<float> out = stream(renderer, &valid, kFrames, kFrames, 256);
+    EXPECT_TRUE(allFinite(out));
+    EXPECT_FALSE(allZero(out));
+}
+
 TEST_F(RendererLevelTest, steadyOutputIsBitIdenticalForBlockSizes64_192_480_1024) {
     publishRamp(1);
     RenderPlan p = plan({withFade(withGainDb(voice(1), -3.0), linearFade(1.0, 0.5, 1.0, 4800))});

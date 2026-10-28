@@ -285,7 +285,10 @@ void Renderer::applyBusGains(const RenderPlan& plan, int64_t deviceFrame, int32_
         stereoOut[kChannels * i] *= gain;
         stereoOut[kChannels * i + 1] *= gain;
     }
-    if (!usableLevel(busPeak)) std::fill(stereoOut, stereoOut + static_cast<size_t>(frames) * kChannels, 0.0F);
+    const bool muted = !usableLevel(busPeak);
+    for (int32_t i = 0; i < kChannels * frames; ++i) {
+        if (muted || !std::isfinite(stereoOut[i])) stereoOut[i] = 0.0F;
+    }
 }
 
 void Renderer::mixClicks(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {
