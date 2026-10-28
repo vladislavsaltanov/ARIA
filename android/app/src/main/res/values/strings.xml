@@ -1,4 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ARIA Monitor</string>
+
+    <string name="status_offline">НЕТ СВЯЗИ</string>
+    <string name="status_syncing">СИНХРОНИЗАЦИЯ…</string>
+    <string name="status_locked">СИНХР. ±%1$s МС</string>
+    <string name="badge_no_output">НЕТ ВЫВОДА НА ХОСТЕ</string>
+    <string name="badge_no_backing">ПОДЛОЖКА НЕДОСТУПНА</string>
+
+    <string name="beat_description">Такт и доля %1$s, %2$s, размер %3$s</string>
+    <string name="title_none">Нет трека в эфире</string>
+    <string name="next_format">Далее: %1$s</string>
+    <string name="next_none">—</string>
+
+    <string name="label_backing">ПОДЛОЖКА</string>
+    <string name="label_click">КЛИК</string>
+    <string name="label_trim">ПОДСТРОЙКА</string>
+    <string name="label_device">УСТРОЙСТВО</string>
+    <string name="toggle_on">ВКЛ</string>
+    <string name="toggle_off">ВЫКЛ</string>
+    <string name="level_db">%1$s дБ</string>
+    <string name="backing_level_description">Уровень подложки</string>
+    <string name="backing_toggle_description">Подложка</string>
+    <string name="click_level_description">Уровень клика</string>
+    <string name="click_toggle_description">Клик</string>
+
+    <string name="trim_value">%1$d мс</string>
+    <string name="trim_step_down">−%1$d</string>
+    <string name="trim_step_up">+%1$d</string>
+    <string name="trim_down_description">Уменьшить задержку зала на %1$d мс</string>
+    <string name="trim_up_description">Увеличить задержку зала на %1$d мс</string>
+    <string name="test_click">ТЕСТ-КЛИК</string>
+    <string name="test_click_description">Тестовый клик</string>
+    <string name="trim_hint">Bluetooth-наушники добавляют 150–300 мс — подстройте по тест-клику зала.</string>
+
+    <string name="device_placeholder">Барабаны</string>
+    <string name="device_description">Имя устройства</string>
+    <string name="keep_screen_on">Не гасить экран</string>
+
+    <string name="kicked_title">Вас отключили</string>
+    <string name="kicked_body">Звукорежиссёр отключил это устройство.</string>
+    <string name="kicked_retry">ПОДКЛЮЧИТЬСЯ СНОВА</string>
+    <string name="pairing_title">Нужен новый QR</string>
+    <string name="pairing_body">Отсканируйте QR-код монитора на компьютере заново.</string>
+
+    <string name="pairing_action">СКАНИРОВАТЬ QR</string>
+    <string name="dialog_dismiss">ЗАКРЫТЬ</string>
+
+    <string name="pairing_screen_title">Подключение к монитору</string>
+    <string name="scan_hint">Наведите камеру на QR-код монитора на компьютере.</string>
+    <string name="scan_foreign">Это не QR-код монитора ARIA. Покажите QR монитора с компьютера.</string>
+    <string name="scanner_description">Камера для сканирования QR-кода монитора</string>
+    <string name="camera_denied">Доступ к камере не выдан. Введите данные вручную или разрешите камеру.</string>
+    <string name="camera_request">РАЗРЕШИТЬ КАМЕРУ</string>
+    <string name="pairing_back">НАЗАД</string>
+    <string name="manual_title">ВВОД ВРУЧНУЮ</string>
+    <string name="manual_submit">ПОДКЛЮЧИТЬ</string>
+    <string name="field_host">Адрес компьютера</string>
+    <string name="field_port">Порт</string>
+    <string name="field_identifier">Идентификатор</string>
+    <string name="field_password">Пароль</string>
+    <string name="error_host_blank">Укажите адрес компьютера.</string>
+    <string name="error_host_invalid">Некорректный адрес. Введите только IP или имя компьютера, порт — в отдельном поле.</string>
+    <string name="error_port_not_number">Порт — число от 1 до 65535.</string>
+    <string name="error_port_range">Порт должен быть от 1 до 65535.</string>
+    <string name="error_identifier_blank">Укажите идентификатор.</string>
+    <string name="error_password_blank">Укажите пароль.</string>
+
+    <string name="onboarding_title">Подготовка телефона</string>
+    <string name="onboarding_intro">Чтобы монитор не прерывался во время выступления, выдайте разрешения ниже. Можно пропустить и вернуться позже.</string>
+    <string name="onboarding_notifications_title">УВЕДОМЛЕНИЯ</string>
+    <string name="onboarding_notifications_body">Монитор работает в фоне и показывает уведомление, пока идёт звук.</string>
+    <string name="onboarding_battery_title">ЭКОНОМИЯ БАТАРЕИ</string>
+    <string name="onboarding_battery_body">Без исключения система может остановить звук при выключенном экране.</string>
+    <string name="onboarding_allow">РАЗРЕШИТЬ</string>
+    <string name="onboarding_battery_action">НЕ ОГРАНИЧИВАТЬ РАБОТУ</string>
+    <string name="onboarding_granted">ВЫДАНО</string>
+    <string name="onboarding_vendor_title">ЗАЩИЩЁННЫЕ ПРИЛОЖЕНИЯ</string>
+    <string name="onboarding_vendor_body">На телефонах Xiaomi, Huawei, Oppo, Vivo, Samsung и других найдите ARIA Monitor в разделах «Автозапуск», «Защищённые приложения» или «Работа в фоне» и разрешите ему работать в фоне.</string>
+    <string name="onboarding_app_settings">НАСТРОЙКИ ПРИЛОЖЕНИЯ</string>
+    <string name="onboarding_skip">ПРОПУСТИТЬ</string>
+    <string name="onboarding_done">ГОТОВО</string>
 </resources>
