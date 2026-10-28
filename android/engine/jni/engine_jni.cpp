@@ -34,6 +34,23 @@ Result guarded(Result onFailure, Body body) {
     }
 }
 
+class CriticalBytes {
+public:
+    CriticalBytes(JNIEnv* env, jbyteArray array) : env_(env), array_(array), bytes_(env->GetPrimitiveArrayCritical(array, nullptr)) {}
+    ~CriticalBytes() {
+        if (bytes_ != nullptr) env_->ReleasePrimitiveArrayCritical(array_, bytes_, JNI_ABORT);
+    }
+    CriticalBytes(const CriticalBytes&) = delete;
+    CriticalBytes& operator=(const CriticalBytes&) = delete;
+
+    const uint8_t* data() const { return static_cast<const uint8_t*>(bytes_); }
+
+private:
+    JNIEnv* env_;
+    jbyteArray array_;
+    void* bytes_;
+};
+
 aria::ChunkKey keyOf(jlong hi, jlong lo, jint chunk) { return aria::ChunkKey{hi, lo, chunk}; }
 
 }
@@ -76,13 +93,11 @@ JNIEXPORT jboolean JNICALL Java_aria_monitor_engine_OboeAudioEngine_nativePublis
     Engine* engine = engineOf(handle);
     if (plan == nullptr) return JNI_FALSE;
     return guarded<jboolean>(JNI_FALSE, [env, engine, plan] {
-        std::lock_guard<std::mutex> lock(engine->control);
         const jsize size = env->GetArrayLength(plan);
-        jbyte* bytes = env->GetByteArrayElements(plan, nullptr);
-        if (bytes == nullptr) return JNI_FALSE;
-        const bool published = engine->core.publishPlan(reinterpret_cast<const uint8_t*>(bytes), static_cast<size_t>(size));
-        env->ReleaseByteArrayElements(plan, bytes, JNI_ABORT);
-        return published ? JNI_TRUE : JNI_FALSE;
+        std::vector<jbyte> copy(static_cast<size_t>(size));
+        env->GetByteArrayRegion(plan, 0, size, copy.data());
+        std::lock_guard<std::mutex> lock(engine->control);
+        return engine->core.publishPlan(reinterpret_cast<const uint8_t*>(copy.data()), copy.size()) ? JNI_TRUE : JNI_FALSE;
     });
 }
 
@@ -94,12 +109,9 @@ JNIEXPORT jboolean JNICALL Java_aria_monitor_engine_OboeAudioEngine_nativeWrite(
     return guarded<jboolean>(JNI_FALSE, [env, engine, hi, lo, chunk, pcm, frames] {
         std::lock_guard<std::mutex> lock(engine->control);
         const jsize size = env->GetArrayLength(pcm);
-        void* bytes = env->GetPrimitiveArrayCritical(pcm, nullptr);
-        if (bytes == nullptr) return JNI_FALSE;
-        const bool stored =
-            engine->core.writeChunk(keyOf(hi, lo, chunk), static_cast<const uint8_t*>(bytes), static_cast<size_t>(size), frames);
-        env->ReleasePrimitiveArrayCritical(pcm, bytes, JNI_ABORT);
-        return stored ? JNI_TRUE : JNI_FALSE;
+        const CriticalBytes bytes(env, pcm);
+        if (bytes.data() == nullptr) return JNI_FALSE;
+        return engine->core.writeChunk(keyOf(hi, lo, chunk), bytes.data(), static_cast<size_t>(size), frames) ? JNI_TRUE : JNI_FALSE;
     });
 }
 
@@ -163,14 +175,17 @@ JNIEXPORT void JNICALL Java_aria_monitor_engine_OboeAudioEngine_nativeGrowBuffer
     });
 }
 
-JNIEXPORT void JNICALL Java_aria_monitor_engine_OboeAudioEngine_nativeSimulateDisconnect(JNIEnv*, jobject, jlong handle) {
+#ifdef ARIA_TEST_HOOKS
+JNIEXPORT void JNICALL Java_aria_monitor_engine_OboeAudioEngine_nativeSimulateDisconnect(JNIEnv*, jobject, jlong handle,
+                                                                                         jint failedReopenAttempts) {
     Engine* engine = engineOf(handle);
-    guarded<bool>(false, [engine] {
+    guarded<bool>(false, [engine, failedReopenAttempts] {
         std::lock_guard<std::mutex> lock(engine->control);
-        engine->output->simulateDisconnectForTests();
+        engine->output->simulateDisconnectForTests(failedReopenAttempts);
         return true;
     });
 }
+#endif
 
 JNIEXPORT jint JNICALL Java_aria_monitor_engine_OboeAudioEngine_nativeConsumeReopenCount(JNIEnv*, jobject, jlong handle) {
     Engine* engine = engineOf(handle);

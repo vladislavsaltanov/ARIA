@@ -3,6 +3,7 @@
 #include "pcm_pool.h"
 #include "plan_slot.h"
 #include "renderer.h"
+#include "reopen_retry.h"
 
 #include <oboe/Oboe.h>
 
@@ -25,8 +26,6 @@ class OboeOutput final : public oboe::AudioStreamDataCallback,
 public:
     static constexpr int32_t kSampleRate = 48000;
     static constexpr int32_t kStartBursts = 2;
-    static constexpr int kReopenAttempts = 3;
-    static constexpr int kReopenPauseMs = 250;
 
     OboeOutput(PlanSlot& slot, PcmPool& pool, Renderer& renderer);
     OboeOutput(const OboeOutput&) = delete;
@@ -38,7 +37,9 @@ public:
     int32_t xrunCount();
     void growBuffer();
     int32_t consumeReopenCount();
-    void simulateDisconnectForTests();
+#ifdef ARIA_TEST_HOOKS
+    void simulateDisconnectForTests(int failedReopenAttempts);
+#endif
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream, void* audioData, int32_t numFrames) override;
     void onErrorAfterClose(oboe::AudioStream* stream, oboe::Result error) override;
@@ -46,7 +47,7 @@ public:
 private:
     bool openAndStartLocked();
     void closeLocked();
-    bool reopenOnce(const oboe::AudioStream* failed);
+    ReopenRetry::Outcome reopenAttempt();
     void refreshXrunsLocked();
 
     PlanSlot& slot_;
@@ -59,7 +60,10 @@ private:
     int32_t xrunsOfClosedStreams_ = 0;
 
     std::atomic<int32_t> lastXrunCount_{0};
-    std::atomic<int32_t> reopens_{0};
+    ReopenRetry reopen_;
+#ifdef ARIA_TEST_HOOKS
+    std::atomic<int> failReopenAttempts_{0};
+#endif
     int64_t deviceFrame_ = 0;
 };
 

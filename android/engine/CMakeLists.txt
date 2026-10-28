@@ -18,6 +18,7 @@ set(ARIA_ENGINE_SOURCES
     src/plan_decoder.cpp
     src/plan_slot.cpp
     src/renderer.cpp
+    src/reopen_retry.cpp
 )
 
 if(ARIA_HOST_TESTS)
@@ -58,6 +59,7 @@ if(ARIA_HOST_TESTS)
         tests/pcm_pool_test.cpp
         tests/plan_decoder_test.cpp
         tests/renderer_voice_test.cpp
+        tests/reopen_retry_test.cpp
         ${ARIA_ENGINE_SOURCES}
     )
     target_include_directories(aria_engine_tests PRIVATE src)
@@ -82,7 +84,8 @@ elseif(ANDROID)
     add_library(aria_engine SHARED ${ARIA_ENGINE_SOURCES} src/oboe_output.cpp jni/engine_jni.cpp)
     target_include_directories(aria_engine PRIVATE src)
     target_compile_options(aria_engine PRIVATE ${ARIA_WARNING_FLAGS})
-    target_link_libraries(aria_engine PRIVATE oboe::oboe log)
+    target_compile_definitions(aria_engine PRIVATE $<$<CONFIG:Debug>:ARIA_TEST_HOOKS>)
+    target_link_libraries(aria_engine PRIVATE oboe::oboe)
 else()
     message(FATAL_ERROR "Configure with -DARIA_HOST_TESTS=ON on the host or build through Gradle for Android")
 endif()

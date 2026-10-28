@@ -84,8 +84,8 @@ class OboeAudioEngine : AudioEngine {
         synchronized(lock) { if (handle != NO_HANDLE) nativeGrowBuffer(handle) }
     }
 
-    internal fun simulateDisconnectForTests() {
-        synchronized(lock) { if (handle != NO_HANDLE) nativeSimulateDisconnect(handle) }
+    internal fun simulateDisconnectForTests(failedReopenAttempts: Int = 0) {
+        synchronized(lock) { if (handle != NO_HANDLE) nativeSimulateDisconnect(handle, failedReopenAttempts) }
     }
 
     override fun setEventListener(listener: (EngineEvent) -> Unit) {
@@ -121,7 +121,7 @@ class OboeAudioEngine : AudioEngine {
 
     private external fun nativeGrowBuffer(handle: Long)
 
-    private external fun nativeSimulateDisconnect(handle: Long)
+    private external fun nativeSimulateDisconnect(handle: Long, failedReopenAttempts: Int)
 
     private external fun nativeConsumeReopenCount(handle: Long): Int
 

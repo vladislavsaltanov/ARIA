@@ -1,7 +1,6 @@
 #include "oboe_output.h"
 
 #include <algorithm>
-#include <chrono>
 #include <ctime>
 #include <thread>
 
@@ -52,6 +51,7 @@ bool OboeOutput::openAndStartLocked() {
 }
 
 void OboeOutput::closeLocked() {
+    reopen_.cancel();
     if (!stream_) return;
     refreshXrunsLocked();
     xrunsOfClosedStreams_ = lastXrunCount_.load(std::memory_order_relaxed);
@@ -90,18 +90,22 @@ void OboeOutput::growBuffer() {
     stream_->setBufferSizeInFrames(grown);
 }
 
-void OboeOutput::simulateDisconnectForTests() {
-    oboe::AudioStream* failed = nullptr;
+#ifdef ARIA_TEST_HOOKS
+void OboeOutput::simulateDisconnectForTests(int failedReopenAttempts) {
+    std::shared_ptr<oboe::AudioStream> failed;
     {
         std::lock_guard<std::mutex> lock(streamMutex_);
         if (!stream_) return;
-        failed = stream_.get();
-        stream_->close();
+        failed = stream_;
+        failReopenAttempts_.store(failedReopenAttempts, std::memory_order_relaxed);
+        failed->close();
     }
-    std::thread([self = shared_from_this(), failed] { self->onErrorAfterClose(failed, oboe::Result::ErrorDisconnected); }).detach();
+    std::thread([self = shared_from_this(), failed] { self->onErrorAfterClose(failed.get(), oboe::Result::ErrorDisconnected); })
+        .detach();
 }
+#endif
 
-int32_t OboeOutput::consumeReopenCount() { return reopens_.exchange(0, std::memory_order_acq_rel); }
+int32_t OboeOutput::consumeReopenCount() { return reopen_.consumeReopens(); }
 
 oboe::DataCallbackResult OboeOutput::onAudioReady(oboe::AudioStream*, void* audioData, int32_t numFrames) {
     const RenderPlan* plan = slot_.acquireForCallback(pool_);
@@ -111,20 +115,23 @@ oboe::DataCallbackResult OboeOutput::onAudioReady(oboe::AudioStream*, void* audi
 }
 
 void OboeOutput::onErrorAfterClose(oboe::AudioStream* failed, oboe::Result) {
-    for (int attempt = 0; attempt < kReopenAttempts; ++attempt) {
-        if (attempt > 0) std::this_thread::sleep_for(std::chrono::milliseconds(kReopenPauseMs));
-        if (reopenOnce(failed)) return;
+    {
+        std::lock_guard<std::mutex> lock(streamMutex_);
+        if (!wantRunning_ || stream_.get() != failed) return;
+        xrunsOfClosedStreams_ = lastXrunCount_.load(std::memory_order_relaxed);
+        stream_.reset();
     }
+    reopen_.runUntilReopenedOrCancelled([this] { return reopenAttempt(); });
 }
 
-bool OboeOutput::reopenOnce(const oboe::AudioStream* failed) {
+ReopenRetry::Outcome OboeOutput::reopenAttempt() {
     std::lock_guard<std::mutex> lock(streamMutex_);
-    if (!wantRunning_ || (stream_ && stream_.get() != failed)) return true;
-    xrunsOfClosedStreams_ = lastXrunCount_.load(std::memory_order_relaxed);
-    stream_.reset();
-    if (!openAndStartLocked()) return false;
-    reopens_.fetch_add(1, std::memory_order_acq_rel);
-    return true;
+    if (!wantRunning_ || stream_) return ReopenRetry::Outcome::Abandoned;
+#ifdef ARIA_TEST_HOOKS
+    if (failReopenAttempts_.fetch_sub(1, std::memory_order_relaxed) > 0) return ReopenRetry::Outcome::Failed;
+    failReopenAttempts_.store(0, std::memory_order_relaxed);
+#endif
+    return openAndStartLocked() ? ReopenRetry::Outcome::Reopened : ReopenRetry::Outcome::Failed;
 }
 
 }

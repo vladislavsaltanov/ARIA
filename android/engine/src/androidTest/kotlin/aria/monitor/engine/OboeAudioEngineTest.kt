@@ -23,6 +23,10 @@ private const val FRAMES = 4800
 private const val BYTES_PER_FRAME = 4
 private const val SETTLE_MS = 150L
 private const val POLL_MS = 50L
+private const val FAILED_REOPENS = 4
+private const val RETRY_DEADLINE_NS = 10_000_000_000L
+private const val STOP_DEADLINE_NS = 1_000_000_000L
+private const val REOPEN_QUIET_MS = 800L
 private const val REOPEN_DEADLINE_NS = 3_000_000_000L
 private const val US_PER_FRAME = 1_000_000.0 / 48_000.0
 
@@ -53,6 +57,13 @@ private fun voicePlaying(nowUs: Long): VoicePlan {
 }
 
 private fun nowUs() = System.nanoTime() / 1000
+
+private fun OboeAudioEngine.advancesWithin(waitMs: Long): Boolean? {
+    val first = sampleStamp() ?: return null
+    Thread.sleep(waitMs)
+    val second = sampleStamp() ?: return false
+    return second.framePosition > first.framePosition
+}
 
 class OboeAudioEngineTest {
     private lateinit var engine: OboeAudioEngine
@@ -120,7 +131,10 @@ class OboeAudioEngineTest {
         engine.retain(emptySet())
         engine.publish(planAt(2, nowUs()))
         Thread.sleep(SETTLE_MS)
-        assertTrue(engine.xrunCount >= 0)
+        val advancing = engine.advancesWithin(SETTLE_MS)
+        assumeTrue("no output timestamps on this device", advancing != null)
+        assertTrue(advancing!!)
+        for (chunk in 100 until 100 + POOL_SLOTS) assertTrue(engine.write(keyOf(chunk), pcm(FRAMES), FRAMES))
         engine.stop()
     }
 
@@ -131,6 +145,9 @@ class OboeAudioEngineTest {
         assertTrue(engine.start())
         engine.publish(planAt(1, nowUs()))
         Thread.sleep(SETTLE_MS)
+        val advancing = engine.advancesWithin(SETTLE_MS)
+        assumeTrue("no output timestamps on this device", advancing != null)
+        assertTrue(advancing!!)
         engine.stop()
     }
 
@@ -226,6 +243,59 @@ class OboeAudioEngineTest {
         Thread.sleep(SETTLE_MS)
         assertTrue(engine.sampleStamp()!!.framePosition > first!!.framePosition)
         assertEquals(1, events.size)
+    }
+
+    @Test
+    fun reopenKeepsRetryingPastTheOldThreeAttemptLimitUntilTheStreamComesBack() {
+        val events = mutableListOf<EngineEvent>()
+        engine.setEventListener { events += it }
+        assertTrue(engine.start())
+        Thread.sleep(SETTLE_MS)
+        engine.simulateDisconnectForTests(failedReopenAttempts = FAILED_REOPENS)
+        val deadline = System.nanoTime() + RETRY_DEADLINE_NS
+        while (events.isEmpty() && System.nanoTime() < deadline) {
+            engine.sampleStamp()
+            Thread.sleep(POLL_MS)
+        }
+        assertEquals(listOf(EngineEvent.StreamReopened), events)
+        Thread.sleep(SETTLE_MS)
+        val advancing = engine.advancesWithin(SETTLE_MS)
+        assumeTrue("no output timestamps on this device", advancing != null)
+        assertTrue(advancing!!)
+    }
+
+    @Test
+    fun stopEndsAnEndlessReopenLoopPromptlyAndNothingComesBack() {
+        val events = mutableListOf<EngineEvent>()
+        engine.setEventListener { events += it }
+        assertTrue(engine.start())
+        Thread.sleep(SETTLE_MS)
+        engine.simulateDisconnectForTests(failedReopenAttempts = Int.MAX_VALUE)
+        Thread.sleep(SETTLE_MS * 2)
+        val before = System.nanoTime()
+        engine.stop()
+        assertTrue(System.nanoTime() - before < STOP_DEADLINE_NS)
+        Thread.sleep(REOPEN_QUIET_MS)
+        assertNull(engine.sampleStamp())
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun startDuringAnEndlessReopenLoopWinsAndLeavesOneRunningStream() {
+        val events = mutableListOf<EngineEvent>()
+        engine.setEventListener { events += it }
+        assertTrue(engine.start())
+        Thread.sleep(SETTLE_MS)
+        engine.simulateDisconnectForTests(failedReopenAttempts = Int.MAX_VALUE)
+        Thread.sleep(SETTLE_MS * 2)
+        assertTrue(engine.start())
+        Thread.sleep(SETTLE_MS)
+        val advancing = engine.advancesWithin(SETTLE_MS)
+        assumeTrue("no output timestamps on this device", advancing != null)
+        assertTrue(advancing!!)
+        Thread.sleep(REOPEN_QUIET_MS)
+        engine.sampleStamp()
+        assertTrue(events.isEmpty())
     }
 
     @Test
