@@ -52,6 +52,34 @@ public sealed class ProjectZipTests : IDisposable
         Assert.Equal("Утро", Assert.Single(document.Scripts).Name);
     }
 
+    [Theory]
+    [InlineData("../evil.txt")]
+    [InlineData("audio/../../evil.txt")]
+    [InlineData("/tmp/aria-zipslip-evil.txt")]
+    public void ExtractProject_SkipsEntriesEscapingDestination(string evilEntry)
+    {
+        var zip = Path.Combine(_root, "evil.zip");
+        using (var archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            using (var writer = new StreamWriter(archive.CreateEntry(".aria/project.json").Open()))
+            {
+                writer.Write("{}");
+            }
+            using (var writer = new StreamWriter(archive.CreateEntry(evilEntry).Open()))
+            {
+                writer.Write("pwned");
+            }
+        }
+        var dest = Path.Combine(_root, "dest");
+
+        var json = ProjectFolder.ExtractProject(zip, dest);
+
+        Assert.Equal("{}", json);
+        Assert.False(File.Exists(Path.Combine(_root, "evil.txt")));
+        Assert.False(File.Exists("/tmp/aria-zipslip-evil.txt"));
+        Assert.Single(Directory.GetFiles(dest, "*", SearchOption.AllDirectories));
+    }
+
     [Fact]
     public async Task ImportZipFile_ExtractsAndBindsTracks()
     {

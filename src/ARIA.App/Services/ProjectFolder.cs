@@ -39,15 +39,15 @@ public static class ProjectFolder
     public static string ExtractProject(string zipPath, string destDir)
     {
         Directory.CreateDirectory(destDir);
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destDir)) + Path.DirectorySeparatorChar;
         using var archive = ZipFile.OpenRead(zipPath);
         foreach (var entry in archive.Entries)
         {
-            var name = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
-            if (entry.FullName.EndsWith('/') || Path.IsPathRooted(name) || name.Split(Path.DirectorySeparatorChar).Contains(".."))
+            var dest = Path.GetFullPath(Path.Combine(root, entry.FullName));
+            if (entry.FullName.EndsWith('/') || !dest.StartsWith(root, StringComparison.Ordinal))
             {
                 continue;
             }
-            var dest = Path.Combine(destDir, name);
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             entry.ExtractToFile(dest, overwrite: true);
         }
