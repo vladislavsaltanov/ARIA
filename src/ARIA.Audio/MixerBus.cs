@@ -304,7 +304,7 @@ public sealed class MixerBus : IDisposable
             {
                 var rampFrames = Math.Max(1, (int)Math.Round(fadeDuration.TotalSeconds * _sampleRate));
                 voice.MarkerFadeArmed = false;
-                voice.Fader =new FaderNode(rampFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: true);
+                voice.Fader = new FaderNode(rampFrames, FadeCurve.Linear, voice.Fader.Level, 0.0, stopWhenDone: true);
             }
             else
             {
