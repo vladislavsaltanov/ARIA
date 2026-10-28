@@ -53,11 +53,12 @@ double voiceLevel(const RenderPlan& plan, const VoicePlan& voice, int64_t device
     return dbToGain(voice.gainDb) * fadeLevel(voice.fade ? &*voice.fade : nullptr, std::max(0.0, sinceAnchor));
 }
 
+size_t consideredVoices(const RenderPlan& plan) { return std::min(plan.voices.size(), Renderer::kMaxPlanVoices); }
+
 const VoicePlan* findVoice(const RenderPlan& plan, int32_t id) {
-    for (const VoicePlan& voice : plan.voices) {
-        if (voice.id == id) return &voice;
-    }
-    return nullptr;
+    const auto considered = plan.voices.begin() + static_cast<std::ptrdiff_t>(consideredVoices(plan));
+    const auto found = std::find_if(plan.voices.begin(), considered, [id](const VoicePlan& voice) { return voice.id == id; });
+    return found == considered ? nullptr : &*found;
 }
 
 bool continues(const VoiceState& state, const VoicePlan* voice) {
@@ -179,7 +180,8 @@ void Renderer::assignVoices(const RenderPlan& plan, int64_t deviceFrame, PlanOfS
             beginStop(state);
         }
     }
-    for (const VoicePlan& voice : plan.voices) {
+    for (size_t index = 0; index < consideredVoices(plan); ++index) {
+        const VoicePlan& voice = plan.voices[index];
         if (!voice.playing || activeSlot(voice.id) != nullptr || findVoice(plan, voice.id) != &voice) continue;
         VoiceState* state = claimSlot();
         if (state == nullptr) continue;
@@ -262,6 +264,7 @@ void Renderer::applyBusGains(const RenderPlan& plan, int64_t deviceFrame, int32_
         if (masterRampFrames_ <= 0) master_ = masterTarget_;
     }
     const double backingTarget = plan.backingGain;
+    const double busPeak = std::max(std::fabs(backing_), std::fabs(backingTarget)) * std::max(std::fabs(master_), std::fabs(masterTarget_));
     for (int32_t i = 0; i < frames; ++i) {
         backing_ += (backingTarget - backing_) * kBackingCoefficient;
         if (std::fabs(backingTarget - backing_) < kBackingSnap) backing_ = backingTarget;
@@ -282,6 +285,7 @@ void Renderer::applyBusGains(const RenderPlan& plan, int64_t deviceFrame, int32_
         stereoOut[kChannels * i] *= gain;
         stereoOut[kChannels * i + 1] *= gain;
     }
+    if (!usableLevel(busPeak)) std::fill(stereoOut, stereoOut + static_cast<size_t>(frames) * kChannels, 0.0F);
 }
 
 void Renderer::mixClicks(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {

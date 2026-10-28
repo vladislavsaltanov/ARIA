@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -22,6 +23,7 @@ struct VoiceProbe {
 class Renderer {
 public:
     static constexpr int kMaxVoices = 8;
+    static constexpr size_t kMaxPlanVoices = 64;
     static constexpr int32_t kFadeInFrames = 480;
     static constexpr int32_t kStopFrames = 384;
     static constexpr double kOutputRate = 48000.0;

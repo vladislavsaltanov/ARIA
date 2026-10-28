@@ -15,6 +15,7 @@ set(ARIA_ENGINE_SOURCES
     src/envelope.cpp
     src/pcm_pool.cpp
     src/plan_decoder.cpp
+    src/plan_slot.cpp
     src/renderer.cpp
 )
 
@@ -62,6 +63,17 @@ if(ARIA_HOST_TESTS)
     target_compile_definitions(aria_engine_tests PRIVATE ARIA_FIXTURES_DIR="${ARIA_FIXTURES_DIR}" ARIA_PARITY_DIR="${ARIA_PARITY_DIR}")
     target_link_libraries(aria_engine_tests PRIVATE GTest::gtest_main nlohmann_json::nlohmann_json Threads::Threads)
     gtest_discover_tests(aria_engine_tests PROPERTIES TIMEOUT 30)
+
+    add_executable(aria_realtime_tests
+        tests/counting_allocator.cpp
+        tests/plan_slot_test.cpp
+        tests/realtime_invariants_test.cpp
+        ${ARIA_ENGINE_SOURCES}
+    )
+    target_include_directories(aria_realtime_tests PRIVATE src)
+    target_compile_options(aria_realtime_tests PRIVATE ${ARIA_WARNING_FLAGS})
+    target_link_libraries(aria_realtime_tests PRIVATE GTest::gtest_main Threads::Threads)
+    gtest_discover_tests(aria_realtime_tests PROPERTIES TIMEOUT 30)
 elseif(ANDROID)
     find_package(oboe REQUIRED CONFIG)
 

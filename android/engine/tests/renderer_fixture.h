@@ -2,6 +2,7 @@
 
 #include "pcm_pool.h"
 #include "plan.h"
+#include "plan_slot.h"
 #include "renderer.h"
 
 #include <gtest/gtest.h>
@@ -76,10 +77,23 @@ inline bool allFinite(const std::vector<float>& out) {
     return std::all_of(out.begin(), out.end(), [](float sample) { return std::isfinite(sample); });
 }
 
-inline std::vector<float> stream(Renderer& target, const RenderPlan* p, int64_t from, int64_t frames, int32_t block) {
+template <typename PlanForBlock>
+std::vector<float> streamBlocks(Renderer& target, PlanForBlock planForBlock, int64_t from, int64_t frames, int32_t block) {
     std::vector<float> out(2 * static_cast<size_t>(frames));
-    for (int64_t done = 0; done < frames; done += block) target.render(p, from + done, block, out.data() + 2 * done);
+    if (block <= 0 || frames % block != 0) {
+        ADD_FAILURE() << "stream of " << frames << " frames is not a whole number of " << block << "-frame blocks";
+        return out;
+    }
+    for (int64_t done = 0; done < frames; done += block) target.render(planForBlock(), from + done, block, out.data() + 2 * done);
     return out;
+}
+
+inline std::vector<float> stream(Renderer& target, const RenderPlan* p, int64_t from, int64_t frames, int32_t block) {
+    return streamBlocks(target, [p] { return p; }, from, frames, block);
+}
+
+inline std::vector<float> streamFromSlot(Renderer& target, PlanSlot& slot, PcmPool& pool, int64_t from, int64_t frames, int32_t block) {
+    return streamBlocks(target, [&slot, &pool] { return slot.acquireForCallback(pool); }, from, frames, block);
 }
 
 class RendererFixture : public ::testing::Test {

@@ -328,6 +328,20 @@ TEST_F(RendererLevelTest, levelChangeIsInterpolatedAcrossOneBlock) {
     for (int32_t i = 256; i < 512; ++i) EXPECT_NEAR(0.5 * gain, out[2 * i], 1e-6) << "frame " << i;
 }
 
+TEST_F(RendererLevelTest, busGainProductBeyondFloatRangeMutesInsteadOfOverflowing) {
+    publishHalf();
+    RenderPlan huge = plan({voice(1)});
+    huge.backingGain = 1e30F;
+    huge.masterGain = 1e30F;
+    EXPECT_TRUE(allZero(stream(renderer, &huge, 0, 2048, 256)));
+    RenderPlan balanced = plan({voice(1)});
+    balanced.backingGain = 1e19F;
+    balanced.masterGain = 1e-19F;
+    Renderer fresh{pool};
+    const std::vector<float> out = stream(fresh, &balanced, 0, 2048, 256);
+    for (int32_t i = kFade; i < 2048; ++i) EXPECT_NEAR(kHalf, out[2 * i], 1e-6) << "frame " << i;
+}
+
 TEST_F(RendererLevelTest, steadyOutputIsBitIdenticalForBlockSizes64_192_480_1024) {
     publishRamp(1);
     RenderPlan p = plan({withFade(withGainDb(voice(1), -3.0), linearFade(1.0, 0.5, 1.0, 4800))});

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -15,6 +16,9 @@ namespace {
 constexpr double kDeadZone = 1e-3;
 constexpr double kMaxDeviation = 5e-4;
 constexpr int kMaxVoices = 8;
+constexpr int32_t kMaxPlanVoices = 64;
+constexpr int32_t kHostilePlanVoices = 100000;
+constexpr std::chrono::seconds kBoundedRender{2};
 constexpr double kTwoPi = 6.283185307179586;
 constexpr double kSineHz = 440.0;
 constexpr int32_t kStop = 384;
@@ -452,6 +456,20 @@ TEST_F(RendererVoiceTest, moreThanMaxVoicesIgnoredWithoutCrash) {
     EXPECT_TRUE(renderer.probe(kMaxVoices).has_value());
     EXPECT_FALSE(renderer.probe(kMaxVoices + 1).has_value());
     EXPECT_FALSE(renderer.probe(kMaxVoices + 2).has_value());
+}
+
+TEST_F(RendererVoiceTest, onlyTheFirst64PlanVoicesCountSoAHugePlanRendersWithinTheDeadline) {
+    publishRamp(1);
+    std::vector<VoicePlan> voices;
+    voices.reserve(kHostilePlanVoices);
+    for (int32_t i = 0; i < kHostilePlanVoices; ++i) voices.push_back(i < kMaxPlanVoices - 1 ? stopped(voice(i + 1)) : voice(i + 1));
+    const RenderPlan p = plan(std::move(voices));
+    const auto started = std::chrono::steady_clock::now();
+    const std::vector<float> out = stream(renderer, &p, 0, 2048, 1024);
+    EXPECT_LT(std::chrono::steady_clock::now() - started, kBoundedRender);
+    for (int32_t i = 0; i < 2048; ++i) EXPECT_NEAR(faded(ramp(kAnchorFrame + i), i), out[2 * i], 1e-5) << "frame " << i;
+    EXPECT_TRUE(renderer.probe(kMaxPlanVoices).has_value());
+    EXPECT_FALSE(renderer.probe(kMaxPlanVoices + 1).has_value());
 }
 
 TEST_F(RendererVoiceTest, waitingVoiceEvictsStoppingSlotOfVanishedVoice) {
