@@ -2,6 +2,7 @@ package aria.monitor.app
 
 import aria.monitor.R
 import aria.monitor.app.ui.LinkStatus
+import aria.monitor.app.ui.textRes
 import aria.monitor.app.ui.toUi
 import aria.monitor.core.SessionState
 import android.app.Notification
@@ -36,11 +37,7 @@ internal fun Context.createMonitorChannel() {
 }
 
 internal fun Context.monitorNotification(status: LinkStatus, stop: Intent): Notification {
-    val text = when (status) {
-        LinkStatus.Offline -> getString(R.string.status_offline)
-        LinkStatus.Syncing -> getString(R.string.status_syncing)
-        is LinkStatus.Locked -> getString(R.string.status_locked, status.uncertaintyMs)
-    }
+    val text = if (status is LinkStatus.Locked) getString(status.textRes, status.uncertaintyMs) else getString(status.textRes)
     val stopAction = Notification.Action.Builder(
         Icon.createWithResource(this, android.R.drawable.ic_media_pause),
         getString(R.string.notification_stop),

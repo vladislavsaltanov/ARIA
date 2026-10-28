@@ -1,5 +1,6 @@
 package aria.monitor.app.ui
 
+import aria.monitor.R
 import aria.monitor.core.DeckTimeline
 import aria.monitor.core.GridTimeline
 import aria.monitor.core.Levels
@@ -42,6 +43,7 @@ private fun state(
     outputOk: Boolean = true,
     kicked: Boolean = false,
     needsPairing: Boolean = false,
+    audioOk: Boolean = true,
 ) = SessionState(
     link = link,
     uncertaintyUs = uncertaintyUs,
@@ -53,6 +55,7 @@ private fun state(
     kicked = kicked,
     needsPairing = needsPairing,
     name = "Drums",
+    audioOk = audioOk,
 )
 
 class MonitorUiTest {
@@ -114,5 +117,26 @@ class MonitorUiTest {
         assertFalse(empty.backingFallback)
         assertFalse(empty.kicked)
         assertFalse(empty.needsPairing)
+    }
+
+    @Test
+    fun linkedWithoutAudioShowsNoAudio() {
+        assertEquals(LinkStatus.NoAudio, state(LinkState.Syncing, audioOk = false).toUi().status)
+        assertEquals(LinkStatus.NoAudio, state(LinkState.Locked, uncertaintyUs = 300, audioOk = false).toUi().status)
+        assertEquals(LinkStatus.NoAudio, state(LinkState.Locked, uncertaintyUs = null, audioOk = false).toUi().status)
+    }
+
+    @Test
+    fun noLinkTakesPrecedenceOverNoAudio() {
+        assertEquals(LinkStatus.Offline, state(LinkState.Offline, audioOk = false).toUi().status)
+        assertEquals(LinkStatus.Offline, state(LinkState.Connecting, audioOk = false).toUi().status)
+    }
+
+    @Test
+    fun everyStatusMapsToItsRussianText() {
+        assertEquals(R.string.status_offline, LinkStatus.Offline.textRes)
+        assertEquals(R.string.status_syncing, LinkStatus.Syncing.textRes)
+        assertEquals(R.string.status_no_audio, LinkStatus.NoAudio.textRes)
+        assertEquals(R.string.status_locked, LinkStatus.Locked("0,3").textRes)
     }
 }

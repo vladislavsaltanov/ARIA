@@ -143,6 +143,12 @@ class FakeEngine(private val clock: MonotonicClock) : AudioEngine {
     override var xrunCount = 0
 
     @Volatile
+    var startResult = true
+
+    @Volatile
+    var stamping = true
+
+    @Volatile
     private var running = false
 
     @Volatile
@@ -156,10 +162,10 @@ class FakeEngine(private val clock: MonotonicClock) : AudioEngine {
 
     override fun start(): Boolean {
         starts++
-        running = true
+        running = startResult
         streamStartMs = clock.nowMs()
         streamFirstFrame = FIRST_STREAM_FRAME
-        return true
+        return startResult
     }
 
     override fun stop() {
@@ -172,7 +178,7 @@ class FakeEngine(private val clock: MonotonicClock) : AudioEngine {
     }
 
     override fun sampleStamp(): OutputStamp? {
-        if (!running) return null
+        if (!running || !stamping) return null
         val now = clock.nowMs()
         return OutputStamp(streamFirstFrame + ((now - streamStartMs) * SAMPLE_RATE / 1000).roundToLong(), (now * 1e6).roundToLong())
     }

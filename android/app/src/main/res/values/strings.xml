@@ -4,6 +4,7 @@
 
     <string name="status_offline">НЕТ СВЯЗИ</string>
     <string name="status_syncing">СИНХРОНИЗАЦИЯ…</string>
+    <string name="status_no_audio">НЕТ ЗВУКА</string>
     <string name="status_locked">СИНХР. ±%1$s МС</string>
     <string name="badge_no_output">НЕТ ВЫВОДА НА ХОСТЕ</string>
     <string name="badge_no_backing">ПОДЛОЖКА НЕДОСТУПНА</string>

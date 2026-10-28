@@ -25,6 +25,7 @@ private const val STATS_MS = 2000L
 private const val STALE_CHECK_MS = 500L
 private const val AUDIO_TICK_MS = 50L
 private const val STAMP_TICK_MS = 250L
+private const val NO_STAMP_LIMIT_MS = 2000.0
 private const val SILENCE_RAMP_SECONDS = 1.0f
 private const val MICROS_PER_MILLI = 1000.0
 
@@ -51,6 +52,8 @@ class Session(
     private var clockSync = ClockSync()
     private var run: CoroutineScope? = null
     private var engineStarted = false
+    private var engineRunning = false
+    private var stampAwaitedSinceMs = 0.0
     private var pairing: Pairing? = null
     private var socket: MonitorSocket? = null
     private var socketId = 0L
@@ -145,7 +148,7 @@ class Session(
             mutableState.update { it.copy(needsPairing = true) }
             return
         }
-        engine.start()
+        startEngine()
         engineStarted = true
         xruns = engine.xrunCount
         every(AUDIO_TICK_MS, ::tickAudio)
@@ -331,18 +334,40 @@ class Session(
         loader.want(windowsFor(timeline, sync.hostUsAt(now)))
     }
 
+    private fun startEngine() {
+        engineRunning = engine.start()
+        stampAwaitedSinceMs = clock.nowMs()
+        if (!engineRunning) reportAudio(ok = false)
+    }
+
     private fun tickStamp() {
+        if (!engineRunning) {
+            startEngine()
+            return
+        }
         val count = engine.xrunCount
         if (count > xruns) engine.growBuffer()
         xruns = count
-        val stamp = engine.sampleStamp() ?: return
+        val now = clock.nowMs()
+        val stamp = engine.sampleStamp()
+        if (stamp == null) {
+            if (now - stampAwaitedSinceMs >= NO_STAMP_LIMIT_MS) reportAudio(ok = false)
+            return
+        }
+        stampAwaitedSinceMs = now
+        reportAudio(ok = true)
         estimator.add(stamp)
         publish()
     }
 
+    private fun reportAudio(ok: Boolean) = mutableState.update { it.copy(audioOk = ok) }
+
     private fun onEngineEvent(event: EngineEvent) {
         when (event) {
-            EngineEvent.StreamReopened -> estimator.reset()
+            EngineEvent.StreamReopened -> {
+                estimator.reset()
+                reportAudio(ok = false)
+            }
         }
     }
 

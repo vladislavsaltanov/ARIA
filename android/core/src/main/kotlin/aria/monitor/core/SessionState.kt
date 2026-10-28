@@ -13,4 +13,5 @@ data class SessionState(
     val kicked: Boolean,
     val needsPairing: Boolean,
     val name: String,
+    val audioOk: Boolean = true,
 )

@@ -824,4 +824,92 @@ class SessionTest {
         assertEquals(levels, state.levels)
         assertEquals(30, state.trimMs)
     }
+
+    @Test
+    fun wave2_failedEngineStartReportsNoAudioAndRetriesOnTheStampTickUntilItStarts() = runTest {
+        val rig = SessionRig(this)
+        rig.engine.startResult = false
+        connected(rig)
+
+        assertFalse(rig.session.state.value.audioOk)
+        assertEquals(1, rig.engine.starts)
+        step(250)
+        assertEquals(2, rig.engine.starts)
+        step(250)
+        assertEquals(3, rig.engine.starts)
+        assertFalse(rig.session.state.value.audioOk)
+
+        rig.engine.startResult = true
+        step(250)
+        assertEquals(4, rig.engine.starts)
+        step(250)
+        assertTrue(rig.session.state.value.audioOk)
+        step(5000)
+        assertEquals(4, rig.engine.starts)
+    }
+
+    @Test
+    fun wave2_successfulStartIsNeverRetried() = runTest {
+        val rig = connected()
+        rig.engine.stamping = false
+
+        step(10_000)
+
+        assertEquals(1, rig.engine.starts)
+        assertEquals(0, rig.engine.stops)
+    }
+
+    @Test
+    fun wave2_noStampForTwoSecondsAfterStartReportsNoAudioUntilTheFirstStamp() = runTest {
+        val rig = SessionRig(this)
+        rig.engine.stamping = false
+        connected(rig)
+
+        step(1750)
+        assertTrue(rig.session.state.value.audioOk)
+        step(250)
+        assertFalse(rig.session.state.value.audioOk)
+
+        rig.engine.stamping = true
+        step(250)
+        assertTrue(rig.session.state.value.audioOk)
+    }
+
+    @Test
+    fun wave2_stampsThatStopForTwoSecondsReportNoAudio() = runTest {
+        val rig = playing()
+        assertTrue(rig.session.state.value.audioOk)
+        rig.engine.stamping = false
+
+        step(1750)
+        assertTrue(rig.session.state.value.audioOk)
+        step(250)
+        assertFalse(rig.session.state.value.audioOk)
+    }
+
+    @Test
+    fun wave2_streamReopenReportsNoAudioUntilTheNextStamp() = runTest {
+        val rig = playing()
+        step(100)
+        rig.engine.reopen()
+        runCurrent()
+
+        assertFalse(rig.session.state.value.audioOk)
+        step(150)
+        assertTrue(rig.session.state.value.audioOk)
+    }
+
+    @Test
+    fun wave2_restartAfterAFailedStartBeginsWithAudioOk() = runTest {
+        val rig = SessionRig(this)
+        rig.engine.startResult = false
+        connected(rig)
+        assertFalse(rig.session.state.value.audioOk)
+
+        rig.engine.startResult = true
+        rig.session.start(SHOW_PAIRING)
+        runCurrent()
+
+        assertTrue(rig.session.state.value.audioOk)
+    }
 }

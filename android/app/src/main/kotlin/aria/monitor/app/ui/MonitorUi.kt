@@ -1,5 +1,6 @@
 package aria.monitor.app.ui
 
+import aria.monitor.R
 import aria.monitor.core.Levels
 import aria.monitor.core.LinkState
 import aria.monitor.core.SessionState
@@ -10,8 +11,18 @@ sealed interface LinkStatus {
 
     data object Syncing : LinkStatus
 
+    data object NoAudio : LinkStatus
+
     data class Locked(val uncertaintyMs: String) : LinkStatus
 }
+
+val LinkStatus.textRes: Int
+    get() = when (this) {
+        LinkStatus.Offline -> R.string.status_offline
+        LinkStatus.Syncing -> R.string.status_syncing
+        LinkStatus.NoAudio -> R.string.status_no_audio
+        is LinkStatus.Locked -> R.string.status_locked
+    }
 
 data class MonitorUi(
     val hasSession: Boolean,
@@ -58,6 +69,7 @@ fun SessionState.toUi(): MonitorUi =
 private fun SessionState.linkStatus(): LinkStatus =
     when (link) {
         LinkState.Offline, LinkState.Connecting -> LinkStatus.Offline
+        else if !audioOk -> LinkStatus.NoAudio
         LinkState.Syncing -> LinkStatus.Syncing
         LinkState.Locked -> uncertaintyUs?.let { LinkStatus.Locked(formatUncertaintyMs(it)) } ?: LinkStatus.Syncing
     }

@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 private const val MIN_INTERVAL_MS = 1000L
 private const val TICK_MS = 250L
 
-private fun state(link: LinkState, uncertaintyUs: Long? = null) = SessionState(
+private fun state(link: LinkState, uncertaintyUs: Long? = null, audioOk: Boolean = true) = SessionState(
     link = link,
     uncertaintyUs = uncertaintyUs,
     timeline = null,
@@ -31,6 +31,7 @@ private fun state(link: LinkState, uncertaintyUs: Long? = null) = SessionState(
     kicked = false,
     needsPairing = false,
     name = "",
+    audioOk = audioOk,
 )
 
 class ServicePolicyTest {
@@ -81,5 +82,21 @@ class ServicePolicyTest {
 
         assertEquals(LinkStatus.Locked("1,0"), shown.first())
         assertTrue(shown.size in 2..5)
+    }
+
+    @Test
+    fun theNotificationShowsNoAudioWhileLinkedWithoutSound() = runTest {
+        val states = MutableStateFlow(state(LinkState.Locked, 1000))
+        val shown = mutableListOf<LinkStatus>()
+        val job = launch { states.notificationUpdates(MIN_INTERVAL_MS).collect { shown += it } }
+        runCurrent()
+
+        states.value = state(LinkState.Locked, 1000, audioOk = false)
+        advanceTimeBy(MIN_INTERVAL_MS + 1)
+        states.value = state(LinkState.Offline, audioOk = false)
+        advanceTimeBy(MIN_INTERVAL_MS + 1)
+        job.cancel()
+
+        assertEquals(listOf(LinkStatus.Locked("1,0"), LinkStatus.NoAudio, LinkStatus.Offline), shown)
     }
 }

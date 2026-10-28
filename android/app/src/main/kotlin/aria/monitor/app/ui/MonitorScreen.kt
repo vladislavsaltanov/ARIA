@@ -170,6 +170,7 @@ private fun StatusRow(ui: MonitorUi, showPairingAction: Boolean, showRetryAction
         when (val status = ui.status) {
             LinkStatus.Offline -> Chip(stringResource(R.string.status_offline), Tone.Alarm)
             LinkStatus.Syncing -> Chip(stringResource(R.string.status_syncing), Tone.Warn)
+            LinkStatus.NoAudio -> Chip(stringResource(R.string.status_no_audio), Tone.Alarm)
             is LinkStatus.Locked -> Chip(stringResource(R.string.status_locked, status.uncertaintyMs), Tone.Ok)
         }
         if (ui.outputMissing) Chip(stringResource(R.string.badge_no_output), Tone.Alarm)
