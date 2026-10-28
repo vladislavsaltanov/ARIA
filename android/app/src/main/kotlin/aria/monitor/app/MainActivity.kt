@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        appFlow.onActivityStopped(isChangingConfigurations)
         sessions.unbind()
         super.onStop()
     }

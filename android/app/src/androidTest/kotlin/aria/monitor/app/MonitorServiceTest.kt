@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -15,6 +16,7 @@ import androidx.test.rule.ServiceTestRule
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -35,6 +37,7 @@ private const val DEADLINE_MS = 10_000L
 private const val POLL_MS = 50L
 private const val SETTLE_MS = 500L
 private const val HANDOVER_SETTLE_MS = 6000L
+private const val UNREACHABLE_PORT = 9
 private const val READ_TIMEOUT_MS = 2000
 private const val PROBE_IDENTIFIER = "probe-phone"
 private const val PROBE_PASSWORD = "probe-secret"
@@ -194,6 +197,24 @@ class MonitorServiceTest {
 
         assertTrue(serviceRunning())
         assertNotNull(foregroundNotification())
+    }
+
+    @Test
+    fun aRotationDoesNotRestartADeliberatelyStoppedMonitor() {
+        runBlocking {
+            settings.markDone()
+            settings.savePairing(Pairing("127.0.0.1", UNREACHABLE_PORT, PROBE_IDENTIFIER, PROBE_PASSWORD))
+        }
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            eventually { foregroundNotification() != null }
+
+            context.startService(MonitorService.stopIntent(context))
+            eventually { !serviceRunning() }
+            scenario.recreate()
+            Thread.sleep(HANDOVER_SETTLE_MS)
+
+            assertFalse(serviceRunning())
+        }
     }
 
     private fun bind(): MonitorService.Access =

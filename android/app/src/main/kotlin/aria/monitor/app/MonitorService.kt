@@ -62,10 +62,12 @@ class MonitorService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            AppStores.stopReports.report(deliberate = true)
             stopNow(startId)
             return START_NOT_STICKY
         }
         if (!enterForeground()) {
+            AppStores.stopReports.report(deliberate = false)
             postStoppedNotice()
             stopNow(startId)
             return START_NOT_STICKY

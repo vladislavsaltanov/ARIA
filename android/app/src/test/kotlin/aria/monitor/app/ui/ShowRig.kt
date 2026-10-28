@@ -2,7 +2,9 @@
 
 package aria.monitor.app.ui
 
+import aria.monitor.app.ServiceStop
 import aria.monitor.app.SessionSource
+import aria.monitor.app.StopReports
 import aria.monitor.core.AudioEngine
 import aria.monitor.core.AuthResult
 import aria.monitor.core.Authenticator
@@ -175,6 +177,8 @@ internal class SilentEngine : AudioEngine {
 internal class HeldSessionSource(initial: Session? = null, private val journal: MutableList<String>? = null) : SessionSource {
     private val held = MutableStateFlow(initial)
     override val session: StateFlow<Session?> = held
+    private val reports = StopReports()
+    override val stops: StateFlow<ServiceStop?> = reports.stops
     val starts = CopyOnWriteArrayList<Pairing?>()
 
     @Volatile
@@ -185,6 +189,8 @@ internal class HeldSessionSource(initial: Session? = null, private val journal: 
         starts += pairing
         return accepts
     }
+
+    fun reportStop(deliberate: Boolean) = reports.report(deliberate)
 
     fun hold(session: Session?) {
         held.value = session

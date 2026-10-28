@@ -15,6 +15,7 @@ internal object AppStores {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val lifecycle = MonitorLifecycle(scope)
     val processNetwork = OwnedBinding()
+    val stopReports = StopReports()
 
     @Synchronized
     fun settings(context: Context): DataStoreSettings =

@@ -326,6 +326,163 @@ class AppFlowViewModelTest {
     }
 
     @Test
+    fun aDeliberateStopSurvivesARotation() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        flow.resume()
+
+        source.reportStop(deliberate = true)
+        source.hold(null)
+        runCurrent()
+        flow.onActivityStopped(changingConfigurations = true)
+        flow.resume()
+
+        assertTrue(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun aDeliberateStopIsLiftedByComingBackFromTheBackground() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        source.reportStop(deliberate = true)
+        source.hold(null)
+        runCurrent()
+
+        flow.onActivityStopped(changingConfigurations = false)
+        flow.resume()
+
+        assertFalse(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun aRotationAfterBackgroundingStillCountsAsComingBack() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        source.reportStop(deliberate = true)
+        runCurrent()
+
+        flow.onActivityStopped(changingConfigurations = true)
+        flow.resume()
+        flow.onActivityStopped(changingConfigurations = false)
+        flow.resume()
+
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun reconnectLiftsADeliberateStop() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        source.reportStop(deliberate = true)
+        source.hold(null)
+        runCurrent()
+
+        flow.reconnect()
+
+        assertFalse(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+        flow.onActivityStopped(changingConfigurations = true)
+        flow.resume()
+        assertEquals(listOf<Pairing?>(null, null, null), source.starts.toList())
+    }
+
+    @Test
+    fun aSessionLostAfterARotationIsStillReported() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val rig = ShowRig(this)
+        val source = HeldSessionSource(rig.session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        flow.onActivityStopped(changingConfigurations = true)
+        source.hold(null)
+        flow.resume()
+        source.hold(rig.session)
+        runCurrent()
+
+        source.hold(null)
+        runCurrent()
+
+        assertTrue(flow.monitorStopped.value)
+    }
+
+    @Test
+    fun aSessionLostWithoutAStopIsRearmedOnTheNextStart() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        source.hold(null)
+        runCurrent()
+        flow.onActivityStopped(changingConfigurations = true)
+        flow.resume()
+
+        assertFalse(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun aRefusalInsideTheServiceRaisesTheStopFlag() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        source.reportStop(deliberate = false)
+        runCurrent()
+
+        assertTrue(flow.monitorStopped.value)
+        flow.onActivityStopped(changingConfigurations = true)
+        flow.resume()
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun aStopReportedBeforeTheScreenExistedIsIgnored() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource().apply { reportStop(deliberate = true) }
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        flow.resume()
+
+        assertFalse(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun leavingTheScreenIsNotReportedAsAStop() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        flow.onActivityStopped(changingConfigurations = false)
+        source.hold(null)
+        runCurrent()
+
+        assertFalse(flow.monitorStopped.value)
+    }
+
+    @Test
+    fun aNewPairingLiftsADeliberateStop() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource(ShowRig(this).session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        source.reportStop(deliberate = true)
+        runCurrent()
+
+        flow.openPairing()
+        flow.paired(NEW_PAIRING)
+        runCurrent()
+        flow.onActivityStopped(changingConfigurations = true)
+        flow.resume()
+
+        assertEquals(listOf(null, NEW_PAIRING, null), source.starts.toList())
+    }
+
+    @Test
     fun aStopWhileVisibleStaysStoppedWithoutRestarting() = runTest {
         val store = RecordingStore().apply { pairing = SHOW_PAIRING }
         val rig = ShowRig(this)

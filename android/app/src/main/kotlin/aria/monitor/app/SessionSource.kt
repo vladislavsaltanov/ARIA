@@ -13,8 +13,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class ServiceStop(val serial: Int, val deliberate: Boolean)
+
+internal class StopReports {
+    private val latest = MutableStateFlow<ServiceStop?>(null)
+    val stops: StateFlow<ServiceStop?> = latest.asStateFlow()
+
+    @Synchronized
+    fun report(deliberate: Boolean) {
+        latest.value = ServiceStop((latest.value?.serial ?: 0) + 1, deliberate)
+    }
+}
+
 interface SessionSource {
     val session: StateFlow<Session?>
+    val stops: StateFlow<ServiceStop?>
 
     fun start(pairing: Pairing?): Boolean
 }
@@ -23,6 +36,7 @@ internal class ServiceSessionSource(context: Context) : SessionSource {
     private val app = context.applicationContext
     private val held = MutableStateFlow<Session?>(null)
     override val session: StateFlow<Session?> = held.asStateFlow()
+    override val stops: StateFlow<ServiceStop?> = AppStores.stopReports.stops
     private var bound = false
     private var follower: Job? = null
 

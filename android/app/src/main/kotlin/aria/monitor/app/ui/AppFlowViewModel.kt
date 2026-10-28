@@ -9,6 +9,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 interface OnboardingStore {
@@ -40,6 +42,11 @@ class AppFlowViewModel(
     private val stopped = MutableStateFlow(false)
     val monitorStopped: StateFlow<Boolean> = stopped.asStateFlow()
 
+    @Volatile
+    private var deliberate = false
+    private var visible = true
+    private var returningFromBackground = false
+
     init {
         viewModelScope.launch {
             current.value = if (onboarding.isDone()) afterOnboarding() else Destination.Onboarding
@@ -52,17 +59,40 @@ class AppFlowViewModel(
                     stopped.value = false
                 } else if (hadSession) {
                     hadSession = false
-                    stopped.value = true
+                    if (visible) stopped.value = true
                 }
+            }
+        }
+        viewModelScope.launch {
+            sessions.stops.drop(1).filterNotNull().collect { stop ->
+                if (stop.deliberate) deliberate = true
+                stopped.value = true
             }
         }
     }
 
     fun resume() {
-        if (current.value == Destination.Monitor) arm(null)
+        visible = true
+        if (returningFromBackground) {
+            returningFromBackground = false
+            deliberate = false
+        }
+        if (!deliberate) rearm()
     }
 
-    fun reconnect() = resume()
+    fun onActivityStopped(changingConfigurations: Boolean) {
+        visible = false
+        if (!changingConfigurations) returningFromBackground = true
+    }
+
+    fun reconnect() {
+        deliberate = false
+        rearm()
+    }
+
+    private fun rearm() {
+        if (current.value == Destination.Monitor) arm(null)
+    }
 
     fun finishOnboarding() {
         if (current.value != Destination.Onboarding) return
@@ -83,6 +113,7 @@ class AppFlowViewModel(
     fun paired(pairing: Pairing) {
         if (current.value !is Destination.Pairing) return
         current.value = Destination.Monitor
+        deliberate = false
         appScope.launch {
             settings.savePairing(pairing)
             notSaved.value = settings.loadPairing() != pairing
