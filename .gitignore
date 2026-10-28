@@ -502,3 +502,4 @@ android/local.properties
 android/signing/
 *.jks
 *.keystore
+.vscode/settings.json
