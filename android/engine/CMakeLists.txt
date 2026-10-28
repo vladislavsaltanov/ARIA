@@ -11,6 +11,7 @@ option(ARIA_SANITIZE_THREAD "Build host unit tests with ThreadSanitizer" OFF)
 
 set(ARIA_WARNING_FLAGS -Wall -Wextra -Werror)
 set(ARIA_ENGINE_SOURCES
+    src/click.cpp
     src/envelope.cpp
     src/pcm_pool.cpp
     src/plan_decoder.cpp
@@ -49,6 +50,7 @@ if(ARIA_HOST_TESTS)
     get_filename_component(ARIA_PARITY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/fixtures/parity" ABSOLUTE)
 
     add_executable(aria_engine_tests
+        tests/click_test.cpp
         tests/envelope_test.cpp
         tests/pcm_pool_test.cpp
         tests/plan_decoder_test.cpp

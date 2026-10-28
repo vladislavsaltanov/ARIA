@@ -66,16 +66,6 @@ VoicePlan paused(VoicePlan v) {
     return v;
 }
 
-std::vector<float> stream(Renderer& target, const RenderPlan* p, int64_t from, int64_t frames, int32_t block) {
-    std::vector<float> out(2 * static_cast<size_t>(frames));
-    for (int64_t done = 0; done < frames; done += block) target.render(p, from + done, block, out.data() + 2 * done);
-    return out;
-}
-
-bool allFinite(const std::vector<float>& out) {
-    return std::all_of(out.begin(), out.end(), [](float sample) { return std::isfinite(sample); });
-}
-
 class RendererLevelTest : public RendererFixture {
 protected:
     void publishHalf() { publish(kRampHi, kRampLo, 1, kChunkFrames, halfScale); }
@@ -138,6 +128,16 @@ TEST_F(RendererLevelTest, nonFiniteMasterGainPlanIsSkippedAndRecovers) {
     for (const double value : kNonFinite) {
         RenderPlan bad = plan({levelVoice()});
         bad.masterGain = static_cast<float>(value);
+        expectRecovers(plan({levelVoice()}), bad);
+    }
+}
+
+TEST_F(RendererLevelTest, nonFiniteClickGainPlanIsSkippedAndRecovers) {
+    publishHalf();
+    for (const double value : kNonFinite) {
+        RenderPlan bad = plan({levelVoice()});
+        bad.clickGain = static_cast<float>(value);
+        bad.test = TestPlan{kHostUs, 1024 * kUsPerFrame};
         expectRecovers(plan({levelVoice()}), bad);
     }
 }

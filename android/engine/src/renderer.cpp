@@ -16,6 +16,8 @@ constexpr double kLastAddressableFrame = static_cast<double>(kChunkFrames) * std
 constexpr int64_t kNoEnd = std::numeric_limits<int64_t>::max();
 const double kBackingCoefficient = 1.0 - std::exp(-1.0 / (Renderer::kBackingTauSeconds * Renderer::kOutputRate));
 constexpr double kBackingSnap = 1e-9;
+constexpr double kBeatTolerance = 1e-3;
+constexpr double kMaxBeatIndex = 9007199254740992.0;
 
 double targetFrame(const RenderPlan& plan, const VoicePlan& voice, int64_t deviceFrame) {
     const TimeMap& map = plan.timeMap;
@@ -30,7 +32,7 @@ bool unusableScale(double value) { return !(value > 0.0) || !std::isfinite(value
 
 bool unusablePlan(const RenderPlan* plan) {
     return plan == nullptr || unusableScale(plan->rate) || unusableScale(plan->timeMap.usPerFrame) || !std::isfinite(plan->backingGain) ||
-           !std::isfinite(plan->masterGain);
+           !std::isfinite(plan->masterGain) || !std::isfinite(plan->clickGain);
 }
 
 bool usableLevel(double level) { return std::fabs(level) <= std::numeric_limits<float>::max(); }
@@ -94,6 +96,36 @@ bool mixVoice(const PcmPool& pool, VoiceState& state, int32_t frames, float* ste
     return starved;
 }
 
+template <typename Emit>
+void gridClicks(const GridPlan& grid, const VoiceState& voice, int32_t frames, Emit emit) {
+    const double spacing = 60.0 / grid.bpm * Renderer::kOutputRate;
+    if (!(spacing >= 1.0) || !std::isfinite(spacing) || grid.beatsPerBar <= 0) return;
+    const double origin = static_cast<double>(grid.firstBeatFrame);
+    const auto indexAt = [origin, spacing](double frame) { return std::ceil((frame - origin) / spacing); };
+    const double first = std::max(indexAt(voice.blockStart), indexAt(static_cast<double>(voice.entryFrame)));
+    const double end = std::min(indexAt(voice.position), indexAt(static_cast<double>(voice.endFrame)));
+    if (!(std::fabs(first) < kMaxBeatIndex) || !(std::fabs(end) < kMaxBeatIndex)) return;
+    const double lead = voice.blockStart - origin;
+    for (auto k = static_cast<int64_t>(first); k < static_cast<int64_t>(end); ++k) {
+        const double offset = std::ceil((static_cast<double>(k) * spacing - lead) / voice.ratio - kBeatTolerance);
+        emit(static_cast<int32_t>(std::clamp(offset, 0.0, static_cast<double>(frames))), k % grid.beatsPerBar == 0);
+    }
+}
+
+template <typename Emit>
+void testClicks(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, Emit emit) {
+    const TestPlan& test = *plan.test;
+    const TimeMap& map = plan.timeMap;
+    if (!(test.intervalUs >= map.usPerFrame) || !std::isfinite(test.intervalUs)) return;
+    const double since = static_cast<double>(deviceFrame) - static_cast<double>(map.baseFrame);
+    const double lead = static_cast<double>(test.anchorUs) - static_cast<double>(map.hostUsAtBaseFrame) - static_cast<double>(plan.trimUs);
+    const auto offsetOf = [&](double k) { return std::ceil((lead + k * test.intervalUs) / map.usPerFrame - kBeatTolerance) - since; };
+    double k = std::floor((since * map.usPerFrame - lead) / test.intervalUs) - 1.0;
+    if (!(std::fabs(k) < kMaxBeatIndex)) return;
+    while (offsetOf(k) < 0.0) ++k;
+    for (double offset = offsetOf(k); offset < frames; offset = offsetOf(++k)) emit(static_cast<int32_t>(offset), true);
+}
+
 }
 
 Renderer::Renderer(const PcmPool& pool) : pool_(pool) {}
@@ -128,7 +160,7 @@ void Renderer::render(const RenderPlan* plan, int64_t deviceFrame, int32_t frame
         if (state.phase == SlotPhase::Active) renderActive(*plan, *planOf[slot], state, deviceFrame, frames, stereoOut);
         else if (state.phase == SlotPhase::Stopping) renderStopping(state, frames, stereoOut);
     }
-    applyBusGains(*plan, frames, stereoOut);
+    applyBusGains(*plan, deviceFrame, frames, stereoOut);
 }
 
 void Renderer::assignVoices(const RenderPlan& plan, int64_t deviceFrame, PlanOfSlot& planOf) {
@@ -143,7 +175,7 @@ void Renderer::assignVoices(const RenderPlan& plan, int64_t deviceFrame, PlanOfS
         }
     }
     for (const VoicePlan& voice : plan.voices) {
-        if (!voice.playing || isActive(voice.id) || findVoice(plan, voice.id) != &voice) continue;
+        if (!voice.playing || activeSlot(voice.id) != nullptr || findVoice(plan, voice.id) != &voice) continue;
         VoiceState* state = claimSlot();
         if (state == nullptr) continue;
         *state = VoiceState{};
@@ -167,9 +199,11 @@ VoiceState* Renderer::claimSlot() {
     return oldestStop;
 }
 
-bool Renderer::isActive(int32_t voiceId) const {
-    return std::any_of(voices_.begin(), voices_.end(),
-                       [voiceId](const VoiceState& state) { return state.phase == SlotPhase::Active && state.id == voiceId; });
+const VoiceState* Renderer::activeSlot(int32_t voiceId) const {
+    for (const VoiceState& state : voices_) {
+        if (state.phase == SlotPhase::Active && state.id == voiceId) return &state;
+    }
+    return nullptr;
 }
 
 void Renderer::renderActive(const RenderPlan& plan, const VoicePlan& voice, VoiceState& state, int64_t deviceFrame, int32_t frames,
@@ -196,6 +230,7 @@ void Renderer::renderActive(const RenderPlan& plan, const VoicePlan& voice, Voic
     } else {
         state.ratio = ratioFor(error, plan.rate);
     }
+    state.blockStart = state.position;
     const bool starved = mixVoice(pool_, state, frames, stereoOut, [&state, levelStart, levelStep](int32_t i) {
         return fadeInGain(state.fadeInDone) * static_cast<float>(levelStart + levelStep * static_cast<double>(i));
     });
@@ -213,7 +248,7 @@ void Renderer::renderStopping(VoiceState& state, int32_t frames, float* stereoOu
     if (state.stopDone >= kStopFrames) state.phase = SlotPhase::Free;
 }
 
-void Renderer::applyBusGains(const RenderPlan& plan, int32_t frames, float* stereoOut) {
+void Renderer::applyBusGains(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {
     if (plan.masterGain != masterTarget_) {
         masterFrom_ = master_;
         masterTarget_ = plan.masterGain;
@@ -225,6 +260,12 @@ void Renderer::applyBusGains(const RenderPlan& plan, int32_t frames, float* ster
     for (int32_t i = 0; i < frames; ++i) {
         backing_ += (backingTarget - backing_) * kBackingCoefficient;
         if (std::fabs(backingTarget - backing_) < kBackingSnap) backing_ = backingTarget;
+        const auto gain = static_cast<float>(backing_);
+        stereoOut[kChannels * i] *= gain;
+        stereoOut[kChannels * i + 1] *= gain;
+    }
+    mixClicks(plan, deviceFrame, frames, stereoOut);
+    for (int32_t i = 0; i < frames; ++i) {
         if (masterRampDone_ < masterRampFrames_) {
             ++masterRampDone_;
             master_ = masterRampDone_ == masterRampFrames_
@@ -232,10 +273,27 @@ void Renderer::applyBusGains(const RenderPlan& plan, int32_t frames, float* ster
                           : masterFrom_ + (masterTarget_ - masterFrom_) * static_cast<double>(masterRampDone_) /
                                               static_cast<double>(masterRampFrames_);
         }
-        const float gain = static_cast<float>(master_ * backing_);
+        const auto gain = static_cast<float>(master_);
         stereoOut[kChannels * i] *= gain;
         stereoOut[kChannels * i + 1] *= gain;
     }
+}
+
+void Renderer::mixClicks(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, float* stereoOut) {
+    const float gain = plan.clickGain;
+    int32_t done = 0;
+    const auto emit = [this, &done, deviceFrame, gain, stereoOut](int32_t offset, bool accent) {
+        clicks_.mix(deviceFrame, done, offset, gain, stereoOut);
+        clicks_.trigger(deviceFrame + offset, accent);
+        done = offset;
+    };
+    if (plan.test) {
+        testClicks(plan, deviceFrame, frames, emit);
+    } else if (plan.grid) {
+        const VoiceState* source = activeSlot(plan.grid->voice);
+        if (source != nullptr && source->entered) gridClicks(*plan.grid, *source, frames, emit);
+    }
+    clicks_.mix(deviceFrame, done, frames, gain, stereoOut);
 }
 
 }

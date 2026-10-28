@@ -15,6 +15,7 @@ struct VoiceState {
     int64_t trackHi = 0;
     int64_t trackLo = 0;
     double position = 0.0;
+    double blockStart = 0.0;
     double ratio = 1.0;
     int64_t entryFrame = 0;
     int64_t endFrame = std::numeric_limits<int64_t>::max();

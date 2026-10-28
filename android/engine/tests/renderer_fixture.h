@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <utility>
 #include <vector>
@@ -69,6 +70,16 @@ inline void expectFrame(const std::vector<float>& out, int32_t i, float left) {
 
 inline bool allZero(const std::vector<float>& out) {
     return std::all_of(out.begin(), out.end(), [](float sample) { return sample == 0.0F; });
+}
+
+inline bool allFinite(const std::vector<float>& out) {
+    return std::all_of(out.begin(), out.end(), [](float sample) { return std::isfinite(sample); });
+}
+
+inline std::vector<float> stream(Renderer& target, const RenderPlan* p, int64_t from, int64_t frames, int32_t block) {
+    std::vector<float> out(2 * static_cast<size_t>(frames));
+    for (int64_t done = 0; done < frames; done += block) target.render(p, from + done, block, out.data() + 2 * done);
+    return out;
 }
 
 class RendererFixture : public ::testing::Test {

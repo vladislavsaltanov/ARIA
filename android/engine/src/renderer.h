@@ -1,5 +1,6 @@
 #pragma once
 
+#include "click.h"
 #include "pcm_pool.h"
 #include "plan.h"
 #include "voice_state.h"
@@ -42,14 +43,16 @@ private:
 
     void assignVoices(const RenderPlan& plan, int64_t deviceFrame, PlanOfSlot& planOf);
     VoiceState* claimSlot();
-    bool isActive(int32_t voiceId) const;
+    const VoiceState* activeSlot(int32_t voiceId) const;
     void renderActive(const RenderPlan& plan, const VoicePlan& voice, VoiceState& state, int64_t deviceFrame, int32_t frames,
                       float* stereoOut);
     void renderStopping(VoiceState& state, int32_t frames, float* stereoOut);
-    void applyBusGains(const RenderPlan& plan, int32_t frames, float* stereoOut);
+    void applyBusGains(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, float* stereoOut);
+    void mixClicks(const RenderPlan& plan, int64_t deviceFrame, int32_t frames, float* stereoOut);
 
     const PcmPool& pool_;
     std::array<VoiceState, kMaxVoices> voices_{};
+    ClickSynth clicks_;
     std::atomic<uint64_t> underruns_{0};
     bool primed_ = false;
     double backing_ = 0.0;
