@@ -37,12 +37,32 @@ class AppFlowViewModel(
     val destination: StateFlow<Destination> = current.asStateFlow()
     private val notSaved = MutableStateFlow(false)
     val pairingNotSaved: StateFlow<Boolean> = notSaved.asStateFlow()
+    private val stopped = MutableStateFlow(false)
+    val monitorStopped: StateFlow<Boolean> = stopped.asStateFlow()
 
     init {
         viewModelScope.launch {
             current.value = if (onboarding.isDone()) afterOnboarding() else Destination.Onboarding
         }
+        viewModelScope.launch {
+            var hadSession = false
+            sessions.session.collect { session ->
+                if (session != null) {
+                    hadSession = true
+                    stopped.value = false
+                } else if (hadSession) {
+                    hadSession = false
+                    stopped.value = true
+                }
+            }
+        }
     }
+
+    fun resume() {
+        if (current.value == Destination.Monitor) arm(null)
+    }
+
+    fun reconnect() = resume()
 
     fun finishOnboarding() {
         if (current.value != Destination.Onboarding) return
@@ -66,13 +86,17 @@ class AppFlowViewModel(
         appScope.launch {
             settings.savePairing(pairing)
             notSaved.value = settings.loadPairing() != pairing
-            sessions.start(pairing)
+            arm(pairing)
         }
     }
 
     private suspend fun afterOnboarding(): Destination {
         if (settings.loadPairing() == null) return Destination.Pairing(canCancel = false)
-        sessions.start(null)
+        arm(null)
         return Destination.Monitor
+    }
+
+    private fun arm(pairing: Pairing?) {
+        stopped.value = !sessions.start(pairing)
     }
 }

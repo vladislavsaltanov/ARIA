@@ -7,6 +7,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -17,6 +18,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -32,6 +34,7 @@ import kotlin.concurrent.thread
 private const val DEADLINE_MS = 10_000L
 private const val POLL_MS = 50L
 private const val SETTLE_MS = 500L
+private const val HANDOVER_SETTLE_MS = 6000L
 private const val READ_TIMEOUT_MS = 2000
 private const val PROBE_IDENTIFIER = "probe-phone"
 private const val PROBE_PASSWORD = "probe-secret"
@@ -127,8 +130,7 @@ class MonitorServiceTest {
 
         val access = bind()
 
-        assertNotNull(access.session)
-        eventually { access.session.state.value.needsPairing }
+        eventually { access.session.value?.state?.value?.needsPairing == true }
     }
 
     @Test
@@ -142,7 +144,9 @@ class MonitorServiceTest {
             assertNotNull("the saved pairing was not used", request)
             assertTrue(request, request!!.startsWith("POST /auth "))
             assertTrue(request, request.contains("\"identifier\":\"$PROBE_IDENTIFIER\""))
-            assertTrue(!bind().session.state.value.needsPairing)
+            val access = bind()
+            eventually { access.session.value != null }
+            assertTrue(access.session.value?.state?.value?.needsPairing == false)
         }
     }
 
@@ -151,14 +155,45 @@ class MonitorServiceTest {
         assertTrue(MonitorService.start(context, null))
         eventually { foregroundNotification() != null }
         val access = bind()
-        val session = access.session
         eventually { access.sessionStarts == 1 }
+        val session = access.session.value
 
         assertTrue(MonitorService.start(context, null))
         Thread.sleep(SETTLE_MS)
 
-        assertSame(session, access.session)
+        assertSame(session, access.session.value)
         assertEquals(1, access.sessionStarts)
+    }
+
+    @Test
+    fun stopThenImmediateStartKeepsTheWifiBinding() {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        assertTrue(MonitorService.start(context, null))
+        eventually { foregroundNotification() != null }
+        val hasWifi = waitFor { connectivity.boundNetworkForProcess != null }
+        assumeTrue("no Wi-Fi network on this device", hasWifi)
+
+        context.startService(MonitorService.stopIntent(context))
+        eventually { !serviceAlive() }
+        assertTrue(MonitorService.start(context, null))
+        eventually { foregroundNotification() != null && serviceRunning() }
+        Thread.sleep(HANDOVER_SETTLE_MS)
+
+        assertNotNull(connectivity.boundNetworkForProcess)
+        assertTrue(serviceRunning())
+    }
+
+    @Test
+    fun aStartRightAfterStopKeepsTheMonitorRunning() {
+        assertTrue(MonitorService.start(context, null))
+        eventually { foregroundNotification() != null }
+
+        context.startService(MonitorService.stopIntent(context))
+        assertTrue(MonitorService.start(context, null))
+        Thread.sleep(HANDOVER_SETTLE_MS)
+
+        assertTrue(serviceRunning())
+        assertNotNull(foregroundNotification())
     }
 
     private fun bind(): MonitorService.Access =
@@ -178,6 +213,15 @@ class MonitorServiceTest {
     private fun serviceAlive(): Boolean =
         context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE)
             .any { it.service.className == MonitorService::class.java.name }
+
+    private fun waitFor(condition: () -> Boolean): Boolean {
+        val deadline = System.currentTimeMillis() + DEADLINE_MS
+        while (!condition()) {
+            if (System.currentTimeMillis() > deadline) return false
+            Thread.sleep(POLL_MS)
+        }
+        return true
+    }
 
     private fun eventually(condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + DEADLINE_MS

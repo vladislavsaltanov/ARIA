@@ -1,5 +1,6 @@
 package aria.monitor.app
 
+import aria.monitor.app.ui.LinkStatus
 import aria.monitor.app.ui.toUi
 import aria.monitor.core.Pairing
 import aria.monitor.core.Session
@@ -12,11 +13,11 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val TAG = "AriaMonitor"
@@ -28,28 +29,29 @@ private const val EXTRA_IDENTIFIER = "aria.monitor.extra.IDENTIFIER"
 private const val EXTRA_PASSWORD = "aria.monitor.extra.PASSWORD"
 private const val NO_PORT = -1
 
-private val teardown = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
 class MonitorService : Service() {
-    private lateinit var runtime: MonitorRuntime
-    private lateinit var holds: SystemHolds
+    private lateinit var instance: MonitorInstance
     private val ui = MainScope()
     private val access = Access()
     private var foreground = false
 
     inner class Access : Binder() {
-        val session: Session get() = runtime.session
+        val session: StateFlow<Session?> get() = instance.session
 
-        internal val sessionStarts: Int get() = runtime.sessionStarts
+        internal val sessionStarts: Int get() = instance.runtime.value?.sessionStarts ?: 0
     }
 
     override fun onCreate() {
         super.onCreate()
-        runtime = MonitorRuntime.create(this)
-        holds = SystemHolds(this).also { it.acquire() }
+        instance = MonitorInstance(
+            AppStores.lifecycle,
+            { MonitorRuntime.create(this) },
+            { SystemHolds(this, AppStores.processNetwork) },
+        )
+        instance.open()
         createMonitorChannel()
         ui.launch {
-            runtime.session.state.notificationUpdates(NOTIFICATION_MIN_INTERVAL_MS).collect { status ->
+            instance.session.filterNotNull().first().state.notificationUpdates(NOTIFICATION_MIN_INTERVAL_MS).collect { status ->
                 if (foreground && notificationsGranted()) {
                     getSystemService(NotificationManager::class.java)
                         ?.notify(MONITOR_NOTIFICATION_ID, monitorNotification(status, stopIntent(this@MonitorService)))
@@ -59,11 +61,17 @@ class MonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP || !enterForeground()) {
-            stopNow()
+        if (intent?.action == ACTION_STOP) {
+            stopNow(startId)
             return START_NOT_STICKY
         }
-        runtime.start(intent?.pairing())
+        if (!enterForeground()) {
+            postStoppedNotice()
+            stopNow(startId)
+            return START_NOT_STICKY
+        }
+        getSystemService(NotificationManager::class.java)?.cancel(STOPPED_NOTIFICATION_ID)
+        instance.start(intent?.pairing())
         return START_STICKY
     }
 
@@ -71,19 +79,15 @@ class MonitorService : Service() {
 
     override fun onDestroy() {
         ui.cancel()
-        stopNow()
-        val runtime = runtime
-        val holds = holds
-        teardown.launch {
-            runtime.shutdown()
-            holds.release()
-        }
+        leaveForeground()
+        instance.close()
         super.onDestroy()
     }
 
     private fun enterForeground(): Boolean {
         if (foreground) return true
-        val notification = monitorNotification(runtime.session.state.value.toUi().status, stopIntent(this))
+        val status = instance.session.value?.state?.value?.toUi()?.status ?: LinkStatus.Offline
+        val notification = monitorNotification(status, stopIntent(this))
         try {
             if (Build.VERSION.SDK_INT >= TYPED_FOREGROUND_SDK) {
                 startForeground(MONITOR_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -101,10 +105,23 @@ class MonitorService : Service() {
         return true
     }
 
-    private fun stopNow() {
+    private fun postStoppedNotice() {
+        if (!notificationsGranted()) return
+        try {
+            getSystemService(NotificationManager::class.java)?.notify(STOPPED_NOTIFICATION_ID, stoppedNotification())
+        } catch (denied: SecurityException) {
+            Log.w(TAG, "monitor stopped notice denied", denied)
+        }
+    }
+
+    private fun stopNow(startId: Int) {
+        leaveForeground()
+        stopSelf(startId)
+    }
+
+    private fun leaveForeground() {
         foreground = false
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
     }
 
     companion object {

@@ -507,6 +507,17 @@ private fun Overlays(
 }
 
 @Composable
+fun StoppedDialog(onReconnect: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnClickOutside = false),
+        title = { Text(stringResource(R.string.stopped_title)) },
+        text = { Text(stringResource(R.string.stopped_body)) },
+        confirmButton = { DialogAction(stringResource(R.string.stopped_reconnect), onReconnect) },
+    )
+}
+
+@Composable
 private fun DialogAction(text: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.heightIn(min = MinTouch)) {
         Text(text, style = StageText.Chip, color = StageColors.Signal)

@@ -177,9 +177,13 @@ internal class HeldSessionSource(initial: Session? = null, private val journal: 
     override val session: StateFlow<Session?> = held
     val starts = CopyOnWriteArrayList<Pairing?>()
 
-    override fun start(pairing: Pairing?) {
+    @Volatile
+    var accepts = true
+
+    override fun start(pairing: Pairing?): Boolean {
         journal?.add("start:${pairing?.identifier}")
         starts += pairing
+        return accepts
     }
 
     fun hold(session: Session?) {

@@ -13,6 +13,8 @@ internal object AppStores {
     @SuppressLint("StaticFieldLeak")
     private var sessions: ServiceSessionSource? = null
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val lifecycle = MonitorLifecycle(scope)
+    val processNetwork = OwnedBinding()
 
     @Synchronized
     fun settings(context: Context): DataStoreSettings =

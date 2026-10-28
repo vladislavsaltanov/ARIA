@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.transform
 
 internal const val MONITOR_CHANNEL = "monitor"
 internal const val MONITOR_NOTIFICATION_ID = 1
+internal const val STOPPED_NOTIFICATION_ID = 2
 
 internal fun Flow<SessionState>.notificationUpdates(minIntervalMs: Long): Flow<LinkStatus> =
     map { it.toUi().status }
@@ -40,12 +41,6 @@ internal fun Context.monitorNotification(status: LinkStatus, stop: Intent): Noti
         LinkStatus.Syncing -> getString(R.string.status_syncing)
         is LinkStatus.Locked -> getString(R.string.status_locked, status.uncertaintyMs)
     }
-    val open = PendingIntent.getActivity(
-        this,
-        0,
-        Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-        PendingIntent.FLAG_IMMUTABLE,
-    )
     val stopAction = Notification.Action.Builder(
         Icon.createWithResource(this, android.R.drawable.ic_media_pause),
         getString(R.string.notification_stop),
@@ -55,7 +50,7 @@ internal fun Context.monitorNotification(status: LinkStatus, stop: Intent): Noti
         .setSmallIcon(android.R.drawable.ic_media_play)
         .setContentTitle(getString(R.string.app_name))
         .setContentText(text)
-        .setContentIntent(open)
+        .setContentIntent(openApp())
         .setOngoing(true)
         .setOnlyAlertOnce(true)
         .setShowWhen(false)
@@ -63,3 +58,20 @@ internal fun Context.monitorNotification(status: LinkStatus, stop: Intent): Noti
         .addAction(stopAction)
         .build()
 }
+
+internal fun Context.stoppedNotification(): Notification =
+    Notification.Builder(this, MONITOR_CHANNEL)
+        .setSmallIcon(android.R.drawable.ic_media_pause)
+        .setContentTitle(getString(R.string.app_name))
+        .setContentText(getString(R.string.notification_stopped))
+        .setContentIntent(openApp())
+        .setAutoCancel(true)
+        .build()
+
+private fun Context.openApp(): PendingIntent =
+    PendingIntent.getActivity(
+        this,
+        0,
+        Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        PendingIntent.FLAG_IMMUTABLE,
+    )

@@ -293,6 +293,98 @@ class AppFlowViewModelTest {
     }
 
     @Test
+    fun aRefusedStartIsSurfaced() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource().apply { accepts = false }
+
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        assertTrue(flow.monitorStopped.value)
+    }
+
+    @Test
+    fun aRefusedStartAfterPairingIsSurfaced() = runTest {
+        val source = HeldSessionSource().apply { accepts = false }
+        val flow = flowOver(RecordingStore(), FakeOnboarding(done = true), source)
+
+        flow.paired(NEW_PAIRING)
+        runCurrent()
+
+        assertTrue(flow.monitorStopped.value)
+    }
+
+    @Test
+    fun aSessionArrivingAfterARefusalClearsTheStop() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource().apply { accepts = false }
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        source.hold(ShowRig(this).session)
+        runCurrent()
+
+        assertFalse(flow.monitorStopped.value)
+    }
+
+    @Test
+    fun aStopWhileVisibleStaysStoppedWithoutRestarting() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val rig = ShowRig(this)
+        val source = HeldSessionSource(rig.session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        assertFalse(flow.monitorStopped.value)
+
+        source.hold(null)
+        runCurrent()
+
+        assertTrue(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null), source.starts.toList())
+    }
+
+    @Test
+    fun aSessionThatNeverArrivedIsNotReportedAsStopped() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val flow = flowOver(store, FakeOnboarding(done = true), HeldSessionSource())
+
+        assertFalse(flow.monitorStopped.value)
+    }
+
+    @Test
+    fun reconnectRearmsTheServiceAndClearsTheStop() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val rig = ShowRig(this)
+        val source = HeldSessionSource(rig.session)
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+        source.hold(null)
+        runCurrent()
+
+        flow.reconnect()
+
+        assertFalse(flow.monitorStopped.value)
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun aRestartedScreenRearmsTheService() = runTest {
+        val store = RecordingStore().apply { pairing = SHOW_PAIRING }
+        val source = HeldSessionSource()
+        val flow = flowOver(store, FakeOnboarding(done = true), source)
+
+        flow.resume()
+
+        assertEquals(listOf<Pairing?>(null, null), source.starts.toList())
+    }
+
+    @Test
+    fun resumeOutsideTheMonitorStartsNothing() = runTest {
+        val source = HeldSessionSource()
+        val flow = flowOver(RecordingStore(), FakeOnboarding(done = false), source)
+
+        flow.resume()
+
+        assertTrue(source.starts.isEmpty())
+    }
+
+    @Test
     fun pairedOutsideThePairingScreenIsIgnored() = runTest {
         val store = RecordingStore().apply { pairing = SHOW_PAIRING }
         val flow = flowOver(store, FakeOnboarding(done = true))

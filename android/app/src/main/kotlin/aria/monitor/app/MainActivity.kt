@@ -9,6 +9,7 @@ import aria.monitor.app.ui.MonitorViewModel
 import aria.monitor.app.ui.OnboardingScreen
 import aria.monitor.app.ui.PairingScreen
 import aria.monitor.app.ui.StageColors
+import aria.monitor.app.ui.StoppedDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.widget.Toast
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         sessions.bind()
+        appFlow.resume()
     }
 
     override fun onStop() {
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(flow: AppFlowViewModel, monitor: MonitorViewModel) {
     val destination by flow.destination.collectAsStateWithLifecycle()
     val pairingNotSaved by flow.pairingNotSaved.collectAsStateWithLifecycle()
+    val monitorStopped by flow.monitorStopped.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(pairingNotSaved) {
         if (pairingNotSaved) Toast.makeText(context, R.string.pairing_not_saved, Toast.LENGTH_LONG).show()
@@ -81,6 +84,9 @@ private fun AppRoot(flow: AppFlowViewModel, monitor: MonitorViewModel) {
             onPaired = flow::paired,
             onBack = flow::cancelPairing,
         )
-        Destination.Monitor -> MonitorScreen(monitor)
+        Destination.Monitor -> {
+            MonitorScreen(monitor)
+            if (monitorStopped) StoppedDialog(onReconnect = flow::reconnect)
+        }
     }
 }

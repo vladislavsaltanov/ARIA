@@ -23,7 +23,7 @@ private const val LOW_LATENCY_WIFI_SDK = 29
 internal fun wifiLockMode(sdkInt: Int): Int =
     if (sdkInt >= LOW_LATENCY_WIFI_SDK) WifiManager.WIFI_MODE_FULL_LOW_LATENCY else WifiManager.WIFI_MODE_FULL_HIGH_PERF
 
-internal class SystemHolds(context: Context) {
+internal class SystemHolds(context: Context, private val processNetwork: OwnedBinding) : Holds {
     private val app = context.applicationContext
     private val power = app.getSystemService(PowerManager::class.java)
     private val wifi = app.getSystemService(WifiManager::class.java)
@@ -46,7 +46,9 @@ internal class SystemHolds(context: Context) {
         private var bound: Network? = null
 
         override fun onAvailable(network: Network) {
-            if (connectivity?.bindProcessToNetwork(network) == true) bound = network
+            processNetwork.claim(this@SystemHolds) {
+                (connectivity?.bindProcessToNetwork(network) == true).also { if (it) bound = network }
+            }
         }
 
         override fun onLost(network: Network) {
@@ -55,12 +57,12 @@ internal class SystemHolds(context: Context) {
 
         fun unbind() {
             bound = null
-            connectivity?.bindProcessToNetwork(null)
+            processNetwork.release(this@SystemHolds) { connectivity?.bindProcessToNetwork(null) }
         }
     }
 
     @SuppressLint("WakelockTimeout")
-    fun acquire() {
+    override fun acquire() {
         guarded("wake lock") { wakeLock?.acquire() }
         guarded("wifi lock") { wifiLock?.acquire() }
         guarded("audio focus") { audio?.requestAudioFocus(focus) }
@@ -73,7 +75,7 @@ internal class SystemHolds(context: Context) {
         }
     }
 
-    fun release() {
+    override fun release() {
         guarded("wifi network") {
             connectivity?.unregisterNetworkCallback(wifiNetwork)
             wifiNetwork.unbind()

@@ -84,5 +84,9 @@
 
     <string name="notification_channel">Монитор</string>
     <string name="notification_stop">Остановить</string>
+    <string name="notification_stopped">Монитор остановлен — откройте ARIA</string>
+    <string name="stopped_title">Монитор остановлен</string>
+    <string name="stopped_body">Звук не идёт. Нажмите «ПОДКЛЮЧИТЬСЯ», чтобы запустить монитор снова.</string>
+    <string name="stopped_reconnect">ПОДКЛЮЧИТЬСЯ</string>
     <string name="pairing_not_saved">Не удалось сохранить подключение. После перезапуска понадобится новый QR.</string>
 </resources>
