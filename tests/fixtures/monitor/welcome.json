@@ -1,0 +1,6 @@
+{
+  "type": "welcome",
+  "listener": "L1",
+  "role": "listen",
+  "sampleRate": 48000
+}

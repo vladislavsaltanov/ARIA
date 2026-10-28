@@ -1,0 +1,57 @@
+{
+  "type": "timeline",
+  "seq": 42,
+  "rate": 48000,
+  "voices": [
+    {
+      "id": 1,
+      "epoch": 0,
+      "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+      "kind": "entry",
+      "fallback": false,
+      "gainDb": -3,
+      "anchorUs": 13000000000000,
+      "anchorFrame": 96000,
+      "playing": true,
+      "endFrame": null,
+      "fade": null
+    },
+    {
+      "id": 2,
+      "epoch": 1,
+      "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+      "kind": "backing",
+      "fallback": false,
+      "gainDb": 0,
+      "anchorUs": 13000000020000,
+      "anchorFrame": 24000,
+      "playing": true,
+      "endFrame": 480000,
+      "fade": {
+        "from": 1,
+        "to": 0,
+        "progress": 0.25,
+        "frames": 38400,
+        "curve": "Logarithmic",
+        "stopAtEnd": true
+      }
+    }
+  ],
+  "grid": {
+    "voice": 1,
+    "bpm": 120,
+    "beatsPerBar": 4,
+    "firstBeatFrame": 0
+  },
+  "deck": {
+    "status": "Playing",
+    "title": "Song",
+    "next": {
+      "title": "Next song",
+      "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+      "kind": "entry",
+      "startFrame": 24000
+    }
+  },
+  "test": null
+}

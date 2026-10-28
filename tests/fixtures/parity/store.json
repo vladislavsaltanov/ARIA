@@ -1,0 +1,2351 @@
+[
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 72000,
+        "to": 1056000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      2500000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 144000,
+        "to": 1128000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      0
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 24000,
+        "to": 1008000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 10000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 970000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 24000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 984000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 24001,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 1,
+        "to": 984001
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 0,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 960000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 100000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000018.75
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 76000,
+        "to": 1060000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1333333.5
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 88000,
+        "to": 1072000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000007.3
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 72000,
+        "to": 1056000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": -1000000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000.5
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": -40000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": -2000000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": -1040000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 44100,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      3000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 160200,
+        "to": 1144200
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000.25,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      3000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 168000,
+        "to": 1152000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      9000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 384000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 0,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      9000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 288000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": -10000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      9000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 278000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": -300000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      9000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": -12000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": -288000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      9000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 0
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": 24000
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 24000,
+        "to": 312000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": 0
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 0,
+        "to": 288000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": -10000
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 0,
+        "to": 278000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": -288000
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 0,
+        "to": 0
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": -400000
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 0,
+        "to": -112000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Stopped",
+          "title": null,
+          "next": null
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": []
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 3000000000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      13000002500000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 3000096000,
+        "to": 3001080000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 3000000000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      12999997500000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 2999856000,
+        "to": 3000840000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 3000000000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      13000000123456.75
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 2999981925,
+        "to": 3000965925
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 3000000000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      13000002500000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 3000000000,
+        "to": 3000288000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 2147483000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      13000000000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 2147459000,
+        "to": 2148443000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 2147483000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": null
+        },
+        "test": null
+      },
+      13000020000000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 2148419000,
+        "to": 2149403000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": 3000000000
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 3000000000,
+        "to": 3000288000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": 2147483000
+          }
+        },
+        "test": null
+      },
+      1000000
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 2147483000,
+        "to": 2147771000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          },
+          {
+            "id": 2,
+            "epoch": 1,
+            "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+            "kind": "backing",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1020000,
+            "anchorFrame": 24000,
+            "playing": true,
+            "endFrame": 480000,
+            "fade": null
+          },
+          {
+            "id": 3,
+            "epoch": 2,
+            "track": "0c0b5e4d-6f4b-4d44-9a64-2e1a6f3c9b10",
+            "kind": "click",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 48000,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": 24000
+          }
+        },
+        "test": null
+      },
+      1500000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 1080000
+      },
+      {
+        "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+        "from": 23040,
+        "to": 1007040
+      },
+      {
+        "track": "0c0b5e4d-6f4b-4d44-9a64-2e1a6f3c9b10",
+        "from": 48000,
+        "to": 336000
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 24000,
+        "to": 312000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 3000000000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          },
+          {
+            "id": 2,
+            "epoch": 1,
+            "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+            "kind": "backing",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 13000000000000,
+            "anchorFrame": 3000000100,
+            "playing": false,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+            "kind": "entry",
+            "startFrame": 3000050000
+          }
+        },
+        "test": null
+      },
+      13000000750000.5
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 3000012000,
+        "to": 3000996000
+      },
+      {
+        "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+        "from": 3000000100,
+        "to": 3000288100
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 3000050000,
+        "to": 3000338000
+      }
+    ]
+  },
+  {
+    "fn": "windowsFor",
+    "args": [
+      {
+        "seq": 42,
+        "rate": 48000,
+        "voices": [
+          {
+            "id": 1,
+            "epoch": 0,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 96000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          },
+          {
+            "id": 2,
+            "epoch": 1,
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "fallback": false,
+            "gainDb": 0,
+            "anchorUs": 1000000,
+            "anchorFrame": 192000,
+            "playing": true,
+            "endFrame": null,
+            "fade": null
+          }
+        ],
+        "grid": null,
+        "deck": {
+          "status": "Playing",
+          "title": "Song",
+          "next": {
+            "title": "Next song",
+            "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+            "kind": "entry",
+            "startFrame": 96000
+          }
+        },
+        "test": null
+      },
+      1250000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 84000,
+        "to": 1068000
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 180000,
+        "to": 1164000
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 384000
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 10,
+        "to": 1000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 96000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 96001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 1
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 192000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 192001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 96001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 95999,
+        "to": 96000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 95999,
+        "to": 96001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 192000,
+        "to": 288000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 191999,
+        "to": 288001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 72000,
+        "to": 1056000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 4
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 5
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 6
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 7
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 8
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 9
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 10
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 72000,
+        "to": 1056001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 4
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 5
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 6
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 7
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 8
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 9
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 10
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 11
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 0
+      }
+    ],
+    "expected": []
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 5,
+        "to": 5
+      }
+    ],
+    "expected": []
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 10,
+        "to": 5
+      }
+    ],
+    "expected": []
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 96000,
+        "to": 96000
+      }
+    ],
+    "expected": []
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": -40001
+      }
+    ],
+    "expected": []
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": -5,
+        "to": 10
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": -1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": -96000,
+        "to": -1
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": -1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": -96001,
+        "to": 1
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": -2
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": -1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": -96000,
+        "to": 0
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": -1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 3000000000,
+        "to": 3000960000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31250
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31251
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31252
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31253
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31254
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31255
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31256
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31257
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31258
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31259
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 3000000000,
+        "to": 3000960001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31250
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31251
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31252
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31253
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31254
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31255
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31256
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31257
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31258
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31259
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31260
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 2999999999,
+        "to": 3000000001
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31249
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 31250
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 2147483000,
+        "to": 2148443000
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22369
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22370
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22371
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22372
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22373
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22374
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22375
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22376
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22377
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22378
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 22379
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 4294967296,
+        "to": 4294967297
+      }
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 44739
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "from": 123456789000,
+        "to": 123457749000
+      }
+    ],
+    "expected": [
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286008
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286009
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286010
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286011
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286012
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286013
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286014
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286015
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286016
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286017
+      },
+      {
+        "track": "a15f0987-545b-4112-b3e5-7d85b63a0553",
+        "chunk": 1286018
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+        "from": 0,
+        "to": 288000
+      }
+    ],
+    "expected": [
+      {
+        "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+        "chunk": 0
+      },
+      {
+        "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+        "chunk": 1
+      },
+      {
+        "track": "bf3498a6-e912-4ffb-a63c-4f936e047d44",
+        "chunk": 2
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 999,
+        "to": 3001
+      },
+      1000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 1000,
+        "to": 3000
+      },
+      1000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 96000
+      },
+      96000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 96001
+      },
+      96000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 5,
+        "to": 6
+      },
+      1
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 5
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 0,
+        "to": 5
+      },
+      1
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 2
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 4
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": -1,
+        "to": 1
+      },
+      1
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": -1
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 0
+      }
+    ]
+  },
+  {
+    "fn": "chunksFor",
+    "args": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "from": 3000000000,
+        "to": 3000002500
+      },
+      1000
+    ],
+    "expected": [
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3000000
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3000001
+      },
+      {
+        "track": "1db4df96-26fe-4f49-a954-fcacd871e9c0",
+        "chunk": 3000002
+      }
+    ]
+  }
+]

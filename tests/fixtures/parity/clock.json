@@ -1,0 +1,3587 @@
+[
+  {
+    "name": "drift120",
+    "steps": [
+      {
+        "pong": {
+          "t0": 61234.5,
+          "t1Us": 5461237880,
+          "t2Us": 5461237961,
+          "t3": 61238.082
+        },
+        "query": {
+          "localMs": 61248.082,
+          "hostUs": 5461249711.5
+        },
+        "after": {
+          "offsetAt": 5400001.6295,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1750,
+          "hostUsAt": 5461249711.5,
+          "localMsAt": 61248.0820000004
+        }
+      },
+      {
+        "pong": {
+          "t0": 61481.516,
+          "t1Us": 5461484702,
+          "t2Us": 5461484972,
+          "t3": 61484.963
+        },
+        "query": {
+          "localMs": 61494.963,
+          "hostUs": 5461496576.5
+        },
+        "after": {
+          "offsetAt": 5400001.6135,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1588,
+          "hostUsAt": 5461496576.5,
+          "localMsAt": 61494.963000000454
+        }
+      },
+      {
+        "pong": {
+          "t0": 61716.722,
+          "t1Us": 5461722048,
+          "t2Us": 5461722247,
+          "t3": 61723.231
+        },
+        "query": {
+          "localMs": 61733.231,
+          "hostUs": 5461734844.5
+        },
+        "after": {
+          "offsetAt": 5400001.6135,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1588,
+          "hostUsAt": 5461734844.5,
+          "localMsAt": 61733.23099999968
+        }
+      },
+      {
+        "pong": {
+          "t0": 61966.416,
+          "t1Us": 5461969657,
+          "t2Us": 5461969905,
+          "t3": 61970.05
+        },
+        "query": {
+          "localMs": 61980.05,
+          "hostUs": 5461981641.666667
+        },
+        "after": {
+          "offsetAt": 5400001.591666667,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1588,
+          "hostUsAt": 5461981641.666667,
+          "localMsAt": 61980.049999999814
+        }
+      },
+      {
+        "pong": {
+          "t0": 62213.623,
+          "t1Us": 5462217952,
+          "t2Us": 5462218198,
+          "t3": 62218.72
+        },
+        "query": {
+          "localMs": 62228.72,
+          "hostUs": 5462230311.666667
+        },
+        "after": {
+          "offsetAt": 5400001.591666667,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1588,
+          "hostUsAt": 5462230311.666667,
+          "localMsAt": 62228.71999999974
+        }
+      },
+      {
+        "pong": {
+          "t0": 62449.068,
+          "t1Us": 5462452249,
+          "t2Us": 5462452526,
+          "t3": 62452.446
+        },
+        "query": {
+          "localMs": 62462.446,
+          "hostUs": 5462464047.375001
+        },
+        "after": {
+          "offsetAt": 5400001.601375001,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1551,
+          "hostUsAt": 5462464047.375001,
+          "localMsAt": 62462.44600000046
+        }
+      },
+      {
+        "pong": {
+          "t0": 62689.15,
+          "t1Us": 5462693039,
+          "t2Us": 5462693305,
+          "t3": 62694.224
+        },
+        "query": {
+          "localMs": 62704.224,
+          "hostUs": 5462705825.375001
+        },
+        "after": {
+          "offsetAt": 5400001.601375001,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1551,
+          "hostUsAt": 5462705825.375001,
+          "localMsAt": 62704.224000000395
+        }
+      },
+      {
+        "pong": {
+          "t0": 62938.689,
+          "t1Us": 5462942043,
+          "t2Us": 5462942242,
+          "t3": 62942.32
+        },
+        "query": {
+          "localMs": 62952.32,
+          "hostUs": 5462953928.700001
+        },
+        "after": {
+          "offsetAt": 5400001.608700001,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1551,
+          "hostUsAt": 5462953928.700001,
+          "localMsAt": 62952.3200000003
+        }
+      },
+      {
+        "pong": {
+          "t0": 63181.723,
+          "t1Us": 5463185008,
+          "t2Us": 5463185116,
+          "t3": 63185.225
+        },
+        "query": {
+          "localMs": 63195.225,
+          "hostUs": 5463196830.25
+        },
+        "after": {
+          "offsetAt": 5400001.60525,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1551,
+          "hostUsAt": 5463196830.25,
+          "localMsAt": 63195.22499999963
+        }
+      },
+      {
+        "pong": {
+          "t0": 63417.495,
+          "t1Us": 5463420656,
+          "t2Us": 5463420927,
+          "t3": 63420.802
+        },
+        "query": {
+          "localMs": 63430.802,
+          "hostUs": 5463432412.642858
+        },
+        "after": {
+          "offsetAt": 5400001.610642858,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5463432412.642858,
+          "localMsAt": 63430.80200000014
+        }
+      },
+      {
+        "pong": {
+          "t0": 63670.341,
+          "t1Us": 5463674235,
+          "t2Us": 5463674523,
+          "t3": 63675.987
+        },
+        "query": {
+          "localMs": 63685.987,
+          "hostUs": 5463687597.642858
+        },
+        "after": {
+          "offsetAt": 5400001.610642858,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5463687597.642858,
+          "localMsAt": 63685.98699999973
+        }
+      },
+      {
+        "pong": {
+          "t0": 63924.03,
+          "t1Us": 5463927295,
+          "t2Us": 5463927571,
+          "t3": 63927.569
+        },
+        "query": {
+          "localMs": 63937.569,
+          "hostUs": 5463939182.500001
+        },
+        "after": {
+          "offsetAt": 5400001.613500001,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5463939182.500001,
+          "localMsAt": 63937.569000000134
+        }
+      },
+      {
+        "pong": {
+          "t0": 64174.203,
+          "t1Us": 5464177852,
+          "t2Us": 5464178029,
+          "t3": 64228.902
+        },
+        "query": {
+          "localMs": 64238.902,
+          "hostUs": 5464240515.500001
+        },
+        "after": {
+          "offsetAt": 5400001.613500001,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5464240515.500001,
+          "localMsAt": 64238.90199999977
+        }
+      },
+      {
+        "pong": {
+          "t0": 64467.079,
+          "t1Us": 5464470443,
+          "t2Us": 5464470578,
+          "t3": 64470.599
+        },
+        "query": {
+          "localMs": 64480.599,
+          "hostUs": 5464482218.944446
+        },
+        "after": {
+          "offsetAt": 5400001.619944445,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5464482218.944446,
+          "localMsAt": 64480.599000000395
+        }
+      },
+      {
+        "pong": {
+          "t0": 64704.311,
+          "t1Us": 5464709908,
+          "t2Us": 5464710092,
+          "t3": 64711.191
+        },
+        "query": {
+          "localMs": 64721.191,
+          "hostUs": 5464722810.944445
+        },
+        "after": {
+          "offsetAt": 5400001.619944445,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5464722810.944445,
+          "localMsAt": 64721.19099999964
+        }
+      },
+      {
+        "pong": {
+          "t0": 64951.294,
+          "t1Us": 5464955379,
+          "t2Us": 5464955647,
+          "t3": 64957.02
+        },
+        "query": {
+          "localMs": 64967.02,
+          "hostUs": 5464968639.944445
+        },
+        "after": {
+          "offsetAt": 5400001.619944445,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5464968639.944445,
+          "localMsAt": 64967.01999999955
+        }
+      },
+      {
+        "pong": {
+          "t0": 65205.99,
+          "t1Us": 5465209271,
+          "t2Us": 5465209503,
+          "t3": 65209.393
+        },
+        "query": {
+          "localMs": 65219.393,
+          "hostUs": 5465221020.500001
+        },
+        "after": {
+          "offsetAt": 5400001.6275,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5465221020.500001,
+          "localMsAt": 65219.39300000016
+        }
+      },
+      {
+        "pong": {
+          "t0": 65444.19,
+          "t1Us": 5465447578,
+          "t2Us": 5465447721,
+          "t3": 65447.717
+        },
+        "query": {
+          "localMs": 65457.717,
+          "hostUs": 5465459350.727274
+        },
+        "after": {
+          "offsetAt": 5400001.633727274,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5465459350.727274,
+          "localMsAt": 65457.71700000018
+        }
+      },
+      {
+        "pong": {
+          "t0": 65679.048,
+          "t1Us": 5465682470,
+          "t2Us": 5465682574,
+          "t3": 65682.533
+        },
+        "query": {
+          "localMs": 65692.533,
+          "hostUs": 5465694174.875001
+        },
+        "after": {
+          "offsetAt": 5400001.641875001,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5465694174.875001,
+          "localMsAt": 65692.53299999982
+        }
+      },
+      {
+        "pong": {
+          "t0": 65921.76,
+          "t1Us": 5465925051,
+          "t2Us": 5465925172,
+          "t3": 65925.161
+        },
+        "query": {
+          "localMs": 65935.161,
+          "hostUs": 5465936803.576924
+        },
+        "after": {
+          "offsetAt": 5400001.642576924,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5465936803.576924,
+          "localMsAt": 65935.16100000031
+        }
+      },
+      {
+        "pong": {
+          "t0": 66161.175,
+          "t1Us": 5466164744,
+          "t2Us": 5466164874,
+          "t3": 66164.858
+        },
+        "query": {
+          "localMs": 66174.858,
+          "hostUs": 5466176511.285715
+        },
+        "after": {
+          "offsetAt": 5400001.653285715,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5466176511.285715,
+          "localMsAt": 66174.85800000001
+        }
+      },
+      {
+        "pong": {
+          "t0": 66397.713,
+          "t1Us": 5466401250,
+          "t2Us": 5466401478,
+          "t3": 66401.472
+        },
+        "query": {
+          "localMs": 66411.472,
+          "hostUs": 5466413209.363445
+        },
+        "after": {
+          "offsetAt": 5400001.737363446,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5466413209.363445,
+          "localMsAt": 66411.47736077849
+        }
+      },
+      {
+        "pong": {
+          "t0": 66647.145,
+          "t1Us": 5466651326,
+          "t2Us": 5466651578,
+          "t3": 66652.309
+        },
+        "query": {
+          "localMs": 66662.309,
+          "hostUs": 5466664054.266748
+        },
+        "after": {
+          "offsetAt": 5400001.745266748,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5466664054.266748,
+          "localMsAt": 66662.31436077878
+        }
+      },
+      {
+        "pong": {
+          "t0": 66895.191,
+          "t1Us": 5466899922,
+          "t2Us": 5466900051,
+          "t3": 66900.654
+        },
+        "query": {
+          "localMs": 66910.654,
+          "hostUs": 5466912407.091533
+        },
+        "after": {
+          "offsetAt": 5400001.753091533,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5466912407.091533,
+          "localMsAt": 66910.65936077852
+        }
+      },
+      {
+        "pong": {
+          "t0": 67132.285,
+          "t1Us": 5467135534,
+          "t2Us": 5467135666,
+          "t3": 67135.493
+        },
+        "query": {
+          "localMs": 67145.493,
+          "hostUs": 5467147242.292967
+        },
+        "after": {
+          "offsetAt": 5400001.749292967,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5467147242.292967,
+          "localMsAt": 67145.49746601656
+        }
+      },
+      {
+        "pong": {
+          "t0": 67372.555,
+          "t1Us": 5467377270,
+          "t2Us": 5467377447,
+          "t3": 67379.052
+        },
+        "query": {
+          "localMs": 67389.052,
+          "hostUs": 5467390808.297311
+        },
+        "after": {
+          "offsetAt": 5400001.756297311,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5467390808.297311,
+          "localMsAt": 67389.05646601785
+        }
+      },
+      {
+        "pong": {
+          "t0": 67619.936,
+          "t1Us": 5467624635,
+          "t2Us": 5467624933,
+          "t3": 67626.718
+        },
+        "query": {
+          "localMs": 67636.718,
+          "hostUs": 5467638481.419765
+        },
+        "after": {
+          "offsetAt": 5400001.763419765,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5467638481.419765,
+          "localMsAt": 67636.72246601805
+        }
+      },
+      {
+        "pong": {
+          "t0": 67874.411,
+          "t1Us": 5467877778,
+          "t2Us": 5467878065,
+          "t3": 67878.08
+        },
+        "query": {
+          "localMs": 67888.08,
+          "hostUs": 5467889827.679877
+        },
+        "after": {
+          "offsetAt": 5400001.747679877,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5467889827.679877,
+          "localMsAt": 67888.08304717392
+        }
+      },
+      {
+        "pong": {
+          "t0": 68115.885,
+          "t1Us": 5468120604,
+          "t2Us": 5468120879,
+          "t3": 68121.738
+        },
+        "query": {
+          "localMs": 68131.738,
+          "hostUs": 5468133491.467928
+        },
+        "after": {
+          "offsetAt": 5400001.753467928,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5468133491.467928,
+          "localMsAt": 68131.74104717374
+        }
+      },
+      {
+        "pong": {
+          "t0": 68364.891,
+          "t1Us": 5468369528,
+          "t2Us": 5468369728,
+          "t3": 68370.155
+        },
+        "query": {
+          "localMs": 68380.155,
+          "hostUs": 5468381914.369028
+        },
+        "after": {
+          "offsetAt": 5400001.759369028,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5468381914.369028,
+          "localMsAt": 68380.1580471741
+        }
+      },
+      {
+        "pong": {
+          "t0": 68604.886,
+          "t1Us": 5468608330,
+          "t2Us": 5468608416,
+          "t3": 68608.495
+        },
+        "query": {
+          "localMs": 68618.495,
+          "hostUs": 5468620239.641674
+        },
+        "after": {
+          "offsetAt": 5400001.744641674,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5468620239.641674,
+          "localMsAt": 68618.49711250514
+        }
+      },
+      {
+        "pong": {
+          "t0": 68843.229,
+          "t1Us": 5468848246,
+          "t2Us": 5468848448,
+          "t3": 68850.193
+        },
+        "query": {
+          "localMs": 68860.193,
+          "hostUs": 5468861942.422192
+        },
+        "after": {
+          "offsetAt": 5400001.749422192,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5468861942.422192,
+          "localMsAt": 68860.195112505
+        }
+      },
+      {
+        "pong": {
+          "t0": 69087.413,
+          "t1Us": 5469090861,
+          "t2Us": 5469091052,
+          "t3": 69090.958
+        },
+        "query": {
+          "localMs": 69100.958,
+          "hostUs": 5469102716.094612
+        },
+        "after": {
+          "offsetAt": 5400001.7580946125,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5469102716.094612,
+          "localMsAt": 69100.96026750933
+        }
+      },
+      {
+        "pong": {
+          "t0": 69321.198,
+          "t1Us": 5469326077,
+          "t2Us": 5469326330,
+          "t3": 69327.316
+        },
+        "query": {
+          "localMs": 69337.316,
+          "hostUs": 5469339078.937985
+        },
+        "after": {
+          "offsetAt": 5400001.762937985,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5469339078.937985,
+          "localMsAt": 69337.31826750934
+        }
+      },
+      {
+        "pong": {
+          "t0": 69558.835,
+          "t1Us": 5469562296,
+          "t2Us": 5469562561,
+          "t3": 69562.408
+        },
+        "query": {
+          "localMs": 69572.408,
+          "hostUs": 5469574184.179329
+        },
+        "after": {
+          "offsetAt": 5400001.7761793295,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5469574184.179329,
+          "localMsAt": 69572.41059851367
+        }
+      },
+      {
+        "pong": {
+          "t0": 69801.6,
+          "t1Us": 5469804912,
+          "t2Us": 5469805185,
+          "t3": 69804.967
+        },
+        "query": {
+          "localMs": 69814.967,
+          "hostUs": 5469816745.444457
+        },
+        "after": {
+          "offsetAt": 5400001.778444457,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5469816745.444457,
+          "localMsAt": 69814.96947931033
+        }
+      },
+      {
+        "pong": {
+          "t0": 70050.26,
+          "t1Us": 5470053569,
+          "t2Us": 5470053840,
+          "t3": 70053.621
+        },
+        "query": {
+          "localMs": 70063.621,
+          "hostUs": 5470065401.46156
+        },
+        "after": {
+          "offsetAt": 5400001.78046156,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5470065401.46156,
+          "localMsAt": 70063.62335671112
+        }
+      },
+      {
+        "pong": {
+          "t0": 70286.444,
+          "t1Us": 5470291119,
+          "t2Us": 5470291245,
+          "t3": 70293.351
+        },
+        "query": {
+          "localMs": 70303.351,
+          "hostUs": 5470305136.469724
+        },
+        "after": {
+          "offsetAt": 5400001.785469724,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5470305136.469724,
+          "localMsAt": 70303.35335671064
+        }
+      },
+      {
+        "pong": {
+          "t0": 70534.084,
+          "t1Us": 5470538984,
+          "t2Us": 5470539075,
+          "t3": 70540.402
+        },
+        "query": {
+          "localMs": 70550.402,
+          "hostUs": 5470552192.63083
+        },
+        "after": {
+          "offsetAt": 5400001.79063083,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5470552192.63083,
+          "localMsAt": 70550.40435671061
+        }
+      },
+      {
+        "pong": {
+          "t0": 70776.995,
+          "t1Us": 5470782348,
+          "t2Us": 5470782601,
+          "t3": 70783.882
+        },
+        "query": {
+          "localMs": 70793.882,
+          "hostUs": 5470795677.717337
+        },
+        "after": {
+          "offsetAt": 5400001.795717336,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5470795677.717337,
+          "localMsAt": 70793.88435671106
+        }
+      },
+      {
+        "pong": {
+          "t0": 71030.743,
+          "t1Us": 5471035630,
+          "t2Us": 5471035782,
+          "t3": 71036.425
+        },
+        "query": {
+          "localMs": 71046.425,
+          "hostUs": 5471048225.9931755
+        },
+        "after": {
+          "offsetAt": 5400001.800993175,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5471048225.9931755,
+          "localMsAt": 71046.42735671066
+        }
+      },
+      {
+        "pong": {
+          "t0": 71270.76,
+          "t1Us": 5471274328,
+          "t2Us": 5471274421,
+          "t3": 71274.292
+        },
+        "query": {
+          "localMs": 71284.292,
+          "hostUs": 5471286106.408152
+        },
+        "after": {
+          "offsetAt": 5400001.814408151,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5471286106.408152,
+          "localMsAt": 71284.29463517852
+        }
+      },
+      {
+        "pong": {
+          "t0": 71516.554,
+          "t1Us": 5471520000,
+          "t2Us": 5471520256,
+          "t3": 71520.192
+        },
+        "query": {
+          "localMs": 71530.192,
+          "hostUs": 5471532000.562048
+        },
+        "after": {
+          "offsetAt": 5400001.808562048,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5471532000.562048,
+          "localMsAt": 71530.19427561574
+        }
+      },
+      {
+        "pong": {
+          "t0": 71757.605,
+          "t1Us": 5471761079,
+          "t2Us": 5471761251,
+          "t3": 71761.047
+        },
+        "query": {
+          "localMs": 71771.047,
+          "hostUs": 5471772864.553639
+        },
+        "after": {
+          "offsetAt": 5400001.817553639,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5471772864.553639,
+          "localMsAt": 71771.04939870536
+        }
+      },
+      {
+        "pong": {
+          "t0": 72002.177,
+          "t1Us": 5472006456,
+          "t2Us": 5472006739,
+          "t3": 72007.735
+        },
+        "query": {
+          "localMs": 72017.735,
+          "hostUs": 5472019557.752875
+        },
+        "after": {
+          "offsetAt": 5400001.822752875,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5472019557.752875,
+          "localMsAt": 72017.73739870545
+        }
+      },
+      {
+        "pong": {
+          "t0": 72240.906,
+          "t1Us": 5472244436,
+          "t2Us": 5472244678,
+          "t3": 72294.674
+        },
+        "query": {
+          "localMs": 72304.674,
+          "hostUs": 5472306502.8004465
+        },
+        "after": {
+          "offsetAt": 5400001.828800447,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5472306502.8004465,
+          "localMsAt": 72304.67639870476
+        }
+      },
+      {
+        "pong": {
+          "t0": 72542.638,
+          "t1Us": 5472545996,
+          "t2Us": 5472546076,
+          "t3": 72545.766
+        },
+        "query": {
+          "localMs": 72555.766,
+          "hostUs": 5472557600.116983
+        },
+        "after": {
+          "offsetAt": 5400001.834116983,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5472557600.116983,
+          "localMsAt": 72555.76839940716
+        }
+      },
+      {
+        "pong": {
+          "t0": 72789.067,
+          "t1Us": 5472792642,
+          "t2Us": 5472792872,
+          "t3": 72792.759
+        },
+        "query": {
+          "localMs": 72802.759,
+          "hostUs": 5472804599.047172
+        },
+        "after": {
+          "offsetAt": 5400001.840047172,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5472804599.047172,
+          "localMsAt": 72802.76141976658
+        }
+      },
+      {
+        "pong": {
+          "t0": 73038.516,
+          "t1Us": 5473041940,
+          "t2Us": 5473042119,
+          "t3": 73041.86
+        },
+        "query": {
+          "localMs": 73051.86,
+          "hostUs": 5473053704.8376
+        },
+        "after": {
+          "offsetAt": 5400001.844837599,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1518,
+          "hostUsAt": 5473053704.8376,
+          "localMsAt": 73051.86240645591
+        }
+      },
+      {
+        "pong": {
+          "t0": 73273.674,
+          "t1Us": 5473277023,
+          "t2Us": 5473277110,
+          "t3": 73276.774
+        },
+        "query": {
+          "localMs": 73286.774,
+          "hostUs": 5473288622.914669
+        },
+        "after": {
+          "offsetAt": 5400001.848914669,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5473288622.914669,
+          "localMsAt": 73286.77638266608
+        }
+      },
+      {
+        "pong": {
+          "t0": 73522.864,
+          "t1Us": 5473527295,
+          "t2Us": 5473527503,
+          "t3": 73527.937
+        },
+        "query": {
+          "localMs": 73537.937,
+          "hostUs": 5473539791.190492
+        },
+        "after": {
+          "offsetAt": 5400001.854190492,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5473539791.190492,
+          "localMsAt": 73537.93938266486
+        }
+      },
+      {
+        "pong": {
+          "t0": 73763.396,
+          "t1Us": 5473766830,
+          "t2Us": 5473767036,
+          "t3": 73766.749
+        },
+        "query": {
+          "localMs": 73776.749,
+          "hostUs": 5473778608.396054
+        },
+        "after": {
+          "offsetAt": 5400001.859396054,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5473778608.396054,
+          "localMsAt": 73776.75138757285
+        }
+      },
+      {
+        "pong": {
+          "t0": 74015.973,
+          "t1Us": 5474019850,
+          "t2Us": 5474020136,
+          "t3": 74020.636
+        },
+        "query": {
+          "localMs": 74030.636,
+          "hostUs": 5474032500.734588
+        },
+        "after": {
+          "offsetAt": 5400001.864734587,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5474032500.734588,
+          "localMsAt": 74030.63838757481
+        }
+      },
+      {
+        "pong": {
+          "t0": 74265.543,
+          "t1Us": 5474269100,
+          "t2Us": 5474269284,
+          "t3": 74269.202
+        },
+        "query": {
+          "localMs": 74279.202,
+          "hostUs": 5474281065.88427
+        },
+        "after": {
+          "offsetAt": 5400001.86388427,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5474281065.88427,
+          "localMsAt": 74279.20423796866
+        }
+      },
+      {
+        "pong": {
+          "t0": 74507.578,
+          "t1Us": 5474510950,
+          "t2Us": 5474511146,
+          "t3": 74510.788
+        },
+        "query": {
+          "localMs": 74520.788,
+          "hostUs": 5474522656.398834
+        },
+        "after": {
+          "offsetAt": 5400001.868398835,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5474522656.398834,
+          "localMsAt": 74520.79022836965
+        }
+      },
+      {
+        "pong": {
+          "t0": 74745.339,
+          "t1Us": 5474750388,
+          "t2Us": 5474750576,
+          "t3": 74751.05
+        },
+        "query": {
+          "localMs": 74761.05,
+          "hostUs": 5474762923.2795315
+        },
+        "after": {
+          "offsetAt": 5400001.8732795315,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5474762923.2795315,
+          "localMsAt": 74761.05222836975
+        }
+      },
+      {
+        "pong": {
+          "t0": 74984.006,
+          "t1Us": 5474988906,
+          "t2Us": 5474989001,
+          "t3": 74990.884
+        },
+        "query": {
+          "localMs": 75000.884,
+          "hostUs": 5475002762.151534
+        },
+        "after": {
+          "offsetAt": 5400001.878151534,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5475002762.151534,
+          "localMsAt": 75000.88622836955
+        }
+      },
+      {
+        "pong": {
+          "t0": 75233.407,
+          "t1Us": 5475236813,
+          "t2Us": 5475237103,
+          "t3": 75236.737
+        },
+        "query": {
+          "localMs": 75246.737,
+          "hostUs": 5475248620.506183
+        },
+        "after": {
+          "offsetAt": 5400001.883506183,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5475248620.506183,
+          "localMsAt": 75246.73923651967
+        }
+      },
+      {
+        "pong": {
+          "t0": 75478.746,
+          "t1Us": 5475482365,
+          "t2Us": 5475482492,
+          "t3": 75482.388
+        },
+        "query": {
+          "localMs": 75492.388,
+          "hostUs": 5475494273.582386
+        },
+        "after": {
+          "offsetAt": 5400001.885582386,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5475494273.582386,
+          "localMsAt": 75492.3901719153
+        }
+      },
+      {
+        "pong": {
+          "t0": 75719.002,
+          "t1Us": 5475722597,
+          "t2Us": 5475722721,
+          "t3": 75722.676
+        },
+        "query": {
+          "localMs": 75732.676,
+          "hostUs": 5475734559.185169
+        },
+        "after": {
+          "offsetAt": 5400001.88318517,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5475734559.185169,
+          "localMsAt": 75732.67801883072
+        }
+      },
+      {
+        "pong": {
+          "t0": 76394.344,
+          "t1Us": 5476397843,
+          "t2Us": 5476398015,
+          "t3": 76397.758
+        },
+        "query": {
+          "localMs": 76407.758,
+          "hostUs": 5476409652.346141
+        },
+        "after": {
+          "offsetAt": 5400001.89434614,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5476409652.346141,
+          "localMsAt": 76407.75998125039
+        }
+      },
+      {
+        "pong": {
+          "t0": 77130.513,
+          "t1Us": 5477134395,
+          "t2Us": 5477134567,
+          "t3": 77134.977
+        },
+        "query": {
+          "localMs": 77144.977,
+          "hostUs": 5477146885.467261
+        },
+        "after": {
+          "offsetAt": 5400001.908467261,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5477146885.467261,
+          "localMsAt": 77144.97898124997
+        }
+      },
+      {
+        "pong": {
+          "t0": 77830.686,
+          "t1Us": 5477834242,
+          "t2Us": 5477834462,
+          "t3": 77834.156
+        },
+        "query": {
+          "localMs": 77844.156,
+          "hostUs": 5477846078.985384
+        },
+        "after": {
+          "offsetAt": 5400001.922985383,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5477846078.985384,
+          "localMsAt": 77844.1580016138
+        }
+      },
+      {
+        "pong": {
+          "t0": 78551.071,
+          "t1Us": 5478555163,
+          "t2Us": 5478555379,
+          "t3": 78555.731
+        },
+        "query": {
+          "localMs": 78565.731,
+          "hostUs": 5478567667.877696
+        },
+        "after": {
+          "offsetAt": 5400001.936877697,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5478567667.877696,
+          "localMsAt": 78565.73300161213
+        }
+      },
+      {
+        "pong": {
+          "t0": 79289.414,
+          "t1Us": 5479292934,
+          "t2Us": 5479293160,
+          "t3": 79292.782
+        },
+        "query": {
+          "localMs": 79302.782,
+          "hostUs": 5479304734.507852
+        },
+        "after": {
+          "offsetAt": 5400001.952507852,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5479304734.507852,
+          "localMsAt": 79302.78404827788
+        }
+      },
+      {
+        "pong": {
+          "t0": 80003.391,
+          "t1Us": 5480007372,
+          "t2Us": 5480007478,
+          "t3": 80007.984
+        },
+        "query": {
+          "localMs": 80017.984,
+          "hostUs": 5480019949.835856
+        },
+        "after": {
+          "offsetAt": 5400001.965835856,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5480019949.835856,
+          "localMsAt": 80017.986031604
+        }
+      },
+      {
+        "pong": {
+          "t0": 80712.05,
+          "t1Us": 5480717496,
+          "t2Us": 5480717789,
+          "t3": 80719.022
+        },
+        "query": {
+          "localMs": 80729.022,
+          "hostUs": 5480731001.6274805
+        },
+        "after": {
+          "offsetAt": 5400001.979627481,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5480731001.6274805,
+          "localMsAt": 80729.02403160371
+        }
+      },
+      {
+        "pong": {
+          "t0": 81395.559,
+          "t1Us": 5481399634,
+          "t2Us": 5481399817,
+          "t3": 81400.639
+        },
+        "query": {
+          "localMs": 81410.639,
+          "hostUs": 5481412625.6376705
+        },
+        "after": {
+          "offsetAt": 5400001.98663767,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5481412625.6376705,
+          "localMsAt": 81410.6408862276
+        }
+      },
+      {
+        "pong": {
+          "t0": 82080.896,
+          "t1Us": 5482084540,
+          "t2Us": 5482084805,
+          "t3": 82084.436
+        },
+        "query": {
+          "localMs": 82094.436,
+          "hostUs": 5482096436.758047
+        },
+        "after": {
+          "offsetAt": 5400002.000758047,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5482096436.758047,
+          "localMsAt": 82094.43790562265
+        }
+      },
+      {
+        "pong": {
+          "t0": 82801.925,
+          "t1Us": 5482805607,
+          "t2Us": 5482805794,
+          "t3": 82805.428
+        },
+        "query": {
+          "localMs": 82815.428,
+          "hostUs": 5482817443.93407
+        },
+        "after": {
+          "offsetAt": 5400002.01593407,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5482817443.93407,
+          "localMsAt": 82815.42992798984
+        }
+      },
+      {
+        "pong": {
+          "t0": 83488.843,
+          "t1Us": 5483492745,
+          "t2Us": 5483492988,
+          "t3": 83492.605
+        },
+        "query": {
+          "localMs": 83502.605,
+          "hostUs": 5483504652.164688
+        },
+        "after": {
+          "offsetAt": 5400002.047164688,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5483504652.164688,
+          "localMsAt": 83502.60718640778
+        }
+      },
+      {
+        "pong": {
+          "t0": 84223.688,
+          "t1Us": 5484227973,
+          "t2Us": 5484228189,
+          "t3": 84227.958
+        },
+        "query": {
+          "localMs": 84237.958,
+          "hostUs": 5484240020.295278
+        },
+        "after": {
+          "offsetAt": 5400002.062295278,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5484240020.295278,
+          "localMsAt": 84237.96019419841
+        }
+      },
+      {
+        "pong": {
+          "t0": 84958.363,
+          "t1Us": 5484962069,
+          "t2Us": 5484962225,
+          "t3": 84961.786
+        },
+        "query": {
+          "localMs": 84971.786,
+          "hostUs": 5484973858.91149
+        },
+        "after": {
+          "offsetAt": 5400002.07291149,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5484973858.91149,
+          "localMsAt": 84971.78810406663
+        }
+      },
+      {
+        "pong": {
+          "t0": 85694.282,
+          "t1Us": 5485699233,
+          "t2Us": 5485699316,
+          "t3": 85699.489
+        },
+        "query": {
+          "localMs": 85709.489,
+          "hostUs": 5485711576.121382
+        },
+        "after": {
+          "offsetAt": 5400002.087121381,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5485711576.121382,
+          "localMsAt": 85709.49109649565
+        }
+      },
+      {
+        "pong": {
+          "t0": 86398.196,
+          "t1Us": 5486402086,
+          "t2Us": 5486402315,
+          "t3": 86401.983
+        },
+        "query": {
+          "localMs": 86411.983,
+          "hostUs": 5486414085.749899
+        },
+        "after": {
+          "offsetAt": 5400002.102749899,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5486414085.749899,
+          "localMsAt": 86411.9851196995
+        }
+      },
+      {
+        "pong": {
+          "t0": 87097.954,
+          "t1Us": 5487102889,
+          "t2Us": 5487103122,
+          "t3": 87103.26
+        },
+        "query": {
+          "localMs": 87113.26,
+          "hostUs": 5487115374.856205
+        },
+        "after": {
+          "offsetAt": 5400002.114856205,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5487115374.856205,
+          "localMsAt": 87113.26208285801
+        }
+      },
+      {
+        "pong": {
+          "t0": 87769.938,
+          "t1Us": 5487773823,
+          "t2Us": 5487774040,
+          "t3": 87773.549
+        },
+        "query": {
+          "localMs": 87783.549,
+          "hostUs": 5487785687.484995
+        },
+        "after": {
+          "offsetAt": 5400002.138484995,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5487785687.484995,
+          "localMsAt": 87783.55121330451
+        }
+      },
+      {
+        "pong": {
+          "t0": 88487.053,
+          "t1Us": 5488490959,
+          "t2Us": 5488491160,
+          "t3": 88490.782
+        },
+        "query": {
+          "localMs": 88500.782,
+          "hostUs": 5488502933.561244
+        },
+        "after": {
+          "offsetAt": 5400002.151561244,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5488502933.561244,
+          "localMsAt": 88500.78419823572
+        }
+      },
+      {
+        "pong": {
+          "t0": 89167.694,
+          "t1Us": 5489171477,
+          "t2Us": 5489171622,
+          "t3": 89171.163
+        },
+        "query": {
+          "localMs": 89181.163,
+          "hostUs": 5489183321.734447
+        },
+        "after": {
+          "offsetAt": 5400002.158734446,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5489183321.734447,
+          "localMsAt": 89181.16512015648
+        }
+      },
+      {
+        "pong": {
+          "t0": 89876.565,
+          "t1Us": 5489880478,
+          "t2Us": 5489880757,
+          "t3": 89880.241
+        },
+        "query": {
+          "localMs": 89890.241,
+          "hostUs": 5489892419.593359
+        },
+        "after": {
+          "offsetAt": 5400002.178593359,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5489892419.593359,
+          "localMsAt": 89890.24318720028
+        }
+      },
+      {
+        "pong": {
+          "t0": 90589.68,
+          "t1Us": 5490593505,
+          "t2Us": 5490593747,
+          "t3": 90593.347
+        },
+        "query": {
+          "localMs": 90603.347,
+          "hostUs": 5490605529.986855
+        },
+        "after": {
+          "offsetAt": 5400002.182986855,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5490605529.986855,
+          "localMsAt": 90603.34908129834
+        }
+      },
+      {
+        "pong": {
+          "t0": 91290.561,
+          "t1Us": 5491294300,
+          "t2Us": 5491294456,
+          "t3": 91293.843
+        },
+        "query": {
+          "localMs": 91303.843,
+          "hostUs": 5491306037.457729
+        },
+        "after": {
+          "offsetAt": 5400002.194457729,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5491306037.457729,
+          "localMsAt": 91303.84505959786
+        }
+      },
+      {
+        "pong": {
+          "t0": 92019.764,
+          "t1Us": 5492023566,
+          "t2Us": 5492023751,
+          "t3": 92023.16
+        },
+        "query": {
+          "localMs": 92033.16,
+          "hostUs": 5492035368.858746
+        },
+        "after": {
+          "offsetAt": 5400002.208858745,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5492035368.858746,
+          "localMsAt": 92033.16207983345
+        }
+      },
+      {
+        "pong": {
+          "t0": 92728.182,
+          "t1Us": 5492732129,
+          "t2Us": 5492732387,
+          "t3": 92732.026
+        },
+        "query": {
+          "localMs": 92742.026,
+          "hostUs": 5492744238.822828
+        },
+        "after": {
+          "offsetAt": 5400002.212822828,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5492744238.822828,
+          "localMsAt": 92742.02795196604
+        }
+      },
+      {
+        "pong": {
+          "t0": 93430.95,
+          "t1Us": 5493435095,
+          "t2Us": 5493435224,
+          "t3": 93435.375
+        },
+        "query": {
+          "localMs": 93445.375,
+          "hostUs": 5493447605.26919
+        },
+        "after": {
+          "offsetAt": 5400002.23026919,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5493447605.26919,
+          "localMsAt": 93445.37703652866
+        }
+      },
+      {
+        "pong": {
+          "t0": 94116.71,
+          "t1Us": 5494120642,
+          "t2Us": 5494120883,
+          "t3": 94120.265
+        },
+        "query": {
+          "localMs": 94130.265,
+          "hostUs": 5494132515.588785
+        },
+        "after": {
+          "offsetAt": 5400002.250588786,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5494132515.588785,
+          "localMsAt": 94130.26714513823
+        }
+      },
+      {
+        "pong": {
+          "t0": 94807.405,
+          "t1Us": 5494811368,
+          "t2Us": 5494811472,
+          "t3": 94811.089
+        },
+        "query": {
+          "localMs": 94821.089,
+          "hostUs": 5494823342.809952
+        },
+        "after": {
+          "offsetAt": 5400002.253809952,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5494823342.809952,
+          "localMsAt": 94821.09103579074
+        }
+      },
+      {
+        "pong": {
+          "t0": 95489.553,
+          "t1Us": 5495493389,
+          "t2Us": 5495493582,
+          "t3": 95492.851
+        },
+        "query": {
+          "localMs": 95502.851,
+          "hostUs": 5495505119.882516
+        },
+        "after": {
+          "offsetAt": 5400002.268882516,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5495505119.882516,
+          "localMsAt": 95502.85305417143
+        }
+      },
+      {
+        "pong": {
+          "t0": 96165.905,
+          "t1Us": 5496170945,
+          "t2Us": 5496171171,
+          "t3": 96171.358
+        },
+        "query": {
+          "localMs": 96181.358,
+          "hostUs": 5496183639.910843
+        },
+        "after": {
+          "offsetAt": 5400002.281910843,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1506,
+          "hostUsAt": 5496183639.910843,
+          "localMsAt": 96181.36005000304
+        }
+      },
+      {
+        "pong": {
+          "t0": 96891.298,
+          "t1Us": 5496895111,
+          "t2Us": 5496895327,
+          "t3": 96894.515
+        },
+        "query": {
+          "localMs": 96904.515,
+          "hostUs": 5496906812.892354
+        },
+        "after": {
+          "offsetAt": 5400002.297892354,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5496906812.892354,
+          "localMsAt": 96904.5170684373
+        }
+      },
+      {
+        "pong": {
+          "t0": 97603.587,
+          "t1Us": 5497607536,
+          "t2Us": 5497607624,
+          "t3": 97607.012
+        },
+        "query": {
+          "localMs": 97617.012,
+          "hostUs": 5497619320.486554
+        },
+        "after": {
+          "offsetAt": 5400002.308486554,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5497619320.486554,
+          "localMsAt": 97617.01403659023
+        }
+      },
+      {
+        "pong": {
+          "t0": 98325.231,
+          "t1Us": 5498329075,
+          "t2Us": 5498329173,
+          "t3": 98328.334
+        },
+        "query": {
+          "localMs": 98338.334,
+          "hostUs": 5498340656.406449
+        },
+        "after": {
+          "offsetAt": 5400002.322406449,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5498340656.406449,
+          "localMsAt": 98338.3360126596
+        }
+      },
+      {
+        "pong": {
+          "t0": 99021.956,
+          "t1Us": 5499025956,
+          "t2Us": 5499026225,
+          "t3": 99025.62
+        },
+        "query": {
+          "localMs": 99035.62,
+          "hostUs": 5499037950.145725
+        },
+        "after": {
+          "offsetAt": 5400002.330145725,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5499037950.145725,
+          "localMsAt": 99035.62193279248
+        }
+      },
+      {
+        "pong": {
+          "t0": 99740.934,
+          "t1Us": 5499744999,
+          "t2Us": 5499745169,
+          "t3": 99744.433
+        },
+        "query": {
+          "localMs": 99754.433,
+          "hostUs": 5499756783.931226
+        },
+        "after": {
+          "offsetAt": 5400002.350931225,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5499756783.931226,
+          "localMsAt": 99754.43501782231
+        }
+      },
+      {
+        "pong": {
+          "t0": 100466.501,
+          "t1Us": 5500471998,
+          "t2Us": 5500472153,
+          "t3": 100473.127
+        },
+        "query": {
+          "localMs": 100483.127,
+          "hostUs": 5500485491.17297
+        },
+        "after": {
+          "offsetAt": 5400002.364172969,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5500485491.17297,
+          "localMsAt": 100483.12900046073
+        }
+      },
+      {
+        "pong": {
+          "t0": 101194.095,
+          "t1Us": 5501198246,
+          "t2Us": 5501198393,
+          "t3": 101197.662
+        },
+        "query": {
+          "localMs": 101207.662,
+          "hostUs": 5501210046.720726
+        },
+        "after": {
+          "offsetAt": 5400002.384720727,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5501210046.720726,
+          "localMsAt": 101207.66406207997
+        }
+      },
+      {
+        "pong": {
+          "t0": 101881.41,
+          "t1Us": 5501885417,
+          "t2Us": 5501885637,
+          "t3": 101884.775
+        },
+        "query": {
+          "localMs": 101894.775,
+          "hostUs": 5501897178.182219
+        },
+        "after": {
+          "offsetAt": 5400002.403182218,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5501897178.182219,
+          "localMsAt": 101894.77712648455
+        }
+      },
+      {
+        "pong": {
+          "t0": 102591.241,
+          "t1Us": 5502595427,
+          "t2Us": 5502595562,
+          "t3": 102594.933
+        },
+        "query": {
+          "localMs": 102604.933,
+          "hostUs": 5502607349.820613
+        },
+        "after": {
+          "offsetAt": 5400002.416820613,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5502607349.820613,
+          "localMsAt": 102604.93512891419
+        }
+      },
+      {
+        "pong": {
+          "t0": 103260.506,
+          "t1Us": 5503264590,
+          "t2Us": 5503264728,
+          "t3": 103264.101
+        },
+        "query": {
+          "localMs": 103274.101,
+          "hostUs": 5503276524.976729
+        },
+        "after": {
+          "offsetAt": 5400002.42397673,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5503276524.976729,
+          "localMsAt": 103274.10308508482
+        }
+      },
+      {
+        "pong": {
+          "t0": 103993.025,
+          "t1Us": 5503997149,
+          "t2Us": 5503997402,
+          "t3": 103996.659
+        },
+        "query": {
+          "localMs": 104006.659,
+          "hostUs": 5504009098.06828
+        },
+        "after": {
+          "offsetAt": 5400002.43906828,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5504009098.06828,
+          "localMsAt": 104006.66110765841
+        }
+      },
+      {
+        "pong": {
+          "t0": 104657.426,
+          "t1Us": 5504661562,
+          "t2Us": 5504661656,
+          "t3": 104711.013
+        },
+        "query": {
+          "localMs": 104721.013,
+          "hostUs": 5504723464.7504425
+        },
+        "after": {
+          "offsetAt": 5400002.451750442,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5504723464.7504425,
+          "localMsAt": 104721.01507575065
+        }
+      },
+      {
+        "pong": {
+          "t0": 105441.488,
+          "t1Us": 5505447605,
+          "t2Us": 5505447793,
+          "t3": 105448.527
+        },
+        "query": {
+          "localMs": 105458.527,
+          "hostUs": 5505460994.049601
+        },
+        "after": {
+          "offsetAt": 5400002.467049601,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5505460994.049601,
+          "localMsAt": 105458.52909369301
+        }
+      },
+      {
+        "pong": {
+          "t0": 106154.343,
+          "t1Us": 5506159077,
+          "t2Us": 5506159192,
+          "t3": 106159.173
+        },
+        "query": {
+          "localMs": 106169.173,
+          "hostUs": 5506171646.710672
+        },
+        "after": {
+          "offsetAt": 5400002.473710672,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5506171646.710672,
+          "localMsAt": 106169.17494794633
+        }
+      },
+      {
+        "pong": {
+          "t0": 106835.449,
+          "t1Us": 5506839615,
+          "t2Us": 5506839793,
+          "t3": 106838.851
+        },
+        "query": {
+          "localMs": 106848.851,
+          "hostUs": 5506851344.540712
+        },
+        "after": {
+          "offsetAt": 5400002.493540713,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5506851344.540712,
+          "localMsAt": 106848.85300052352
+        }
+      },
+      {
+        "pong": {
+          "t0": 107521.494,
+          "t1Us": 5507525623,
+          "t2Us": 5507525740,
+          "t3": 107524.891
+        },
+        "query": {
+          "localMs": 107534.891,
+          "hostUs": 5507537395.35992
+        },
+        "after": {
+          "offsetAt": 5400002.50435992,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5507537395.35992,
+          "localMsAt": 107534.89297411311
+        }
+      },
+      {
+        "pong": {
+          "t0": 108189.213,
+          "t1Us": 5508193515,
+          "t2Us": 5508193749,
+          "t3": 108192.828
+        },
+        "query": {
+          "localMs": 108202.828,
+          "hostUs": 5508205357.330772
+        },
+        "after": {
+          "offsetAt": 5400002.529330772,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5508205357.330772,
+          "localMsAt": 108202.83010912035
+        }
+      },
+      {
+        "pong": {
+          "t0": 108885.056,
+          "t1Us": 5508889305,
+          "t2Us": 5508889526,
+          "t3": 108888.653
+        },
+        "query": {
+          "localMs": 108898.653,
+          "hostUs": 5508901198.373599
+        },
+        "after": {
+          "offsetAt": 5400002.545373599,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5508901198.373599,
+          "localMsAt": 108898.65513517428
+        }
+      },
+      {
+        "pong": {
+          "t0": 109589.948,
+          "t1Us": 5509594210,
+          "t2Us": 5509594308,
+          "t3": 109593.399
+        },
+        "query": {
+          "localMs": 109603.399,
+          "hostUs": 5509605961.07439
+        },
+        "after": {
+          "offsetAt": 5400002.56207439,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5509605961.07439,
+          "localMsAt": 109603.401160107
+        }
+      },
+      {
+        "pong": {
+          "t0": 110329.371,
+          "t1Us": 5510333529,
+          "t2Us": 5510333734,
+          "t3": 110332.746
+        },
+        "query": {
+          "localMs": 110342.746,
+          "hostUs": 5510345322.42908
+        },
+        "after": {
+          "offsetAt": 5400002.576429079,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5510345322.42908,
+          "localMsAt": 110342.74815519527
+        }
+      },
+      {
+        "pong": {
+          "t0": 111069.682,
+          "t1Us": 5511074106,
+          "t2Us": 5511074229,
+          "t3": 111073.402
+        },
+        "query": {
+          "localMs": 111083.402,
+          "hostUs": 5511085997.163382
+        },
+        "after": {
+          "offsetAt": 5400002.595163382,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5511085997.163382,
+          "localMsAt": 111083.40419897437
+        }
+      },
+      {
+        "pong": {
+          "t0": 111767.291,
+          "t1Us": 5511771539,
+          "t2Us": 5511771669,
+          "t3": 111770.662
+        },
+        "query": {
+          "localMs": 111780.662,
+          "hostUs": 5511783273.252504
+        },
+        "after": {
+          "offsetAt": 5400002.611252504,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5511783273.252504,
+          "localMsAt": 111780.66422106978
+        }
+      },
+      {
+        "pong": {
+          "t0": 112455.032,
+          "t1Us": 5512460656,
+          "t2Us": 5512460740,
+          "t3": 112460.282
+        },
+        "query": {
+          "localMs": 112470.282,
+          "hostUs": 5512472907.079834
+        },
+        "after": {
+          "offsetAt": 5400002.625079834,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5512472907.079834,
+          "localMsAt": 112470.284217624
+        }
+      },
+      {
+        "pong": {
+          "t0": 113190.422,
+          "t1Us": 5513194601,
+          "t2Us": 5513194730,
+          "t3": 113193.639
+        },
+        "query": {
+          "localMs": 113203.639,
+          "hostUs": 5513206278.391011
+        },
+        "after": {
+          "offsetAt": 5400002.639391011,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5513206278.391011,
+          "localMsAt": 113203.64121157955
+        }
+      },
+      {
+        "pong": {
+          "t0": 113877.582,
+          "t1Us": 5513882458,
+          "t2Us": 5513882576,
+          "t3": 113882.085
+        },
+        "query": {
+          "localMs": 113892.085,
+          "hostUs": 5513894746.083124
+        },
+        "after": {
+          "offsetAt": 5400002.661083125,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5513894746.083124,
+          "localMsAt": 113892.0873768935
+        }
+      },
+      {
+        "pong": {
+          "t0": 114549.457,
+          "t1Us": 5514553799,
+          "t2Us": 5514553905,
+          "t3": 114553.092
+        },
+        "query": {
+          "localMs": 114563.092,
+          "hostUs": 5514565755.110344
+        },
+        "after": {
+          "offsetAt": 5400002.663110344,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5514565755.110344,
+          "localMsAt": 114563.09424181376
+        }
+      },
+      {
+        "pong": {
+          "t0": 115264.518,
+          "t1Us": 5515268921,
+          "t2Us": 5515269126,
+          "t3": 115268.273
+        },
+        "query": {
+          "localMs": 115278.273,
+          "hostUs": 5515280945.512343
+        },
+        "after": {
+          "offsetAt": 5400002.672512343,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5515280945.512343,
+          "localMsAt": 115278.27519327216
+        }
+      },
+      {
+        "pong": {
+          "t0": 115948.12,
+          "t1Us": 5515952508,
+          "t2Us": 5515952775,
+          "t3": 115951.753
+        },
+        "query": {
+          "localMs": 115961.753,
+          "hostUs": 5515964441.458856
+        },
+        "after": {
+          "offsetAt": 5400002.688458856,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5515964441.458856,
+          "localMsAt": 115961.75521665998
+        }
+      },
+      {
+        "pong": {
+          "t0": 116640.83,
+          "t1Us": 5516645190,
+          "t2Us": 5516645282,
+          "t3": 116644.228
+        },
+        "query": {
+          "localMs": 116654.228,
+          "hostUs": 5516656932.227272
+        },
+        "after": {
+          "offsetAt": 5400002.7042272715,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5516656932.227272,
+          "localMsAt": 116654.23024960607
+        }
+      },
+      {
+        "pong": {
+          "t0": 117331.331,
+          "t1Us": 5517335689,
+          "t2Us": 5517335790,
+          "t3": 117334.73
+        },
+        "query": {
+          "localMs": 117344.73,
+          "hostUs": 5517347447.348329
+        },
+        "after": {
+          "offsetAt": 5400002.717348328,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5517347447.348329,
+          "localMsAt": 117344.73223922029
+        }
+      },
+      {
+        "pong": {
+          "t0": 118020.866,
+          "t1Us": 5518025104,
+          "t2Us": 5518025323,
+          "t3": 118024.09
+        },
+        "query": {
+          "localMs": 118034.09,
+          "hostUs": 5518036825.468261
+        },
+        "after": {
+          "offsetAt": 5400002.735468261,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5518036825.468261,
+          "localMsAt": 118034.09232900385
+        }
+      }
+    ]
+  },
+  {
+    "name": "sevenPongs",
+    "steps": [
+      {
+        "pong": {
+          "t0": 9000.25,
+          "t1Us": 5409003072,
+          "t2Us": 5409003182,
+          "t3": 9004.806
+        },
+        "query": {
+          "localMs": 9014.806,
+          "hostUs": 5409015404.999999
+        },
+        "after": {
+          "offsetAt": 5400000.598999999,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2223,
+          "hostUsAt": 5409015404.999999,
+          "localMsAt": 9014.805999999866
+        }
+      },
+      {
+        "pong": {
+          "t0": 9512.709,
+          "t1Us": 5409515412,
+          "t2Us": 5409515676,
+          "t3": 9517.205
+        },
+        "query": {
+          "localMs": 9527.205,
+          "hostUs": 5409527797.999999
+        },
+        "after": {
+          "offsetAt": 5400000.592999999,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2116,
+          "hostUsAt": 5409527797.999999,
+          "localMsAt": 9527.205000000075
+        }
+      },
+      {
+        "pong": {
+          "t0": 9999.305,
+          "t1Us": 5410001936,
+          "t2Us": 5410002145,
+          "t3": 10003.649
+        },
+        "query": {
+          "localMs": 10013.649,
+          "hostUs": 5410014232.166667
+        },
+        "after": {
+          "offsetAt": 5400000.583166666,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2068,
+          "hostUsAt": 5410014232.166667,
+          "localMsAt": 10013.649000000209
+        }
+      },
+      {
+        "pong": {
+          "t0": 10507.452,
+          "t1Us": 5410510098,
+          "t2Us": 5410510395,
+          "t3": 10511.842
+        },
+        "query": {
+          "localMs": 10521.842,
+          "hostUs": 5410522429.25
+        },
+        "after": {
+          "offsetAt": 5400000.58725,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2047,
+          "hostUsAt": 5410522429.25,
+          "localMsAt": 10521.842000000179
+        }
+      },
+      {
+        "pong": {
+          "t0": 11013.807,
+          "t1Us": 5411016421,
+          "t2Us": 5411016623,
+          "t3": 11018.052
+        },
+        "query": {
+          "localMs": 11028.052,
+          "hostUs": 5411028640.3
+        },
+        "after": {
+          "offsetAt": 5400000.5883,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2022,
+          "hostUsAt": 5411028640.3,
+          "localMsAt": 11028.052000000142
+        }
+      },
+      {
+        "pong": {
+          "t0": 11505.327,
+          "t1Us": 5411508136,
+          "t2Us": 5411508413,
+          "t3": 11509.927
+        },
+        "query": {
+          "localMs": 11519.927,
+          "hostUs": 5411520525.166667
+        },
+        "after": {
+          "offsetAt": 5400000.598166667,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2022,
+          "hostUsAt": 5411520525.166667,
+          "localMsAt": 11519.927000000142
+        }
+      },
+      {
+        "pong": {
+          "t0": 12019.599,
+          "t1Us": 5412022348,
+          "t2Us": 5412022539,
+          "t3": 12024.058
+        },
+        "query": {
+          "localMs": 12034.058,
+          "hostUs": 5412034658.571429
+        },
+        "after": {
+          "offsetAt": 5400000.600571429,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2022,
+          "hostUsAt": 5412034658.571429,
+          "localMsAt": 12034.058000000194
+        }
+      }
+    ]
+  },
+  {
+    "name": "slowLink",
+    "steps": [
+      {
+        "pong": {
+          "t0": 120000.125,
+          "t1Us": 5520027190,
+          "t2Us": 5520027487,
+          "t3": 120048.991
+        },
+        "query": {
+          "localMs": 120058.991,
+          "hostUs": 5520061771.500001
+        },
+        "after": {
+          "offsetAt": 5400002.7805,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24285,
+          "hostUsAt": 5520061771.500001,
+          "localMsAt": 120058.99100000039
+        }
+      },
+      {
+        "pong": {
+          "t0": 121054.94,
+          "t1Us": 5521082925,
+          "t2Us": 5521083178,
+          "t3": 121105.504
+        },
+        "query": {
+          "localMs": 121115.504,
+          "hostUs": 5521118284.5
+        },
+        "after": {
+          "offsetAt": 5400002.7805,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24285,
+          "hostUsAt": 5521118284.5,
+          "localMsAt": 121115.50399999972
+        }
+      },
+      {
+        "pong": {
+          "t0": 122188.96,
+          "t1Us": 5522219223,
+          "t2Us": 5522219435,
+          "t3": 122244.5
+        },
+        "query": {
+          "localMs": 122254.5,
+          "hostUs": 5522257280.5
+        },
+        "after": {
+          "offsetAt": 5400002.7805,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24285,
+          "hostUsAt": 5522257280.5,
+          "localMsAt": 122254.5
+        }
+      },
+      {
+        "pong": {
+          "t0": 123307.137,
+          "t1Us": 5523334008,
+          "t2Us": 5523334137,
+          "t3": 123355.332
+        },
+        "query": {
+          "localMs": 123365.332,
+          "hostUs": 5523368141.25
+        },
+        "after": {
+          "offsetAt": 5400002.80925,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24033,
+          "hostUsAt": 5523368141.25,
+          "localMsAt": 123365.3320000004
+        }
+      },
+      {
+        "pong": {
+          "t0": 124442.279,
+          "t1Us": 5524471408,
+          "t2Us": 5524471598,
+          "t3": 124495.234
+        },
+        "query": {
+          "localMs": 124505.234,
+          "hostUs": 5524508043.25
+        },
+        "after": {
+          "offsetAt": 5400002.80925,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24033,
+          "hostUsAt": 5524508043.25,
+          "localMsAt": 124505.23400000017
+        }
+      },
+      {
+        "pong": {
+          "t0": 125449.571,
+          "t1Us": 5525478599,
+          "t2Us": 5525478897,
+          "t3": 125502.311
+        },
+        "query": {
+          "localMs": 125512.311,
+          "hostUs": 5525515120.25
+        },
+        "after": {
+          "offsetAt": 5400002.80925,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24033,
+          "hostUsAt": 5525515120.25,
+          "localMsAt": 125512.31099999975
+        }
+      },
+      {
+        "pong": {
+          "t0": 126480.53,
+          "t1Us": 5526507543,
+          "t2Us": 5526507753,
+          "t3": 126529.081
+        },
+        "query": {
+          "localMs": 126539.081,
+          "hostUs": 5526541932.626731
+        },
+        "after": {
+          "offsetAt": 5400002.8516267305,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24033,
+          "hostUsAt": 5526541932.626731,
+          "localMsAt": 126539.0814999668
+        }
+      },
+      {
+        "pong": {
+          "t0": 127439.854,
+          "t1Us": 5527467959,
+          "t2Us": 5527468084,
+          "t3": 127490.294
+        },
+        "query": {
+          "localMs": 127500.294,
+          "hostUs": 5527503154.875694
+        },
+        "after": {
+          "offsetAt": 5400002.860875694,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24033,
+          "hostUsAt": 5527503154.875694,
+          "localMsAt": 127500.29449996538
+        }
+      },
+      {
+        "pong": {
+          "t0": 128443.105,
+          "t1Us": 5528473068,
+          "t2Us": 5528473311,
+          "t3": 128497.544
+        },
+        "query": {
+          "localMs": 128507.544,
+          "hostUs": 5528510414.567635
+        },
+        "after": {
+          "offsetAt": 5400002.870567635,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24033,
+          "hostUsAt": 5528510414.567635,
+          "localMsAt": 128507.54449996538
+        }
+      },
+      {
+        "pong": {
+          "t0": 129528.621,
+          "t1Us": 5529555603,
+          "t2Us": 5529555735,
+          "t3": 129576.778
+        },
+        "query": {
+          "localMs": 129586.778,
+          "hostUs": 5529589720.361649
+        },
+        "after": {
+          "offsetAt": 5400002.942361648,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24012,
+          "hostUsAt": 5529589720.361649,
+          "localMsAt": 129586.77973053511
+        }
+      },
+      {
+        "pong": {
+          "t0": 130592.754,
+          "t1Us": 5530621611,
+          "t2Us": 5530621799,
+          "t3": 130644.664
+        },
+        "query": {
+          "localMs": 130654.664,
+          "hostUs": 5530657625.478573
+        },
+        "after": {
+          "offsetAt": 5400002.961478573,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24012,
+          "hostUsAt": 5530657625.478573,
+          "localMsAt": 130654.66573053412
+        }
+      },
+      {
+        "pong": {
+          "t0": 131728.49,
+          "t1Us": 5531757649,
+          "t2Us": 5531757847,
+          "t3": 131780.957
+        },
+        "query": {
+          "localMs": 131790.957,
+          "hostUs": 5531793938.820098
+        },
+        "after": {
+          "offsetAt": 5400002.981820097,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 24012,
+          "hostUsAt": 5531793938.820098,
+          "localMsAt": 131790.95873053465
+        }
+      },
+      {
+        "pong": {
+          "t0": 132699.873,
+          "t1Us": 5532721336,
+          "t2Us": 5532721603,
+          "t3": 132737.251
+        },
+        "query": {
+          "localMs": 132747.251,
+          "hostUs": 5532750158.500001
+        },
+        "after": {
+          "offsetAt": 5400002.907500001,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 18556,
+          "hostUsAt": 5532750158.500001,
+          "localMsAt": 132747.25100000016
+        }
+      },
+      {
+        "pong": {
+          "t0": 133668.387,
+          "t1Us": 5533689551,
+          "t2Us": 5533689810,
+          "t3": 133704.847
+        },
+        "query": {
+          "localMs": 133714.847,
+          "hostUs": 5533717832.500001
+        },
+        "after": {
+          "offsetAt": 5400002.9855,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 18101,
+          "hostUsAt": 5533717832.500001,
+          "localMsAt": 133714.847000001
+        }
+      },
+      {
+        "pong": {
+          "t0": 134693.013,
+          "t1Us": 5534714247,
+          "t2Us": 5534714400,
+          "t3": 134729.692
+        },
+        "query": {
+          "localMs": 134739.692,
+          "hostUs": 5534742672.666667
+        },
+        "after": {
+          "offsetAt": 5400002.980666667,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 18101,
+          "hostUsAt": 5534742672.666667,
+          "localMsAt": 134739.6919999998
+        }
+      },
+      {
+        "pong": {
+          "t0": 135801.204,
+          "t1Us": 5535822440,
+          "t2Us": 5535822651,
+          "t3": 135837.702
+        },
+        "query": {
+          "localMs": 135847.702,
+          "hostUs": 5535850710.625
+        },
+        "after": {
+          "offsetAt": 5400003.008625001,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 18101,
+          "hostUsAt": 5535850710.625,
+          "localMsAt": 135847.70199999958
+        }
+      },
+      {
+        "pong": {
+          "t0": 136860.263,
+          "t1Us": 5536881570,
+          "t2Us": 5536881736,
+          "t3": 136896.884
+        },
+        "query": {
+          "localMs": 136906.884,
+          "hostUs": 5536909906.8
+        },
+        "after": {
+          "offsetAt": 5400003.0228,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 18101,
+          "hostUsAt": 5536909906.8,
+          "localMsAt": 136906.8839999996
+        }
+      },
+      {
+        "pong": {
+          "t0": 137871.068,
+          "t1Us": 5537892446,
+          "t2Us": 5537892587,
+          "t3": 137907.659
+        },
+        "query": {
+          "localMs": 137917.659,
+          "hostUs": 5537920803.9138565
+        },
+        "after": {
+          "offsetAt": 5400003.144913857,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 18101,
+          "hostUsAt": 5537920803.9138565,
+          "localMsAt": 137917.66684978735
+        }
+      }
+    ]
+  },
+  {
+    "name": "stalePong",
+    "steps": [
+      {
+        "pong": {
+          "t0": 30000.5,
+          "t1Us": 5430004566,
+          "t2Us": 5430004758,
+          "t3": 30006.888
+        },
+        "query": {
+          "localMs": 30016.888,
+          "hostUs": 5430017856.000001
+        },
+        "after": {
+          "offsetAt": 5400000.968,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3098,
+          "hostUsAt": 5430017856.000001,
+          "localMsAt": 30016.88800000027
+        }
+      },
+      {
+        "pong": {
+          "t0": 30304.332,
+          "t1Us": 5430308954,
+          "t2Us": 5430309113,
+          "t3": 30311.445
+        },
+        "query": {
+          "localMs": 30321.445,
+          "hostUs": 5430322501.5
+        },
+        "after": {
+          "offsetAt": 5400001.0565,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3098,
+          "hostUsAt": 5430322501.5,
+          "localMsAt": 30321.445000000298
+        }
+      },
+      {
+        "pong": {
+          "t0": 30603.737,
+          "t1Us": 5430608823,
+          "t2Us": 5430609083,
+          "t3": 30613.57
+        },
+        "query": {
+          "localMs": 30623.57,
+          "hostUs": 5430624626.5
+        },
+        "after": {
+          "offsetAt": 5400001.0565,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3098,
+          "hostUsAt": 5430624626.5,
+          "localMsAt": 30623.570000000298
+        }
+      },
+      {
+        "pong": {
+          "t0": 30925.767,
+          "t1Us": 5430929779,
+          "t2Us": 5430930077,
+          "t3": 30932.121
+        },
+        "query": {
+          "localMs": 30942.121,
+          "hostUs": 5430943153.333333
+        },
+        "after": {
+          "offsetAt": 5400001.032333333,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5430943153.333333,
+          "localMsAt": 30942.121000000276
+        }
+      },
+      {
+        "pong": {
+          "t0": 31224.204,
+          "t1Us": 5431229252,
+          "t2Us": 5431229518,
+          "t3": 31232.129
+        },
+        "query": {
+          "localMs": 31242.129,
+          "hostUs": 5431243161.333333
+        },
+        "after": {
+          "offsetAt": 5400001.032333333,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5431243161.333333,
+          "localMsAt": 31242.128999999724
+        }
+      },
+      {
+        "pong": {
+          "t0": 31513,
+          "t1Us": 5431517100,
+          "t2Us": 5431517213,
+          "t3": 31519.285
+        },
+        "query": {
+          "localMs": 31529.285,
+          "hostUs": 5431530312.750001
+        },
+        "after": {
+          "offsetAt": 5400001.02775,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5431530312.750001,
+          "localMsAt": 31529.28500000015
+        }
+      },
+      {
+        "pong": {
+          "t0": 31818.906,
+          "t1Us": 5431823031,
+          "t2Us": 5431823309,
+          "t3": 31825.347
+        },
+        "query": {
+          "localMs": 31835.347,
+          "hostUs": 5431836377.9
+        },
+        "after": {
+          "offsetAt": 5400001.0309,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5431836377.9,
+          "localMsAt": 31835.347000000067
+        }
+      },
+      {
+        "pong": {
+          "t0": 32125.052,
+          "t1Us": 5432129320,
+          "t2Us": 5432129606,
+          "t3": 32131.703
+        },
+        "query": {
+          "localMs": 32141.703,
+          "hostUs": 5432142743
+        },
+        "after": {
+          "offsetAt": 5400001.04,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5432142743,
+          "localMsAt": 32141.702999999747
+        }
+      },
+      {
+        "pong": {
+          "t0": 32423.467,
+          "t1Us": 5432427672,
+          "t2Us": 5432427794,
+          "t3": 32429.918
+        },
+        "query": {
+          "localMs": 32439.918,
+          "hostUs": 5432440958.071428
+        },
+        "after": {
+          "offsetAt": 5400001.040071429,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5432440958.071428,
+          "localMsAt": 32439.917999999598
+        }
+      },
+      {
+        "pong": {
+          "t0": 32719.843,
+          "t1Us": 5432724092,
+          "t2Us": 5432724177,
+          "t3": 32726.396
+        },
+        "query": {
+          "localMs": 32736.396,
+          "hostUs": 5432737432.9375
+        },
+        "after": {
+          "offsetAt": 5400001.0369375,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5432737432.9375,
+          "localMsAt": 32736.395999999717
+        }
+      },
+      {
+        "pong": {
+          "t0": 33039.97,
+          "t1Us": 5433044497,
+          "t2Us": 5433044634,
+          "t3": 33047.312
+        },
+        "query": {
+          "localMs": 33057.312,
+          "hostUs": 5433058348.9375
+        },
+        "after": {
+          "offsetAt": 5400001.0369375,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3028,
+          "hostUsAt": 5433058348.9375,
+          "localMsAt": 33057.31199999992
+        }
+      },
+      {
+        "pong": {
+          "t0": 33359.4,
+          "t1Us": 5433363448,
+          "t2Us": 5433363621,
+          "t3": 33365.588
+        },
+        "query": {
+          "localMs": 33375.588,
+          "hostUs": 5433376625.333334
+        },
+        "after": {
+          "offsetAt": 5400001.037333334,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5433376625.333334,
+          "localMsAt": 33375.588000000454
+        }
+      },
+      {
+        "pong": {
+          "t0": 33651.905,
+          "t1Us": 5433656239,
+          "t2Us": 5433656378,
+          "t3": 33658.494
+        },
+        "query": {
+          "localMs": 33668.494,
+          "hostUs": 5433669538.5
+        },
+        "after": {
+          "offsetAt": 5400001.0445,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5433669538.5,
+          "localMsAt": 33668.49399999995
+        }
+      },
+      {
+        "pong": {
+          "t0": 33947.766,
+          "t1Us": 5433951970,
+          "t2Us": 5433952066,
+          "t3": 33954.271
+        },
+        "query": {
+          "localMs": 33964.271,
+          "hostUs": 5433965311.409091
+        },
+        "after": {
+          "offsetAt": 5400001.040409091,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5433965311.409091,
+          "localMsAt": 33964.27099999972
+        }
+      },
+      {
+        "pong": {
+          "t0": 34267.659,
+          "t1Us": 5434272016,
+          "t2Us": 5434272106,
+          "t3": 34274.338
+        },
+        "query": {
+          "localMs": 34284.338,
+          "hostUs": 5434285380.25
+        },
+        "after": {
+          "offsetAt": 5400001.04225,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5434285380.25,
+          "localMsAt": 34284.338000000454
+        }
+      },
+      {
+        "pong": {
+          "t0": 34589.629,
+          "t1Us": 5434595674,
+          "t2Us": 5434595940,
+          "t3": 34599.715
+        },
+        "query": {
+          "localMs": 34609.715,
+          "hostUs": 5434610757.25
+        },
+        "after": {
+          "offsetAt": 5400001.04225,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5434610757.25,
+          "localMsAt": 34609.71499999985
+        }
+      },
+      {
+        "pong": {
+          "t0": 34891.723,
+          "t1Us": 5434895854,
+          "t2Us": 5434896141,
+          "t3": 34898.094
+        },
+        "query": {
+          "localMs": 34908.094,
+          "hostUs": 5434909139.846153
+        },
+        "after": {
+          "offsetAt": 5400001.045846154,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5434909139.846153,
+          "localMsAt": 34908.093999999575
+        }
+      },
+      {
+        "pong": {
+          "t0": 35185.409,
+          "t1Us": 5435191182,
+          "t2Us": 5435191476,
+          "t3": 35194.365
+        },
+        "query": {
+          "localMs": 35204.365,
+          "hostUs": 5435205410.846154
+        },
+        "after": {
+          "offsetAt": 5400001.045846154,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5435205410.846154,
+          "localMsAt": 35204.36500000022
+        }
+      },
+      {
+        "pong": {
+          "t0": 35512.524,
+          "t1Us": 5435516646,
+          "t2Us": 5435516838,
+          "t3": 35518.827
+        },
+        "query": {
+          "localMs": 35528.827,
+          "hostUs": 5435529895.861095
+        },
+        "after": {
+          "offsetAt": 5400001.068861096,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5435529895.861095,
+          "localMsAt": 35528.82730850484
+        }
+      },
+      {
+        "pong": {
+          "t0": 35838.458,
+          "t1Us": 5435842832,
+          "t2Us": 5435842977,
+          "t3": 35845.196
+        },
+        "query": {
+          "localMs": 35855.196,
+          "hostUs": 5435856268.9356165
+        },
+        "after": {
+          "offsetAt": 5400001.072935616,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5435856268.9356165,
+          "localMsAt": 35855.19634211995
+        }
+      },
+      {
+        "pong": {
+          "t0": 36153.815,
+          "t1Us": 5436158017,
+          "t2Us": 5436158099,
+          "t3": 106160.22
+        },
+        "query": {
+          "localMs": 106170.22,
+          "hostUs": 5506171852.615894
+        },
+        "after": {
+          "offsetAt": 5400001.632615895,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 3007,
+          "hostUsAt": 5506171852.615894,
+          "localMsAt": 106170.22034211922
+        }
+      },
+      {
+        "pong": {
+          "t0": 106463.133,
+          "t1Us": 5506469164,
+          "t2Us": 5506469305,
+          "t3": 106470.657
+        },
+        "query": {
+          "localMs": 106480.657,
+          "hostUs": 5506482996.499999
+        },
+        "after": {
+          "offsetAt": 5400002.3395,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3692,
+          "hostUsAt": 5506482996.499999,
+          "localMsAt": 106480.65699999966
+        }
+      },
+      {
+        "pong": {
+          "t0": 106770.127,
+          "t1Us": 5506776710,
+          "t2Us": 5506776943,
+          "t3": 106778.213
+        },
+        "query": {
+          "localMs": 106788.213,
+          "hostUs": 5506790711
+        },
+        "after": {
+          "offsetAt": 5400002.498,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3692,
+          "hostUsAt": 5506790711,
+          "localMsAt": 106788.21300000045
+        }
+      },
+      {
+        "pong": {
+          "t0": 107062.301,
+          "t1Us": 5507069907,
+          "t2Us": 5507070151,
+          "t3": 107071.994
+        },
+        "query": {
+          "localMs": 107081.994,
+          "hostUs": 5507084492
+        },
+        "after": {
+          "offsetAt": 5400002.498,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 3692,
+          "hostUsAt": 5507084492,
+          "localMsAt": 107081.99399999995
+        }
+      }
+    ]
+  },
+  {
+    "name": "marginTie",
+    "steps": [
+      {
+        "pong": {
+          "t0": 1000,
+          "t1Us": 5001002000,
+          "t2Us": 5001002000,
+          "t3": 1004
+        },
+        "query": {
+          "localMs": 1014,
+          "hostUs": 5001014000
+        },
+        "after": {
+          "offsetAt": 5000000,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2000,
+          "hostUsAt": 5001014000,
+          "localMsAt": 1014
+        }
+      },
+      {
+        "pong": {
+          "t0": 1400,
+          "t1Us": 5001402700,
+          "t2Us": 5001402700,
+          "t3": 1405
+        },
+        "query": {
+          "localMs": 1415,
+          "hostUs": 5001415100
+        },
+        "after": {
+          "offsetAt": 5000000.1,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2000,
+          "hostUsAt": 5001415100,
+          "localMsAt": 1415
+        }
+      },
+      {
+        "pong": {
+          "t0": 1800,
+          "t1Us": 5001803501,
+          "t2Us": 5001803501,
+          "t3": 1805.001
+        },
+        "query": {
+          "localMs": 1815.001,
+          "hostUs": 5001815101
+        },
+        "after": {
+          "offsetAt": 5000000.1,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2000,
+          "hostUsAt": 5001815101,
+          "localMsAt": 1815.001000000164
+        }
+      },
+      {
+        "pong": {
+          "t0": 2200,
+          "t1Us": 5002202100,
+          "t2Us": 5002202100,
+          "t3": 2204
+        },
+        "query": {
+          "localMs": 2214,
+          "hostUs": 5002214100
+        },
+        "after": {
+          "offsetAt": 5000000.1,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2000,
+          "hostUsAt": 5002214100,
+          "localMsAt": 2214
+        }
+      },
+      {
+        "pong": {
+          "t0": 2600,
+          "t1Us": 5002602550,
+          "t2Us": 5002602550,
+          "t3": 2604.5
+        },
+        "query": {
+          "localMs": 2614.5,
+          "hostUs": 5002614649.999999
+        },
+        "after": {
+          "offsetAt": 5000000.149999999,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2000,
+          "hostUsAt": 5002614649.999999,
+          "localMsAt": 2614.5
+        }
+      },
+      {
+        "pong": {
+          "t0": 3000,
+          "t1Us": 5003002900,
+          "t2Us": 5003002900,
+          "t3": 3005
+        },
+        "query": {
+          "localMs": 3015,
+          "hostUs": 5003015200
+        },
+        "after": {
+          "offsetAt": 5000000.2,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 2000,
+          "hostUsAt": 5003015200,
+          "localMsAt": 3015
+        }
+      },
+      {
+        "pong": {
+          "t0": 3400,
+          "t1Us": 5003401550,
+          "t2Us": 5003401550,
+          "t3": 3403
+        },
+        "query": {
+          "localMs": 3413,
+          "hostUs": 5003413050
+        },
+        "after": {
+          "offsetAt": 5000000.05,
+          "ready": true,
+          "locked": false,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5003413050,
+          "localMsAt": 3413
+        }
+      },
+      {
+        "pong": {
+          "t0": 3800,
+          "t1Us": 5003802150,
+          "t2Us": 5003802150,
+          "t3": 3804
+        },
+        "query": {
+          "localMs": 3814,
+          "hostUs": 5003814074.999999
+        },
+        "after": {
+          "offsetAt": 5000000.074999999,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5003814074.999999,
+          "localMsAt": 3814
+        }
+      },
+      {
+        "pong": {
+          "t0": 4200,
+          "t1Us": 5004204000,
+          "t2Us": 5004204000,
+          "t3": 4204.0001
+        },
+        "query": {
+          "localMs": 4214,
+          "hostUs": 5004214074.999999
+        },
+        "after": {
+          "offsetAt": 5000000.074999999,
+          "ready": true,
+          "locked": true,
+          "uncertaintyUs": 1500,
+          "hostUsAt": 5004214074.999999,
+          "localMsAt": 4214
+        }
+      }
+    ]
+  }
+]
