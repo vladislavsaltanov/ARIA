@@ -498,3 +498,7 @@ android/**/.cxx/
 android/engine/bin/
 android/local.properties
 *.apk
+
+android/keystore.properties
+*.jks
+*.keystore
