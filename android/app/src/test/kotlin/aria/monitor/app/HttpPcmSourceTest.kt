@@ -94,6 +94,14 @@ class HttpPcmSourceTest {
     }
 
     @Test
+    fun bodyLongerThanTheAnnouncedFramesIsTransportFailure() = realTest {
+        val sizes = listOf(96000 * 4 + 1, 400_000)
+        sizes.forEach { server.enqueue(pcmResponse("96000", ByteArray(it))) }
+
+        sizes.forEach { assertEquals(TRANSPORT_ERROR, assertIs<PcmResult.Failed>(fetch(), it.toString()).status, it.toString()) }
+    }
+
+    @Test
     fun missingFramesHeaderWithEmptyBodyIsTransportFailure() = realTest {
         server.enqueue(pcmResponse(null, ByteArray(0)))
 
@@ -192,7 +200,7 @@ class HttpPcmSourceTest {
 
     @Test
     fun fetchDoesNotBlockItsLane() = realTest {
-        server.enqueue(pcmResponse("1", pcmBytes(1)).newBuilder().headersDelay(1500, TimeUnit.MILLISECONDS).build())
+        server.enqueue(pcmResponse("1", pcmBytes(1)).newBuilder().headersDelay(3000, TimeUnit.MILLISECONDS).build())
         val lane = Dispatchers.Default.limitedParallelism(1)
         val sibling = CompletableDeferred<Unit>()
 

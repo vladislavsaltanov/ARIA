@@ -133,7 +133,7 @@ class HttpAuthenticatorTest {
 
     @Test
     fun authenticationDoesNotBlockItsLane() = realTest {
-        server.enqueue(MockResponse.Builder().code(200).body("""{"token":"t"}""").headersDelay(1500, TimeUnit.MILLISECONDS).build())
+        server.enqueue(MockResponse.Builder().code(200).body("""{"token":"t"}""").headersDelay(3000, TimeUnit.MILLISECONDS).build())
         val lane = Dispatchers.Default.limitedParallelism(1)
         val sibling = CompletableDeferred<Unit>()
 

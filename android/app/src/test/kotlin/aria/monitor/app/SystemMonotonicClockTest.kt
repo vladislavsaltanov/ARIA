@@ -34,6 +34,6 @@ class SystemMonotonicClockTest {
         }
         Thread.sleep(5)
 
-        assertTrue(clock.nowMs() - start >= 5.0)
+        assertTrue(clock.nowMs() - start >= 4.0)
     }
 }

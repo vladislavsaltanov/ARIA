@@ -12,13 +12,18 @@ import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 
 private const val NORMAL_CLOSURE = 1000
+private const val HANDSHAKE_TIMEOUT_MS = 8000L
 private const val STATUS_UNAUTHORIZED = 401
 
-internal fun OkHttpClient.forMonitorSocket(): OkHttpClient =
-    newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(0, TimeUnit.MILLISECONDS).build()
+internal fun OkHttpClient.forMonitorSocket(handshakeTimeoutMs: Long = HANDSHAKE_TIMEOUT_MS): OkHttpClient =
+    newBuilder()
+        .callTimeout(handshakeTimeoutMs, TimeUnit.MILLISECONDS)
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(0, TimeUnit.MILLISECONDS)
+        .build()
 
-internal class OkHttpTransport(client: OkHttpClient) : MonitorTransport {
-    private val client = client.forMonitorSocket()
+internal class OkHttpTransport(client: OkHttpClient, handshakeTimeoutMs: Long = HANDSHAKE_TIMEOUT_MS) : MonitorTransport {
+    private val client = client.forMonitorSocket(handshakeTimeoutMs)
 
     override fun open(pairing: Pairing, token: String, listener: SocketListener): MonitorSocket {
         val request = try {

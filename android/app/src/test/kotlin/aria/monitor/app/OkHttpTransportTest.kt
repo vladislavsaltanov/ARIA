@@ -15,6 +15,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class OkHttpTransportTest {
     private val server = MockWebServer()
@@ -165,15 +166,33 @@ class OkHttpTransportTest {
     }
 
     @Test
-    fun idleSocketOutlivesTheClientReadTimeout() {
-        server.enqueue(upgrade())
+    fun stalledUpgradeIsReportedClosedOnceWithinTheHandshakeTimeout() {
+        server.enqueue(upgrade().newBuilder().headersDelay(3, TimeUnit.SECONDS).build())
         val listener = RecordingListener()
-        val impatient = OkHttpTransport(OkHttpClient.Builder().readTimeout(300, TimeUnit.MILLISECONDS).pingInterval(0, TimeUnit.SECONDS).build())
+        val startedNanos = System.nanoTime()
+
+        open(listener, transport = OkHttpTransport(OkHttpClient(), handshakeTimeoutMs = 300))
+
+        assertEquals("closed:false", listener.next())
+        assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNanos) < 2000)
+        assertNull(listener.nextWithin(500))
+    }
+
+    @Test
+    fun establishedIdleSocketOutlivesTheCallAndReadTimeouts() {
+        val hostSockets = LinkedBlockingQueue<WebSocket>()
+        server.enqueue(upgrade(onOpen = { hostSockets.add(it) }))
+        val listener = RecordingListener()
+        val impatient = OkHttpTransport(OkHttpClient.Builder().readTimeout(300, TimeUnit.MILLISECONDS).build(), handshakeTimeoutMs = 300)
 
         open(listener, transport = impatient)
         assertEquals("open", listener.next())
+        val host = checkNotNull(hostSockets.poll(5, TimeUnit.SECONDS))
 
-        assertNull(listener.nextWithin(1000))
+        assertNull(listener.nextWithin(1200))
+        host.send("late")
+
+        assertEquals("text:late", listener.next())
     }
 
     @Test
@@ -184,5 +203,6 @@ class OkHttpTransportTest {
 
         assertEquals(0, derived.readTimeoutMillis)
         assertEquals(0, derived.pingIntervalMillis)
+        assertEquals(8000, derived.callTimeoutMillis)
     }
 }
