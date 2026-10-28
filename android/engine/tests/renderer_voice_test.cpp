@@ -523,6 +523,80 @@ TEST_F(RendererVoiceTest, newVoiceEvictsOldestStoppingSlot) {
     EXPECT_FALSE(renderer.probe(kMaxVoices + 1)->stopping);
 }
 
+TEST_F(RendererVoiceTest, mapOlderThanTheStreamRendersSilenceAndLeavesVoicesUntouched) {
+    publishRamp(1);
+    publishRamp(3);
+    const RenderPlan p = plan({voice(1)});
+    render(&p, 0, 256);
+    const VoiceProbe before = *renderer.probe(1);
+    const RenderPlan staleWithVoice = onMapAt(p, 96000);
+    const RenderPlan staleWithoutVoice = onMapAt(plan({}), 96000);
+    for (const RenderPlan* stale : {&staleWithVoice, &staleWithoutVoice}) {
+        for (int64_t block = 0; block < 4; ++block) EXPECT_TRUE(allZero(render(stale, block * 256, 256))) << "block " << block;
+        const VoiceProbe after = *renderer.probe(1);
+        EXPECT_EQ(before.position, after.position);
+        EXPECT_EQ(before.ratio, after.ratio);
+        EXPECT_FALSE(after.stopping);
+    }
+    EXPECT_EQ(0U, renderer.underruns());
+    const RenderPlan fresh = plan({voice(1)}, kHostUs + 4'000'000);
+    const std::vector<float> out = render(&fresh, 1024, 1024);
+    for (int32_t i = 0; i < 1024; ++i) expectFrame(out, i, faded(ramp(kAnchorFrame + 192000 + 1024 + i), i));
+}
+
+TEST_F(RendererVoiceTest, stalePlanDoesNotPrimeBusGains) {
+    publishRamp(1);
+    RenderPlan stale = onMapAt(plan({voice(1)}), 96000);
+    stale.backingGain = 0.0F;
+    stale.masterGain = 0.25F;
+    stale.masterRampSeconds = 1.0F;
+    EXPECT_TRUE(allZero(render(&stale, 0, 256)));
+    RenderPlan p = plan({voice(1)});
+    p.masterRampSeconds = 1.0F;
+    const std::vector<float> out = render(&p, 256, 1024);
+    for (int32_t i = 0; i < 1024; ++i) expectFrame(out, i, faded(ramp(kAnchorFrame + 256 + i), i));
+}
+
+TEST_F(RendererVoiceTest, mapExactlyOneSecondAheadOfTheStreamIsStillUsable) {
+    publishRamp(2);
+    const RenderPlan p = onMapAt(plan({voice(1)}), 144000);
+    const std::vector<float> out = render(&p, 96000, 256);
+    for (int32_t i = 0; i < 256; ++i) expectFrame(out, i, faded(ramp(kAnchorFrame + 96000 + i), i));
+    Renderer fresh{pool};
+    std::vector<float> early(2 * 256, kGarbage);
+    fresh.render(&p, 95999, 256, early.data());
+    EXPECT_TRUE(allZero(early));
+    EXPECT_FALSE(fresh.probe(1).has_value());
+}
+
+TEST_F(RendererVoiceTest, mapAtOrBeforeTheStreamStartRendersNormally) {
+    publishRamp(1);
+    for (const int64_t baseFrame : {int64_t{0}, int64_t{-48000}, int64_t{-96000}}) {
+        Renderer fresh{pool};
+        const RenderPlan p = onMapAt(plan({voice(1)}), baseFrame);
+        std::vector<float> out(2 * 256, kGarbage);
+        fresh.render(&p, 0, 256, out.data());
+        for (int32_t i = 0; i < 256; ++i) expectFrame(out, i, faded(ramp(kAnchorFrame + i), i));
+    }
+}
+
+TEST_F(RendererVoiceTest, extremeMapBaseFramesNeitherOverflowNorMisclassify) {
+    publishRamp(1);
+    RenderPlan farAhead = plan({voice(1)});
+    farAhead.timeMap.baseFrame = std::numeric_limits<int64_t>::max();
+    RenderPlan farBehind = plan({voice(1)});
+    farBehind.timeMap.baseFrame = std::numeric_limits<int64_t>::min();
+    Renderer ahead{pool};
+    std::vector<float> out(2 * 256, kGarbage);
+    ahead.render(&farAhead, 0, 256, out.data());
+    EXPECT_TRUE(allZero(out));
+    EXPECT_FALSE(ahead.probe(1).has_value());
+    Renderer behind{pool};
+    behind.render(&farBehind, 0, 256, out.data());
+    EXPECT_TRUE(allZero(out));
+    EXPECT_TRUE(behind.probe(1).has_value());
+}
+
 TEST_F(RendererVoiceTest, nullOrInvalidPlanRendersSilence) {
     publishRamp(0);
     publishRamp(1);

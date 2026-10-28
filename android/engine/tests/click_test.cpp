@@ -376,11 +376,23 @@ TEST_F(ClickTest, nullOrUnusablePlanBlockStillTracksDeviceFrameRewind) {
     const RenderPlan quiet = clickPlan({}, std::nullopt);
     RenderPlan poisoned = quiet;
     poisoned.clickGain = static_cast<float>(kNan);
-    for (const RenderPlan* gap : {static_cast<const RenderPlan*>(nullptr), static_cast<const RenderPlan*>(&poisoned)}) {
+    const RenderPlan stale = onMapAt(clicking, 96000);
+    for (const RenderPlan* gap : {static_cast<const RenderPlan*>(nullptr), static_cast<const RenderPlan*>(&poisoned), &stale}) {
         Renderer fresh{pool};
         ASSERT_FALSE(allZero(stream(fresh, &clicking, 4096, 1024, 1024)));
         EXPECT_TRUE(allZero(stream(fresh, gap, 0, 6144, 6144)));
         EXPECT_TRUE(allZero(stream(fresh, &quiet, 6144, 2048, 1024)));
+    }
+}
+
+TEST_F(ClickTest, mapOlderThanTheStreamEmitsNeitherGridNorTestClicks) {
+    const RenderPlan beats = clickPlan({reading(kBeat, kAt)}, grid());
+    const RenderPlan tests = testPlan(kHostUs + 5000, 5000.0);
+    for (const RenderPlan* p : {&beats, &tests}) {
+        Renderer fresh{pool};
+        ASSERT_FALSE(allZero(stream(fresh, p, 0, 4096, 1024)));
+        const RenderPlan stale = onMapAt(*p, 96000);
+        EXPECT_TRUE(allZero(stream(fresh, &stale, 0, 8192, 1024)));
     }
 }
 

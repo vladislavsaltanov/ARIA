@@ -18,6 +18,7 @@ const double kBackingCoefficient = 1.0 - std::exp(-1.0 / (Renderer::kBackingTauS
 constexpr double kBackingSnap = 1e-9;
 constexpr double kBeatTolerance = 1e-3;
 constexpr double kMaxBeatIndex = 9007199254740992.0;
+constexpr uint64_t kStaleMapFrames = 48000;
 
 double targetFrame(const RenderPlan& plan, const VoicePlan& voice, int64_t deviceFrame) {
     const TimeMap& map = plan.timeMap;
@@ -30,9 +31,13 @@ double targetFrame(const RenderPlan& plan, const VoicePlan& voice, int64_t devic
 
 bool unusableScale(double value) { return !(value > 0.0) || !std::isfinite(value); }
 
-bool unusablePlan(const RenderPlan* plan) {
+bool mapOlderThanStream(const TimeMap& map, int64_t deviceFrame) {
+    return deviceFrame < map.baseFrame && static_cast<uint64_t>(map.baseFrame) - static_cast<uint64_t>(deviceFrame) > kStaleMapFrames;
+}
+
+bool unusablePlan(const RenderPlan* plan, int64_t deviceFrame) {
     return plan == nullptr || unusableScale(plan->rate) || unusableScale(plan->timeMap.usPerFrame) || !std::isfinite(plan->backingGain) ||
-           !std::isfinite(plan->masterGain) || !std::isfinite(plan->clickGain);
+           !std::isfinite(plan->masterGain) || !std::isfinite(plan->clickGain) || mapOlderThanStream(plan->timeMap, deviceFrame);
 }
 
 bool usableLevel(double level) { return std::fabs(level) <= std::numeric_limits<float>::max(); }
@@ -152,7 +157,7 @@ void Renderer::render(const RenderPlan* plan, int64_t deviceFrame, int32_t frame
     std::fill(stereoOut, stereoOut + static_cast<size_t>(frames) * kChannels, 0.0F);
     if (deviceFrame < blockEnd_) clicks_.cancel();
     blockEnd_ = deviceFrame + frames;
-    if (unusablePlan(plan)) return;
+    if (unusablePlan(plan, deviceFrame)) return;
     if (!primed_) {
         primed_ = true;
         backing_ = plan->backingGain;

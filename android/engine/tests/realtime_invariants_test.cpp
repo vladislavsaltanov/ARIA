@@ -154,6 +154,16 @@ TEST_F(RealtimeTest, emptyPlanSilentAndNoAllocation) {
     EXPECT_EQ(beforeEmptyPlan, afterEmptyPlan);
 }
 
+TEST_F(RealtimeTest, planWithMapOlderThanTheStreamSilentAndNoAllocation) {
+    slot.publish(std::make_unique<RenderPlan>(onMapAt(threeVoicesAndAClick(), 288000)));
+    const int64_t before = allocationsOnThisThread();
+    const bool silent = silentBlocks(0);
+    const int64_t after = allocationsOnThisThread();
+    EXPECT_TRUE(silent);
+    EXPECT_EQ(before, after);
+    EXPECT_FALSE(renderer.probe(1).has_value());
+}
+
 TEST_F(RealtimeTest, blockSizeInvariance) {
     const RenderPlan p = threeVoicesAndAClick();
     RenderPlan withoutClicks = p;

@@ -64,6 +64,12 @@ inline RenderPlan plan(std::vector<VoicePlan> voices, int64_t hostUsAtFrame0 = k
     return p;
 }
 
+inline RenderPlan onMapAt(RenderPlan p, int64_t baseFrame) {
+    p.timeMap.baseFrame = baseFrame;
+    p.timeMap.hostUsAtBaseFrame += baseFrame / 48 * 1000;
+    return p;
+}
+
 inline void expectFrame(const std::vector<float>& out, int32_t i, float left) {
     EXPECT_FLOAT_EQ(left, out[2 * i]) << "frame " << i;
     EXPECT_FLOAT_EQ(-left, out[2 * i + 1]) << "frame " << i;
