@@ -1,6 +1,7 @@
 package aria.monitor.app
 
 import aria.monitor.core.PcmResult
+import aria.monitor.core.TRANSPORT_ERROR
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

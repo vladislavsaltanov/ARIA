@@ -8,6 +8,7 @@ import androidx.camera.core.ImageInfo
 import androidx.camera.core.ImageProxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 private const val LINK = "http://192.168.1.10:5000/monitor?id=abc&key=xyz"
@@ -209,5 +210,18 @@ class PairingScanAnalyzerTest {
         runCatching { analyzer.analyze(frame) }
 
         assertEquals(1, frame.closes)
+    }
+
+    @Test
+    fun aDetectorThatThrowsAnErrorStillGetsItsFrameClosedAndTheErrorSurfaces() {
+        val outcome = Outcome()
+        val frame = FakeFrame()
+
+        assertFailsWith<UnsatisfiedLinkError> {
+            analyzerOver(ScriptedDetector { _, _ -> throw UnsatisfiedLinkError("barhopper") }, outcome).analyze(frame)
+        }
+
+        assertEquals(1, frame.closes)
+        assertTrue(outcome.pairings.isEmpty())
     }
 }

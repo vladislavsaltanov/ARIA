@@ -34,8 +34,8 @@ private const val FAILURE_COOLDOWN_MS = 1000L
 private const val STATUS_UNAUTHORIZED = 401
 private const val STATUS_UNDECODABLE = 422
 private const val STATUS_UNAVAILABLE = 503
-private const val STATUS_TRANSPORT_ERROR = -1
-private const val BYTES_PER_FRAME = 4
+const val TRANSPORT_ERROR = -1
+const val BYTES_PER_FRAME = 4
 
 class ChunkLoader(
     private val scope: CoroutineScope,
@@ -144,9 +144,12 @@ class ChunkLoader(
             source.fetch(token, key.track, key.chunk.toLong() * CHUNK_FRAMES, CHUNK_FRAMES)
         } catch (_: CancellationException) {
             currentCoroutineContext().ensureActive()
-            PcmResult.Failed(STATUS_TRANSPORT_ERROR)
+            PcmResult.Failed(TRANSPORT_ERROR)
         } catch (_: Exception) {
-            PcmResult.Failed(STATUS_TRANSPORT_ERROR)
+            PcmResult.Failed(TRANSPORT_ERROR)
+        } catch (failure: Throwable) {
+            complete(key, id, PcmResult.Failed(TRANSPORT_ERROR))
+            throw failure
         }
         complete(key, id, result)
     }
@@ -156,6 +159,7 @@ class ChunkLoader(
         transition {
             if (inFlight[key]?.id != id) return@transition
             inFlight.remove(key)
+            var handled = false
             try {
                 when (result) {
                     is PcmResult.Ok -> deliver(key, result)
@@ -173,9 +177,9 @@ class ChunkLoader(
                         else -> coolDown(key, FAILURE_COOLDOWN_MS)
                     }
                 }
-            } catch (failure: Exception) {
-                coolDown(key, FAILURE_COOLDOWN_MS)
-                throw failure
+                handled = true
+            } finally {
+                if (!handled) coolDown(key, FAILURE_COOLDOWN_MS)
             }
         }
         if (rejected) onUnauthorized()

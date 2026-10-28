@@ -1,16 +1,16 @@
 package aria.monitor.app
 
+import aria.monitor.core.BYTES_PER_FRAME
 import aria.monitor.core.PcmResult
 import aria.monitor.core.PcmSource
+import aria.monitor.core.TRANSPORT_ERROR
 import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.util.concurrent.TimeUnit
 
-internal const val TRANSPORT_ERROR = -1
 private const val DEFAULT_CALL_TIMEOUT_MS = 10_000L
-private const val BYTES_PER_FRAME = 4
 private const val FRAMES_HEADER = "X-Aria-Frames"
 
 internal class HttpPcmSource(

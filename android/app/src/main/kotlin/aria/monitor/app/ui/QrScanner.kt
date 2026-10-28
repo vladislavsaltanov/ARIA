@@ -48,6 +48,7 @@ internal class PairingScanAnalyzer(
         }
         val closed = AtomicBoolean(false)
         val release = { if (closed.compareAndSet(false, true)) image.close() }
+        var handedOff = false
         try {
             detector.detect(image) { payloads ->
                 try {
@@ -56,8 +57,11 @@ internal class PairingScanAnalyzer(
                     release()
                 }
             }
-        } catch (failure: RuntimeException) {
-            release()
+            handedOff = true
+        } catch (_: RuntimeException) {
+            return
+        } finally {
+            if (!handedOff) release()
         }
     }
 
@@ -95,6 +99,12 @@ fun QrScanner(onPairing: (Pairing) -> Unit, onForeign: () -> Unit, modifier: Mod
     }
     val executor = remember { Executors.newSingleThreadExecutor() }
     val controller = remember { LifecycleCameraController(context) }
+    DisposableEffect(Unit) {
+        onDispose {
+            executor.shutdown()
+            scanner.close()
+        }
+    }
     DisposableEffect(lifecycleOwner, controller) {
         val analyzer = PairingScanAnalyzer(
             detector = MlKitFrameDetector(scanner),
@@ -111,8 +121,6 @@ fun QrScanner(onPairing: (Pairing) -> Unit, onForeign: () -> Unit, modifier: Mod
         onDispose {
             controller.clearImageAnalysisAnalyzer()
             controller.unbind()
-            executor.shutdown()
-            scanner.close()
         }
     }
     val description = stringResource(R.string.scanner_description)

@@ -801,6 +801,50 @@ class ChunkLoaderTest {
     }
 
     @Test
+    fun errorFromTheSinkAppliesTheFailureCooldown() = runTest {
+        val failures = CopyOnWriteArrayList<Throwable>()
+        val scope = CoroutineScope(
+            StandardTestDispatcher(testScheduler) + SupervisorJob() + CoroutineExceptionHandler { _, error -> failures += error },
+        )
+        try {
+            val h = Harness(scope, testScheduler)
+            h.sink.beforeWrite = { if (h.sink.attempts.size == 1) throw UnsatisfiedLinkError("engine library missing") }
+            h.loader.want(listOf(window(TRACK_A, 0, 0)))
+            runCurrent()
+            assertEquals(1, failures.size)
+            advance(999)
+            assertEquals(1, h.source.calls.size)
+            advance(1)
+            assertEquals(listOf(0L, 1000L), h.source.calls.map { it.atMs })
+            assertEquals(listOf(key(TRACK_A, 0)), h.sink.writes.map { it.key })
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun errorFromTheSourceAppliesTheFailureCooldown() = runTest {
+        val failures = CopyOnWriteArrayList<Throwable>()
+        val scope = CoroutineScope(
+            StandardTestDispatcher(testScheduler) + SupervisorJob() + CoroutineExceptionHandler { _, error -> failures += error },
+        )
+        try {
+            val h = Harness(scope, testScheduler)
+            h.source.respond = { if (h.source.calls.size == 1) throw UnsatisfiedLinkError("http library missing") else FULL_CHUNK }
+            h.loader.want(listOf(window(TRACK_A, 0, 0)))
+            runCurrent()
+            assertEquals(1, failures.size)
+            advance(999)
+            assertEquals(1, h.source.calls.size)
+            advance(1)
+            assertEquals(listOf(0L, 1000L), h.source.calls.map { it.atMs })
+            assertEquals(listOf(key(TRACK_A, 0)), h.sink.writes.map { it.key })
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
     fun inconsistentBytesAndFramesIsAFailure() = runTest {
         val h = Harness(backgroundScope, testScheduler)
         val bad = listOf(PcmResult.Ok(ByteArray(100), 1000), PcmResult.Ok(ByteArray(0), -5), PcmResult.Ok(ByteArray(4), 0))

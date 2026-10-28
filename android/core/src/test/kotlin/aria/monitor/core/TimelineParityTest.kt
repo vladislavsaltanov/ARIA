@@ -11,12 +11,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.math.abs
-import kotlin.math.max
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-private const val RELATIVE_TOLERANCE = 1e-9
+private const val DB_TO_GAIN_ULPS = 2
 
 private data class Vector(val fn: String, val args: JsonArray, val expected: JsonElement) {
     val label: String get() = "$fn(${args.joinToString(", ")})"
@@ -41,29 +40,32 @@ private fun JsonElement.gridOrNull(): GridTimeline? =
 private fun JsonElement.fadeOrNull(): FadeTimeline? =
     if (this is JsonNull) null else Json.decodeFromJsonElement(FadeTimeline.serializer(), this)
 
-private fun assertClose(vector: Vector, expected: Double, actual: Double, what: String = "result") {
-    val tolerance = RELATIVE_TOLERANCE * max(1.0, max(abs(expected), abs(actual)))
-    assertTrue(abs(expected - actual) <= tolerance, "${vector.label}: $what expected $expected but was $actual")
+private fun assertExact(vector: Vector, expected: Double, actual: Double, what: String = "result") {
+    assertTrue(expected == actual, "${vector.label}: $what expected $expected but was $actual")
+}
+
+private fun assertWithinUlps(vector: Vector, expected: Double, actual: Double) {
+    assertTrue(abs(expected - actual) <= DB_TO_GAIN_ULPS * Math.ulp(expected), "${vector.label}: expected $expected but was $actual")
 }
 
 private val checks: Map<String, (Vector) -> Unit> = mapOf(
     "frameAt" to { vector ->
         val args = vector.args
         val voice = checkNotNull(args[0].voiceOrNull()) { vector.label }
-        assertClose(vector, vector.expected.double(), frameAt(voice, args[1].double(), args[2].double()))
+        assertExact(vector, vector.expected.double(), frameAt(voice, args[1].double(), args[2].double()))
     },
     "hostUsOf" to { vector ->
         val args = vector.args
         val voice = checkNotNull(args[0].voiceOrNull()) { vector.label }
-        assertClose(vector, vector.expected.double(), hostUsOf(voice, args[1].double(), args[2].double()))
+        assertExact(vector, vector.expected.double(), hostUsOf(voice, args[1].double(), args[2].double()))
     },
     "curve" to { vector ->
         val args = vector.args
-        assertClose(vector, vector.expected.double(), curve(args[0].jsonPrimitive.content, args[1].double()))
+        assertExact(vector, vector.expected.double(), curve(args[0].jsonPrimitive.content, args[1].double()))
     },
     "fadeLevel" to { vector ->
         val args = vector.args
-        assertClose(vector, vector.expected.double(), fadeLevel(args[0].fadeOrNull(), args[1].double()))
+        assertExact(vector, vector.expected.double(), fadeLevel(args[0].fadeOrNull(), args[1].double()))
     },
     "beatsBetween" to { vector ->
         val args = vector.args
@@ -75,11 +77,11 @@ private val checks: Map<String, (Vector) -> Unit> = mapOf(
             val got = actual[position]
             assertEquals(beat.getValue("index").jsonPrimitive.long, got.index, "${vector.label}: index at $position")
             assertEquals(beat.getValue("accent").jsonPrimitive.boolean, got.accent, "${vector.label}: accent at $position")
-            assertClose(vector, beat.getValue("hostUs").double(), got.hostUs, "hostUs at $position")
+            assertExact(vector, beat.getValue("hostUs").double(), got.hostUs, "hostUs at $position")
         }
     },
     "dbToGain" to { vector ->
-        assertClose(vector, vector.expected.double(), dbToGain(vector.args[0].double()))
+        assertWithinUlps(vector, vector.expected.double(), dbToGain(vector.args[0].double()))
     },
 )
 

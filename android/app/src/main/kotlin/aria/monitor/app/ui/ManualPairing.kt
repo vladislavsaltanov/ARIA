@@ -27,7 +27,7 @@ fun validateManualPairing(host: String, port: String, identifier: String, passwo
     }
     if (errors.isNotEmpty()) return ManualPairingResult.Invalid(errors)
     return ManualPairingResult.Valid(
-        Pairing((hostResult as Success).value, (portResult as Success).value, identifier.trim(), password),
+        Pairing((hostResult as Success).value, (portResult as Success).value, identifier.trim(), password.trim()),
     )
 }
 
@@ -39,7 +39,8 @@ private data class Failure(val error: ManualError) : Checked<Nothing>
 
 private fun checkedPort(port: String): Checked<Int> {
     if (port.isEmpty() || port.any { it !in '0'..'9' }) return Failure(ManualError.PortNotNumber)
-    val number = if (port.length > MAX_PORT_DIGITS) null else port.toInt()
+    val digits = port.trimStart('0')
+    val number = if (digits.length > MAX_PORT_DIGITS) null else digits.ifEmpty { "0" }.toInt()
     return if (number != null && number in PORTS) Success(number) else Failure(ManualError.PortOutOfRange)
 }
 

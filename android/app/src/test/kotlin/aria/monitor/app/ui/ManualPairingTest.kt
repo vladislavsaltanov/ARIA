@@ -24,9 +24,9 @@ class ManualPairingTest {
     }
 
     @Test
-    fun surroundingSpacesAreTrimmedFromHostPortAndIdentifierButNotFromThePassword() {
+    fun surroundingSpacesAreTrimmedFromEveryField() {
         assertEquals(
-            Pairing("192.168.1.20", 5000, "phone", " secret "),
+            Pairing("192.168.1.20", 5000, "phone", "secret"),
             valid(host = " 192.168.1.20 ", port = " 5000 ", id = " phone ", key = " secret "),
         )
     }
@@ -87,6 +87,15 @@ class ManualPairingTest {
     @Test
     fun leadingZerosInThePortAreAccepted() {
         assertEquals(80, valid(port = "0080").port)
+        assertEquals(80, valid(port = "000080").port)
+        assertEquals(65535, valid(port = "00000000065535").port)
+        assertEquals(mapOf(ManualField.Port to ManualError.PortOutOfRange), errors(port = "000000"))
+        assertEquals(mapOf(ManualField.Port to ManualError.PortOutOfRange), errors(port = "00000065536"))
+    }
+
+    @Test
+    fun spacesInsideThePasswordAreKept() {
+        assertEquals("se cret", valid(key = "\tse cret \n").password)
     }
 
     @Test
