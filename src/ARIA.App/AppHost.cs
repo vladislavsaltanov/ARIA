@@ -550,6 +550,12 @@ public sealed class AppHost : IAsyncDisposable, IMonitorControl
         {
             _library.Upsert(current, projects);
             SyncShowState(current);
+            if (_busRef is { } bus)
+            {
+                var drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                bus.Post(() => drained.SetResult());
+                drained.Task.GetAwaiter().GetResult();
+            }
         }
         return new ImportReport(added, skipped, failed.ToImmutable());
     }

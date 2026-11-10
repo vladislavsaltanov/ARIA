@@ -6,6 +6,7 @@ using Aria.Audio;
 using Aria.Core.Commands;
 using Aria.Core.Model;
 using Aria.Core.Playback;
+using Aria.Core.Runtime;
 using Aria.Core.State;
 using Aria.Persistence;
 
@@ -119,6 +120,32 @@ public sealed class AppHostTests : IDisposable
         host.Submit(new EnqueueTrack(stored.Id));
         await PollAsync(() => host.Bus.Snapshot().Queue.Items.Length == 1);
         Assert.Equal(stored.Id, host.Bus.Snapshot().Queue.Items[0].TrackId);
+    }
+
+    [Fact]
+    public async Task AppHost_ImportTracksAsync_WaitsForControlFlowMerge()
+    {
+        await using var host = new AppHost(_directory, null, () => new NullSink(8000, 2), () => new NullSourceFactory());
+        await host.StartAsync();
+        var wav = TestWav.Write(_directory, "cold.wav");
+
+        using var ready = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        ((CommandBus)host.Bus).Post(() =>
+        {
+            ready.Set();
+            release.Wait();
+        });
+
+        var import = host.ImportTracksAsync([wav]);
+        Assert.True(ready.Wait(TimeSpan.FromSeconds(5)));
+        Assert.False(import.IsCompleted);
+        release.Set();
+
+        var report = await import;
+
+        Assert.Equal(1, report.Added);
+        Assert.Contains(host.Tracks, t => string.Equals(t.FilePath, wav, StringComparison.Ordinal));
     }
 
     [Fact]
