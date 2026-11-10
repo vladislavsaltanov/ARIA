@@ -111,6 +111,19 @@ public sealed class AudioPreviewCodecTests : IAsyncLifetime
     }
 
     [Fact]
+    public void StartPreviewTrack_WithEntry_Parses()
+    {
+        var track = Guid.NewGuid();
+        var entry = Guid.NewGuid();
+        var json = "{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"start_preview_track\",\"track\":\"" + track + "\",\"entry\":\"" + entry + "\"}}";
+
+        Assert.True(CommandCodec.TryParse(json, out _, out _, out var command));
+        var parsed = Assert.IsType<StartPreviewTrack>(command);
+        Assert.Equal(new TrackId(track), parsed.Track);
+        Assert.Equal(new EntryId(entry), parsed.Entry);
+    }
+
+    [Fact]
     public void StopPreview_Parses()
     {
         Assert.True(CommandCodec.TryParse("{\"client\":\"c\",\"seq\":1,\"command\":{\"type\":\"stop_preview\"}}", out _, out _, out var command));

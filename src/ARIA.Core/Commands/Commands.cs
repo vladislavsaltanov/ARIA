@@ -75,7 +75,7 @@ public sealed record SetTrackMarkers(TrackId Track, ImmutableArray<Marker>? Mark
 
 public sealed record SetEntryMarkers(EntryId Entry, ImmutableArray<Marker>? Markers) : Command;
 
-public sealed record StartPreviewTrack(TrackId Track) : Command;
+public sealed record StartPreviewTrack(TrackId Track, EntryId? Entry = null) : Command;
 
 public sealed record StopPreview : Command;
 

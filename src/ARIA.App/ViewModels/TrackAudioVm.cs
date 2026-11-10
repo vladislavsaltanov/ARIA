@@ -336,7 +336,7 @@ public sealed partial class TrackAudioVm : ObservableObject
         _ownTargetLufs ? _targetLufs : null);
 
     [RelayCommand]
-    private void Preview() => _submit(new StartPreviewTrack(_trackId));
+    private void Preview() => _submit(new StartPreviewTrack(_trackId, _entryId));
 
     [RelayCommand]
     private void StopPreview() => _submit(new StopPreview());

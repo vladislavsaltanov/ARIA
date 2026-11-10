@@ -345,6 +345,21 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void TrackAudio_EntryPreview_SubmitsEntry()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var entryId = EntryId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId, entryId: entryId);
+
+        editor.PreviewCommand.Execute(null);
+
+        var preview = Assert.IsType<StartPreviewTrack>(Assert.Single(submitted));
+        Assert.Equal(trackId, preview.Track);
+        Assert.Equal(entryId, preview.Entry);
+    }
+
+    [Fact]
     public void TrackAudio_PreviewCommands_Submit()
     {
         var submitted = new List<Command>();
