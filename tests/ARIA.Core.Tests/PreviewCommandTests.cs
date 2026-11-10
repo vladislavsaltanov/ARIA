@@ -26,6 +26,34 @@ public sealed class PreviewCommandTests : IDisposable
     }
 
     [Fact]
+    public void StartPreviewTrack_WithEntry_UsesEntryAudio()
+    {
+        var trackAudio = new TrackAudioSettings(-3, 0.25, AudioEq.Flat);
+        var entryAudio = new TrackAudioSettings(-6, -0.5, AudioEq.Flat);
+        var track = TestShow.Track("one") with { Defaults = TestShow.Track("one").Defaults with { Audio = trackAudio } };
+        var entry = TestShow.Entry(track, new ProjectOverrides(Audio: entryAudio));
+        var project = TestShow.Project("Main", entry);
+        _harness.Submit(new LoadShow([track], [project], project.Id));
+
+        _harness.Submit(new StartPreviewTrack(track.Id, entry.Id));
+
+        var start = Assert.Single(_harness.Engine.PreviewStarts);
+        Assert.Equal(entryAudio, start.Source.Audio);
+    }
+
+    [Fact]
+    public void StartPreviewTrack_UnknownEntry_Rejects()
+    {
+        var track = TestShow.Track("one");
+        _harness.Submit(new MergeTracks([track]));
+
+        var seq = _harness.Submit(new StartPreviewTrack(track.Id, EntryId.New()));
+
+        Assert.Equal("unknown-entry", _harness.RejectionOf(seq)!.Reason);
+        Assert.Empty(_harness.Engine.PreviewStarts);
+    }
+
+    [Fact]
     public void StartPreviewTrack_UnknownTrack_Rejects()
     {
         var seq = _harness.Submit(new StartPreviewTrack(TrackId.New()));

@@ -314,10 +314,16 @@ public sealed partial class TrackAudioVm : ObservableObject
         get => _inheritTrackSettings;
         set
         {
-            if (SetProperty(ref _inheritTrackSettings, value))
+            if (!SetProperty(ref _inheritTrackSettings, value))
             {
-                SubmitCurrent();
+                return;
             }
+            if (_entryId is { } entry)
+            {
+                _submit(new SetEntryAudio(entry, value ? null : Current()));
+                return;
+            }
+            _submit(new SetTrackAudio(_trackId, Current()));
         }
     }
 
@@ -330,7 +336,7 @@ public sealed partial class TrackAudioVm : ObservableObject
         _ownTargetLufs ? _targetLufs : null);
 
     [RelayCommand]
-    private void Preview() => _submit(new StartPreviewTrack(_trackId));
+    private void Preview() => _submit(new StartPreviewTrack(_trackId, _entryId));
 
     [RelayCommand]
     private void StopPreview() => _submit(new StopPreview());
@@ -348,9 +354,13 @@ public sealed partial class TrackAudioVm : ObservableObject
 
     private void SubmitCurrent()
     {
+        if (_inheritTrackSettings)
+        {
+            SetProperty(ref _inheritTrackSettings, false);
+        }
         if (_entryId is { } entry)
         {
-            _submit(new SetEntryAudio(entry, _inheritTrackSettings ? null : Current()));
+            _submit(new SetEntryAudio(entry, Current()));
             return;
         }
         _submit(new SetTrackAudio(_trackId, Current()));

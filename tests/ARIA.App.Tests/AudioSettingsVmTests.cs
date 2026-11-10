@@ -299,6 +299,41 @@ public sealed class AudioSettingsVmTests : IDisposable
     }
 
     [Fact]
+    public void TrackAudio_EntryEditWhileInheriting_CreatesOverride()
+    {
+        var submitted = new List<Command>();
+        var entryId = EntryId.New();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), entryId: entryId);
+        editor.InheritTrackSettings = true;
+        submitted.Clear();
+
+        editor.EqBands[3].GainDb = 5;
+
+        var command = Assert.IsType<SetEntryAudio>(Assert.Single(submitted));
+        Assert.Equal(entryId, command.Entry);
+        Assert.NotNull(command.Audio);
+        Assert.Equal(5, command.Audio!.Eq.Bands[3].GainDb);
+        Assert.False(editor.InheritTrackSettings);
+    }
+
+    [Fact]
+    public void TrackAudio_EntryInheritToggleOff_SubmitsCurrentAudio()
+    {
+        var submitted = new List<Command>();
+        var editor = new TrackAudioVm(submitted.Add, TrackId.New(), entryId: EntryId.New());
+
+        editor.GainDb = 2;
+        editor.InheritTrackSettings = true;
+        editor.InheritTrackSettings = false;
+
+        Assert.Null(Assert.IsType<SetEntryAudio>(submitted[1]).Audio);
+        var command = Assert.IsType<SetEntryAudio>(submitted[2]);
+        Assert.NotNull(command.Audio);
+        Assert.Equal(2, command.Audio!.GainDb);
+        Assert.False(editor.InheritTrackSettings);
+    }
+
+    [Fact]
     public void TrackAudio_DefaultsToFlat()
     {
         var editor = new TrackAudioVm(_ => { }, TrackId.New());
@@ -307,6 +342,21 @@ public sealed class AudioSettingsVmTests : IDisposable
         Assert.Equal(0, editor.Pan);
         Assert.All(editor.EqBands, b => Assert.Equal(0, b.GainDb));
         Assert.Equal(7, editor.EqBands.Count);
+    }
+
+    [Fact]
+    public void TrackAudio_EntryPreview_SubmitsEntry()
+    {
+        var submitted = new List<Command>();
+        var trackId = TrackId.New();
+        var entryId = EntryId.New();
+        var editor = new TrackAudioVm(submitted.Add, trackId, entryId: entryId);
+
+        editor.PreviewCommand.Execute(null);
+
+        var preview = Assert.IsType<StartPreviewTrack>(Assert.Single(submitted));
+        Assert.Equal(trackId, preview.Track);
+        Assert.Equal(entryId, preview.Entry);
     }
 
     [Fact]

@@ -1199,6 +1199,16 @@ public sealed class ShowController : IShowHandler
             return;
         }
         var settings = EffectiveSettings.ForTrack(track, _defaultEndAction);
+        if (command.Entry is { } entryId)
+        {
+            if (!_entryMap.TryGetValue(entryId, out var location)
+                || location.Project.Entries[location.Index].TrackId != track.Id)
+            {
+                Reject(client, seq, "unknown-entry");
+                return;
+            }
+            settings = EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction);
+        }
         var source = new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio);
         var options = new StreamOptions(StreamBus.Preview, ArmedMarkers(settings.Markers, TimeSpan.Zero));
         _engine.StartPreview(source, options);
