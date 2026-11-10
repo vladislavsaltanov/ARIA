@@ -308,7 +308,9 @@
   scope: import
   summary: Импорт на холодную рапортует успех, но трек не появляется в проекте
   file: specs/bugs/BUG-2026-11-10-cold-import-missing-track.md
-  status: open
+  status: fixed
+  verified: 2026-11-10
+  evidence: src/ARIA.App/AppHost.cs; tests/ARIA.App.Tests/AppHostTests.cs
 
 - bug_id: BUG-2026-11-10-entry-eq-inherit-discards
   date: 2026-11-10
@@ -317,4 +319,6 @@
   scope: audio-eq
   summary: Правки эквалайзера в entry-редакторе отбрасываются при «Наследовать»
   file: specs/bugs/BUG-2026-11-10-entry-eq-inherit-discards.md
-  status: open
+  status: fixed
+  verified: 2026-11-10
+  evidence: src/ARIA.App/ViewModels/TrackAudioVm.cs; tests/ARIA.App.Tests

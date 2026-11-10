@@ -39,4 +39,12 @@ Risk level: Medium. Гонка времени, окно небольшое, по
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-11-10, branch `fix/import-eq-bugs`, commit `0176bce`.
+
+`AppHost.ImportTracksAsync` теперь ждёт FIFO-barrier через `CommandBus.Post` после `SyncShowState` (single-reader канал гарантирует порядок).
+
+Тест `AppHost_ImportTracksAsync_WaitsForControlFlowMerge`: блокирует pump через `Post`, проверяет, что импорт не завершён, пока pump заблокирован; после разблокировки трек сразу есть в `host.Tracks` без поллинга.
+
+Проверено: `dotnet test ARIA.slnx` — 1318 тестов зелёных (App 484), 0 предупреждений.
+
+Замечание: `await`-вариант barrier флакал `OsDropReproTests` под нагрузкой (483/484), поэтому оставлен синхронный `GetAwaiter().GetResult()`. Подписчики шины не блокируют pump (тяжёлые команды уходят через `Task.Run` + marshal), поэтому UI-поток не висит.

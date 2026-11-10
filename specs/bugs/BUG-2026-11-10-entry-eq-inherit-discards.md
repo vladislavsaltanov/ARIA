@@ -36,4 +36,10 @@ Risk level: Low. Поведение детерминированное.
 
 ## Resolution
 
-<!-- filled in by validate-fix -->
+Fixed 2026-11-10, branch `fix/import-eq-bugs`, commit `ae99a83`.
+
+`TrackAudioVm.SubmitCurrent` при `_inheritTrackSettings == true` снимает флаг (с `PropertyChanged`) и сохраняет `Current()`; сеттер `InheritTrackSettings` отправляет `null` (true) / `Current()` (false) напрямую, минуя auto-opt-out.
+
+Тесты: `TrackAudio_EntryEditWhileInheriting_CreatesOverride`, `TrackAudio_EntryInheritToggleOff_SubmitsCurrentAudio`.
+
+Проверено: `dotnet test ARIA.slnx` — 1318 тестов зелёных, 0 предупреждений.
