@@ -43,3 +43,5 @@ Fixed 2026-11-10, branch `fix/import-eq-bugs`, commit `ae99a83`.
 Тесты: `TrackAudio_EntryEditWhileInheriting_CreatesOverride`, `TrackAudio_EntryInheritToggleOff_SubmitsCurrentAudio`.
 
 Проверено: `dotnet test ARIA.slnx` — 1318 тестов зелёных, 0 предупреждений.
+
+Дополнительно 2026-11-10, коммит `b64d8a9`: кнопка «Прослушать» в диалоге вхождения играла `EffectiveSettings.ForTrack` и игнорировала override — казалось, что эквалайзер «не применяется». `StartPreviewTrack` получил опциональный `EntryId` (wire-совместимо), контроллер резолвит entry, `TrackAudioVm.Preview` передаёт `_entryId`. Проверено: `dotnet test ARIA.slnx` — 1322 зелёных, 0 предупреждений.
