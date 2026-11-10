@@ -943,8 +943,12 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public void SetEntryEndAction(EntryVm entry, EndAction? action)
     {
+        var fresh = _bus.Snapshot().Show.Projects
+            .SelectMany(p => p.Entries)
+            .FirstOrDefault(e => e.Id == entry.Id)
+            ?.Overrides;
         ProjectOverrides? merged;
-        if (entry.Overrides is { } current)
+        if ((fresh ?? entry.Overrides) is { } current)
         {
             var next = current with { EndAction = action };
             merged = next == new ProjectOverrides() ? null : next;
@@ -993,9 +997,15 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public TrackAudioVm CreateEntryAudioEditor(EntryVm entry)
     {
-        var global = _bus.Snapshot().Mixer.EffectiveGlobal;
+        var snapshot = _bus.Snapshot();
+        var global = snapshot.Mixer.EffectiveGlobal;
         var track = _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId);
-        var initial = entry.Overrides?.Audio
+        var fresh = snapshot.Show.Projects
+            .SelectMany(p => p.Entries)
+            .FirstOrDefault(e => e.Id == entry.Id)
+            ?.Overrides;
+        var initial = fresh?.Audio
+            ?? entry.Overrides?.Audio
             ?? _trackAudio?.Invoke(entry.TrackId)
             ?? track?.Defaults.Audio;
         var editor = new TrackAudioVm(
@@ -1009,12 +1019,12 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             initialGrid: track?.Defaults.Grid,
             trackDuration: track?.Duration ?? TimeSpan.Zero,
             currentPosition: _playingPosition is { } playing ? () => playing(entry.TrackId) : null,
-            initialBacking: entry.Overrides?.Backing,
+            initialBacking: fresh?.Backing ?? entry.Overrides?.Backing,
             backingOptions: () => [.. (_trackSource?.Invoke() ?? []).Where(t => t.Id != entry.TrackId).Select(t => new BackingOption(t.Id, t.DefaultName))],
             setBacking: backing => SetEntryBacking(entry, backing),
             importBacking: ImportBackingAsync)
         {
-            InheritTrackSettings = entry.Overrides?.Audio is null,
+            InheritTrackSettings = (fresh ?? entry.Overrides)?.Audio is null,
         };
         return editor;
     }
