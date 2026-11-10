@@ -44,4 +44,6 @@ Fixed 2026-11-10, branch `fix/import-eq-bugs`, commit `ae99a83`.
 
 Проверено: `dotnet test ARIA.slnx` — 1318 тестов зелёных, 0 предупреждений.
 
+Дополнительно 2026-11-10, коммит `222d574`: диалог при мгновенном переоткрытии строился из отстающей строки VM и показывал старые значения («сброс сразу после закрытия»), а правка из него затирала свежесохранённое; `SetEntryEndAction` из stale-строки мог затереть свежий Audio. Фикс: `CreateEntryAudioEditor` и `SetEntryEndAction` читают overrides из `bus.Snapshot()`. Тест `EntryEditorFreshnessHeadlessTests.ImmediateReopen` (RED→GREEN).
+
 Дополнительно 2026-11-10, коммит `b64d8a9`: кнопка «Прослушать» в диалоге вхождения играла `EffectiveSettings.ForTrack` и игнорировала override — казалось, что эквалайзер «не применяется». `StartPreviewTrack` получил опциональный `EntryId` (wire-совместимо), контроллер резолвит entry, `TrackAudioVm.Preview` передаёт `_entryId`. Проверено: `dotnet test ARIA.slnx` — 1322 зелёных, 0 предупреждений.
