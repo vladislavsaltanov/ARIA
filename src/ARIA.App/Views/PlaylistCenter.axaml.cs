@@ -9,12 +9,14 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 public partial class ProjectCenter : UserControl
 {
     public ProjectCenter()
     {
         InitializeComponent();
+        AddHandler(PointerPressedEvent, OnPanelPointerPressed, RoutingStrategies.Tunnel);
         DataContextChanged += OnDataContextChanged;
     }
 
@@ -327,7 +329,21 @@ public partial class ProjectCenter : UserControl
         }
     }
 
-    private bool _noteEditClosed;
+    private void OnPanelPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not ProjectsViewModel { IsEditingNote: true } viewModel)
+        {
+            return;
+        }
+        var inEditor = e.Source is Visual source
+            && (source is TextBox { Name: "NoteEditor" }
+                || source.GetVisualAncestors().OfType<TextBox>().Any(box => box.Name == "NoteEditor"));
+        if (inEditor)
+        {
+            return;
+        }
+        viewModel.CommitNoteEdit();
+    }
 
     private void OnNoteEditorAttached(object? sender, VisualTreeAttachmentEventArgs e)
     {
@@ -335,7 +351,6 @@ public partial class ProjectCenter : UserControl
         {
             return;
         }
-        _noteEditClosed = false;
         Dispatcher.UIThread.Post(() =>
         {
             editor.Focus();
@@ -346,38 +361,29 @@ public partial class ProjectCenter : UserControl
 
     private void OnNoteEditorKeyDown(object? sender, KeyEventArgs e)
     {
-        if (sender is not TextBox editor
-            || editor.DataContext is not ProjectsViewModel.EntryVm entry
-            || DataContext is not ProjectsViewModel viewModel)
+        if (DataContext is not ProjectsViewModel viewModel)
         {
             return;
         }
         if (e.Key == Key.Escape)
         {
-            _noteEditClosed = true;
             viewModel.CancelNoteEdit();
             e.Handled = true;
             return;
         }
         if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
-            _noteEditClosed = true;
-            viewModel.CommitNoteText(entry, editor.Text ?? string.Empty);
+            viewModel.CommitNoteEdit();
             e.Handled = true;
         }
     }
 
     private void OnNoteEditorLostFocus(object? sender, RoutedEventArgs e)
     {
-        if (_noteEditClosed
-            || sender is not TextBox editor
-            || editor.DataContext is not ProjectsViewModel.EntryVm entry
-            || DataContext is not ProjectsViewModel viewModel)
+        if (DataContext is ProjectsViewModel viewModel)
         {
-            return;
+            viewModel.CommitNoteEdit();
         }
-        _noteEditClosed = true;
-        viewModel.CommitNoteText(entry, editor.Text ?? string.Empty);
     }
 
     private void OnFaultIconTapped(object? sender, TappedEventArgs e)

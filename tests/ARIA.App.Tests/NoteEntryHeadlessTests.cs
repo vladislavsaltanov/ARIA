@@ -57,13 +57,17 @@ public sealed class NoteEntryHeadlessTests : IDisposable
             Assert.Equal("первая строка\nвторая строка", editor.Text);
 
             editor.Text = "новый текст";
-            vm.CommitNoteText(vm.Projects[0].Entries[1], editor.Text);
+            Assert.Equal("новый текст", vm.NoteDraft);
+            vm.CommitNoteEdit();
             window.UpdateLayout();
             center.EntryListBox.UpdateLayout();
 
             var saved = Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[1].Content);
             Assert.Equal("новый текст", saved.Text);
             Assert.False(vm.Projects[0].Entries[1].IsEditing);
+            var item = center.EntryListBox.ContainerFromIndex(1) as ListBoxItem;
+            Assert.NotNull(item);
+            Assert.Null(item.FocusAdorner);
             window.Close();
             return 0;
         }, CancellationToken.None);

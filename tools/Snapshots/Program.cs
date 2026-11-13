@@ -237,6 +237,30 @@ internal static class SnapshotProgram
         var container = plain.GetVisualAncestors().OfType<ContentPresenter>().FirstOrDefault();
         Report($"hover: rowBg={Brush(plain.Background)} containerBg={Brush(container?.Background)} rowY={box.Y:0} rowH={box.Height:0}");
         Capture(window, Path.Combine(output, "hover.png"), 1440, 900);
+        var note = window.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("plRow") && b.DataContext is ProjectsViewModel.EntryVm { IsNote: true })
+            .OrderBy(b => Box(b, window).Y).FirstOrDefault();
+        if (note is not null)
+        {
+            var nbox = Box(note, window);
+            window.MouseMove(new Point(nbox.X + (nbox.Width / 2), nbox.Y + 22));
+            Pump(TimeSpan.FromMilliseconds(300));
+            var noteContainer = note.GetVisualAncestors().OfType<ContentPresenter>().FirstOrDefault();
+            var noteItem = note.GetVisualAncestors().OfType<ListBoxItem>().FirstOrDefault();
+            Report($"hover note: text='{((ProjectsViewModel.EntryVm)note.DataContext!).RowText}' rowBg={Brush(note.Background)} border={Brush(note.BorderBrush)} containerBg={Brush(noteContainer?.Background)} itemBg={Brush(noteItem?.Background)} y={nbox.Y:0} h={nbox.Height:0}");
+            if (noteItem is not null)
+            {
+                var list = noteItem.GetVisualAncestors().OfType<ListBox>().FirstOrDefault();
+                if (list is not null)
+                {
+                    list.SelectedItem = note.DataContext;
+                    window.MouseMove(new Point(nbox.X + (nbox.Width / 2), nbox.Y + 22));
+                    Pump(TimeSpan.FromMilliseconds(200));
+                    Report($"hover note+selected: selected={noteItem.IsSelected} containerBg={Brush(noteContainer?.Background)} itemBg={Brush(noteItem.Background)} rowBg={Brush(note.Background)}");
+                }
+            }
+            Capture(window, Path.Combine(output, "hover-note.png"), 1440, 900);
+        }
         var queuePlain = window.GetVisualDescendants().OfType<Border>()
             .Where(b => b.Classes.Contains("qRow") && !b.Classes.Contains("current"))
             .OrderBy(b => Box(b, window).Y).FirstOrDefault();

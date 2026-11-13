@@ -33,6 +33,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private readonly Dictionary<TrackId, SourceOpenFault> _faultCauses = [];
     private string? _awaitedProjectName;
     private bool _syncingSelection;
+    private bool _rebuilding;
     private readonly Dictionary<ProjectId, string> _projectDirs = [];
     private readonly List<(string Name, string Dir)> _pendingDirs = [];
     private List<StagedProjectScript>? _pendingProjectScripts;
@@ -55,6 +56,9 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private EntryVm? selectedEntry;
+
+    [ObservableProperty]
+    private string noteDraft = string.Empty;
 
     [ObservableProperty]
     private string centerSearchText = string.Empty;
@@ -1112,6 +1116,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public void AddNote(ProjectVm project)
     {
+        CommitNoteEdit();
         var index = SelectedEntry is { IsNote: false } selected && project.Entries.Contains(selected)
             ? project.Entries.IndexOf(selected) + 1
             : project.Entries.Count;
@@ -1133,15 +1138,15 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             return;
         }
+        CommitNoteEdit();
         if (!_expandedNotes.Remove(entry.Id))
         {
             _expandedNotes.Add(entry.Id);
         }
-        if (_lastShow is { } show)
-        {
-            Rebuild(show, _trackSource?.Invoke() ?? []);
-        }
+        RebuildRows();
     }
+
+    public bool IsEditingNote => _editingNote is not null;
 
     public void BeginNoteEdit(EntryVm entry)
     {
@@ -1149,11 +1154,14 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        _editingNote = entry.Id;
-        if (_lastShow is { } show)
+        if (_editingNote == entry.Id)
         {
-            Rebuild(show, _trackSource?.Invoke() ?? []);
+            return;
         }
+        CommitNoteEdit();
+        _editingNote = entry.Id;
+        NoteDraft = entry.Note ?? string.Empty;
+        RebuildRows();
     }
 
     public void CancelNoteEdit()
@@ -1163,26 +1171,41 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             return;
         }
         _editingNote = null;
-        if (_lastShow is { } show)
+        NoteDraft = string.Empty;
+        RebuildRows();
+    }
+
+    public void CommitNoteEdit()
+    {
+        if (_editingNote is not { } id)
         {
-            Rebuild(show, _trackSource?.Invoke() ?? []);
+            return;
+        }
+        var draft = NoteDraft;
+        _editingNote = null;
+        NoteDraft = string.Empty;
+        RebuildRows();
+        if (NoteContent.TryCreate(draft, out var note) && note is not null)
+        {
+            Submit(new SetNoteText(id, note.Text));
         }
     }
 
     public void CommitNoteText(EntryVm entry, string text)
     {
-        if (!entry.IsNote)
+        if (!entry.IsNote || _editingNote != entry.Id)
         {
             return;
         }
-        _editingNote = null;
+        NoteDraft = text;
+        CommitNoteEdit();
+    }
+
+    private void RebuildRows()
+    {
         if (_lastShow is { } show)
         {
             Rebuild(show, _trackSource?.Invoke() ?? []);
-        }
-        if (NoteContent.TryCreate(text, out _))
-        {
-            Submit(new SetNoteText(entry.Id, text));
         }
     }
 
@@ -1349,6 +1372,23 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     private void Rebuild(ShowState state, ImmutableArray<Track> tracks)
     {
+        if (_rebuilding)
+        {
+            return;
+        }
+        _rebuilding = true;
+        try
+        {
+            RebuildCore(state, tracks);
+        }
+        finally
+        {
+            _rebuilding = false;
+        }
+    }
+
+    private void RebuildCore(ShowState state, ImmutableArray<Track> tracks)
+    {
         _lastShow = state;
         DrainPendingDirs(state);
         var key = BuildKey(state, tracks);
@@ -1371,10 +1411,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         foreach (var project in state.Projects)
         {
             var projectVm = new ProjectVm(project.Id, project.Name, project.Id == state.ActiveId);
+            var projectOrdinal = 0;
             for (var index = 0; index < project.Entries.Length; index++)
             {
                 var entry = project.Entries[index];
-                var position = $"{index + 1:00}";
                 if (entry.Content is NoteContent note)
                 {
                     projectVm.Entries.Add(new EntryVm(
@@ -1388,7 +1428,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                         null,
                         null,
                         false,
-                        position,
+                        string.Empty,
                         TimeSpan.Zero,
                         false,
                         EndAction.Advance,
@@ -1398,6 +1438,8 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                     continue;
                 }
                 var content = (TrackContent)entry.Content;
+                projectOrdinal++;
+                var position = $"{projectOrdinal:00}";
                 var displayName = content.Overrides?.Name ?? trackNames.GetValueOrDefault(content.TrackId, $"track {content.TrackId.Value:N}");
                 var fileName = trackFiles.GetValueOrDefault(content.TrackId, displayName);
                 var duration = trackDurations.GetValueOrDefault(content.TrackId, TimeSpan.Zero);
@@ -1442,12 +1484,12 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         }
         _syncingSelection = true;
         SelectedProject = awaited ?? Projects.FirstOrDefault(p => p.Id == selectedProjectId) ?? Projects.FirstOrDefault();
-        _syncingSelection = false;
         var pendingRow = _pendingSelect is { } pending && SelectedProject?.Id == pending.Project && pending.Index < SelectedProject.Entries.Count
             ? SelectedProject.Entries[pending.Index]
             : null;
         _pendingSelect = null;
         SelectedEntry = pendingRow ?? SelectedProject?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedProject?.Entries.FirstOrDefault();
+        _syncingSelection = false;
         RefreshVisible();
         RefreshCenterHeader();
         FireReveal();
@@ -1473,6 +1515,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedProjectChanged(ProjectVm? value)
     {
+        if (!_syncingSelection && !_rebuilding)
+        {
+            CommitNoteEdit();
+        }
         RefreshVisible();
         RefreshCenterHeader();
         if (!_syncingSelection && value is { } project && _bus.Snapshot().Show.ActiveId != project.Id)
@@ -1485,6 +1531,14 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     {
         RefreshVisible();
         RefreshCenterHeader();
+    }
+
+    partial void OnSelectedEntryChanged(EntryVm? value)
+    {
+        if (!_syncingSelection && !_rebuilding && _editingNote is { } editing && value?.Id != editing)
+        {
+            CommitNoteEdit();
+        }
     }
 
     [RelayCommand]

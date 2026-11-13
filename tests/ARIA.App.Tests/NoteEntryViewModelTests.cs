@@ -38,7 +38,17 @@ public sealed class NoteEntryViewModelTests
         Assert.Null(row.Waveform);
         Assert.False(row.IsFaulted);
         Assert.False(row.IsLinked);
-        Assert.Equal("02", row.Position);
+        Assert.Equal(string.Empty, row.Position);
+    }
+
+    [Fact]
+    public void NoteRows_DoNotShiftTrackNumbers()
+    {
+        var (_, _, vm) = Setup(TrackEntry(), NoteEntry("один"), TrackEntry(), NoteEntry("два"), TrackEntry());
+        using var _ = vm;
+        var rows = vm.Projects[0].Entries;
+
+        Assert.Equal(["01", "", "02", "", "03"], rows.Select(row => row.Position));
     }
 
     [Fact]
@@ -101,6 +111,65 @@ public sealed class NoteEntryViewModelTests
         vm.SetNoteText(vm.Projects[0].Entries[1], "новый");
 
         Assert.Equal("новый", Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[1].Content).Text);
+    }
+
+    [Fact]
+    public void CommitNoteEdit_SavesDraft()
+    {
+        var (bus, _, vm) = Setup(TrackEntry(), NoteEntry("старый"));
+        using var _ = vm;
+
+        vm.BeginNoteEdit(vm.Projects[0].Entries[1]);
+        Assert.True(vm.IsEditingNote);
+        vm.NoteDraft = "черновик";
+        vm.CommitNoteEdit();
+
+        Assert.False(vm.IsEditingNote);
+        Assert.Equal("черновик", Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[1].Content).Text);
+        Assert.False(vm.Projects[0].Entries[1].IsEditing);
+    }
+
+    [Fact]
+    public void CommitNoteEdit_KeepsOldText_WhenDraftIsBlank()
+    {
+        var (bus, _, vm) = Setup(TrackEntry(), NoteEntry("старый"));
+        using var _ = vm;
+
+        vm.BeginNoteEdit(vm.Projects[0].Entries[1]);
+        vm.NoteDraft = "   ";
+        vm.CommitNoteEdit();
+
+        Assert.Equal("старый", Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[1].Content).Text);
+    }
+
+    [Fact]
+    public void ToggleNoteExpanded_CommitsPendingDraft()
+    {
+        var (bus, _, vm) = Setup(TrackEntry(), NoteEntry("старый"));
+        using var _ = vm;
+
+        vm.BeginNoteEdit(vm.Projects[0].Entries[1]);
+        vm.NoteDraft = "на ходу";
+        vm.ToggleNoteExpanded(vm.Projects[0].Entries[1]);
+
+        Assert.False(vm.IsEditingNote);
+        Assert.Equal("на ходу", Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[1].Content).Text);
+    }
+
+    [Fact]
+    public void BeginNoteEdit_OnAnotherNote_CommitsPrevious()
+    {
+        var (bus, _, vm) = Setup(TrackEntry(), NoteEntry("первая"), NoteEntry("вторая"));
+        using var _ = vm;
+
+        vm.BeginNoteEdit(vm.Projects[0].Entries[1]);
+        vm.NoteDraft = "правка первой";
+        vm.BeginNoteEdit(vm.Projects[0].Entries[2]);
+        vm.NoteDraft = "правка второй";
+        vm.CommitNoteEdit();
+
+        Assert.Equal("правка первой", Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[1].Content).Text);
+        Assert.Equal("правка второй", Assert.IsType<NoteContent>(bus.Snapshot().Show.Projects[0].Entries[2].Content).Text);
     }
 
     [Fact]

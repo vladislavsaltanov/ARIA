@@ -13,6 +13,7 @@
       <SolidColorBrush x:Key="BrushHover" Color="#1A1A1A"/>
       <SolidColorBrush x:Key="BrushSurfaceHi" Color="#2A2A2A"/>
       <SolidColorBrush x:Key="BrushLine" Color="#2C2C2C"/>
+      <SolidColorBrush x:Key="BrushNoteLine" Color="#662C2C2C"/>
       <SolidColorBrush x:Key="BrushFg" Color="#ECECEC"/>
       <SolidColorBrush x:Key="BrushDim" Color="#8A8A8A"/>
       <SolidColorBrush x:Key="BrushFaint" Color="#565656"/>

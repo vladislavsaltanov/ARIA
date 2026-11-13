@@ -5,11 +5,11 @@
              x:DataType="vm:ProjectsViewModel">
   <UserControl.Styles>
     <Style Selector="ListBoxItem.dropBefore /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushSignal}"/>
       <Setter Property="BorderThickness" Value="0,3,0,0"/>
     </Style>
     <Style Selector="ListBoxItem.dropAfter /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="BorderBrush" Value="{StaticResource BrushFg}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushSignal}"/>
       <Setter Property="BorderThickness" Value="0,0,0,3"/>
     </Style>
     <Style Selector="Border.plRow">
@@ -23,8 +23,21 @@
     <Style Selector="Border.plRow:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushHover}"/>
     </Style>
+    <Style Selector="Border.plRow.note">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushNoteLine}"/>
+      <Setter Property="BorderThickness" Value="0,1,0,1"/>
+    </Style>
+    <Style Selector="ListBox#EntryList ListBoxItem">
+      <Setter Property="FocusAdorner" Value="{x:Null}"/>
+    </Style>
     <Style Selector="ListBox#EntryList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBox#EntryList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="ListBox#EntryList ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
     </Style>
     <Style Selector="Border.plRow.linked">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
@@ -190,7 +203,7 @@
                ItemContainerTheme="{StaticResource PlainRowItem}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:ProjectsViewModel+EntryVm">
-            <Border Classes="plRow" Classes.linked="{Binding IsLinked}" CornerRadius="6" Padding="10,0,12,0">
+            <Border Classes="plRow" Classes.linked="{Binding IsLinked}" Classes.note="{Binding IsNote}" CornerRadius="6" Padding="10,0,12,0">
               <Border.ContextMenu>
                 <ContextMenu>
                   <MenuItem Header="Править" Click="OnEditNoteClick" IsVisible="{Binding IsNote}"/>
@@ -241,7 +254,8 @@
                         Background="{StaticResource BrushSurfaceAlt}" CornerRadius="4">
                   <TextBlock Text="{Binding Note}" FontSize="13" Foreground="{StaticResource BrushFg}" TextWrapping="Wrap"/>
                 </Border>
-                <TextBox x:Name="NoteEditor" IsVisible="{Binding IsEditing}" Text="{Binding Note, Mode=OneWay}"
+                <TextBox x:Name="NoteEditor" IsVisible="{Binding IsEditing}"
+                         Text="{Binding $parent[ListBox].DataContext.NoteDraft, Mode=TwoWay}"
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="44" Margin="8,0,4,6" Padding="8,6"
                          FontSize="13" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"
                          KeyDown="OnNoteEditorKeyDown" LostFocus="OnNoteEditorLostFocus"
