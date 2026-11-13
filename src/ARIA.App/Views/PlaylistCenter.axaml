@@ -21,17 +21,20 @@
       </Setter>
     </Style>
     <Style Selector="Border.plRow:pointerover">
-      <Setter Property="Background" Value="{StaticResource BrushHover}"/>
+      <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="Border.plRow.selected">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
-    </Style>
-    <Style Selector="Border.plRow.selected:pointerover">
-      <Setter Property="Background" Value="#242424"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BrushLine}"/>
+      <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
     <Style Selector="Border.plRow.note">
       <Setter Property="BorderBrush" Value="{StaticResource BrushNoteLine}"/>
       <Setter Property="BorderThickness" Value="0,1,0,1"/>
+    </Style>
+    <Style Selector="Border.plRow.note.selected">
+      <Setter Property="BorderBrush" Value="{StaticResource BrushNoteLine}"/>
+      <Setter Property="BorderThickness" Value="2,1,0,1"/>
     </Style>
     <Style Selector="ListBox#EntryList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>

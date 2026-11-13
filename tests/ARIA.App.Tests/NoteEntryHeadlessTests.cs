@@ -111,7 +111,7 @@ public sealed class NoteEntryHeadlessTests : IDisposable
             window.UpdateLayout();
 
             var row = item.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("plRow"));
-            Assert.Equal(Color.Parse("#FF1A1A1A"), ColorOf(row.Background));
+            Assert.Equal(Colors.Transparent, ColorOf(row.Background));
             Assert.Equal(Colors.Transparent, ColorOf(presenter.Background));
 
             center.EntryListBox.SelectedItem = vm.Projects[0].Entries[0];
@@ -119,7 +119,9 @@ public sealed class NoteEntryHeadlessTests : IDisposable
             window.UpdateLayout();
 
             Assert.Contains("selected", row.Classes);
-            Assert.Equal(Color.Parse("#FF242424"), ColorOf(row.Background));
+            Assert.Equal(Colors.Transparent, ColorOf(row.Background));
+            Assert.Equal(new Thickness(2, 0, 0, 0), row.BorderThickness);
+            Assert.Equal(Color.Parse("#FF2C2C2C"), ColorOf(row.BorderBrush));
             Assert.Equal(Colors.Transparent, ColorOf(presenter.Background));
 
             center.EntryListBox.SelectedItem = null;
@@ -127,15 +129,8 @@ public sealed class NoteEntryHeadlessTests : IDisposable
             window.UpdateLayout();
 
             Assert.DoesNotContain("selected", row.Classes);
-            Assert.Equal(Color.Parse("#FF1A1A1A"), ColorOf(row.Background));
-
-            window.MouseMove(new Point(2, 2));
-            center.EntryListBox.SelectedItem = vm.Projects[0].Entries[0];
-            await Task.Delay(300);
-            window.UpdateLayout();
-
-            Assert.Contains("selected", row.Classes);
-            Assert.Equal(Color.Parse("#FF1F1F1F"), ColorOf(row.Background));
+            Assert.Equal(new Thickness(0), row.BorderThickness);
+            Assert.Equal(Colors.Transparent, ColorOf(row.Background));
             window.Close();
             return 0;
         }, CancellationToken.None);
