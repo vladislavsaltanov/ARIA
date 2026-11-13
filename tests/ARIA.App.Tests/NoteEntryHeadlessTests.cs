@@ -119,9 +119,7 @@ public sealed class NoteEntryHeadlessTests : IDisposable
             window.UpdateLayout();
 
             Assert.Contains("selected", row.Classes);
-            Assert.Equal(Colors.Transparent, ColorOf(row.Background));
-            Assert.Equal(new Thickness(2, 0, 0, 0), row.BorderThickness);
-            Assert.Equal(Color.Parse("#FF2C2C2C"), ColorOf(row.BorderBrush));
+            Assert.Equal(Color.Parse("#FF222222"), ColorOf(row.Background));
             Assert.Equal(Colors.Transparent, ColorOf(presenter.Background));
 
             center.EntryListBox.SelectedItem = null;
@@ -129,7 +127,6 @@ public sealed class NoteEntryHeadlessTests : IDisposable
             window.UpdateLayout();
 
             Assert.DoesNotContain("selected", row.Classes);
-            Assert.Equal(new Thickness(0), row.BorderThickness);
             Assert.Equal(Colors.Transparent, ColorOf(row.Background));
             window.Close();
             return 0;
