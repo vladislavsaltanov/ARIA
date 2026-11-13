@@ -31,7 +31,7 @@ public sealed class BackingPersistenceTests : IDisposable
 
         using (var store = new SqliteLibraryStore(_dbPath))
         {
-            var overrides = Assert.Single(Assert.Single(store.Load().Projects).Entries).Overrides;
+            var overrides = ((TrackContent)Assert.Single(Assert.Single(store.Load().Projects).Entries).Content).Overrides;
             Assert.Equal(guide.Id, overrides!.Backing);
             Assert.Equal("Песня", overrides.Name);
         }
@@ -53,7 +53,7 @@ public sealed class BackingPersistenceTests : IDisposable
         {
             var loaded = store.LoadLatest();
             Assert.NotNull(loaded);
-            Assert.Equal(guide.Id, Assert.Single(Assert.Single(loaded.Projects).Entries).Overrides!.Backing);
+            Assert.Equal(guide.Id, ((TrackContent)Assert.Single(Assert.Single(loaded.Projects).Entries).Content).Overrides!.Backing);
         }
     }
 }

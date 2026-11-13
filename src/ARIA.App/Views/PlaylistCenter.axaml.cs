@@ -261,6 +261,11 @@ public partial class ProjectCenter : UserControl
             && list.SelectedItem is ProjectsViewModel.EntryVm entry
             && DataContext is ProjectsViewModel viewModel)
         {
+            if (entry.IsNote)
+            {
+                viewModel.BeginNoteEdit(entry);
+                return;
+            }
             if (entry.IsFaulted)
             {
                 _ = ShowFaultDialog(entry);
@@ -270,14 +275,109 @@ public partial class ProjectCenter : UserControl
         }
     }
 
-    private void OnFaultRowTapped(object? sender, TappedEventArgs e)
+    private void OnRowTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Border border
-            && border.DataContext is ProjectsViewModel.EntryVm entry
-            && entry.IsFaulted)
+        if (sender is not Grid grid
+            || grid.DataContext is not ProjectsViewModel.EntryVm entry
+            || DataContext is not ProjectsViewModel viewModel)
+        {
+            return;
+        }
+        if (entry.IsFaulted)
         {
             _ = ShowFaultDialog(entry);
+            return;
         }
+        if (entry.IsNote)
+        {
+            viewModel.ToggleNoteExpanded(entry);
+        }
+    }
+
+    private void OnAddNoteClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ProjectsViewModel viewModel && viewModel.SelectedProject is { } project)
+        {
+            ResetDragState();
+            viewModel.AddNote(project);
+        }
+    }
+
+    private void OnEditNoteClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item
+            && item.DataContext is ProjectsViewModel.EntryVm entry
+            && DataContext is ProjectsViewModel viewModel)
+        {
+            viewModel.BeginNoteEdit(entry);
+        }
+    }
+
+    private void OnEntryListKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F2)
+        {
+            return;
+        }
+        if (sender is ListBox { SelectedItem: ProjectsViewModel.EntryVm { IsNote: true } entry }
+            && DataContext is ProjectsViewModel viewModel)
+        {
+            viewModel.BeginNoteEdit(entry);
+            e.Handled = true;
+        }
+    }
+
+    private bool _noteEditClosed;
+
+    private void OnNoteEditorAttached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is not TextBox editor)
+        {
+            return;
+        }
+        _noteEditClosed = false;
+        Dispatcher.UIThread.Post(() =>
+        {
+            editor.Focus();
+            editor.CaretIndex = editor.Text?.Length ?? 0;
+            editor.SelectAll();
+        });
+    }
+
+    private void OnNoteEditorKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox editor
+            || editor.DataContext is not ProjectsViewModel.EntryVm entry
+            || DataContext is not ProjectsViewModel viewModel)
+        {
+            return;
+        }
+        if (e.Key == Key.Escape)
+        {
+            _noteEditClosed = true;
+            viewModel.CancelNoteEdit();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.Enter && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            _noteEditClosed = true;
+            viewModel.CommitNoteText(entry, editor.Text ?? string.Empty);
+            e.Handled = true;
+        }
+    }
+
+    private void OnNoteEditorLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (_noteEditClosed
+            || sender is not TextBox editor
+            || editor.DataContext is not ProjectsViewModel.EntryVm entry
+            || DataContext is not ProjectsViewModel viewModel)
+        {
+            return;
+        }
+        _noteEditClosed = true;
+        viewModel.CommitNoteText(entry, editor.Text ?? string.Empty);
     }
 
     private void OnFaultIconTapped(object? sender, TappedEventArgs e)

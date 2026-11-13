@@ -31,7 +31,7 @@ public sealed class ScriptImportCopyTests : IDisposable
     {
         var projectDir = Directory.CreateDirectory(Path.Combine(_root, "proj")).FullName;
         var srcDir = Directory.CreateDirectory(Path.Combine(_root, "src")).FullName;
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         using var viewModel = new ScriptPanelViewModel(_bus, () => [TestTrack], projectDirSource: _ => projectDir);
         var json = """{"format":"aria-script","version":1,"name":"Вечер","lines":[{"at":"1:05","text":"открывашка"}]}""";
@@ -49,7 +49,7 @@ public sealed class ScriptImportCopyTests : IDisposable
     [Fact]
     public void ImportDocument_WithoutProjectDir_ImportsMemoryOnly()
     {
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         using var viewModel = new ScriptPanelViewModel(_bus, () => [TestTrack]);
         var json = """{"format":"aria-script","version":1,"name":"Вечер","lines":[]}""";
@@ -64,7 +64,7 @@ public sealed class ScriptImportCopyTests : IDisposable
     public async Task ImportProject_RemembersSourceDirectory()
     {
         var projectDir = Directory.CreateDirectory(Path.Combine(_root, "proj")).FullName;
-        var seed = new Project(ProjectId.New(), "Seed", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var seed = new Project(ProjectId.New(), "Seed", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [seed], seed.Id));
         using var projects = new ProjectsViewModel(_bus, () => [TestTrack]);
         var json = ProjectFormat.Export("Вечер", [new ProjectExportEntry("/audio/test.flac")]);
@@ -79,7 +79,7 @@ public sealed class ScriptImportCopyTests : IDisposable
     public async Task FinishExportAsync_RemembersDirectory()
     {
         var projectDir = Directory.CreateDirectory(Path.Combine(_root, "proj")).FullName;
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         using var projects = new ProjectsViewModel(_bus, () => [TestTrack]);
         using var sink = new MemoryStream();

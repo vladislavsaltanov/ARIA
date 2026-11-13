@@ -18,7 +18,7 @@ public sealed record ProjectFileMarker(
     [property: JsonPropertyName("action")] string Action = "stop");
 
 public sealed record ProjectFileEntry(
-    [property: JsonPropertyName("file")] string File,
+    [property: JsonPropertyName("file")] string? File,
     [property: JsonPropertyName("name")] string? Name = null,
     [property: JsonPropertyName("color")] string? Color = null,
     [property: JsonPropertyName("note")] string? Note = null,
@@ -29,12 +29,15 @@ public sealed record ProjectFileEntry(
     [property: JsonPropertyName("cueIn")] double? CueIn = null,
     [property: JsonPropertyName("cueOut")] double? CueOut = null,
     [property: JsonPropertyName("transition")] ProjectFileTransition? Transition = null,
-    [property: JsonPropertyName("markers")] List<ProjectFileMarker>? Markers = null);
+    [property: JsonPropertyName("markers")] List<ProjectFileMarker>? Markers = null,
+    [property: JsonPropertyName("kind")] string? Kind = null,
+    [property: JsonPropertyName("text")] string? Text = null);
 
 public sealed record ProjectExportEntry(
-    string File,
+    string? File,
     ProjectOverrides? Overrides = null,
-    ProjectFileTransition? Transition = null);
+    ProjectFileTransition? Transition = null,
+    string? Text = null);
 
 public sealed record ProjectFileScriptLine(
     [property: JsonPropertyName("at")] string At,
@@ -64,7 +67,9 @@ public static class ProjectFormat
 
     public const string LegacyFormatId = "aria-playlist";
 
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
+
+    public const int FirstProjectVersion = 2;
 
     public const int LegacyVersion = 1;
 
@@ -123,7 +128,7 @@ public static class ProjectFormat
         {
             throw new ProjectFormatException($"bad-format: {document.Format}");
         }
-        if (document.Version != (legacy ? LegacyVersion : CurrentVersion))
+        if (legacy ? document.Version != LegacyVersion : document.Version is < FirstProjectVersion or > CurrentVersion)
         {
             throw new ProjectFormatException($"bad-version: {document.Version}");
         }
@@ -187,21 +192,27 @@ public static class ProjectFormat
             Markers: entry.Markers is null ? null : ToMarkers(entry.Markers));
     }
 
-    private static ProjectFileEntry ToFileEntry(ProjectExportEntry entry) => new(
-        entry.File,
-        entry.Overrides?.Name,
-        entry.Overrides?.Color,
-        entry.Overrides?.Note,
-        entry.Overrides?.GainDb,
-        entry.Overrides?.EndAction?.ToString().ToLowerInvariant(),
-        entry.Overrides?.In is null ? null : ToFileFade(entry.Overrides.In),
-        entry.Overrides?.Out is null ? null : ToFileFade(entry.Overrides.Out),
-        entry.Overrides?.CueIn?.TotalSeconds,
-        entry.Overrides?.CueOut?.TotalSeconds,
-        entry.Transition,
-        entry.Overrides?.Markers is null
-            ? null
-            : [.. entry.Overrides.Markers.Value.Select(m => new ProjectFileMarker(m.Name, m.Position.TotalSeconds, m.Action.ToString().ToLowerInvariant()))]);
+    private static ProjectFileEntry ToFileEntry(ProjectExportEntry entry)
+    {
+        var isNote = entry.Text is not null;
+        return new(
+            isNote ? null : entry.File,
+            entry.Overrides?.Name,
+            entry.Overrides?.Color,
+            entry.Overrides?.Note,
+            entry.Overrides?.GainDb,
+            entry.Overrides?.EndAction?.ToString().ToLowerInvariant(),
+            entry.Overrides?.In is null ? null : ToFileFade(entry.Overrides.In),
+            entry.Overrides?.Out is null ? null : ToFileFade(entry.Overrides.Out),
+            entry.Overrides?.CueIn?.TotalSeconds,
+            entry.Overrides?.CueOut?.TotalSeconds,
+            entry.Transition,
+            entry.Overrides?.Markers is null
+                ? null
+                : [.. entry.Overrides.Markers.Value.Select(m => new ProjectFileMarker(m.Name, m.Position.TotalSeconds, m.Action.ToString().ToLowerInvariant()))],
+            isNote ? "note" : "track",
+            entry.Text);
+    }
 
     private static ImmutableArray<Marker> ToMarkers(List<ProjectFileMarker> markers) =>
         [.. markers.Select(m => new Marker(m.Name, TimeSpan.FromSeconds(m.Position), ParseMarkerAction(m.Action)))];
@@ -211,6 +222,25 @@ public static class ProjectFormat
 
     private static void ValidateEntry(ProjectFileEntry entry)
     {
+        var isNote = string.Equals(entry.Kind, "note", StringComparison.OrdinalIgnoreCase);
+        if (entry.Kind is not null
+            && !isNote
+            && !string.Equals(entry.Kind, "track", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ProjectFormatException($"bad-entry: неизвестный kind: {entry.Kind}");
+        }
+        if (isNote)
+        {
+            if (!NoteContent.TryCreate(entry.Text, out _))
+            {
+                throw new ProjectFormatException("bad-note: пустой или слишком длинный текст заметки");
+            }
+            if (entry.File is not null)
+            {
+                throw new ProjectFormatException($"bad-note: у заметки не должно быть файла: {entry.File}");
+            }
+            return;
+        }
         if (string.IsNullOrWhiteSpace(entry.File))
         {
             throw new ProjectFormatException("bad-entry: пустой путь к файлу");

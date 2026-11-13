@@ -59,8 +59,8 @@ public sealed class DragHeadlessTests : IDisposable
         host.Submit(new AddEntry(projectId, tracks[1].Id, 1));
         var initial = await EntriesEventuallyAsync(host, 2);
         Assert.Equal(2, initial.Length);
-        Assert.Equal(tracks[0].Id, initial[0].TrackId);
-        Assert.Equal(tracks[1].Id, initial[1].TrackId);
+        Assert.Equal(tracks[0].Id, ((TrackContent)initial[0].Content).TrackId);
+        Assert.Equal(tracks[1].Id, ((TrackContent)initial[1].Content).TrackId);
         Window? window = null;
         await _session.Dispatch(() =>
         {
@@ -103,14 +103,14 @@ public sealed class DragHeadlessTests : IDisposable
         while (DateTime.UtcNow < deadline)
         {
             entries = host.Bus.Snapshot().Show.Projects[0].Entries;
-            if (entries.Length == 2 && entries[0].TrackId == tracks[1].Id)
+            if (entries.Length == 2 && ((TrackContent)entries[0].Content).TrackId == tracks[1].Id)
             {
                 break;
             }
             await Task.Delay(25);
         }
-        Assert.Equal(tracks[1].Id, entries[0].TrackId);
-        Assert.Equal(tracks[0].Id, entries[1].TrackId);
+        Assert.Equal(tracks[1].Id, ((TrackContent)entries[0].Content).TrackId);
+        Assert.Equal(tracks[0].Id, ((TrackContent)entries[1].Content).TrackId);
         await CloseAsync(window!);
     }
 
@@ -161,8 +161,8 @@ public sealed class DragHeadlessTests : IDisposable
         }, CancellationToken.None);
 
         var entries = host.Bus.Snapshot().Show.Projects[0].Entries;
-        Assert.Equal(tracks[0].Id, entries[0].TrackId);
-        Assert.Equal(tracks[1].Id, entries[1].TrackId);
+        Assert.Equal(tracks[0].Id, ((TrackContent)entries[0].Content).TrackId);
+        Assert.Equal(tracks[1].Id, ((TrackContent)entries[1].Content).TrackId);
         await CloseAsync(window!);
     }
 

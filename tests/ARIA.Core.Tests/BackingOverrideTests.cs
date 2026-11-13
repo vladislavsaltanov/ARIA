@@ -66,7 +66,7 @@ public sealed class BackingOverrideTests : IDisposable
         _bus.Submit(TestClient, seq, new SetEntryOverrides(_songEntry.Id, new ProjectOverrides(Name: "x", Backing: TrackId.New())));
 
         await Poll(() => _events.Any(e => e is Rejected r && r.Seq == seq && r.Reason == "unknown-backing"), "unknown backing accepted");
-        Assert.Null(_bus.Snapshot().Show.Projects[0].Entries[0].Overrides);
+        Assert.Null(((TrackContent)_bus.Snapshot().Show.Projects[0].Entries[0].Content).Overrides);
     }
 
     [Fact]

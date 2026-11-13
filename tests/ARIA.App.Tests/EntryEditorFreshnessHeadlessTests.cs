@@ -24,7 +24,7 @@ public sealed class EntryEditorFreshnessHeadlessTests
         await _session.Dispatch(() =>
         {
             var track = new Track(TrackId.New(), "/audio/test.flac", "test", TimeSpan.FromMinutes(3), new TrackDefaults());
-            var entry = new ProjectEntry(EntryId.New(), track.Id);
+            var entry = new ProjectEntry(EntryId.New(), new TrackContent(track.Id));
             var project = new Project(ProjectId.New(), "Main", [entry]);
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
             bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
@@ -36,7 +36,7 @@ public sealed class EntryEditorFreshnessHeadlessTests
 
             var editor1 = vm.CreateEntryAudioEditor(vm.Projects[0].Entries[0]);
             editor1.EqBands[3].GainDb = -5;
-            WaitForController(() => bus.Snapshot().Show.Projects[0].Entries[0].Overrides?.Audio is { } a && a.Eq.Bands[3].GainDb == -5);
+            WaitForController(() => ((TrackContent)bus.Snapshot().Show.Projects[0].Entries[0].Content).Overrides?.Audio is { } a && a.Eq.Bands[3].GainDb == -5);
 
             var editor2 = vm.CreateEntryAudioEditor(vm.Projects[0].Entries[0]);
 

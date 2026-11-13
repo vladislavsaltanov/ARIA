@@ -166,8 +166,9 @@ internal sealed class OverridesDto
 internal sealed class EntryDto
 {
     public Guid Id { get; set; }
-    public Guid TrackId { get; set; }
+    public Guid? TrackId { get; set; }
     public OverridesDto? Overrides { get; set; }
+    public string? Text { get; set; }
 }
 
 internal sealed class ProjectDto
@@ -269,17 +270,23 @@ internal static class ProjectMapper
                 Audio: AudioMapper.ToDomain(dto.Audio),
                 Backing: dto.Backing is { } backing ? new TrackId(backing) : null);
 
-    public static EntryDto ToDto(ProjectEntry entry) => new()
+    public static EntryDto ToDto(ProjectEntry entry) => entry.Content switch
     {
-        Id = entry.Id.Value,
-        TrackId = entry.TrackId.Value,
-        Overrides = ToDto(entry.Overrides),
+        TrackContent track => new EntryDto { Id = entry.Id.Value, TrackId = track.TrackId.Value, Overrides = ToDto(track.Overrides) },
+        NoteContent note => new EntryDto { Id = entry.Id.Value, Text = note.Text },
+        _ => throw new InvalidOperationException($"unknown entry content: {entry.Content.GetType().Name}"),
     };
 
-    public static ProjectEntry ToDomain(EntryDto dto) => new(
-        new EntryId(dto.Id),
-        new TrackId(dto.TrackId),
-        ToDomain(dto.Overrides));
+    public static ProjectEntry? ToDomain(EntryDto dto)
+    {
+        if (dto.TrackId is { } trackId)
+        {
+            return new ProjectEntry(new EntryId(dto.Id), new TrackContent(new TrackId(trackId), ToDomain(dto.Overrides)));
+        }
+        return NoteContent.TryCreate(dto.Text, out var note) && note is not null
+            ? new ProjectEntry(new EntryId(dto.Id), note)
+            : null;
+    }
 
     public static ProjectDto ToDto(Project project) => new()
     {
@@ -291,7 +298,7 @@ internal static class ProjectMapper
     public static Project ToDomain(ProjectDto dto) => new(
         new ProjectId(dto.Id),
         dto.Name,
-        [.. dto.Entries.Select(ToDomain)]);
+        [.. dto.Entries.Select(ToDomain).OfType<ProjectEntry>()]);
 }
 
 internal static class ScriptMapper

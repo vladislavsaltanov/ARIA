@@ -66,7 +66,7 @@ public sealed class MiniaudioSinkTests
         holder.Value = bus;
 
         var track = TestTracks.Track("sine.flac");
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         var client = new ClientId("miniaudio-e2e");
         bus.Submit(client, 1, new LoadShow([track], [project], project.Id));
         bus.Submit(client, 2, new Play());

@@ -39,7 +39,7 @@ public sealed class PlaybackChannelTests : IAsyncLifetime
         var project = new Project(
             ProjectId.New(),
             "Main",
-            [new ProjectEntry(EntryId.New(), trackId)]);
+            [new ProjectEntry(EntryId.New(), new TrackContent(trackId))]);
         var track = new Track(trackId, "a.wav", "Track", TimeSpan.FromSeconds(10), new TrackDefaults());
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         _bus.Submit(new ClientId("setup"), 2, new CreateProject("Second"));

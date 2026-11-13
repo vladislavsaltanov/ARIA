@@ -288,7 +288,7 @@ public sealed class AriaAudioEngineTests
         private long _seq;
 
         public Stack(params Track[] tracks)
-            : this((tracks, [.. tracks.Select(t => new ProjectEntry(EntryId.New(), t.Id))]))
+            : this((tracks, [.. tracks.Select(t => new ProjectEntry(EntryId.New(), new TrackContent(t.Id)))]))
         {
         }
 
@@ -300,7 +300,7 @@ public sealed class AriaAudioEngineTests
         private static (Track[] Tracks, ImmutableArray<ProjectEntry> Entries) BuildShow(string[] files)
         {
             var tracks = files.Select(f => TestTracks.Track(f)).ToArray();
-            return (tracks, [.. tracks.Select(t => new ProjectEntry(EntryId.New(), t.Id))]);
+            return (tracks, [.. tracks.Select(t => new ProjectEntry(EntryId.New(), new TrackContent(t.Id)))]);
         }
 
         private Stack((Track[] Tracks, ImmutableArray<ProjectEntry> Entries) show)

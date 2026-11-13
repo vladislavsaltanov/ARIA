@@ -306,7 +306,7 @@ public sealed class DecoderTests : IDisposable
         var project = new Project(
             ProjectId.New(),
             "Main",
-            [new ProjectEntry(EntryId.New(), first.Id), new ProjectEntry(EntryId.New(), second.Id)]);
+            [new ProjectEntry(EntryId.New(), new TrackContent(first.Id)), new ProjectEntry(EntryId.New(), new TrackContent(second.Id))]);
         bus.Submit(client, ++seq, new LoadShow([first, second], [project], project.Id));
         bus.Submit(client, ++seq, new Play());
 

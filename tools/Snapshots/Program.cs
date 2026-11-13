@@ -129,11 +129,15 @@ internal static class SnapshotProgram
         var project = new Project(
             ProjectId.New(),
             "Основной сценарий",
-            [.. tracks.Select(track => new ProjectEntry(EntryId.New(), track.Id))]);
+            [
+                new ProjectEntry(EntryId.New(), new TrackContent(tracks[0].Id)),
+                new ProjectEntry(EntryId.New(), new NoteContent("после фанфар пауза — ждём свет, микрофон 2")),
+                .. tracks.Skip(1).Select(track => new ProjectEntry(EntryId.New(), new TrackContent(track.Id))),
+            ]);
         var rehearsal = new Project(
             ProjectId.New(),
             "Репетиция",
-            [.. new[] { tracks[0], tracks[3], tracks[4] }.Select(track => new ProjectEntry(EntryId.New(), track.Id))]);
+            [.. new[] { tracks[0], tracks[3], tracks[4] }.Select(track => new ProjectEntry(EntryId.New(), new TrackContent(track.Id)))]);
         var queue = ImmutableArray.Create(
             new QueueItem(null, tracks[1].Id, tracks[1].DefaultName, null),
             new QueueItem(null, tracks[2].Id, tracks[2].DefaultName, null),

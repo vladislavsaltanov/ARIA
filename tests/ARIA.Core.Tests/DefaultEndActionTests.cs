@@ -62,7 +62,7 @@ public sealed class DefaultEndActionTests
     {
         using var h = new Harness();
         var t1 = TestShow.Track("one");
-        var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(EndAction: EndAction.Replay));
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(t1.Id, new ProjectOverrides(EndAction: EndAction.Replay)));
         var p = TestShow.Project("Main", entry);
         h.Submit(new LoadShow([t1], [p], p.Id));
         h.Submit(new SetDefaultEndAction(EndAction.Pause));

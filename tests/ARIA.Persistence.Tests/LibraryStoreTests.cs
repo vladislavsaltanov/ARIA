@@ -34,8 +34,8 @@ public sealed class LibraryStoreTests : IDisposable
             GainDb: -6, EndAction: EndAction.Replay,
             In: new Fade(TimeSpan.FromSeconds(1), FadeCurve.Logarithmic),
             CueIn: TimeSpan.FromSeconds(10), CueOut: TimeSpan.FromMinutes(1));
-        var e1 = new ProjectEntry(EntryId.New(), t1.Id, overrides);
-        var e2 = new ProjectEntry(EntryId.New(), t2.Id);
+        var e1 = new ProjectEntry(EntryId.New(), new TrackContent(t1.Id, overrides));
+        var e2 = new ProjectEntry(EntryId.New(), new TrackContent(t2.Id));
         var p1 = new Project(ProjectId.New(), "Спектакль", [e1, e2]);
         var p2 = new Project(ProjectId.New(), "Антракт", []);
 
@@ -74,20 +74,21 @@ public sealed class LibraryStoreTests : IDisposable
 
             var loadedE1 = projects[0].Entries[0];
             Assert.Equal(e1.Id, loadedE1.Id);
-            Assert.Equal(t1.Id, loadedE1.TrackId);
-            Assert.NotNull(loadedE1.Overrides);
-            Assert.Equal("Буря, акт 2", loadedE1.Overrides!.Name);
-            Assert.Equal("amber", loadedE1.Overrides.Color);
-            Assert.Equal("примечание", loadedE1.Overrides.Note);
-            Assert.Equal(-6, loadedE1.Overrides.GainDb);
-            Assert.Equal(EndAction.Replay, loadedE1.Overrides.EndAction);
-            Assert.Equal(TimeSpan.FromSeconds(1), loadedE1.Overrides.In!.Duration);
-            Assert.Equal(TimeSpan.FromSeconds(10), loadedE1.Overrides.CueIn);
-            Assert.Equal(TimeSpan.FromMinutes(1), loadedE1.Overrides.CueOut);
+            Assert.Equal(t1.Id, ((TrackContent)loadedE1.Content).TrackId);
+            var loadedE1Overrides = ((TrackContent)loadedE1.Content).Overrides;
+            Assert.NotNull(loadedE1Overrides);
+            Assert.Equal("Буря, акт 2", loadedE1Overrides.Name);
+            Assert.Equal("amber", loadedE1Overrides.Color);
+            Assert.Equal("примечание", loadedE1Overrides.Note);
+            Assert.Equal(-6, loadedE1Overrides.GainDb);
+            Assert.Equal(EndAction.Replay, loadedE1Overrides.EndAction);
+            Assert.Equal(TimeSpan.FromSeconds(1), loadedE1Overrides.In!.Duration);
+            Assert.Equal(TimeSpan.FromSeconds(10), loadedE1Overrides.CueIn);
+            Assert.Equal(TimeSpan.FromMinutes(1), loadedE1Overrides.CueOut);
 
             var loadedE2 = projects[0].Entries[1];
             Assert.Equal(e2.Id, loadedE2.Id);
-            Assert.Null(loadedE2.Overrides);
+            Assert.Null(((TrackContent)loadedE2.Content).Overrides);
 
             Assert.Equal("Антракт", projects[1].Name);
             Assert.Empty(projects[1].Entries);
@@ -148,9 +149,9 @@ public sealed class LibraryStoreTests : IDisposable
     public void RoundTrip_PreservesEntryOverridesMarkers()
     {
         var t1 = TestFactory.Track("one");
-        var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(t1.Id, new ProjectOverrides(
             Name: "Буря",
-            Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Pause)]));
+            Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Pause)])));
         var project = new Project(ProjectId.New(), "Спектакль", [entry]);
 
         using (var store = new SqliteLibraryStore(_path))
@@ -162,8 +163,9 @@ public sealed class LibraryStoreTests : IDisposable
             var (_, projects) = store.Load();
 
             var loaded = Assert.Single(projects).Entries[0];
-            Assert.Equal("Буря", loaded.Overrides!.Name);
-            var marker = Assert.Single(loaded.Overrides.Markers!.Value);
+            var loadedOverrides = ((TrackContent)loaded.Content).Overrides!;
+            Assert.Equal("Буря", loadedOverrides.Name);
+            var marker = Assert.Single(loadedOverrides.Markers!.Value);
             Assert.Equal("гром", marker.Name);
             Assert.Equal(TimeSpan.FromSeconds(30), marker.Position);
             Assert.Equal(MarkerAction.Pause, marker.Action);
@@ -174,7 +176,7 @@ public sealed class LibraryStoreTests : IDisposable
     public void Load_OverridesWithoutMarkers_ReadsMarkersAsNull()
     {
         var t1 = TestFactory.Track("one");
-        var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(Name: "Без меток"));
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(t1.Id, new ProjectOverrides(Name: "Без меток")));
         var project = new Project(ProjectId.New(), "Спектакль", [entry]);
 
         using (var store = new SqliteLibraryStore(_path))
@@ -186,8 +188,8 @@ public sealed class LibraryStoreTests : IDisposable
             var (_, projects) = store.Load();
 
             var loaded = Assert.Single(projects).Entries[0];
-            Assert.NotNull(loaded.Overrides);
-            Assert.Null(loaded.Overrides!.Markers);
+            Assert.NotNull(((TrackContent)loaded.Content).Overrides);
+            Assert.Null(((TrackContent)loaded.Content).Overrides!.Markers);
         }
     }
 
@@ -198,8 +200,8 @@ public sealed class LibraryStoreTests : IDisposable
         try
         {
             var t1 = TestFactory.Track("one");
-            var entry = new ProjectEntry(EntryId.New(), t1.Id, new ProjectOverrides(
-                Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Pause)]));
+            var entry = new ProjectEntry(EntryId.New(), new TrackContent(t1.Id, new ProjectOverrides(
+                Markers: [new Marker("гром", TimeSpan.FromSeconds(30), MarkerAction.Pause)])));
             var project = new Project(ProjectId.New(), "Спектакль", [entry]);
             var document = new ShowDocument(
                 [t1], [project], project.Id, [], 0, TimeSpan.FromMilliseconds(100), TimeSpan.Zero, false, [], DateTimeOffset.UtcNow);
@@ -214,7 +216,7 @@ public sealed class LibraryStoreTests : IDisposable
 
                 Assert.NotNull(loaded);
                 var loadedEntry = Assert.Single(Assert.Single(loaded.Projects).Entries);
-                var marker = Assert.Single(loadedEntry.Overrides!.Markers!.Value);
+                var marker = Assert.Single(((TrackContent)loadedEntry.Content).Overrides!.Markers!.Value);
                 Assert.Equal("гром", marker.Name);
                 Assert.Equal(TimeSpan.FromSeconds(30), marker.Position);
             }

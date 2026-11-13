@@ -22,8 +22,8 @@ public sealed class ScriptProjectScopingTests : IDisposable
     public ScriptProjectScopingTests()
     {
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        _first = new Project(ProjectId.New(), "A", [new ProjectEntry(EntryId.New(), FirstTrack.Id)]);
-        _second = new Project(ProjectId.New(), "B", [new ProjectEntry(EntryId.New(), SecondTrack.Id)]);
+        _first = new Project(ProjectId.New(), "A", [new ProjectEntry(EntryId.New(), new TrackContent(FirstTrack.Id))]);
+        _second = new Project(ProjectId.New(), "B", [new ProjectEntry(EntryId.New(), new TrackContent(SecondTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, SecondTrack], [_first, _second], _first.Id));
         _projects = new ProjectsViewModel(_bus, () => [FirstTrack, SecondTrack]);
         _scripts = new ScriptPanelViewModel(_bus, () => [FirstTrack, SecondTrack]);

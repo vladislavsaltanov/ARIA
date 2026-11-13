@@ -159,8 +159,9 @@ public sealed class AudioPersistenceTests : IDisposable
             var loaded = store.Load();
 
             var reloaded = Assert.Single(loaded.Projects).Entries[0];
-            Assert.NotNull(reloaded.Overrides);
-            AssertAudioEqual(audio, reloaded.Overrides.Audio);
+            var reloadedOverrides = ((TrackContent)reloaded.Content).Overrides!;
+            Assert.NotNull(reloadedOverrides);
+            AssertAudioEqual(audio, reloadedOverrides.Audio);
         }
     }
 
@@ -180,8 +181,9 @@ public sealed class AudioPersistenceTests : IDisposable
             var loaded = store.Load();
 
             var reloaded = Assert.Single(loaded.Projects).Entries[0];
-            Assert.NotNull(reloaded.Overrides);
-            Assert.Null(reloaded.Overrides.Audio);
+            var reloadedOverrides = ((TrackContent)reloaded.Content).Overrides!;
+            Assert.NotNull(reloadedOverrides);
+            Assert.Null(reloadedOverrides.Audio);
         }
     }
 
@@ -216,9 +218,10 @@ public sealed class AudioPersistenceTests : IDisposable
             var loaded = store.Load();
 
             var reloaded = Assert.Single(loaded.Projects).Entries[0];
-            Assert.NotNull(reloaded.Overrides);
-            Assert.Equal("legacy", reloaded.Overrides.Name);
-            Assert.Null(reloaded.Overrides.Audio);
+            var reloadedOverrides = ((TrackContent)reloaded.Content).Overrides!;
+            Assert.NotNull(reloadedOverrides);
+            Assert.Equal("legacy", reloadedOverrides.Name);
+            Assert.Null(reloadedOverrides.Audio);
         }
     }
 
@@ -285,7 +288,7 @@ public sealed class AudioPersistenceTests : IDisposable
 
             Assert.NotNull(loaded);
             AssertAudioEqual(audio, Assert.Single(loaded.Tracks).Defaults.Audio);
-            AssertAudioEqual(audio, Assert.Single(loaded.Projects).Entries[0].Overrides!.Audio);
+            AssertAudioEqual(audio, ((TrackContent)Assert.Single(loaded.Projects).Entries[0].Content).Overrides!.Audio);
         }
     }
 

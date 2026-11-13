@@ -633,6 +633,10 @@ body {
   color: var(--dim);
   font-style: italic;
 }
+.entry-name.entry-note {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .empty-note {
   color: var(--dim);
   font-size: 13px;

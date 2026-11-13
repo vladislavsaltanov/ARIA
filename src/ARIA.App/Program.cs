@@ -58,7 +58,7 @@ internal static class Program
                 new Aria.Core.Model.TrackDefaults());
             var project = new Aria.Core.Model.Project(
                 Aria.Core.Model.ProjectId.New(), "Selftest", ImmutableArray.Create(
-                    new Aria.Core.Model.ProjectEntry(Aria.Core.Model.EntryId.New(), track.Id)));
+                    new Aria.Core.Model.ProjectEntry(Aria.Core.Model.EntryId.New(), new Aria.Core.Model.TrackContent(track.Id))));
             host.Submit(new LoadShow([track], ImmutableArray.Create(project), project.Id));
             host.Submit(new Play());
             await Task.Delay(2000);

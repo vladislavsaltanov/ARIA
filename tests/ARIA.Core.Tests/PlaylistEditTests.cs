@@ -102,12 +102,12 @@ public sealed class ProjectEditTests
         h.Submit(new AddEntry(p1.Id, t2.Id));
         var entries = h.Snapshot.Show.Projects.Single().Entries;
         Assert.Equal(2, entries.Length);
-        Assert.Equal(t2.Id, entries[1].TrackId);
+        Assert.Equal(t2.Id, ((TrackContent)entries[1].Content).TrackId);
 
         h.Submit(new AddEntry(p1.Id, t1.Id, 0));
         entries = h.Snapshot.Show.Projects.Single().Entries;
         Assert.Equal(3, entries.Length);
-        Assert.Equal(t1.Id, entries[0].TrackId);
+        Assert.Equal(t1.Id, ((TrackContent)entries[0].Content).TrackId);
 
         var tooHigh = h.Submit(new AddEntry(p1.Id, t1.Id, 4));
         var negative = h.Submit(new AddEntry(p1.Id, t1.Id, -1));
@@ -315,11 +315,11 @@ public sealed class ProjectEditTests
         var imported = Assert.Single(h.Snapshot.Show.Projects);
         Assert.Equal("Вечер", imported.Name);
         Assert.Equal(2, imported.Entries.Length);
-        Assert.Equal(t1.Id, imported.Entries[0].TrackId);
-        Assert.Equal("Утро", imported.Entries[0].Overrides?.Name);
-        Assert.Equal(-3, imported.Entries[0].Overrides?.GainDb);
-        Assert.Equal(t2.Id, imported.Entries[1].TrackId);
-        Assert.Null(imported.Entries[1].Overrides);
+        Assert.Equal(t1.Id, ((TrackContent)imported.Entries[0].Content).TrackId);
+        Assert.Equal("Утро", ((TrackContent)imported.Entries[0].Content).Overrides?.Name);
+        Assert.Equal(-3, ((TrackContent)imported.Entries[0].Content).Overrides?.GainDb);
+        Assert.Equal(t2.Id, ((TrackContent)imported.Entries[1].Content).TrackId);
+        Assert.Null(((TrackContent)imported.Entries[1].Content).Overrides);
         Assert.True(h.Snapshot.ShowVersion > version);
     }
 

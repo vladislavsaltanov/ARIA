@@ -37,7 +37,7 @@ public sealed class MarkerCommandsTests
 
         h.Submit(new SetEntryMarkers(entry.Id, [Mark("storm-end", 90)]));
 
-        var stored = h.Snapshot.Show.Projects.Single().Entries.Single().Overrides!;
+        var stored = ((TrackContent)h.Snapshot.Show.Projects.Single().Entries.Single().Content).Overrides!;
         Assert.Equal("Буря, акт 2", stored.Name);
         Assert.Equal("storm-end", Assert.Single(stored.Markers!.Value).Name);
     }
@@ -54,15 +54,15 @@ public sealed class MarkerCommandsTests
 
         h.Submit(new SetEntryMarkers(bare.Id, [Mark()]));
         h.Submit(new SetEntryMarkers(named.Id, [Mark()]));
-        Assert.NotNull(h.Snapshot.Show.Projects.Single().Entries[0].Overrides);
+        Assert.NotNull(((TrackContent)h.Snapshot.Show.Projects.Single().Entries[0].Content).Overrides);
 
         h.Submit(new SetEntryMarkers(bare.Id, null));
         h.Submit(new SetEntryMarkers(named.Id, null));
 
         var entries = h.Snapshot.Show.Projects.Single().Entries;
-        Assert.Null(entries[0].Overrides);
-        Assert.Equal("Тихая", entries[1].Overrides!.Name);
-        Assert.Null(entries[1].Overrides!.Markers);
+        Assert.Null(((TrackContent)entries[0].Content).Overrides);
+        Assert.Equal("Тихая", ((TrackContent)entries[1].Content).Overrides!.Name);
+        Assert.Null(((TrackContent)entries[1].Content).Overrides!.Markers);
     }
 
     [Fact]
@@ -155,11 +155,11 @@ public sealed class MarkerCommandsTests
         h.Submit(new LoadShow([track], [project], project.Id));
 
         h.Submit(new SetEntryMarkers(entry.Id, [Mark()]));
-        Assert.NotNull(h.Snapshot.Show.Projects.Single().Entries.Single().Overrides);
+        Assert.NotNull(((TrackContent)h.Snapshot.Show.Projects.Single().Entries.Single().Content).Overrides);
 
         h.Submit(new Undo());
 
-        Assert.Null(h.Snapshot.Show.Projects.Single().Entries.Single().Overrides);
+        Assert.Null(((TrackContent)h.Snapshot.Show.Projects.Single().Entries.Single().Content).Overrides);
     }
 
     [Fact]

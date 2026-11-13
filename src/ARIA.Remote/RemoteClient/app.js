@@ -950,6 +950,16 @@
   var overridesEntryId = null;
   var creatingProject = false;
 
+  function entryTrack(entry) {
+    var content = entry && entry.content;
+    return content && content.kind === "track" ? content : null;
+  }
+
+  function entryOverrides(entry) {
+    var track = entryTrack(entry);
+    return track && track.overrides ? track.overrides : null;
+  }
+
   function digestName(trackId) {
     var entries =
       (state.show &&
@@ -1045,11 +1055,9 @@
     if (cueOut !== "")
       overrides.cue_out_ticks = Math.round(Number(cueOut) * 10000);
     if (endAction) overrides.end_action = endAction;
-    if (entry.overrides && entry.overrides.markers)
-      overrides.markers = entry.overrides.markers;
-    if (entry.overrides && entry.overrides.backing)
-      overrides.backing = entry.overrides.backing;
-    if (Object.keys(overrides).length === 0) {
+    var existing = entryOverrides(entry);
+    if (existing && existing.markers) overrides.markers = existing.markers;
+    if (existing && existing.backing) overrides.backing = existing.backing;    if (Object.keys(overrides).length === 0) {
       send("set_entry_overrides", { entry: entry.id });
     } else {
       send("set_entry_overrides", { entry: entry.id, overrides: overrides });
@@ -1062,7 +1070,7 @@
     var form = document.createElement("div");
     form.className = "ov-form";
     form.setAttribute("data-ov-form", entry.id);
-    var o = entry.overrides || {};
+    var o = entryOverrides(entry) || {};
     var fields = document.createElement("div");
     fields.className = "ov-fields";
     var nameInput = textInput("имя (override)", o.name == null ? null : o.name);
@@ -1141,20 +1149,28 @@
     wrap.className = "entry";
     var line = document.createElement("div");
     line.className = "entry-line";
-    var name = digestName(entry.trackId);
-    var label = document.createElement("span");
-    label.className = "entry-name" + (name == null ? " dangling" : "");
-    var labelText = name == null ? "(повисшее упоминание)" : name;
-    if (entry.overrides && entry.overrides.name) {
-      labelText += " → " + entry.overrides.name;
+    var track = entryTrack(entry);
+    if (track) {
+      var name = digestName(track.trackId);
+      var label = document.createElement("span");
+      label.className = "entry-name" + (name == null ? " dangling" : "");
+      var labelText = name == null ? "(повисшее упоминание)" : name;
+      if (track.overrides && track.overrides.name) {
+        labelText += " → " + track.overrides.name;
+      }
+      line.appendChild(label);
+      marquee(label, labelText);
+      line.appendChild(
+        smallButton("▶", () => {
+          send("jump_to", { entry: entry.id });
+        }),
+      );
+    } else {
+      var note = document.createElement("span");
+      note.className = "entry-name entry-note";
+      note.textContent = (entry.content && entry.content.text) || "";
+      line.appendChild(note);
     }
-    line.appendChild(label);
-    marquee(label, labelText);
-    line.appendChild(
-      smallButton("▶", () => {
-        send("jump_to", { entry: entry.id });
-      }),
-    );
     if (index > 0) {
       line.appendChild(
         smallButton("↑", () => {
@@ -1171,12 +1187,14 @@
         }),
       );
     }
-    line.appendChild(
-      smallButton("⚙", () => {
-        overridesEntryId = overridesEntryId === entry.id ? null : entry.id;
-        refresh();
-      }),
-    );
+    if (track) {
+      line.appendChild(
+        smallButton("⚙", () => {
+          overridesEntryId = overridesEntryId === entry.id ? null : entry.id;
+          refresh();
+        }),
+      );
+    }
     line.appendChild(
       smallButton(
         "✕",
@@ -1188,7 +1206,7 @@
       ),
     );
     wrap.appendChild(line);
-    if (overridesEntryId === entry.id)
+    if (track && overridesEntryId === entry.id)
       wrap.appendChild(overridesForm(entry, refresh));
     return wrap;
   }

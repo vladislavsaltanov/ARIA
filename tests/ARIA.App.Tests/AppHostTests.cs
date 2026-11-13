@@ -39,7 +39,7 @@ public sealed class AppHostTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         var queue = ImmutableArray.Create(new QueueItem(null, track.Id, "x", null));
         var snapshotPath = Path.Combine(_directory, "show.json");
         using (var store = new JsonSnapshotStore(snapshotPath))
@@ -65,7 +65,7 @@ public sealed class AppHostTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         var snapshotPath = Path.Combine(_directory, "show.json");
         using (var store = new JsonSnapshotStore(snapshotPath))
         {
@@ -238,7 +238,7 @@ public sealed class AppHostTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var lost = new Track(TrackId.New(), Path.Combine(_directory, "ghost.wav"), "ghost", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), lost.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(lost.Id))]);
         using (var library = new SqliteLibraryStore(Path.Combine(_directory, "library.db")))
         {
             library.Upsert([lost], [project]);

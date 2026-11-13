@@ -30,7 +30,7 @@ public sealed class ProjectZipTests : IDisposable
     {
         var wav = TestWav.Write(Path.Combine(_root, "audio-src"), "one.wav");
         var track = new Track(TrackId.New(), wav, "one", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Band", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Band", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", project.Id));
         using var scripts = new ScriptPanelViewModel(_bus, () => [track]);
@@ -85,7 +85,7 @@ public sealed class ProjectZipTests : IDisposable
     {
         var wav = TestWav.Write(Path.Combine(_root, "audio-src"), "one.wav");
         var track = new Track(TrackId.New(), wav, "one", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Band", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Band", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", project.Id));
         using var scripts = new ScriptPanelViewModel(_bus, () => [track]);
@@ -110,7 +110,7 @@ public sealed class ProjectZipTests : IDisposable
         Assert.NotNull(report);
         Assert.Null(report.Error);
         var imported = freshBus.Snapshot().Show.Projects.Single(p => p.Name == "Band");
-        Assert.Equal(relocated.Id, Assert.Single(imported.Entries).TrackId);
+        Assert.Equal(relocated.Id, ((TrackContent)Assert.Single(imported.Entries).Content).TrackId);
         var script = Assert.Single(freshBus.Snapshot().Show.Scripts);
         Assert.Equal("Утро", script.Name);
         Assert.Equal<ProjectId?>(imported.Id, script.Project);

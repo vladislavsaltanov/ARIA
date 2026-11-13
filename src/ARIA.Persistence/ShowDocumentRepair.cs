@@ -61,7 +61,9 @@ public static class ShowDocumentRepair
     private static Project RepairProject(Project project, HashSet<TrackId> trackIds, HashSet<EntryId> entryIds)
     {
         var entries = project.Entries.IsDefault ? [] : project.Entries;
-        var kept = entries.Where(e => trackIds.Contains(e.TrackId) && entryIds.Add(e.Id)).ToImmutableArray();
+        var kept = entries
+            .Where(e => entryIds.Add(e.Id) && (e.Content is not TrackContent content || trackIds.Contains(content.TrackId)))
+            .ToImmutableArray();
         return kept.Length == entries.Length && !project.Entries.IsDefault ? project : project with { Entries = kept };
     }
 

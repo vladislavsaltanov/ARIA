@@ -302,8 +302,8 @@ public sealed class ScriptPanelHeadlessTests
         await _session.Dispatch(() =>
         {
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-            var a = new Project(ProjectId.New(), "A", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
-            var b = new Project(ProjectId.New(), "B", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+            var a = new Project(ProjectId.New(), "A", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
+            var b = new Project(ProjectId.New(), "B", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
             bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [a, b], a.Id));
             using var projects = new ViewModels.ProjectsViewModel(bus, () => [TestTrack]);
             using var viewModel = new ViewModels.ScriptPanelViewModel(bus, () => [TestTrack]);

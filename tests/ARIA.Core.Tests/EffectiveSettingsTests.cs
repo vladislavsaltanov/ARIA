@@ -16,7 +16,7 @@ public sealed class EffectiveSettingsTests
             fadeIn: new Fade(TimeSpan.FromMilliseconds(300), FadeCurve.Linear));
 
         var entry = TestShow.Entry(track);
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Equal("line", settings.DisplayName);
         Assert.Null(settings.Color);
@@ -45,7 +45,7 @@ public sealed class EffectiveSettingsTests
             CueOut: TimeSpan.FromMinutes(2));
 
         var entry = TestShow.Entry(track, overrides);
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Equal("имя", settings.DisplayName);
         Assert.Equal("red", settings.Color);
@@ -64,7 +64,7 @@ public sealed class EffectiveSettingsTests
         var track = TestShow.Track("track", EndAction.Stop, gainDb: -4, fadeIn: new Fade(TimeSpan.FromMilliseconds(200), FadeCurve.SCurve));
         var overrides = new ProjectOverrides(GainDb: -10);
 
-        var settings = EffectiveSettings.Resolve(TestShow.Entry(track, overrides), track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)TestShow.Entry(track, overrides).Content), track);
 
         Assert.Equal(-10, settings.GainDb);
         Assert.Equal(EndAction.Stop, settings.EndAction);
@@ -94,7 +94,7 @@ public sealed class EffectiveSettingsTests
         var track = TestShow.Track("line", markers: [trackMarker]);
         var entry = TestShow.Entry(track, new ProjectOverrides(Markers: [entryMarker]));
 
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Equal(entryMarker, Assert.Single(settings.Markers));
     }
@@ -105,7 +105,7 @@ public sealed class EffectiveSettingsTests
         var track = TestShow.Track("line", markers: [new Marker("track", TimeSpan.FromSeconds(10), MarkerAction.Pause)]);
         var entry = TestShow.Entry(track, new ProjectOverrides(Markers: []));
 
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Empty(settings.Markers);
     }
@@ -117,7 +117,7 @@ public sealed class EffectiveSettingsTests
         var track = TestShow.Track("line", markers: [trackMarker]);
         var entry = TestShow.Entry(track, new ProjectOverrides(GainDb: -3));
 
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Equal(trackMarker, Assert.Single(settings.Markers));
     }
@@ -129,8 +129,8 @@ public sealed class EffectiveSettingsTests
         var backing = TrackId.New();
         var entry = TestShow.Entry(track, new ProjectOverrides(Backing: backing));
 
-        Assert.Equal(backing, EffectiveSettings.Resolve(entry, track).Backing);
-        Assert.Null(EffectiveSettings.Resolve(TestShow.Entry(track), track).Backing);
+        Assert.Equal(backing, EffectiveSettings.Resolve(((TrackContent)entry.Content), track).Backing);
+        Assert.Null(EffectiveSettings.Resolve(((TrackContent)TestShow.Entry(track).Content), track).Backing);
     }
 
     [Fact]

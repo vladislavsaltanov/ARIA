@@ -86,7 +86,7 @@ public sealed class NormalizeOffControlThreadTests : IDisposable
 
         await Poll(() => RejectionOf(seq) is not null, "stale scan never resolved");
         Assert.Equal("unknown-track", RejectionOf(seq)!.Reason);
-        Assert.DoesNotContain(_bus.Snapshot().Show.Projects.SelectMany(p => p.Entries), e => e.TrackId == _first.Id);
+        Assert.DoesNotContain(_bus.Snapshot().Show.Projects.SelectMany(p => p.Entries), e => ((TrackContent)e.Content).TrackId == _first.Id);
     }
 
     public void Dispose()

@@ -14,7 +14,7 @@ public sealed class FaultCauseMessageTests
     {
         var track = new Track(TrackId.New(), "/audio/definitely-absent.flac", "absent", TimeSpan.FromMinutes(3), new TrackDefaults());
         var engine = new StubEngine();
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         using var vm = new ProjectsViewModel(bus, () => [track]);
@@ -35,7 +35,7 @@ public sealed class FaultCauseMessageTests
         {
             var track = new Track(TrackId.New(), path, "present", TimeSpan.FromMinutes(3), new TrackDefaults());
             var engine = new StubEngine();
-            var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+            var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
             using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
             bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
             using var vm = new ProjectsViewModel(bus, () => [track]);

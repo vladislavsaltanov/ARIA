@@ -17,9 +17,9 @@ public sealed record PlaybackSettings(
 
 public static class EffectiveSettings
 {
-    public static PlaybackSettings Resolve(ProjectEntry entry, Track track, EndAction defaultEndAction = EndAction.Advance)
+    public static PlaybackSettings Resolve(TrackContent content, Track track, EndAction defaultEndAction = EndAction.Advance)
     {
-        var o = entry.Overrides;
+        var o = content.Overrides;
         var d = track.Defaults;
         return new PlaybackSettings(
             DisplayName: o?.Name ?? track.DefaultName,

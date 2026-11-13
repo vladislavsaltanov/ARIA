@@ -37,7 +37,7 @@ public sealed class ProjectAudioImportTests : IDisposable
         var trackId = Assert.Single(ids);
         await PollAsync(() => host.Bus.Snapshot().Show.Projects[0].Entries.Length == 1);
         var entries = host.Bus.Snapshot().Show.Projects[0].Entries;
-        Assert.Equal(trackId, entries[0].TrackId);
+        Assert.Equal(trackId, ((TrackContent)entries[0].Content).TrackId);
         Assert.Contains(host.Library!.Load().Tracks, t => t.Id == trackId);
     }
 

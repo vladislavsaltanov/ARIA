@@ -50,7 +50,7 @@ public sealed class TransportViewModelTests
     {
         var engine = new StubEngine();
         using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         using var vm = new TransportViewModel(bus);
 
@@ -266,7 +266,7 @@ public sealed class TransportViewModelTests
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         using var vm = new TransportViewModel(bus);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         bus.Submit(new ClientId("setup"), 2, new Play());
 
@@ -283,7 +283,7 @@ public sealed class TransportViewModelTests
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         using var vm = new TransportViewModel(bus);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
 
         Assert.False(vm.ClockRunning);
@@ -311,7 +311,7 @@ public sealed class TransportViewModelTests
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         using var vm = new TransportViewModel(bus);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
 
         vm.TogglePlayPauseCommand.Execute(null);
@@ -331,7 +331,7 @@ public sealed class TransportViewModelTests
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         using var vm = new TransportViewModel(bus);
         var second = new Track(TrackId.New(), "/audio/two.flac", "two", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id), new ProjectEntry(EntryId.New(), second.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id)), new ProjectEntry(EntryId.New(), new TrackContent(second.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack, second], [project], project.Id));
 
         vm.PlayCommand.Execute(null);
@@ -396,7 +396,7 @@ public sealed class TransportViewModelTests
         var longName = new string('н', 140);
         var longTrack = new Track(TrackId.New(), "/audio/long.flac", longName, TimeSpan.FromMinutes(3), new TrackDefaults());
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), longTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(longTrack.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([longTrack], [project], project.Id));
         using var vm = new TransportViewModel(bus);
 
@@ -413,7 +413,7 @@ public sealed class TransportViewModelTests
         var first = new Track(TrackId.New(), "/audio/one.flac", "one", TimeSpan.FromMinutes(3), new TrackDefaults());
         var second = new Track(TrackId.New(), "/audio/two.flac", longName, TimeSpan.FromMinutes(3), new TrackDefaults());
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), first.Id), new ProjectEntry(EntryId.New(), second.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(first.Id)), new ProjectEntry(EntryId.New(), new TrackContent(second.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([first, second], [project], project.Id));
         using var vm = new TransportViewModel(bus);
 
@@ -428,7 +428,7 @@ public sealed class TransportViewModelTests
     {
         var tagged = new Track(TrackId.New(), "/audio/rain.flac", "Осенний дождь", TimeSpan.FromMinutes(3), new TrackDefaults());
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), tagged.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(tagged.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([tagged], [project], project.Id));
         using var vm = new TransportViewModel(bus, trackSource: () => [tagged]);
 
@@ -450,7 +450,7 @@ public sealed class TransportViewModelTests
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         var track = new Track(TrackId.New(), "/audio/marks.flac", "marks", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         using var vm = new TransportViewModel(bus);
         vm.PlayCommand.Execute(null);

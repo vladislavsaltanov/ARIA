@@ -84,13 +84,13 @@ public sealed class SnapshotDurabilityTests : IDisposable
         var kept = TestFactory.Track("kept");
         var duplicate = kept with { DefaultName = "duplicate" };
         var keptEntry = TestFactory.Entry(kept);
-        var dangling = new ProjectEntry(EntryId.New(), TrackId.New());
+        var dangling = new ProjectEntry(EntryId.New(), new TrackContent(TrackId.New()));
         var project = new Project(ProjectId.New(), "Main", [keptEntry, dangling, keptEntry]);
         var document = new ShowDocument(
             [kept, duplicate],
             [project],
             ProjectId.New(),
-            [new QueueItem(dangling.Id, dangling.TrackId, "ghost", null), new QueueItem(keptEntry.Id, kept.Id, "ok", null)],
+            [new QueueItem(dangling.Id, ((TrackContent)dangling.Content).TrackId, "ghost", null), new QueueItem(keptEntry.Id, kept.Id, "ok", null)],
             99,
             TimeSpan.FromSeconds(30),
             TimeSpan.FromSeconds(-5),

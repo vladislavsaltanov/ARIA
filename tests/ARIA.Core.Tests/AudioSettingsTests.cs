@@ -28,7 +28,7 @@ public sealed class AudioSettingsTests
         var track = TestShow.Track("a") with { Defaults = TestShow.Track("a").Defaults with { Audio = audio } };
         var entry = TestShow.Entry(track);
 
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Equal(audio, settings.Audio);
     }
@@ -41,7 +41,7 @@ public sealed class AudioSettingsTests
         var track = TestShow.Track("a") with { Defaults = TestShow.Track("a").Defaults with { Audio = trackAudio } };
         var entry = TestShow.Entry(track, new ProjectOverrides(Audio: entryAudio));
 
-        var settings = EffectiveSettings.Resolve(entry, track);
+        var settings = EffectiveSettings.Resolve(((TrackContent)entry.Content), track);
 
         Assert.Equal(entryAudio, settings.Audio);
     }
@@ -60,7 +60,7 @@ public sealed class AudioSettingsTests
     {
         var track = TestShow.Track("a");
 
-        Assert.Equal(TrackAudioSettings.Default, EffectiveSettings.Resolve(TestShow.Entry(track), track).Audio);
+        Assert.Equal(TrackAudioSettings.Default, EffectiveSettings.Resolve(((TrackContent)TestShow.Entry(track).Content), track).Audio);
         Assert.Equal(TrackAudioSettings.Default, EffectiveSettings.ForTrack(track).Audio);
     }
 
@@ -176,7 +176,7 @@ public sealed class AudioSettingsTests
 
         Assert.Null(h.RejectionOf(seq));
         Assert.NotEmpty(h.Events.OfType<ShowDelta>());
-        var resolved = EffectiveSettings.ForTrack(h.Snapshot.Show.Projects[0].Entries[0].TrackId == track.Id ? track with { Defaults = track.Defaults with { Audio = audio } } : track);
+        var resolved = EffectiveSettings.ForTrack(((TrackContent)h.Snapshot.Show.Projects[0].Entries[0].Content).TrackId == track.Id ? track with { Defaults = track.Defaults with { Audio = audio } } : track);
         Assert.Equal(audio, resolved.Audio);
     }
 
@@ -218,8 +218,8 @@ public sealed class AudioSettingsTests
 
         Assert.Null(h.RejectionOf(seq));
         var stored = h.Snapshot.Show.Projects[0].Entries[0];
-        Assert.Equal(entryAudio, stored.Overrides!.Audio);
-        Assert.Equal(entryAudio, EffectiveSettings.Resolve(stored, track with { Defaults = track.Defaults }).Audio);
+        Assert.Equal(entryAudio, ((TrackContent)stored.Content).Overrides!.Audio);
+        Assert.Equal(entryAudio, EffectiveSettings.Resolve(((TrackContent)stored.Content), track with { Defaults = track.Defaults }).Audio);
     }
 
     [Fact]
@@ -236,8 +236,8 @@ public sealed class AudioSettingsTests
 
         Assert.Null(h.RejectionOf(seq));
         var stored = h.Snapshot.Show.Projects[0].Entries[0];
-        Assert.Null(stored.Overrides?.Audio);
-        Assert.Equal(trackAudio, EffectiveSettings.Resolve(stored, track).Audio);
+        Assert.Null(((TrackContent)stored.Content).Overrides?.Audio);
+        Assert.Equal(trackAudio, EffectiveSettings.Resolve(((TrackContent)stored.Content), track).Audio);
     }
 
     [Fact]

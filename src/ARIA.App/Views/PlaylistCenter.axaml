@@ -114,14 +114,24 @@
           <TextBox x:Name="TitleBox" Text="{Binding SelectedProject.Name, Mode=OneWay}" FontSize="18" FontWeight="SemiBold"
                    IsVisible="False" MinWidth="200" KeyDown="OnTitleKeyDown" LostFocus="OnTitleCommit"/>
         </StackPanel>
-        <Button Grid.Column="1" x:Name="ScenarioButton" Classes="chip" MinHeight="32" Padding="10,0"
-                Click="OnScenarioClick" ToolTip.Tip="Сценарий — Ctrl+T" VerticalAlignment="Center"
-                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
-          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" HorizontalAlignment="Center">
-            <PathIcon Data="{StaticResource icon_script}" Width="14" Height="14" VerticalAlignment="Center"/>
-            <TextBlock Text="Сценарий" FontSize="12" VerticalAlignment="Center"/>
-          </StackPanel>
-        </Button>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,0,0">
+          <Button x:Name="ScenarioButton" Classes="chip" MinHeight="32" Padding="10,0"
+                  Click="OnScenarioClick" ToolTip.Tip="Сценарий — Ctrl+T" VerticalAlignment="Center"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <PathIcon Data="{StaticResource icon_script}" Width="14" Height="14" VerticalAlignment="Center"/>
+              <TextBlock Text="Сценарий" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <Button x:Name="AddNoteButton" Classes="chip" MinHeight="32" Padding="10,0"
+                  Click="OnAddNoteClick" ToolTip.Tip="Заметка — текстовая строка в плейлисте"
+                  VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <PathIcon Data="{StaticResource icon_script}" Width="14" Height="14" VerticalAlignment="Center"/>
+              <TextBlock Text="Заметка" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+        </StackPanel>
         <Button Grid.Column="2" Classes="chipIcon" Width="32" Height="32"
                 x:Name="CloseProjectButton" Click="OnDeleteProjectClick" ToolTip.Tip="Закрыть проект" VerticalAlignment="Center" Margin="6,0,10,0">
           <PathIcon Data="{StaticResource icon_x}" Width="13" Height="13"/>
@@ -161,6 +171,7 @@
     <Panel Grid.Row="2" x:Name="PlaylistArea" ToolTip.Tip="Перетащите файлы для импорта · ПКМ — импорт и экспорт">
       <Panel.ContextMenu>
         <ContextMenu>
+          <MenuItem Header="Добавить заметку" Click="OnAddNoteClick"/>
           <MenuItem Header="Импорт">
             <MenuItem Header="Аудио…" Command="{Binding ImportAudioCommand}"/>
             <MenuItem Header="Папка…" Command="{Binding ImportAudioFolderCommand}"/>
@@ -174,16 +185,17 @@
         </ContextMenu>
       </Panel.ContextMenu>
       <ListBox x:Name="EntryList" ItemsSource="{Binding VisibleEntries}" SelectedItem="{Binding SelectedEntry}"
-               DoubleTapped="OnEntryDoubleTapped" DragDrop.AllowDrop="True" DragDrop.Drop="OnFilesDropped" DragDrop.DragOver="OnFilesDragOver"
+               DoubleTapped="OnEntryDoubleTapped" KeyDown="OnEntryListKeyDown" DragDrop.AllowDrop="True" DragDrop.Drop="OnFilesDropped" DragDrop.DragOver="OnFilesDragOver"
                Background="Transparent" BorderThickness="0" Margin="0,0,0,10"
                ItemContainerTheme="{StaticResource PlainRowItem}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:ProjectsViewModel+EntryVm">
-            <Border Classes="plRow" Classes.linked="{Binding IsLinked}" Height="44" CornerRadius="6" Padding="10,0,12,0" Tapped="OnFaultRowTapped">
+            <Border Classes="plRow" Classes.linked="{Binding IsLinked}" CornerRadius="6" Padding="10,0,12,0">
               <Border.ContextMenu>
                 <ContextMenu>
-                  <MenuItem Header="В очередь" Click="OnEnqueueClick"/>
-                  <MenuItem Header="Действие в конце" SubmenuOpened="OnEndActionMenuOpened">
+                  <MenuItem Header="Править" Click="OnEditNoteClick" IsVisible="{Binding IsNote}"/>
+                  <MenuItem Header="В очередь" Click="OnEnqueueClick" IsVisible="{Binding !IsNote}"/>
+                  <MenuItem Header="Действие в конце" SubmenuOpened="OnEndActionMenuOpened" IsVisible="{Binding !IsNote}">
                     <MenuItem Header="Наследовать" Tag="inherit" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
                     <MenuItem Header="Пауза" Tag="pause" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
                     <MenuItem Header="Стоп" Tag="stop" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
@@ -191,32 +203,50 @@
                     <MenuItem Header="Далее" Tag="advance" ToggleType="Radio" GroupName="EndAction" Click="OnEndActionClick"/>
                   </MenuItem>
                   <MenuItem Header="Убрать из проекта" Click="OnRemoveClick"/>
-                  <MenuItem Header="Звук…" Click="OnAudioClick"/>
+                  <MenuItem Header="Звук…" Click="OnAudioClick" IsVisible="{Binding !IsNote}"/>
                 </ContextMenu>
               </Border.ContextMenu>
-              <Grid ColumnDefinitions="28,*,72,58,110,32">
-                <Panel>
-                  <TextBlock Text="{Binding Position}" FontFamily="{StaticResource MonoFont}" FontSize="11"
-                             Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"
-                             IsVisible="{Binding !IsLinked}"/>
-                  <PathIcon Data="{StaticResource icon_play}" Width="11" Height="11" VerticalAlignment="Center"
-                            Foreground="{StaticResource BrushSignal}" IsVisible="{Binding IsLinked}"/>
-                </Panel>
-                <TextBlock Grid.Column="1" Text="{Binding RowText}" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"
-                           TextTrimming="CharacterEllipsis"/>
-                <Border Grid.Column="2" Classes="badge" HorizontalAlignment="Right"
-                        IsVisible="{Binding HasEndActionOverride}" ToolTip.Tip="{Binding EndActionTip}">
-                  <TextBlock Text="{Binding EndActionBadge}"/>
+              <StackPanel>
+                <Grid ColumnDefinitions="28,*,72,58,110,32" Height="44" Tapped="OnRowTapped">
+                  <Panel>
+                    <TextBlock Text="{Binding Position}" FontFamily="{StaticResource MonoFont}" FontSize="11"
+                               Foreground="{StaticResource BrushDim}" VerticalAlignment="Center"
+                               IsVisible="{Binding !IsLinked}"/>
+                    <PathIcon Data="{StaticResource icon_play}" Width="11" Height="11" VerticalAlignment="Center"
+                              Foreground="{StaticResource BrushSignal}" IsVisible="{Binding IsLinked}"/>
+                  </Panel>
+                  <TextBlock Grid.Column="1" Text="{Binding RowText}" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"
+                             TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsNote}"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Note}" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"
+                             Foreground="{StaticResource BrushFg}" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsNote}"/>
+                  <Border Grid.Column="2" Classes="badge" HorizontalAlignment="Right"
+                          IsVisible="{Binding HasEndActionOverride}" ToolTip.Tip="{Binding EndActionTip}">
+                    <TextBlock Text="{Binding EndActionBadge}"/>
+                  </Border>
+                  <TextBlock Grid.Column="3" Classes="duration" Text="{Binding DurationText}" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                             Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right" IsVisible="{Binding !IsNote}"/>
+                  <TextBlock Grid.Column="3" Text="—" FontFamily="{StaticResource MonoFont}" FontSize="12"
+                             Foreground="{StaticResource BrushFaint}" VerticalAlignment="Center" HorizontalAlignment="Right" IsVisible="{Binding IsNote}"/>
+                  <Path Grid.Column="4" Classes="wave" Data="{Binding Waveform}" Stretch="Fill" Width="100" Height="18"
+                        HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0" IsVisible="{Binding !IsNote}"/>
+                  <PathIcon Grid.Column="4" Data="{StaticResource icon_script}" Width="14" Height="14"
+                            Foreground="{StaticResource BrushFaint}" VerticalAlignment="Center" HorizontalAlignment="Left"
+                            Margin="12,0,0,0" IsVisible="{Binding IsNote}"/>
+                  <PathIcon Grid.Column="5" Data="{StaticResource icon_alert}" Width="16" Height="16"
+                            Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                            Margin="8,0,2,0" IsVisible="{Binding IsFaulted}"
+                            Tapped="OnFaultIconTapped" ToolTip.Tip="Трек не загрузился — показать причину"/>
+                </Grid>
+                <Border x:Name="NoteBody" IsVisible="{Binding NoteExpandedVisible}" Margin="8,0,4,6" Padding="10,2,10,8"
+                        Background="{StaticResource BrushSurfaceAlt}" CornerRadius="4">
+                  <TextBlock Text="{Binding Note}" FontSize="13" Foreground="{StaticResource BrushFg}" TextWrapping="Wrap"/>
                 </Border>
-                <TextBlock Grid.Column="3" Classes="duration" Text="{Binding DurationText}" FontFamily="{StaticResource MonoFont}" FontSize="12"
-                           Foreground="{StaticResource BrushDim}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                <Path Grid.Column="4" Classes="wave" Data="{Binding Waveform}" Stretch="Fill" Width="100" Height="18"
-                      HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                <PathIcon Grid.Column="5" Data="{StaticResource icon_alert}" Width="16" Height="16"
-                          Foreground="{StaticResource BrushFaulted}" VerticalAlignment="Center" HorizontalAlignment="Right"
-                          Margin="8,0,2,0" IsVisible="{Binding IsFaulted}"
-                          Tapped="OnFaultIconTapped" ToolTip.Tip="Трек не загрузился — показать причину"/>
-              </Grid>
+                <TextBox x:Name="NoteEditor" IsVisible="{Binding IsEditing}" Text="{Binding Note, Mode=OneWay}"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="44" Margin="8,0,4,6" Padding="8,6"
+                         FontSize="13" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushLine}"
+                         KeyDown="OnNoteEditorKeyDown" LostFocus="OnNoteEditorLostFocus"
+                         AttachedToVisualTree="OnNoteEditorAttached"/>
+              </StackPanel>
             </Border>
           </DataTemplate>
         </ListBox.ItemTemplate>

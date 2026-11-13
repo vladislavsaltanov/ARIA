@@ -52,7 +52,7 @@ public sealed class ProjectsViewModelTests
     public void CreateEntryAudioEditor_UsesEntryOverride()
     {
         var entryAudio = new TrackAudioSettings(-3, 0, AudioEq.Flat);
-        var entry1 = new ProjectEntry(EntryId.New(), TestTrack.Id, new ProjectOverrides(Audio: entryAudio));
+        var entry1 = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id, new ProjectOverrides(Audio: entryAudio)));
         var project = new Project(ProjectId.New(), "Main", [entry1]);
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
@@ -119,8 +119,8 @@ public sealed class ProjectsViewModelTests
 
     private static (CommandBus Bus, Project Project, ProjectEntry Entry1) Setup()
     {
-        var entry1 = new ProjectEntry(EntryId.New(), TestTrack.Id);
-        var entry2 = new ProjectEntry(EntryId.New(), TestTrack.Id, new ProjectOverrides(Note: "заметка"));
+        var entry1 = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id));
+        var entry2 = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id, new ProjectOverrides(Note: "заметка")));
         var project = new Project(ProjectId.New(), "Main", [entry1, entry2]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
@@ -306,7 +306,7 @@ public sealed class ProjectsViewModelTests
     public void EngineFault_MarksRowFaulted()
     {
         var engine = new StubEngine();
-        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
@@ -334,7 +334,7 @@ public sealed class ProjectsViewModelTests
         var (bus, _, entry1) = Setup();
         using var vm = new ProjectsViewModel(bus, () => [TestTrack]);
 
-        vm.SetLinkedTrack(entry1.TrackId);
+        vm.SetLinkedTrack(((TrackContent)entry1.Content).TrackId);
 
         Assert.True(vm.Projects[0].Entries[0].IsLinked);
         Assert.True(vm.Projects[0].Entries[1].IsLinked);
@@ -348,7 +348,7 @@ public sealed class ProjectsViewModelTests
     public void RowText_FollowsFormatSettings()
     {
         var track = new Track(TrackId.New(), "/audio/rain.flac", "Осенний дождь", TimeSpan.FromSeconds(222), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         using var vm = new ProjectsViewModel(bus, () => [track]);
@@ -518,7 +518,7 @@ public sealed class ProjectsViewModelTests
 
     private static (CommandBus Bus, ProjectsViewModel Vm) SetupWithGuide()
     {
-        var entry1 = new ProjectEntry(EntryId.New(), TestTrack.Id, new ProjectOverrides(Note: "заметка"));
+        var entry1 = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id, new ProjectOverrides(Note: "заметка")));
         var project = new Project(ProjectId.New(), "Main", [entry1]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack, GuideTrack], [project], project.Id));
@@ -534,7 +534,7 @@ public sealed class ProjectsViewModelTests
         {
             vm.SetEntryBacking(vm.Projects[0].Entries[0], GuideTrack.Id);
 
-            var overrides = bus.Snapshot().Show.Projects[0].Entries[0].Overrides;
+            var overrides = ((TrackContent)bus.Snapshot().Show.Projects[0].Entries[0].Content).Overrides;
             Assert.Equal(GuideTrack.Id, overrides!.Backing);
             Assert.Equal("заметка", overrides.Note);
         }
@@ -543,7 +543,7 @@ public sealed class ProjectsViewModelTests
     [Fact]
     public void SetEntryBacking_Null_DropsEmptyOverrides()
     {
-        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id, new ProjectOverrides(Backing: GuideTrack.Id));
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id, new ProjectOverrides(Backing: GuideTrack.Id)));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack, GuideTrack], [project], project.Id));
@@ -551,7 +551,7 @@ public sealed class ProjectsViewModelTests
 
         vm.SetEntryBacking(vm.Projects[0].Entries[0], null);
 
-        Assert.Null(bus.Snapshot().Show.Projects[0].Entries[0].Overrides);
+        Assert.Null(((TrackContent)bus.Snapshot().Show.Projects[0].Entries[0].Content).Overrides);
     }
 
     [Fact]
@@ -566,7 +566,7 @@ public sealed class ProjectsViewModelTests
             var option = Assert.Single(editor.BackingOptions);
             Assert.Equal(GuideTrack.Id, option.Id);
             editor.SelectedBacking = option;
-            Assert.Equal(GuideTrack.Id, bus.Snapshot().Show.Projects[0].Entries[0].Overrides!.Backing);
+            Assert.Equal(GuideTrack.Id, ((TrackContent)bus.Snapshot().Show.Projects[0].Entries[0].Content).Overrides!.Backing);
         }
     }
 
@@ -574,7 +574,7 @@ public sealed class ProjectsViewModelTests
     public void DescribeFault_LostFile_NamesMissingPath()
     {
         var lost = new Track(TrackId.New(), "/nonexistent/missing.flac", "missing", TimeSpan.FromMinutes(2), new TrackDefaults());
-        var entry = new ProjectEntry(EntryId.New(), lost.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(lost.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([lost], [project], project.Id));
@@ -630,7 +630,7 @@ public sealed class ProjectsViewModelTests
         try
         {
             var broken = new Track(TrackId.New(), path, "broken", TimeSpan.FromMinutes(2), new TrackDefaults());
-            var entry = new ProjectEntry(EntryId.New(), broken.Id);
+            var entry = new ProjectEntry(EntryId.New(), new TrackContent(broken.Id));
             var project = new Project(ProjectId.New(), "Main", [entry]);
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
             bus.Submit(new ClientId("setup"), 1, new LoadShow([broken], [project], project.Id));
@@ -684,7 +684,7 @@ public sealed class ProjectsViewModelTests
     public void MergeTracksReplace_ClearsRowFault()
     {
         var engine = new StubEngine();
-        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
@@ -702,7 +702,7 @@ public sealed class ProjectsViewModelTests
     public void Constructor_PicksUpPreexistingFaults()
     {
         var engine = new StubEngine();
-        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         using var bus = new CommandBus(new ShowController(engine), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));

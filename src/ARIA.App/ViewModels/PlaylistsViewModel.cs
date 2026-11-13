@@ -38,6 +38,9 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     private List<StagedProjectScript>? _pendingProjectScripts;
     private readonly HashSet<(ProjectId, string)> _submittedProjectScripts = [];
     private readonly IDisposable _subscription;
+    private readonly HashSet<EntryId> _expandedNotes = [];
+    private EntryId? _editingNote;
+    private (ProjectId Project, int Index)? _pendingSelect;
     private ShowState? _lastShow;
     private TrackId? _linkedTrackId;
     private AppSettings _rowSettings = AppSettings.Default;
@@ -473,11 +476,11 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var mappedEntries = new List<ProjectExportEntry>();
         foreach (var entry in entries)
         {
-            if (File.Exists(entry.File))
+            if (entry.File is { } file && File.Exists(file))
             {
-                var relative = ProjectFolder.ZipAudioDir + "/" + Path.GetFileName(entry.File);
-                rel[entry.File] = relative;
-                audio.Add(entry.File);
+                var relative = ProjectFolder.ZipAudioDir + "/" + Path.GetFileName(file);
+                rel[file] = relative;
+                audio.Add(file);
                 mappedEntries.Add(entry with { File = relative });
             }
             else
@@ -679,9 +682,11 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
     {
         var tracks = _trackSource?.Invoke() ?? [];
         var files = tracks.ToDictionary(t => t.Id, t => t.FilePath);
-        var entries = target.Entries.Select(entry => new ProjectExportEntry(
-            mapPath(files.GetValueOrDefault(entry.TrackId, entry.DisplayName)),
-            entry.Overrides)).ToList();
+        var entries = target.Entries.Select(entry => entry.IsNote
+            ? new ProjectExportEntry(null, Text: entry.Note)
+            : new ProjectExportEntry(
+                mapPath(files.GetValueOrDefault(entry.TrackId, entry.DisplayName)),
+                entry.Overrides)).ToList();
         var show = _bus.Snapshot().Show;
         var scripts = show.Scripts
             .Where(s => s.Project == target.Id || (s.Project is null && target.Id == show.ActiveId))
@@ -720,9 +725,14 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var pendingTransitions = 0;
         foreach (var entry in document.Entries)
         {
-            if (!TryResolveTrack(entry.File, sourceDir, byPath, byName, out var trackId))
+            if (string.Equals(entry.Kind, "note", StringComparison.OrdinalIgnoreCase))
             {
-                missing.Add(entry.File);
+                imports.Add(new ImportProjectEntry(null, Text: entry.Text));
+                continue;
+            }
+            if (entry.File is null || !TryResolveTrack(entry.File, sourceDir, byPath, byName, out var trackId))
+            {
+                missing.Add(entry.File ?? string.Empty);
                 continue;
             }
             if (entry.Transition is { Kind: var kind } && !kind.Equals("cut", StringComparison.OrdinalIgnoreCase))
@@ -766,7 +776,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         _awaitedProjectName = document.Name;
         Submit(new ImportProject(document.Name, [.. imports]));
         var pathsByTrack = tracks.ToDictionary(t => t.Id, t => t.FilePath);
-        var missingIds = imports.Select(i => i.Track).Distinct()
+        var missingIds = imports.Select(i => i.Track).OfType<TrackId>().Distinct()
             .Where(id => pathsByTrack.TryGetValue(id, out var path) && !File.Exists(path))
             .ToImmutableArray();
         if (!missingIds.IsEmpty)
@@ -943,10 +953,14 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public void SetEntryEndAction(EntryVm entry, EndAction? action)
     {
-        var fresh = _bus.Snapshot().Show.Projects
+        if (entry.IsNote)
+        {
+            return;
+        }
+        var freshEntry = _bus.Snapshot().Show.Projects
             .SelectMany(p => p.Entries)
-            .FirstOrDefault(e => e.Id == entry.Id)
-            ?.Overrides;
+            .FirstOrDefault(e => e.Id == entry.Id);
+        var fresh = (freshEntry?.Content as TrackContent)?.Overrides;
         ProjectOverrides? merged;
         if ((fresh ?? entry.Overrides) is { } current)
         {
@@ -966,7 +980,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
 
     public void SetEntryBacking(EntryVm entry, TrackId? backing)
     {
-        var current = _bus.Snapshot().Show.Projects.SelectMany(p => p.Entries).FirstOrDefault(e => e.Id == entry.Id)?.Overrides;
+        var current = (_bus.Snapshot().Show.Projects.SelectMany(p => p.Entries).FirstOrDefault(e => e.Id == entry.Id)?.Content as TrackContent)?.Overrides;
         ProjectOverrides? merged;
         if (current is not null)
         {
@@ -1000,10 +1014,10 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         var snapshot = _bus.Snapshot();
         var global = snapshot.Mixer.EffectiveGlobal;
         var track = _trackSource?.Invoke().FirstOrDefault(t => t.Id == entry.TrackId);
-        var fresh = snapshot.Show.Projects
+        var freshEntry = snapshot.Show.Projects
             .SelectMany(p => p.Entries)
-            .FirstOrDefault(e => e.Id == entry.Id)
-            ?.Overrides;
+            .FirstOrDefault(e => e.Id == entry.Id);
+        var fresh = (freshEntry?.Content as TrackContent)?.Overrides;
         var initial = fresh?.Audio
             ?? entry.Overrides?.Audio
             ?? _trackAudio?.Invoke(entry.TrackId)
@@ -1080,9 +1094,97 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         Submit(new AddEntry(project.Id, track, Math.Clamp(index, 0, project.Entries.Count)));
     }
 
-    public void EnqueueEntry(EntryVm entry) => Submit(new EnqueueEntry(entry.Id));
+    public void EnqueueEntry(EntryVm entry)
+    {
+        if (!entry.IsNote)
+        {
+            Submit(new EnqueueEntry(entry.Id));
+        }
+    }
 
-    public void PlayEntry(EntryVm entry) => Submit(new JumpTo(entry.Id));
+    public void PlayEntry(EntryVm entry)
+    {
+        if (!entry.IsNote)
+        {
+            Submit(new JumpTo(entry.Id));
+        }
+    }
+
+    public void AddNote(ProjectVm project)
+    {
+        var index = SelectedEntry is { IsNote: false } selected && project.Entries.Contains(selected)
+            ? project.Entries.IndexOf(selected) + 1
+            : project.Entries.Count;
+        _pendingSelect = (project.Id, index);
+        Submit(new AddNoteEntry(project.Id, "Заметка", index));
+    }
+
+    public void SetNoteText(EntryVm entry, string text)
+    {
+        if (entry.IsNote)
+        {
+            Submit(new SetNoteText(entry.Id, text));
+        }
+    }
+
+    public void ToggleNoteExpanded(EntryVm entry)
+    {
+        if (!entry.IsNote)
+        {
+            return;
+        }
+        if (!_expandedNotes.Remove(entry.Id))
+        {
+            _expandedNotes.Add(entry.Id);
+        }
+        if (_lastShow is { } show)
+        {
+            Rebuild(show, _trackSource?.Invoke() ?? []);
+        }
+    }
+
+    public void BeginNoteEdit(EntryVm entry)
+    {
+        if (!entry.IsNote)
+        {
+            return;
+        }
+        _editingNote = entry.Id;
+        if (_lastShow is { } show)
+        {
+            Rebuild(show, _trackSource?.Invoke() ?? []);
+        }
+    }
+
+    public void CancelNoteEdit()
+    {
+        if (_editingNote is null)
+        {
+            return;
+        }
+        _editingNote = null;
+        if (_lastShow is { } show)
+        {
+            Rebuild(show, _trackSource?.Invoke() ?? []);
+        }
+    }
+
+    public void CommitNoteText(EntryVm entry, string text)
+    {
+        if (!entry.IsNote)
+        {
+            return;
+        }
+        _editingNote = null;
+        if (_lastShow is { } show)
+        {
+            Rebuild(show, _trackSource?.Invoke() ?? []);
+        }
+        if (NoteContent.TryCreate(text, out _))
+        {
+            Submit(new SetNoteText(entry.Id, text));
+        }
+    }
 
     public void SetLinkedTrack(TrackId? track)
     {
@@ -1224,7 +1326,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             foreach (var entry in project.Entries)
             {
                 sb.Append('|').Append(entry)
-                    .Append(RuntimeHelpers.GetHashCode(_thumbs?.For(entry.TrackId)));
+                    .Append(entry.Content is TrackContent keyContent ? RuntimeHelpers.GetHashCode(_thumbs?.For(keyContent.TrackId)) : 0);
             }
         }
         foreach (var track in tracks)
@@ -1236,7 +1338,12 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             faultedHash ^= HashCode.Combine(id, _faultCauses.GetValueOrDefault(id, SourceOpenFault.Unknown));
         }
-        sb.Append('|').Append(faultedHash).Append('|').Append(_linkedTrackId).Append('|').Append(_rowSettings);
+        var expandedHash = 0;
+        foreach (var id in _expandedNotes)
+        {
+            expandedHash ^= id.GetHashCode();
+        }
+        sb.Append('|').Append(faultedHash).Append('|').Append(expandedHash).Append('|').Append(_editingNote).Append('|').Append(_linkedTrackId).Append('|').Append(_rowSettings);
         return sb.ToString();
     }
 
@@ -1267,16 +1374,39 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             for (var index = 0; index < project.Entries.Length; index++)
             {
                 var entry = project.Entries[index];
-                var displayName = entry.Overrides?.Name ?? trackNames.GetValueOrDefault(entry.TrackId, $"track {entry.TrackId.Value:N}");
-                var fileName = trackFiles.GetValueOrDefault(entry.TrackId, displayName);
-                var duration = trackDurations.GetValueOrDefault(entry.TrackId, TimeSpan.Zero);
                 var position = $"{index + 1:00}";
-                var trackEndAction = trackEndActions.GetValueOrDefault(entry.TrackId, EndAction.Advance);
-                var effectiveEndAction = entry.Overrides?.EndAction
+                if (entry.Content is NoteContent note)
+                {
+                    projectVm.Entries.Add(new EntryVm(
+                        entry.Id,
+                        default,
+                        note.Text,
+                        string.Empty,
+                        OneLine(note.Text),
+                        null,
+                        note.Text,
+                        null,
+                        null,
+                        false,
+                        position,
+                        TimeSpan.Zero,
+                        false,
+                        EndAction.Advance,
+                        true,
+                        _expandedNotes.Contains(entry.Id),
+                        _editingNote == entry.Id));
+                    continue;
+                }
+                var content = (TrackContent)entry.Content;
+                var displayName = content.Overrides?.Name ?? trackNames.GetValueOrDefault(content.TrackId, $"track {content.TrackId.Value:N}");
+                var fileName = trackFiles.GetValueOrDefault(content.TrackId, displayName);
+                var duration = trackDurations.GetValueOrDefault(content.TrackId, TimeSpan.Zero);
+                var trackEndAction = trackEndActions.GetValueOrDefault(content.TrackId, EndAction.Advance);
+                var effectiveEndAction = content.Overrides?.EndAction
                     ?? (trackEndAction != EndAction.Advance ? trackEndAction : _rowSettings.DefaultEndAction);
                 projectVm.Entries.Add(new EntryVm(
                     entry.Id,
-                    entry.TrackId,
+                    content.TrackId,
                     displayName,
                     fileName,
                     RowFormatter.Format(
@@ -1285,15 +1415,18 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
                         RowFormatter.DisplayName(_rowSettings, displayName, fileName),
                         fileName,
                         duration.ToString(@"mm\:ss")),
-                    entry.Overrides?.Color,
-                    entry.Overrides?.Note,
-                    entry.Overrides,
-                    _thumbs?.For(entry.TrackId),
-                    _faulted.Contains(entry.TrackId),
+                    content.Overrides?.Color,
+                    content.Overrides?.Note,
+                    content.Overrides,
+                    _thumbs?.For(content.TrackId),
+                    _faulted.Contains(content.TrackId),
                     position,
                     duration,
-                    _linkedTrackId == entry.TrackId,
-                    effectiveEndAction));
+                    _linkedTrackId == content.TrackId,
+                    effectiveEndAction,
+                    false,
+                    false,
+                    false));
             }
             Projects.Add(projectVm);
         }
@@ -1310,7 +1443,11 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         _syncingSelection = true;
         SelectedProject = awaited ?? Projects.FirstOrDefault(p => p.Id == selectedProjectId) ?? Projects.FirstOrDefault();
         _syncingSelection = false;
-        SelectedEntry = SelectedProject?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedProject?.Entries.FirstOrDefault();
+        var pendingRow = _pendingSelect is { } pending && SelectedProject?.Id == pending.Project && pending.Index < SelectedProject.Entries.Count
+            ? SelectedProject.Entries[pending.Index]
+            : null;
+        _pendingSelect = null;
+        SelectedEntry = pendingRow ?? SelectedProject?.Entries.FirstOrDefault(e => e.Id == selectedEntryId) ?? SelectedProject?.Entries.FirstOrDefault();
         RefreshVisible();
         RefreshCenterHeader();
         FireReveal();
@@ -1326,7 +1463,7 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        var row = SelectedProject.Entries.FirstOrDefault(e => tracks.Contains(e.TrackId));
+        var row = SelectedProject.Entries.FirstOrDefault(e => !e.IsNote && tracks.Contains(e.TrackId));
         if (row is not null)
         {
             SelectedEntry = row;
@@ -1369,10 +1506,32 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
             ? $"{seconds / 3600}:{seconds % 3600 / 60:00}:{seconds % 60:00}"
             : $"{seconds / 60}:{seconds % 60:00}";
         var count = SelectedProject.Entries.Count;
+        var notes = SelectedProject.Entries.Count(entry => entry.IsNote);
+        var tracks = count - notes;
         var shown = VisibleEntries.Count;
+        var tracksText = $"{tracks} {TrackCountWord(tracks)}";
+        if (notes > 0)
+        {
+            tracksText += $" · {notes} {NoteCountWord(notes)}";
+        }
         EntryCountText = CenterSearchText.Length == 0 || shown == count
-            ? $"{count} {TrackCountWord(count)} · {total}"
+            ? $"{tracksText} · {total}"
             : $"{shown} из {count} · {total}";
+    }
+
+    private static string NoteCountWord(int count)
+    {
+        var mod10 = count % 10;
+        var mod100 = count % 100;
+        if (mod10 == 1 && mod100 != 11)
+        {
+            return "заметка";
+        }
+        if (mod10 is 2 or 3 or 4 && mod100 is not (12 or 13 or 14))
+        {
+            return "заметки";
+        }
+        return "заметок";
     }
 
     private static string TrackCountWord(int count)
@@ -1426,6 +1585,8 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         public ObservableCollection<EntryVm> Entries { get; } = [];
     }
 
+    private static string OneLine(string text) => text.ReplaceLineEndings(" ");
+
     public sealed record EntryVm(
         EntryId Id,
         TrackId TrackId,
@@ -1440,8 +1601,15 @@ public sealed partial class ProjectsViewModel : ObservableObject, IDisposable
         string Position,
         TimeSpan Duration,
         bool IsLinked = false,
-        EndAction EffectiveEndAction = EndAction.Advance)
+        EndAction EffectiveEndAction = EndAction.Advance,
+        bool IsNote = false,
+        bool IsExpanded = false,
+        bool IsEditing = false)
     {
+        public bool NoteCollapsed => IsNote && !IsExpanded && !IsEditing;
+
+        public bool NoteExpandedVisible => IsNote && IsExpanded && !IsEditing;
+
         public bool HasOverrides => Overrides is not null;
 
         public bool HasNote => !string.IsNullOrEmpty(Note);

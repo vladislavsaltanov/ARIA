@@ -30,7 +30,7 @@ public sealed class ProjectFolderTests : IDisposable
     [Fact]
     public void SaveProjectToFolder_WritesProjectJsonAndScriptFiles()
     {
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), FirstTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(FirstTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack], [project], project.Id));
         _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", project.Id));
         using var scripts = new ScriptPanelViewModel(_bus, () => [FirstTrack]);
@@ -51,7 +51,7 @@ public sealed class ProjectFolderTests : IDisposable
     [Fact]
     public async Task OpenProjectFolderAsync_ImportsProjectAndScripts()
     {
-        var seed = new Project(ProjectId.New(), "Seed", [new ProjectEntry(EntryId.New(), FirstTrack.Id)]);
+        var seed = new Project(ProjectId.New(), "Seed", [new ProjectEntry(EntryId.New(), new TrackContent(FirstTrack.Id))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack], [seed], seed.Id));
         _bus.Submit(new ClientId("setup"), 2, new CreateScript("Утро", seed.Id));
         using var scripts = new ScriptPanelViewModel(_bus, () => [FirstTrack]);

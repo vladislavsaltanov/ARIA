@@ -37,7 +37,9 @@ public sealed class EntryOverridesBackingCodecTests
     {
         using var stream = typeof(RemoteHost).Assembly.GetManifestResourceStream("Aria.Remote.RemoteClient.app.js");
         using var reader = new StreamReader(stream!);
+        var js = reader.ReadToEnd();
 
-        Assert.Contains("overrides.backing = entry.overrides.backing", reader.ReadToEnd());
+        Assert.Contains("existing.backing", js);
+        Assert.Contains("overrides.backing = ", js);
     }
 }

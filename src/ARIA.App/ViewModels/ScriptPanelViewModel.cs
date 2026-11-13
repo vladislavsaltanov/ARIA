@@ -543,7 +543,10 @@ public sealed partial class ScriptPanelViewModel : ObservableObject, IDisposable
         {
             foreach (var entry in active.Entries)
             {
-                _projectTracks.Add(entry.TrackId);
+                if (entry.Content is TrackContent content)
+                {
+                    _projectTracks.Add(content.TrackId);
+                }
             }
         }
         var tracks = _trackSource?.Invoke() ?? [];

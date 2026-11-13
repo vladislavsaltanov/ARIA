@@ -161,6 +161,12 @@ public sealed class ShowController : IShowHandler
             case AddEntry addEntry:
                 OnAddEntry(client, seq, addEntry);
                 break;
+            case AddNoteEntry addNoteEntry:
+                OnAddNoteEntry(client, seq, addNoteEntry);
+                break;
+            case SetNoteText setNoteText:
+                OnSetNoteText(client, seq, setNoteText);
+                break;
             case ImportProject importProject:
                 OnImportProject(client, seq, importProject);
                 break;
@@ -500,7 +506,7 @@ public sealed class ShowController : IShowHandler
         {
             foreach (var entry in project.Entries)
             {
-                if (!entryIds.Add(entry.Id) || !trackIds.Contains(entry.TrackId))
+                if (!entryIds.Add(entry.Id) || (entry.Content is TrackContent content && !trackIds.Contains(content.TrackId)))
                 {
                     return false;
                 }
@@ -810,6 +816,11 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-entry");
             return;
         }
+        if (location.Project.Entries[location.Index].Content is not TrackContent)
+        {
+            Reject(client, seq, "note-entry");
+            return;
+        }
         var wasPlaying = _status == TransportStatus.Playing;
         var old = _current;
         StartProjectEntry(location.Project, location.Index, auto: false);
@@ -824,12 +835,17 @@ public sealed class ShowController : IShowHandler
             return;
         }
         var entry = location.Project.Entries[location.Index];
-        if (!_trackMap.TryGetValue(entry.TrackId, out var track))
+        if (entry.Content is not TrackContent content)
+        {
+            Reject(client, seq, "note-entry");
+            return;
+        }
+        if (!_trackMap.TryGetValue(content.TrackId, out var track))
         {
             Reject(client, seq, "unknown-track");
             return;
         }
-        var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
+        var settings = EffectiveSettings.Resolve(content, track, _defaultEndAction);
         _queue.Add(new QueueItem(entry.Id, track.Id, settings.DisplayName, settings.Color));
         EmitQueue();
         EmitTransport();
@@ -896,7 +912,7 @@ public sealed class ShowController : IShowHandler
         }
         for (var i = 0; i < found.Entries.Length; i++)
         {
-            if (found.Entries[i].TrackId == track)
+            if (found.Entries[i].Content is TrackContent content && content.TrackId == track)
             {
                 project = found;
                 index = i;
@@ -1021,9 +1037,68 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "bad-index");
             return;
         }
-        var entry = new ProjectEntry(EntryId.New(), command.Track);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(command.Track));
         var entries = command.Index is { } at ? project.Entries.Insert(at, entry) : project.Entries.Add(entry);
         _projects = _projects.SetItem(index, project with { Entries = entries });
+        RebuildEntryMap();
+        EmitShow();
+        EmitTransport();
+    }
+
+    private void OnAddNoteEntry(ClientId client, long seq, AddNoteEntry command)
+    {
+        if (!RequireProject(command.Project, client, seq, out var index))
+        {
+            return;
+        }
+        if (!NoteContent.TryCreate(command.Text, out var note))
+        {
+            Reject(client, seq, "bad-text");
+            return;
+        }
+        var project = _projects[index];
+        if (command.Index is { } position && (position < 0 || position > project.Entries.Length))
+        {
+            Reject(client, seq, "bad-index");
+            return;
+        }
+        var entry = new ProjectEntry(EntryId.New(), note!);
+        var entries = command.Index is { } at ? project.Entries.Insert(at, entry) : project.Entries.Add(entry);
+        _projects = _projects.SetItem(index, project with { Entries = entries });
+        RebuildEntryMap();
+        EmitShow();
+        EmitTransport();
+    }
+
+    private void OnSetNoteText(ClientId client, long seq, SetNoteText command)
+    {
+        if (!_entryMap.TryGetValue(command.Entry, out var location))
+        {
+            Reject(client, seq, "unknown-entry");
+            return;
+        }
+        var project = location.Project;
+        var entry = project.Entries[location.Index];
+        if (entry.Content is not NoteContent existing)
+        {
+            Reject(client, seq, "track-entry");
+            return;
+        }
+        if (!NoteContent.TryCreate(command.Text, out var note) || note is null)
+        {
+            Reject(client, seq, "bad-text");
+            return;
+        }
+        if (note == existing)
+        {
+            return;
+        }
+        if (!_applyingUndo)
+        {
+            PushUndo(new SetNoteText(command.Entry, existing.Text));
+        }
+        var entries = project.Entries.SetItem(location.Index, entry with { Content = note });
+        _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         EmitShow();
         EmitTransport();
@@ -1042,14 +1117,25 @@ public sealed class ShowController : IShowHandler
         }
         foreach (var entry in command.Entries)
         {
-            if (!_trackMap.ContainsKey(entry.Track))
+            if (entry.Text is null)
             {
-                Reject(client, seq, "unknown-track");
+                if (entry.Track is not { } track || !_trackMap.ContainsKey(track))
+                {
+                    Reject(client, seq, "unknown-track");
+                    return;
+                }
+                continue;
+            }
+            if (!NoteContent.TryCreate(entry.Text, out _))
+            {
+                Reject(client, seq, "bad-text");
                 return;
             }
         }
         var entries = command.Entries.Select(imported =>
-            new ProjectEntry(EntryId.New(), imported.Track, imported.Overrides));
+            imported.Text is { } text && NoteContent.TryCreate(text, out var note)
+                ? new ProjectEntry(EntryId.New(), note!)
+                : new ProjectEntry(EntryId.New(), new TrackContent(imported.Track!.Value, imported.Overrides)));
         _projects = _projects.Add(new Project(ProjectId.New(), command.Name, [.. entries]));
         RebuildEntryMap();
         EmitShow();
@@ -1114,7 +1200,12 @@ public sealed class ShowController : IShowHandler
         }
         var project = location.Project;
         var entry = project.Entries[location.Index];
-        var entries = project.Entries.SetItem(location.Index, entry with { Overrides = command.Overrides });
+        if (entry.Content is not TrackContent content)
+        {
+            Reject(client, seq, "note-entry");
+            return;
+        }
+        var entries = project.Entries.SetItem(location.Index, entry with { Content = content with { Overrides = command.Overrides } });
         _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         if (_current?.Entry is { } currentEntry && currentEntry.Equals(command.Entry))
@@ -1202,12 +1293,13 @@ public sealed class ShowController : IShowHandler
         if (command.Entry is { } entryId)
         {
             if (!_entryMap.TryGetValue(entryId, out var location)
-                || location.Project.Entries[location.Index].TrackId != track.Id)
+                || location.Project.Entries[location.Index].Content is not TrackContent previewContent
+                || previewContent.TrackId != track.Id)
             {
                 Reject(client, seq, "unknown-entry");
                 return;
             }
-            settings = EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction);
+            settings = EffectiveSettings.Resolve(previewContent, track, _defaultEndAction);
         }
         var source = new TrackSource(track.FilePath, TimeSpan.Zero, null, settings.Audio);
         var options = new StreamOptions(StreamBus.Preview, ArmedMarkers(settings.Markers, TimeSpan.Zero));
@@ -1322,7 +1414,12 @@ public sealed class ShowController : IShowHandler
         }
         var project = location.Project;
         var entry = project.Entries[location.Index];
-        if (!_trackMap.TryGetValue(entry.TrackId, out var track))
+        if (entry.Content is not TrackContent content)
+        {
+            Reject(client, seq, "note-entry");
+            return;
+        }
+        if (!_trackMap.TryGetValue(content.TrackId, out var track))
         {
             Reject(client, seq, "unknown-track");
             return;
@@ -1335,10 +1432,10 @@ public sealed class ShowController : IShowHandler
         }
         if (!_applyingUndo)
         {
-            PushUndo(new SetEntryMarkers(command.Entry, entry.Overrides?.Markers));
+            PushUndo(new SetEntryMarkers(command.Entry, content.Overrides?.Markers));
         }
-        var overrides = NormalizeOverrides((entry.Overrides ?? new ProjectOverrides()) with { Markers = markers });
-        var entries = project.Entries.SetItem(location.Index, entry with { Overrides = overrides });
+        var overrides = NormalizeOverrides((content.Overrides ?? new ProjectOverrides()) with { Markers = markers });
+        var entries = project.Entries.SetItem(location.Index, entry with { Content = content with { Overrides = overrides } });
         _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         EmitShow();
@@ -1384,8 +1481,10 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
-        var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-            ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+        var settings = deck.Entry is { } entryId
+            && _entryMap.TryGetValue(entryId, out var location)
+            && location.Project.Entries[location.Index].Content is TrackContent entryContent
+            ? EffectiveSettings.Resolve(entryContent, track, _defaultEndAction)
             : EffectiveSettings.ForTrack(track, _defaultEndAction);
         _current = new DeckInstance
         {
@@ -1476,7 +1575,12 @@ public sealed class ShowController : IShowHandler
             Reject(client, seq, "unknown-playlist");
             return;
         }
-        var ids = _projects[index].Entries.Select(e => e.TrackId).Distinct().ToArray();
+        var ids = _projects[index].Entries
+            .Select(e => e.Content)
+            .OfType<TrackContent>()
+            .Select(c => c.TrackId)
+            .Distinct()
+            .ToArray();
         if (ids.Length == 0)
         {
             Reject(client, seq, "nothing-to-normalize");
@@ -1569,8 +1673,10 @@ public sealed class ShowController : IShowHandler
         {
             return;
         }
-        var settings = deck.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-            ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+        var settings = deck.Entry is { } entryId
+            && _entryMap.TryGetValue(entryId, out var location)
+            && location.Project.Entries[location.Index].Content is TrackContent entryContent
+            ? EffectiveSettings.Resolve(entryContent, track, _defaultEndAction)
             : EffectiveSettings.ForTrack(track, _defaultEndAction);
         if (settings.EndAction == deck.Settings.EndAction && settings.Backing == deck.Settings.Backing)
         {
@@ -1609,8 +1715,9 @@ public sealed class ShowController : IShowHandler
         }
         if (_current.Entry is { } entryId && _entryMap.TryGetValue(entryId, out var location))
         {
-            var entry = location.Project.Entries[location.Index];
-            return entry.Overrides?.Audio ?? track.Defaults.Audio;
+            return location.Project.Entries[location.Index].Content is TrackContent content
+                ? content.Overrides?.Audio ?? track.Defaults.Audio
+                : track.Defaults.Audio;
         }
         return track.Defaults.Audio;
     }
@@ -1629,8 +1736,13 @@ public sealed class ShowController : IShowHandler
         }
         var project = location.Project;
         var entry = project.Entries[location.Index];
-        var overrides = (entry.Overrides ?? new ProjectOverrides()) with { Audio = command.Audio };
-        var entries = project.Entries.SetItem(location.Index, entry with { Overrides = overrides });
+        if (entry.Content is not TrackContent content)
+        {
+            Reject(client, seq, "note-entry");
+            return;
+        }
+        var overrides = (content.Overrides ?? new ProjectOverrides()) with { Audio = command.Audio };
+        var entries = project.Entries.SetItem(location.Index, entry with { Content = content with { Overrides = overrides } });
         _projects = _projects.SetItem(IndexOfProject(project.Id), project with { Entries = entries });
         RebuildEntryMap();
         if (_current?.Entry is { } currentEntry && currentEntry == command.Entry)
@@ -1941,12 +2053,24 @@ public sealed class ShowController : IShowHandler
         if (_activeProjectId is { } projectId)
         {
             var project = _projects.FirstOrDefault(p => p.Id == projectId);
-            if (project is not null && _cursor < project.Entries.Length)
+            if (project is not null && NextTrackIndex(project, _cursor) >= 0)
             {
                 return true;
             }
         }
         return false;
+    }
+
+    private static int NextTrackIndex(Project project, int from)
+    {
+        for (var i = Math.Max(from, 0); i < project.Entries.Length; i++)
+        {
+            if (project.Entries[i].Content is TrackContent)
+            {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private void OnStreamEvent(StreamEvent e)
@@ -2069,8 +2193,10 @@ public sealed class ShowController : IShowHandler
             var item = _queue[0];
             _queue.RemoveAt(0);
             var track = _trackMap[item.TrackId];
-            var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+            var settings = item.EntryId is { } entryId
+                && _entryMap.TryGetValue(entryId, out var location)
+                && location.Project.Entries[location.Index].Content is TrackContent entryContent
+                ? EffectiveSettings.Resolve(entryContent, track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             _current = new DeckInstance { Entry = item.EntryId, Track = track, Settings = settings };
             StartStreamFor(_current, auto: true, lead);
@@ -2086,9 +2212,10 @@ public sealed class ShowController : IShowHandler
         if (_activeProjectId is { } projectId)
         {
             var project = _projects.First(p => p.Id == projectId);
-            if (_cursor < project.Entries.Length)
+            var index = NextTrackIndex(project, _cursor);
+            if (index >= 0)
             {
-                StartProjectEntry(project, _cursor, auto: true, lead);
+                StartProjectEntry(project, index, auto: true, lead);
                 return true;
             }
         }
@@ -2098,8 +2225,9 @@ public sealed class ShowController : IShowHandler
     private void StartProjectEntry(Project project, int index, bool auto, TimeSpan? lead = null)
     {
         var entry = project.Entries[index];
-        var track = _trackMap[entry.TrackId];
-        var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
+        var content = (TrackContent)entry.Content;
+        var track = _trackMap[content.TrackId];
+        var settings = EffectiveSettings.Resolve(content, track, _defaultEndAction);
         _activeProjectId = project.Id;
         _cursor = index + 1;
         _current = new DeckInstance { Entry = entry.Id, Track = track, Settings = settings };
@@ -2399,8 +2527,10 @@ public sealed class ShowController : IShowHandler
         {
             var item = _queue[0];
             var track = _trackMap[item.TrackId];
-            var settings = item.EntryId is { } entryId && _entryMap.TryGetValue(entryId, out var location)
-                ? EffectiveSettings.Resolve(location.Project.Entries[location.Index], track, _defaultEndAction)
+            var settings = item.EntryId is { } entryId
+                && _entryMap.TryGetValue(entryId, out var location)
+                && location.Project.Entries[location.Index].Content is TrackContent entryContent
+                ? EffectiveSettings.Resolve(entryContent, track, _defaultEndAction)
                 : EffectiveSettings.ForTrack(track, _defaultEndAction);
             return new DeckContent(item.EntryId, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers, settings.Backing);
         }
@@ -2408,11 +2538,13 @@ public sealed class ShowController : IShowHandler
         if (_activeProjectId is { } projectId)
         {
             var project = _projects.FirstOrDefault(p => p.Id == projectId);
-            if (project is not null && _cursor < project.Entries.Length)
+            var index = project is null ? -1 : NextTrackIndex(project, _cursor);
+            if (project is not null && index >= 0)
             {
-                var entry = project.Entries[_cursor];
-                var track = _trackMap[entry.TrackId];
-                var settings = EffectiveSettings.Resolve(entry, track, _defaultEndAction);
+                var entry = project.Entries[index];
+                var content = (TrackContent)entry.Content;
+                var track = _trackMap[content.TrackId];
+                var settings = EffectiveSettings.Resolve(content, track, _defaultEndAction);
                 return new DeckContent(entry.Id, track.Id, settings.DisplayName, settings.Color, settings.EndAction, track.Duration, settings.CueIn, settings.CueOut, track.Defaults.Grid, settings.Markers, settings.Backing);
             }
         }
@@ -2437,8 +2569,12 @@ public sealed class ShowController : IShowHandler
         {
             foreach (var entry in project.Entries)
             {
-                Add(entry.TrackId);
-                if (entry.Overrides?.Backing is { } backing)
+                if (entry.Content is not TrackContent content)
+                {
+                    continue;
+                }
+                Add(content.TrackId);
+                if (content.Overrides?.Backing is { } backing)
                 {
                     Add(backing);
                 }

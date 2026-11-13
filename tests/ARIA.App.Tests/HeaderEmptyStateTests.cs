@@ -13,7 +13,7 @@ public sealed class HeaderEmptyStateTests
     public void NothingOnAir_ShowsHintWithNextTrack_PlayHidesIt()
     {
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         using var vm = new TransportViewModel(bus);
 

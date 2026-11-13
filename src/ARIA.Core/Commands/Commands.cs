@@ -45,7 +45,11 @@ public sealed record SetActiveProject(ProjectId Id) : Command;
 
 public sealed record AddEntry(ProjectId Project, TrackId Track, int? Index = null) : Command;
 
-public sealed record ImportProjectEntry(TrackId Track, ProjectOverrides? Overrides = null);
+public sealed record AddNoteEntry(ProjectId Project, string Text, int? Index = null) : Command;
+
+public sealed record SetNoteText(EntryId Entry, string Text) : Command;
+
+public sealed record ImportProjectEntry(TrackId? Track, ProjectOverrides? Overrides = null, string? Text = null);
 
 public sealed record ImportProject(string Name, ImmutableArray<ImportProjectEntry> Entries) : Command;
 

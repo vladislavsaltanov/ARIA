@@ -83,14 +83,15 @@ public sealed class SqliteLibraryStore : ILibraryStore
                 var entryCommand = connection.CreateCommand();
                 entryCommand.Transaction = transaction;
                 entryCommand.CommandText = """
-                    INSERT INTO project_entries(id, project_id, track_id, position, overrides_json)
-                    VALUES($id, $project_id, $track_id, $position, $overrides_json)
+                    INSERT INTO project_entries(id, project_id, track_id, position, overrides_json, text)
+                    VALUES($id, $project_id, $track_id, $position, $overrides_json, $text)
                     """;
                 entryCommand.Parameters.AddWithValue("$id", entryDto.Id);
                 entryCommand.Parameters.AddWithValue("$project_id", projectDto.Id);
-                entryCommand.Parameters.AddWithValue("$track_id", entryDto.TrackId);
+                entryCommand.Parameters.AddWithValue("$track_id", (object?)entryDto.TrackId ?? DBNull.Value);
                 entryCommand.Parameters.AddWithValue("$position", j);
                 entryCommand.Parameters.AddWithValue("$overrides_json", entryDto.Overrides is null ? DBNull.Value : DtoJson.Serialize(entryDto.Overrides));
+                entryCommand.Parameters.AddWithValue("$text", (object?)entryDto.Text ?? DBNull.Value);
                 entryCommand.ExecuteNonQuery();
             }
         }
@@ -143,7 +144,7 @@ public sealed class SqliteLibraryStore : ILibraryStore
 
         var entriesByProject = new Dictionary<Guid, List<ProjectEntry>>();
         var entryCommand = connection.CreateCommand();
-        entryCommand.CommandText = "SELECT id, project_id, track_id, overrides_json FROM project_entries ORDER BY project_id, position";
+        entryCommand.CommandText = "SELECT id, project_id, track_id, overrides_json, text FROM project_entries ORDER BY project_id, position";
         using (var reader = entryCommand.ExecuteReader())
         {
             while (reader.Read())
@@ -151,16 +152,21 @@ public sealed class SqliteLibraryStore : ILibraryStore
                 var dto = new EntryDto
                 {
                     Id = reader.GetGuid(0),
-                    TrackId = reader.GetGuid(2),
+                    TrackId = reader.IsDBNull(2) ? null : reader.GetGuid(2),
                     Overrides = reader.IsDBNull(3) ? null : DtoJson.Deserialize<OverridesDto>(reader.GetString(3)),
+                    Text = reader.IsDBNull(4) ? null : reader.GetString(4),
                 };
                 var projectId = reader.GetGuid(1);
+                if (ProjectMapper.ToDomain(dto) is not { } entry)
+                {
+                    continue;
+                }
                 if (!entriesByProject.TryGetValue(projectId, out var list))
                 {
                     list = [];
                     entriesByProject[projectId] = list;
                 }
-                list.Add(ProjectMapper.ToDomain(dto));
+                list.Add(entry);
             }
         }
 
@@ -217,10 +223,73 @@ public sealed class SqliteLibraryStore : ILibraryStore
             CREATE TABLE IF NOT EXISTS project_entries(
                 id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                track_id TEXT NOT NULL,
+                track_id TEXT,
                 position INTEGER NOT NULL,
-                overrides_json TEXT)
+                overrides_json TEXT,
+                text TEXT)
             """);
+        MigrateNoteEntries(connection);
+    }
+
+    private static void MigrateNoteEntries(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "project_entries"))
+        {
+            return;
+        }
+        if (!ColumnExists(connection, "project_entries", "text"))
+        {
+            Execute(connection, null, "ALTER TABLE project_entries ADD COLUMN text TEXT");
+        }
+        if (ColumnAllowsNull(connection, "project_entries", "track_id"))
+        {
+            return;
+        }
+        Execute(connection, null, """
+            CREATE TABLE project_entries_note(
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                track_id TEXT,
+                position INTEGER NOT NULL,
+                overrides_json TEXT,
+                text TEXT)
+            """);
+        Execute(connection, null, """
+            INSERT INTO project_entries_note(id, project_id, track_id, position, overrides_json, text)
+            SELECT id, project_id, track_id, position, overrides_json, text FROM project_entries
+            """);
+        Execute(connection, null, "DROP TABLE project_entries");
+        Execute(connection, null, "ALTER TABLE project_entries_note RENAME TO project_entries");
+    }
+
+    private static bool ColumnExists(SqliteConnection connection, string table, string name)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({table})";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (reader.GetString(1) == name)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool ColumnAllowsNull(SqliteConnection connection, string table, string name)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({table})";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (reader.GetString(1) == name)
+            {
+                return reader.GetInt32(3) == 0;
+            }
+        }
+        return true;
     }
 
     private static void MigrateLegacySchema(SqliteConnection connection)

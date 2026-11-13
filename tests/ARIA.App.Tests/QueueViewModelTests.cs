@@ -14,7 +14,7 @@ public sealed class QueueViewModelTests
 
     private static CommandBus LoadedBus()
     {
-        var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
@@ -60,7 +60,7 @@ public sealed class QueueViewModelTests
     public void IsCurrent_MarkedForRemainingDuplicate()
     {
         var track = TestTrack;
-        var entry = new ProjectEntry(EntryId.New(), track.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(track.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
@@ -104,7 +104,7 @@ public sealed class QueueViewModelTests
     public void PlayItem_WithEntry_JumpsToIt()
     {
         var track = TestTrack;
-        var entry = new ProjectEntry(EntryId.New(), track.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(track.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
@@ -141,7 +141,7 @@ public sealed class QueueViewModelTests
     public void FocusPlaying_SelectsCurrent()
     {
         var track = TestTrack;
-        var entry = new ProjectEntry(EntryId.New(), track.Id);
+        var entry = new ProjectEntry(EntryId.New(), new TrackContent(track.Id));
         var project = new Project(ProjectId.New(), "Main", [entry]);
         var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));

@@ -21,7 +21,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     public ScriptPanelViewModelTests()
     {
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), FirstTrack.Id, null), new ProjectEntry(EntryId.New(), SecondTrack.Id, null)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(FirstTrack.Id, null)), new ProjectEntry(EntryId.New(), new TrackContent(SecondTrack.Id, null))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, SecondTrack], [project], project.Id));
         _viewModel = new ScriptPanelViewModel(_bus, () => [FirstTrack, SecondTrack]);
     }
@@ -286,7 +286,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
             .Select(i => new Track(TrackId.New(), $"/audio/n{i}.flac", $"Ночь {i}", TimeSpan.FromMinutes(2), new TrackDefaults()))
             .ToImmutableArray();
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [.. tracks.Select(track => new ProjectEntry(EntryId.New(), track.Id, null))]);
+        var project = new Project(ProjectId.New(), "Main", [.. tracks.Select(track => new ProjectEntry(EntryId.New(), new TrackContent(track.Id, null)))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow(tracks, [project], project.Id));
         using var viewModel = new ScriptPanelViewModel(bus, () => tracks);
 
@@ -302,7 +302,7 @@ public sealed class ScriptPanelViewModelTests : IDisposable
     {
         var outsider = new Track(TrackId.New(), "/audio/old.flac", "Старый трек", TimeSpan.FromMinutes(2), new TrackDefaults());
         using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), FirstTrack.Id, null)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(FirstTrack.Id, null))]);
         bus.Submit(new ClientId("setup"), 1, new LoadShow([FirstTrack, outsider], [project], project.Id));
         using var viewModel = new ScriptPanelViewModel(bus, () => [FirstTrack, outsider]);
 

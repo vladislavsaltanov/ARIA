@@ -67,7 +67,7 @@ public sealed class DeleteConfirmHeadlessTests : IDisposable
         await _session.Dispatch(() =>
         {
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
-            var entry = new ProjectEntry(EntryId.New(), TestTrack.Id);
+            var entry = new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id));
             var project = new Project(ProjectId.New(), "Main", [entry]);
             bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
             using var vm = new ProjectsViewModel(bus, () => [TestTrack]);

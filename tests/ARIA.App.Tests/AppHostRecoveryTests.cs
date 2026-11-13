@@ -24,7 +24,7 @@ public sealed class AppHostRecoveryTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         var track = new Track(TrackId.New(), "/audio/x.flac", "x", TimeSpan.FromMinutes(1), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id))]);
         var ghost = new QueueItem(EntryId.New(), TrackId.New(), "ghost", null);
         using (var store = new JsonSnapshotStore(Path.Combine(_directory, "show.json")))
         {

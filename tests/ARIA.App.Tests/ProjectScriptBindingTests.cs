@@ -17,7 +17,7 @@ public sealed class ProjectScriptBindingTests : IDisposable
 
     public ProjectScriptBindingTests()
     {
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), TestTrack.Id)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(TestTrack.Id))]);
         _bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Inline);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([TestTrack], [project], project.Id));
         _projects = new ProjectsViewModel(_bus, () => [TestTrack]);
@@ -42,7 +42,7 @@ public sealed class ProjectScriptBindingTests : IDisposable
         var document = ProjectFormat.Import(json);
 
         Assert.Equal("aria-project", document.Format);
-        Assert.Equal(2, document.Version);
+        Assert.Equal(3, document.Version);
         var embedded = Assert.Single(document.Scripts);
         Assert.Equal("Утро", embedded.Name);
         var line = Assert.Single(embedded.Lines!);

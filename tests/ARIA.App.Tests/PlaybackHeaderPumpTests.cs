@@ -30,7 +30,7 @@ public sealed class PlaybackHeaderPumpTests
         await _session.Dispatch(() =>
         {
             var track = new Track(TrackId.New(), "/audio/wire.wav", "wire", TimeSpan.FromSeconds(90), new TrackDefaults());
-            var entry = new ProjectEntry(EntryId.New(), track.Id);
+            var entry = new ProjectEntry(EntryId.New(), new TrackContent(track.Id));
             var project = new Project(ProjectId.New(), "Main", [entry]);
             using var bus = new CommandBus(new ShowController(new StubEngine()), BusMode.Pumped);
             bus.Submit(new ClientId("setup"), 1, new RestoreShow(

@@ -37,8 +37,8 @@ public sealed class ProjectSchemaMigrationTests : IDisposable
             Assert.Equal("Old", project.Name);
             var entry = Assert.Single(project.Entries);
             Assert.Equal(entryId, entry.Id.Value);
-            Assert.Equal(track.Id, entry.TrackId);
-            Assert.Equal("legacy", entry.Overrides!.Name);
+            Assert.Equal(track.Id, ((TrackContent)entry.Content).TrackId);
+            Assert.Equal("legacy", ((TrackContent)entry.Content).Overrides!.Name);
         }
     }
 
@@ -96,7 +96,7 @@ public sealed class ProjectSchemaMigrationTests : IDisposable
         var project = Assert.Single(loaded.Projects);
         Assert.Equal(projectId, project.Id.Value);
         Assert.Equal("Old", project.Name);
-        Assert.Equal(trackId, Assert.Single(project.Entries).TrackId.Value);
+        Assert.Equal(trackId, ((TrackContent)Assert.Single(project.Entries).Content).TrackId.Value);
     }
 
     private void CreateLegacyDatabase(Track track, Guid entryId, Guid projectId)

@@ -35,7 +35,7 @@ public sealed class PlayTrackCodecTests : IAsyncLifetime
     public async Task PlayTrack_StartsTrackImmediately()
     {
         var track = new Track(TrackId.New(), "/audio/live.flac", "трек (лайв)", TimeSpan.FromMinutes(3), new TrackDefaults());
-        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), track.Id, null)]);
+        var project = new Project(ProjectId.New(), "Main", [new ProjectEntry(EntryId.New(), new TrackContent(track.Id, null))]);
         _bus.Submit(new ClientId("setup"), 1, new LoadShow([track], [project], project.Id));
         using var client = Connected();
 

@@ -22,7 +22,7 @@ public sealed class ProjectFormatTests
         var document = ProjectFormat.Import(json);
 
         Assert.Equal("aria-project", document.Format);
-        Assert.Equal(2, document.Version);
+        Assert.Equal(3, document.Version);
         Assert.Empty(document.Scripts);
         Assert.Equal("Вечер", document.Name);
         var first = Assert.Single(document.Entries.Take(1));
@@ -45,13 +45,13 @@ public sealed class ProjectFormatTests
     }
 
     [Fact]
-    public void Export_WritesV2()
+    public void Export_WritesV3()
     {
         var json = ProjectFormat.Export("Вечер", [new ProjectExportEntry("/audio/one.flac")]);
         var document = ProjectFormat.Import(json);
 
         Assert.Equal("aria-project", document.Format);
-        Assert.Equal(2, document.Version);
+        Assert.Equal(3, document.Version);
         Assert.Equal("Вечер", document.Name);
         Assert.Equal("/audio/one.flac", Assert.Single(document.Entries).File);
         Assert.Empty(document.Scripts);
@@ -113,7 +113,7 @@ public sealed class ProjectFormatTests
         var document = ProjectFormat.Import(json);
 
         Assert.Equal("aria-project", document.Format);
-        Assert.Equal(2, document.Version);
+        Assert.Equal(3, document.Version);
         Assert.Equal(2, document.Scripts.Length);
         Assert.Equal("Утро", document.Scripts[0].Name);
         Assert.Equal(2, document.Scripts[0].Lines?.Length);
@@ -131,6 +131,54 @@ public sealed class ProjectFormatTests
     [InlineData("{\"format\":\"aria-project\",\"version\":2,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}],\"scripts\":[{\"name\":\"Утро\"}]}", "bad-script")]
     [InlineData("{\"format\":\"aria-project\",\"version\":1,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}]}", "bad-version")]
     public void Import_V2_InvalidDocument_Throws(string json, string prefix)
+    {
+        var exception = Assert.Throws<ProjectFormatException>(() => ProjectFormat.Import(json));
+        Assert.StartsWith(prefix, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExportImport_RoundTripsNote()
+    {
+        var entries = ImmutableArray.Create(
+            new ProjectExportEntry("/audio/one.flac"),
+            new ProjectExportEntry(null, Text: "после фанфар — свет"));
+
+        var json = ProjectFormat.Export("Вечер", entries);
+        var document = ProjectFormat.Import(json);
+
+        Assert.Equal(3, document.Version);
+        Assert.Equal("track", document.Entries[0].Kind);
+        Assert.Null(document.Entries[0].Text);
+        var note = document.Entries[1];
+        Assert.Equal("note", note.Kind);
+        Assert.Null(note.File);
+        Assert.Equal("после фанфар — свет", note.Text);
+        Assert.Null(ProjectFormat.ToOverrides(note));
+    }
+
+    [Fact]
+    public void Import_V2_WithoutKind_StillParses()
+    {
+        var json = """
+            {
+                "format": "aria-project", "version": 2, "name": "Вечер",
+                "entries": [{ "file": "/audio/one.flac" }]
+            }
+            """;
+
+        var document = ProjectFormat.Import(json);
+
+        Assert.Equal(2, document.Version);
+        Assert.Equal("/audio/one.flac", Assert.Single(document.Entries).File);
+    }
+
+    [Theory]
+    [InlineData("{\"format\":\"aria-project\",\"version\":3,\"name\":\"Шоу\",\"entries\":[{\"kind\":\"note\",\"text\":\"  \"}]}", "bad-note")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":3,\"name\":\"Шоу\",\"entries\":[{\"kind\":\"note\"}]}", "bad-note")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":3,\"name\":\"Шоу\",\"entries\":[{\"kind\":\"note\",\"text\":\"a\",\"file\":\"a.flac\"}]}", "bad-note")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":3,\"name\":\"Шоу\",\"entries\":[{\"kind\":\"видео\",\"file\":\"a.flac\"}]}", "bad-entry")]
+    [InlineData("{\"format\":\"aria-project\",\"version\":4,\"name\":\"Шоу\",\"entries\":[{\"file\":\"a.flac\"}]}", "bad-version")]
+    public void Import_InvalidNoteDocument_Throws(string json, string prefix)
     {
         var exception = Assert.Throws<ProjectFormatException>(() => ProjectFormat.Import(json));
         Assert.StartsWith(prefix, exception.Message, StringComparison.Ordinal);
