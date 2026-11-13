@@ -23,21 +23,24 @@
     <Style Selector="Border.plRow:pointerover">
       <Setter Property="Background" Value="{StaticResource BrushHover}"/>
     </Style>
+    <Style Selector="Border.plRow.selected">
+      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+    </Style>
+    <Style Selector="Border.plRow.selected:pointerover">
+      <Setter Property="Background" Value="#242424"/>
+    </Style>
     <Style Selector="Border.plRow.note">
       <Setter Property="BorderBrush" Value="{StaticResource BrushNoteLine}"/>
       <Setter Property="BorderThickness" Value="0,1,0,1"/>
-    </Style>
-    <Style Selector="ListBox#EntryList ListBoxItem">
-      <Setter Property="FocusAdorner" Value="{x:Null}"/>
     </Style>
     <Style Selector="ListBox#EntryList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="ListBox#EntryList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="ListBox#EntryList ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+      <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="Border.plRow.linked">
       <Setter Property="Background" Value="{StaticResource BrushSurfaceHi}"/>
@@ -200,10 +203,11 @@
       <ListBox x:Name="EntryList" ItemsSource="{Binding VisibleEntries}" SelectedItem="{Binding SelectedEntry}"
                DoubleTapped="OnEntryDoubleTapped" KeyDown="OnEntryListKeyDown" DragDrop.AllowDrop="True" DragDrop.Drop="OnFilesDropped" DragDrop.DragOver="OnFilesDragOver"
                Background="Transparent" BorderThickness="0" Margin="0,0,0,10"
-               ItemContainerTheme="{StaticResource PlainRowItem}">
+               ItemContainerTheme="{StaticResource PlaylistRowItem}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:ProjectsViewModel+EntryVm">
-            <Border Classes="plRow" Classes.linked="{Binding IsLinked}" Classes.note="{Binding IsNote}" CornerRadius="6" Padding="10,0,12,0">
+            <Border Classes="plRow" Classes.linked="{Binding IsLinked}" Classes.note="{Binding IsNote}"
+                    Classes.selected="{Binding $parent[ListBoxItem].IsSelected}" CornerRadius="6" Padding="10,0,12,0">
               <Border.ContextMenu>
                 <ContextMenu>
                   <MenuItem Header="Править" Click="OnEditNoteClick" IsVisible="{Binding IsNote}"/>
